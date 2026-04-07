@@ -1,0 +1,46 @@
+accountTokenResponse:
+  type: object
+  required:
+    - accountToken
+  properties:
+    accountToken:
+      type: string
+
+loginRequest:
+  type: object
+  required:
+    - email
+    - password
+  properties:
+    email:
+      type: string
+      format: email
+    password:
+      type: string
+      minLength: 8
+
+changePasswordRequest:
+  type: object
+  required:
+    - email
+    - oldPassword
+    - newPassword
+  properties:
+    email:
+      type: string
+      format: email
+    oldPassword:
+      type: string
+      minLength: 8
+    newPassword:
+      type: string
+      minLength: 8
+
+regenerateTokenRequest:
+  type: object
+  required:
+    - email
+  properties:
+    email:
+      type: string
+      format: email

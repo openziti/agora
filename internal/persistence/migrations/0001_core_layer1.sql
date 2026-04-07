@@ -11,16 +11,21 @@ create table accounts (
     id uuid primary key,
     organization_id uuid not null references organizations(id) on delete cascade,
     email text not null,
+    password_salt text not null,
+    password_hash text not null,
+    account_token text not null,
     display_name text,
     role text not null,
     status text not null,
     created_at timestamptz not null default current_timestamp,
     updated_at timestamptz not null default current_timestamp,
     constraint accounts_email_not_empty check (btrim(email) <> ''),
+    constraint accounts_password_salt_not_empty check (btrim(password_salt) <> ''),
+    constraint accounts_password_hash_not_empty check (btrim(password_hash) <> ''),
+    constraint accounts_account_token_not_empty check (btrim(account_token) <> ''),
     constraint accounts_role_valid check (role in ('admin', 'member')),
     constraint accounts_status_valid check (status in ('active', 'disabled')),
-    constraint accounts_id_organization_unique unique (id, organization_id),
-    constraint accounts_org_email_unique unique (organization_id, email)
+    constraint accounts_id_organization_unique unique (id, organization_id)
 );
 
 create table environments (

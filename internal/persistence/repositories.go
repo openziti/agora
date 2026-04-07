@@ -2,8 +2,10 @@ package persistence
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -39,9 +41,25 @@ where id = $1`
 
 	var org Organization
 	if err := db.GetContext(ctx, &org, query, id); err != nil {
+		if isNotFound(err) {
+			return nil, ErrNotFound
+		}
 		return nil, fmt.Errorf("get organization: %w", err)
 	}
 	return &org, nil
+}
+
+func (r *OrganizationsRepository) List(ctx context.Context, db Queryer) ([]Organization, error) {
+	const query = `
+select id, name, created_at, updated_at
+from organizations
+order by name asc`
+
+	var organizations []Organization
+	if err := db.SelectContext(ctx, &organizations, query); err != nil {
+		return nil, fmt.Errorf("list organizations: %w", err)
+	}
+	return organizations, nil
 }
 
 type AccountsRepository struct{}
@@ -59,14 +77,15 @@ func (r *AccountsRepository) Create(ctx context.Context, db Queryer, acct Accoun
 	if acct.Status == "" {
 		acct.Status = AccountStatusActive
 	}
+	acct.Email = strings.ToLower(strings.TrimSpace(acct.Email))
 
 	const query = `
 insert into accounts (
-	id, organization_id, email, display_name, role, status, created_at, updated_at
+	id, organization_id, email, display_name, password_salt, password_hash, account_token, role, status, created_at, updated_at
 ) values (
-	$1, $2, $3, $4, $5, $6, $7, $8
+	$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
 )
-returning id, organization_id, email, display_name, role, status, created_at, updated_at`
+returning id, organization_id, email, display_name, password_salt, password_hash, account_token, role, status, created_at, updated_at`
 
 	var created Account
 	if err := db.GetContext(
@@ -77,6 +96,9 @@ returning id, organization_id, email, display_name, role, status, created_at, up
 		acct.OrganizationID,
 		acct.Email,
 		acct.DisplayName,
+		acct.PasswordSalt,
+		acct.PasswordHash,
+		acct.AccountToken,
 		acct.Role,
 		acct.Status,
 		acct.CreatedAt,
@@ -89,15 +111,106 @@ returning id, organization_id, email, display_name, role, status, created_at, up
 
 func (r *AccountsRepository) GetByID(ctx context.Context, db Queryer, id uuid.UUID) (*Account, error) {
 	const query = `
-select id, organization_id, email, display_name, role, status, created_at, updated_at
+select id, organization_id, email, display_name, password_salt, password_hash, account_token, role, status, created_at, updated_at
 from accounts
 where id = $1`
 
 	var acct Account
 	if err := db.GetContext(ctx, &acct, query, id); err != nil {
+		if isNotFound(err) {
+			return nil, ErrNotFound
+		}
 		return nil, fmt.Errorf("get account: %w", err)
 	}
 	return &acct, nil
+}
+
+func (r *AccountsRepository) FindByEmail(ctx context.Context, db Queryer, email string) (*Account, error) {
+	const query = `
+select id, organization_id, email, display_name, password_salt, password_hash, account_token, role, status, created_at, updated_at
+from accounts
+where lower(email) = lower($1)`
+
+	var acct Account
+	if err := db.GetContext(ctx, &acct, query, strings.TrimSpace(email)); err != nil {
+		if isNotFound(err) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("find account by email: %w", err)
+	}
+	return &acct, nil
+}
+
+func (r *AccountsRepository) FindByToken(ctx context.Context, db Queryer, token string) (*Account, error) {
+	const query = `
+select id, organization_id, email, display_name, password_salt, password_hash, account_token, role, status, created_at, updated_at
+from accounts
+where account_token = $1`
+
+	var acct Account
+	if err := db.GetContext(ctx, &acct, query, token); err != nil {
+		if isNotFound(err) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("find account by token: %w", err)
+	}
+	return &acct, nil
+}
+
+func (r *AccountsRepository) ListByOrganization(ctx context.Context, db Queryer, organizationID uuid.UUID) ([]Account, error) {
+	const query = `
+select id, organization_id, email, display_name, password_salt, password_hash, account_token, role, status, created_at, updated_at
+from accounts
+where organization_id = $1
+order by email asc`
+
+	var accounts []Account
+	if err := db.SelectContext(ctx, &accounts, query, organizationID); err != nil {
+		return nil, fmt.Errorf("list accounts: %w", err)
+	}
+	return accounts, nil
+}
+
+func (r *AccountsRepository) UpdatePassword(ctx context.Context, db Queryer, accountID uuid.UUID, salt, hash string) error {
+	const query = `
+update accounts
+set password_salt = $2, password_hash = $3, updated_at = $4
+where id = $1`
+
+	updatedAt := time.Now().UTC()
+	result, err := db.ExecContext(ctx, query, accountID, salt, hash, updatedAt)
+	if err != nil {
+		return fmt.Errorf("update account password: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("update account password rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *AccountsRepository) RotateToken(ctx context.Context, db Queryer, accountID uuid.UUID, token string) error {
+	const query = `
+update accounts
+set account_token = $2, updated_at = $3
+where id = $1`
+
+	updatedAt := time.Now().UTC()
+	result, err := db.ExecContext(ctx, query, accountID, token, updatedAt)
+	if err != nil {
+		return fmt.Errorf("rotate account token: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("rotate account token rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 type EnvironmentsRepository struct{}
@@ -150,9 +263,43 @@ where id = $1`
 
 	var env Environment
 	if err := db.GetContext(ctx, &env, query, id); err != nil {
+		if isNotFound(err) {
+			return nil, ErrNotFound
+		}
 		return nil, fmt.Errorf("get environment: %w", err)
 	}
 	return &env, nil
+}
+
+func (r *EnvironmentsRepository) ListByOrganization(ctx context.Context, db Queryer, organizationID uuid.UUID) ([]Environment, error) {
+	const query = `
+select id, organization_id, account_id, description, host, ziti_identity_id, state, last_seen_at, created_at, updated_at
+from environments
+where organization_id = $1
+order by created_at asc`
+
+	var environments []Environment
+	if err := db.SelectContext(ctx, &environments, query, organizationID); err != nil {
+		return nil, fmt.Errorf("list environments: %w", err)
+	}
+	return environments, nil
+}
+
+func (r *EnvironmentsRepository) Delete(ctx context.Context, db Queryer, id uuid.UUID, organizationID uuid.UUID) error {
+	const query = `delete from environments where id = $1 and organization_id = $2`
+
+	result, err := db.ExecContext(ctx, query, id, organizationID)
+	if err != nil {
+		return fmt.Errorf("delete environment: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("delete environment rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 func (r *EnvironmentsRepository) UpdateLastSeen(ctx context.Context, db Queryer, id uuid.UUID, lastSeenAt time.Time) error {
@@ -225,7 +372,45 @@ where id = $1`
 
 	var tunnel Tunnel
 	if err := db.GetContext(ctx, &tunnel, query, id); err != nil {
+		if isNotFound(err) {
+			return nil, ErrNotFound
+		}
 		return nil, fmt.Errorf("get tunnel: %w", err)
 	}
 	return &tunnel, nil
+}
+
+func (r *TunnelsRepository) ListByOrganization(ctx context.Context, db Queryer, organizationID uuid.UUID) ([]Tunnel, error) {
+	const query = `
+select id, organization_id, environment_id, name, backend_address, ziti_service_id, state, created_at, updated_at
+from tunnels
+where organization_id = $1
+order by name asc`
+
+	var tunnels []Tunnel
+	if err := db.SelectContext(ctx, &tunnels, query, organizationID); err != nil {
+		return nil, fmt.Errorf("list tunnels: %w", err)
+	}
+	return tunnels, nil
+}
+
+func (r *TunnelsRepository) Delete(ctx context.Context, db Queryer, id uuid.UUID, organizationID uuid.UUID) error {
+	const query = `delete from tunnels where id = $1 and organization_id = $2`
+
+	result, err := db.ExecContext(ctx, query, id, organizationID)
+	if err != nil {
+		return fmt.Errorf("delete tunnel: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("delete tunnel rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func isNotFound(err error) bool {
+	return errors.Is(err, sql.ErrNoRows)
 }

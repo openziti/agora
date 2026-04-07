@@ -1,0 +1,60 @@
+tunnel:
+  type: object
+  required:
+    - id
+    - organizationId
+    - environmentId
+    - name
+    - backendAddress
+    - state
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      type: string
+      format: uuid
+    organizationId:
+      type: string
+      format: uuid
+    environmentId:
+      type: string
+      format: uuid
+    name:
+      type: string
+    backendAddress:
+      type: string
+    zitiServiceId:
+      type: string
+    state:
+      type: string
+      enum: [active, disabled]
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+createTunnelRequest:
+  type: object
+  required:
+    - environmentId
+    - name
+    - backendAddress
+  properties:
+    environmentId:
+      type: string
+      format: uuid
+    name:
+      type: string
+      minLength: 1
+    backendAddress:
+      type: string
+      minLength: 1
+    zitiServiceId:
+      type: string
+
+listTunnelsResponse:
+  type: array
+  items:
+    $ref: "#/tunnel"

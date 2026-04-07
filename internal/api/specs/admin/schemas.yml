@@ -1,0 +1,94 @@
+organization:
+  type: object
+  required:
+    - id
+    - name
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      type: string
+      format: uuid
+    name:
+      type: string
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+createOrganizationRequest:
+  type: object
+  required:
+    - name
+  properties:
+    name:
+      type: string
+      minLength: 1
+
+listOrganizationsResponse:
+  type: array
+  items:
+    $ref: "#/organization"
+
+account:
+  type: object
+  required:
+    - id
+    - organizationId
+    - email
+    - role
+    - status
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      type: string
+      format: uuid
+    organizationId:
+      type: string
+      format: uuid
+    email:
+      type: string
+      format: email
+    displayName:
+      type: string
+    role:
+      type: string
+      enum: [admin, member]
+    status:
+      type: string
+      enum: [active, disabled]
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+createAccountRequest:
+  type: object
+  required:
+    - email
+    - password
+  properties:
+    email:
+      type: string
+      format: email
+    password:
+      type: string
+      minLength: 8
+    displayName:
+      type: string
+    role:
+      type: string
+      enum: [admin, member]
+    status:
+      type: string
+      enum: [active, disabled]
+
+listAccountsResponse:
+  type: array
+  items:
+    $ref: "#/account"

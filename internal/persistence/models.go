@@ -32,6 +32,9 @@ type Account struct {
 	OrganizationID uuid.UUID     `db:"organization_id"`
 	Email          string        `db:"email"`
 	DisplayName    *string       `db:"display_name"`
+	PasswordSalt   string        `db:"password_salt"`
+	PasswordHash   string        `db:"password_hash"`
+	AccountToken   string        `db:"account_token"`
 	Role           AccountRole   `db:"role"`
 	Status         AccountStatus `db:"status"`
 	CreatedAt      time.Time     `db:"created_at"`

@@ -1,0 +1,143 @@
+/tunnels:
+  post:
+    tags:
+      - tunnels
+    operationId: createTunnel
+    security:
+      - accountTokenAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/createTunnelRequest"
+    responses:
+      201:
+        description: created
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/tunnel"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+  get:
+    tags:
+      - tunnels
+    operationId: listTunnels
+    security:
+      - accountTokenAuth: []
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/listTunnelsResponse"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/tunnels/{tunnelId}:
+  get:
+    tags:
+      - tunnels
+    operationId: getTunnel
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: tunnelId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/tunnel"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+  delete:
+    tags:
+      - tunnels
+    operationId: deleteTunnel
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: tunnelId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      204:
+        description: deleted
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"

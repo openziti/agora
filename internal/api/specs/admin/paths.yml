@@ -1,0 +1,153 @@
+/organizations:
+  post:
+    tags:
+      - admin
+    operationId: createOrganization
+    security:
+      - adminTokenAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/createOrganizationRequest"
+    responses:
+      201:
+        description: created
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/organization"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+  get:
+    tags:
+      - admin
+    operationId: listOrganizations
+    security:
+      - adminTokenAuth: []
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/listOrganizationsResponse"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/organizations/{organizationId}/accounts:
+  post:
+    tags:
+      - admin
+    operationId: createAccount
+    security:
+      - adminTokenAuth: []
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/createAccountRequest"
+    responses:
+      201:
+        description: created
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/accountTokenResponse"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+  get:
+    tags:
+      - admin
+    operationId: listAccounts
+    security:
+      - adminTokenAuth: []
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/listAccountsResponse"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"

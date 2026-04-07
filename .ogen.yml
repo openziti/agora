@@ -1,0 +1,11 @@
+parser:
+  allow_remote: true
+generator:
+  features:
+    enable:
+      - "paths/server"
+      - "paths/client"
+      - "client/request/validation"
+      - "server/response/validation"
+    disable_all: true
+  convenient_errors: "off"

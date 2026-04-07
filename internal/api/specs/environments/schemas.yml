@@ -1,0 +1,56 @@
+environment:
+  type: object
+  required:
+    - id
+    - organizationId
+    - accountId
+    - zitiIdentityId
+    - state
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      type: string
+      format: uuid
+    organizationId:
+      type: string
+      format: uuid
+    accountId:
+      type: string
+      format: uuid
+    description:
+      type: string
+    host:
+      type: string
+    zitiIdentityId:
+      type: string
+    state:
+      type: string
+      enum: [enabled, disabled]
+    lastSeenAt:
+      type: string
+      format: date-time
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+createEnvironmentRequest:
+  type: object
+  required:
+    - zitiIdentityId
+  properties:
+    description:
+      type: string
+    host:
+      type: string
+    zitiIdentityId:
+      type: string
+      minLength: 1
+
+listEnvironmentsResponse:
+  type: array
+  items:
+    $ref: "#/environment"

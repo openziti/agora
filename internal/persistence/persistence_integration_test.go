@@ -119,6 +119,9 @@ func TestRepositoriesCRUDAndConstraints(t *testing.T) {
 	if _, err := store.Accounts.Create(ctx, store.DB(), Account{
 		OrganizationID: org.ID,
 		Email:          acct.Email,
+		PasswordSalt:   "salt",
+		PasswordHash:   "hash",
+		AccountToken:   "dup-token",
 		Role:           AccountRoleMember,
 		Status:         AccountStatusActive,
 	}); !isUniqueViolation(err) {
@@ -227,6 +230,9 @@ func createOrgAccountEnvironment(t *testing.T, ctx context.Context, store *Store
 		OrganizationID: org.ID,
 		Email:          "alice@example.com",
 		DisplayName:    &displayName,
+		PasswordSalt:   "salt-1",
+		PasswordHash:   "hash-1",
+		AccountToken:   "account-token-1",
 		Role:           AccountRoleAdmin,
 		Status:         AccountStatusActive,
 	})

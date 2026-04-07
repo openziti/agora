@@ -1,0 +1,78 @@
+openapi: "3.0.3"
+
+info:
+  title: agora
+  version: 0.1.0
+
+servers:
+  - url: /v1
+
+paths:
+  /organizations:
+    $ref: "admin/paths.yml#/~1organizations"
+  /organizations/{organizationId}/accounts:
+    $ref: "admin/paths.yml#/~1organizations~1{organizationId}~1accounts"
+
+  /account/login:
+    $ref: "account/paths.yml#/~1account~1login"
+  /account/change-password:
+    $ref: "account/paths.yml#/~1account~1change-password"
+  /account/regenerate-token:
+    $ref: "account/paths.yml#/~1account~1regenerate-token"
+
+  /environments:
+    $ref: "environments/paths.yml#/~1environments"
+  /environments/{environmentId}:
+    $ref: "environments/paths.yml#/~1environments~1{environmentId}"
+
+  /tunnels:
+    $ref: "tunnels/paths.yml#/~1tunnels"
+  /tunnels/{tunnelId}:
+    $ref: "tunnels/paths.yml#/~1tunnels~1{tunnelId}"
+
+components:
+  securitySchemes:
+    accountTokenAuth:
+      type: apiKey
+      in: header
+      name: X-TOKEN
+    adminTokenAuth:
+      type: apiKey
+      in: header
+      name: X-TOKEN
+
+  schemas:
+    error:
+      $ref: "common/schemas.yml#/error"
+    organization:
+      $ref: "admin/schemas.yml#/organization"
+    createOrganizationRequest:
+      $ref: "admin/schemas.yml#/createOrganizationRequest"
+    listOrganizationsResponse:
+      $ref: "admin/schemas.yml#/listOrganizationsResponse"
+    account:
+      $ref: "admin/schemas.yml#/account"
+    createAccountRequest:
+      $ref: "admin/schemas.yml#/createAccountRequest"
+    listAccountsResponse:
+      $ref: "admin/schemas.yml#/listAccountsResponse"
+    accountTokenResponse:
+      $ref: "account/schemas.yml#/accountTokenResponse"
+    loginRequest:
+      $ref: "account/schemas.yml#/loginRequest"
+    changePasswordRequest:
+      $ref: "account/schemas.yml#/changePasswordRequest"
+    regenerateTokenRequest:
+      $ref: "account/schemas.yml#/regenerateTokenRequest"
+    environment:
+      $ref: "environments/schemas.yml#/environment"
+    createEnvironmentRequest:
+      $ref: "environments/schemas.yml#/createEnvironmentRequest"
+    listEnvironmentsResponse:
+      $ref: "environments/schemas.yml#/listEnvironmentsResponse"
+    tunnel:
+      $ref: "tunnels/schemas.yml#/tunnel"
+    createTunnelRequest:
+      $ref: "tunnels/schemas.yml#/createTunnelRequest"
+    listTunnelsResponse:
+      $ref: "tunnels/schemas.yml#/listTunnelsResponse"

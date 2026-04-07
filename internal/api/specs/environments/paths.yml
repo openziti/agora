@@ -1,0 +1,137 @@
+/environments:
+  post:
+    tags:
+      - environments
+    operationId: createEnvironment
+    security:
+      - accountTokenAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/createEnvironmentRequest"
+    responses:
+      201:
+        description: created
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/environment"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+  get:
+    tags:
+      - environments
+    operationId: listEnvironments
+    security:
+      - accountTokenAuth: []
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/listEnvironmentsResponse"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/environments/{environmentId}:
+  get:
+    tags:
+      - environments
+    operationId: getEnvironment
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: environmentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/environment"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+  delete:
+    tags:
+      - environments
+    operationId: deleteEnvironment
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: environmentId
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    responses:
+      204:
+        description: deleted
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"

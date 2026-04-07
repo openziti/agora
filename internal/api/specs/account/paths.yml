@@ -1,0 +1,110 @@
+/account/login:
+  post:
+    tags:
+      - account
+    operationId: login
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/loginRequest"
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/accountTokenResponse"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/account/change-password:
+  post:
+    tags:
+      - account
+    operationId: changePassword
+    security:
+      - accountTokenAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/changePasswordRequest"
+    responses:
+      200:
+        description: ok
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      422:
+        description: validation failure
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/account/regenerate-token:
+  post:
+    tags:
+      - account
+    operationId: regenerateAccountToken
+    security:
+      - accountTokenAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/regenerateTokenRequest"
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/accountTokenResponse"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
