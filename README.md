@@ -51,6 +51,11 @@ The current API surface covers the first Layer 1 slice:
 - PostgreSQL
 - Docker, if you want to run the persistence and controller integration tests that use `testcontainers-go`
 
+### Project Conventions
+
+- Logging is handled through `github.com/michaelquigley/df/dl`
+- Structured config binding is handled through `github.com/michaelquigley/df/dd`
+
 ### Generate API Code
 
 ```bash
@@ -72,13 +77,20 @@ The controller expects a YAML config file. At minimum, configure a bind address,
 Example:
 
 ```yaml
-bindAddress: ":8080"
-adminTokens:
+bind_address: ":8080"
+admin_tokens:
   - "replace-me"
+open_ziti:
+  api_endpoint: "https://controller.example"
+  auth:
+    mode: "updb"
+    updb:
+      username: "admin"
+      password: "replace-me"
 store:
   dsn: "postgres://user:password@localhost:5432/agora?sslmode=disable"
-  maxOpenConns: 4
-  maxIdleConns: 4
+  max_open_conns: 4
+  max_idle_conns: 4
 ```
 
 Start the controller with:

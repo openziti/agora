@@ -2,17 +2,18 @@ package config
 
 import (
 	"fmt"
-	"os"
 	"time"
 
+	"github.com/michaelquigley/df/dd"
+	"github.com/openziti/agora/internal/openziti/automation"
 	"github.com/openziti/agora/internal/persistence"
-	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	BindAddress string             `yaml:"bindAddress"`
-	AdminTokens []string           `yaml:"adminTokens"`
-	Store       persistence.Config `yaml:"store"`
+	BindAddress string
+	AdminTokens []string
+	OpenZiti    *automation.Config
+	Store       persistence.Config
 }
 
 func DefaultConfig() *Config {
@@ -29,12 +30,8 @@ func DefaultConfig() *Config {
 
 func Load(path string) (*Config, error) {
 	cfg := DefaultConfig()
-	data, err := os.ReadFile(path)
-	if err != nil {
+	if err := dd.MergeFromYAML(cfg, path, &dd.Options{}); err != nil {
 		return nil, fmt.Errorf("load config: %w", err)
-	}
-	if err := yaml.Unmarshal(data, cfg); err != nil {
-		return nil, fmt.Errorf("parse config: %w", err)
 	}
 	return cfg, nil
 }

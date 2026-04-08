@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/michaelquigley/df/dl"
 	"github.com/openziti/agora/internal/persistence"
 	"github.com/spf13/cobra"
 )
@@ -51,7 +52,7 @@ func (cmd *storeMigrateCommand) run(_ *cobra.Command, args []string) {
 		if err != nil {
 			panic(err)
 		}
-		logger.Info("migration complete", "applied", applied)
+		dl.Infof("migration complete; applied=%d", applied)
 	case "down":
 		steps := cmd.steps
 		if steps <= 0 {
@@ -61,7 +62,7 @@ func (cmd *storeMigrateCommand) run(_ *cobra.Command, args []string) {
 		if err != nil {
 			panic(err)
 		}
-		logger.Info("down migration complete", "applied", applied)
+		dl.Infof("down migration complete; applied=%d", applied)
 	case "status":
 		statuses, err := persistence.MigrationStatusList(ctx, store)
 		if err != nil {
