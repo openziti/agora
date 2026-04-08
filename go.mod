@@ -9,7 +9,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/michaelquigley/df v0.3.2
+	github.com/michaelquigley/df v0.3.13
 	github.com/ogen-go/ogen v1.15.1
 	github.com/openziti/edge-api v0.26.48
 	github.com/openziti/sdk-golang v1.2.8

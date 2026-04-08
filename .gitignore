@@ -50,3 +50,6 @@ __pycache__/
 /sdk/python/src/dist/
 /sdk/python/.coverage
 .python-version
+
+CODEX-*.md
+CLAUDE-*.md

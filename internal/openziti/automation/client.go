@@ -24,30 +24,32 @@ func NewClient(ctx context.Context, cfg *Config) (*Client, error) {
 }
 
 func newClient(_ context.Context, cfg *Config, auth Authenticator) (*Client, error) {
-	normalized := cfg.normalized()
-	if normalized.APIEndpoint == "" {
+	if cfg == nil {
+		return nil, fmt.Errorf("openziti config is required")
+	}
+	if cfg.APIEndpoint == "" {
 		return nil, fmt.Errorf("openziti apiEndpoint is required")
 	}
 
 	if auth == nil {
 		var err error
-		auth, err = selectAuthenticator(normalized)
+		auth, err = selectAuthenticator(*cfg)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	caPool, err := buildCAPool(normalized.APIEndpoint)
+	caPool, err := buildCAPool(cfg.APIEndpoint)
 	if err != nil {
 		return nil, fmt.Errorf("load openziti controller CAs: %w", err)
 	}
-	edge, err := auth.NewManagementClient(normalized, caPool)
+	edge, err := auth.NewManagementClient(*cfg, caPool)
 	if err != nil {
 		return nil, fmt.Errorf("create openziti management client: %w", err)
 	}
 
 	client := &Client{
-		cfg:  normalized,
+		cfg:  *cfg,
 		edge: edge,
 	}
 	client.Identities = NewIdentityManager(client)

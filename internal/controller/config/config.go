@@ -13,7 +13,7 @@ type Config struct {
 	BindAddress string
 	AdminTokens []string
 	OpenZiti    *automation.Config
-	Store       persistence.Config
+	Store       persistence.Config `dd:",+required"`
 }
 
 func DefaultConfig() *Config {
@@ -30,7 +30,7 @@ func DefaultConfig() *Config {
 
 func Load(path string) (*Config, error) {
 	cfg := DefaultConfig()
-	if err := dd.MergeFromYAML(cfg, path, &dd.Options{}); err != nil {
+	if err := dd.MergeYAMLFile(cfg, path, &dd.Options{}); err != nil {
 		return nil, fmt.Errorf("load config: %w", err)
 	}
 	return cfg, nil

@@ -33,8 +33,11 @@ This repository is in early-stage development. Favor simple, explicit structure 
 
 **Configuration Binding**:
 - Structured config loading and binding should use `github.com/michaelquigley/df/dd`
-- Prefer `dd.MergeFromYAML(...)` over manual file reads plus `yaml.Unmarshal(...)`
+- Prefer `dd.MergeYAMLFile(...)` over manual file reads plus `yaml.Unmarshal(...)`
 - `dd` binds struct fields using `snake_case` by default; do not add YAML tags to config structs unless there is a concrete need to override that mapping
+- Keep root-level configuration defaults in `DefaultConfig()`
+- When an optional config sub-struct is a pointer, prefer implementing `ApplyDefaults()` on that sub-struct instead of doing post-merge default repair in callers
+- Express unconditional config requirements with `dd:",+required"` struct tags instead of duplicating the same validation in load paths
 - If dynamic config sections are introduced later, keep them within the `dd` binding model instead of introducing a second config-loading pattern
 
 ### Key Architectural Patterns
@@ -74,6 +77,7 @@ This repository is in early-stage development. Favor simple, explicit structure 
 - Use `github.com/michaelquigley/df/dl` for logging; do not introduce direct `slog` logger wiring as a parallel logging pattern
 - Use `github.com/michaelquigley/df/dd` for config binding/unbinding instead of ad hoc YAML parsing
 - Prefer tagless config structs when `dd`'s default `snake_case` field mapping is sufficient
+- Prefer `ApplyDefaults()` on optional config pointer structs over ad hoc `if cfg.Sub.Field == ...` post-processing
 - Keep package APIs explicit and small; prefer simple structs and functions over hidden framework behavior
 - Thread `context.Context` through I/O boundaries and long-running operations
 - Prefer concrete tests around real behavior over excessive mocking
