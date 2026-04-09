@@ -26,6 +26,12 @@ func (a *UPDBAuthenticator) NewManagementClient(cfg Config, caPool *x509.CertPoo
 func selectAuthenticator(cfg Config) (Authenticator, error) {
 	mode := cfg.Auth.Mode
 	if mode == "" || mode == "updb" {
+		if cfg.Auth.UPDB.Username == "" {
+			return nil, fmt.Errorf("openziti auth.updb.username is required")
+		}
+		if cfg.Auth.UPDB.Password == "" {
+			return nil, fmt.Errorf("openziti auth.updb.password is required")
+		}
 		return &UPDBAuthenticator{}, nil
 	}
 	return nil, fmt.Errorf("unsupported openziti auth mode %q", mode)

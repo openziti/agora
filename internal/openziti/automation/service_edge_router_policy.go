@@ -11,6 +11,7 @@ import (
 type ServiceEdgeRouterPolicyOperations interface {
 	Create(context.Context, *ServiceEdgeRouterPolicyOptions) (string, error)
 	Delete(context.Context, string) error
+	DeleteWithFilter(context.Context, string) error
 	Find(context.Context, *FilterOptions) ([]*rest_model.ServiceEdgeRouterPolicyDetail, error)
 	GetByID(context.Context, string) (*rest_model.ServiceEdgeRouterPolicyDetail, error)
 	GetByName(context.Context, string) (*rest_model.ServiceEdgeRouterPolicyDetail, error)
@@ -86,4 +87,13 @@ func (m *ServiceEdgeRouterPolicyManager) GetByName(ctx context.Context, name str
 		return nil, err
 	}
 	return oneResult("service_edge_router_policy", "get_by_name", name, items)
+}
+
+func (m *ServiceEdgeRouterPolicyManager) DeleteWithFilter(ctx context.Context, filter string) error {
+	return deleteWithFilter(ctx, m, filter, func(item *rest_model.ServiceEdgeRouterPolicyDetail) string {
+		if item.ID == nil {
+			return ""
+		}
+		return *item.ID
+	})
 }

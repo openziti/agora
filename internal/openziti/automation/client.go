@@ -5,6 +5,7 @@ import (
 	"crypto/x509"
 	"fmt"
 
+	"github.com/michaelquigley/df/dl"
 	"github.com/openziti/edge-api/rest_management_api_client"
 	"github.com/openziti/edge-api/rest_util"
 )
@@ -12,6 +13,7 @@ import (
 type Client struct {
 	cfg                       Config
 	edge                      *rest_management_api_client.ZitiEdgeManagement
+	EdgeRouters               EdgeRouterOperations
 	Identities                IdentityOperations
 	Services                  ServiceOperations
 	EdgeRouterPolicies        EdgeRouterPolicyOperations
@@ -52,12 +54,40 @@ func newClient(_ context.Context, cfg *Config, auth Authenticator) (*Client, err
 		cfg:  *cfg,
 		edge: edge,
 	}
+	client.EdgeRouters = NewEdgeRouterManager(client)
 	client.Identities = NewIdentityManager(client)
 	client.Services = NewServiceManager(client)
 	client.EdgeRouterPolicies = NewEdgeRouterPolicyManager(client)
 	client.ServicePolicies = NewServicePolicyManager(client)
 	client.ServiceEdgeRouterPolicies = NewServiceEdgeRouterPolicyManager(client)
 	return client, nil
+}
+
+func (c *Client) CleanupByTag(ctx context.Context, tag string) error {
+	filter := BuildTagExistsFilter(tag)
+	dl.Debugf("cleanup filter: %s", filter)
+
+	dl.Debug("deleting service edge router policies")
+	if err := c.ServiceEdgeRouterPolicies.DeleteWithFilter(ctx, filter); err != nil {
+		return err
+	}
+	dl.Debug("deleting service policies")
+	if err := c.ServicePolicies.DeleteWithFilter(ctx, filter); err != nil {
+		return err
+	}
+	dl.Debug("deleting services")
+	if err := c.Services.DeleteWithFilter(ctx, filter); err != nil {
+		return err
+	}
+	dl.Debug("deleting edge router policies")
+	if err := c.EdgeRouterPolicies.DeleteWithFilter(ctx, filter); err != nil {
+		return err
+	}
+	dl.Debug("deleting identities")
+	if err := c.Identities.DeleteWithFilter(ctx, filter); err != nil {
+		return err
+	}
+	return nil
 }
 
 func buildCAPool(apiEndpoint string) (*x509.CertPool, error) {

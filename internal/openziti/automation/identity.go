@@ -13,6 +13,7 @@ import (
 type IdentityOperations interface {
 	Create(context.Context, *IdentityOptions) (string, error)
 	Delete(context.Context, string) error
+	DeleteWithFilter(context.Context, string) error
 	Find(context.Context, *FilterOptions) ([]*rest_model.IdentityDetail, error)
 	GetByID(context.Context, string) (*rest_model.IdentityDetail, error)
 	GetByName(context.Context, string) (*rest_model.IdentityDetail, error)
@@ -92,6 +93,15 @@ func (m *IdentityManager) GetByName(ctx context.Context, name string) (*rest_mod
 		return nil, err
 	}
 	return oneResult("identity", "get_by_name", name, items)
+}
+
+func (m *IdentityManager) DeleteWithFilter(ctx context.Context, filter string) error {
+	return deleteWithFilter(ctx, m, filter, func(item *rest_model.IdentityDetail) string {
+		if item.ID == nil {
+			return ""
+		}
+		return *item.ID
+	})
 }
 
 func (m *IdentityManager) Enroll(ctx context.Context, id string) ([]byte, error) {

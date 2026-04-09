@@ -1,0 +1,39 @@
+# Agora controller configuration template.
+#
+# This file is intentionally documented and conservative. It is meant to be
+# copied and edited for real deployments.
+
+# HTTP bind address for the controller API server.
+bind_address: ":8080"
+
+# Static admin API tokens accepted by the controller.
+# Replace these before using the controller outside local development.
+admin_tokens:
+  - "replace-me-with-a-real-admin-token"
+
+# OpenZiti management API configuration. This block is required for
+# `agora admin bootstrap`, `agora admin unbootstrap`, and future
+# controller-driven OpenZiti automation flows.
+open_ziti:
+  # Base URL for the OpenZiti edge management API.
+  api_endpoint: "https://controller.example"
+
+  # Optional; defaults to "updb".
+  auth:
+    mode: "updb"
+    updb:
+      username: "admin"
+      password: "replace-me-with-a-real-password"
+
+  # Optional; defaults shown explicitly for clarity.
+  request_timeout: "30s"
+  operation_timeout: "30s"
+
+# PostgreSQL datastore configuration.
+store:
+  dsn: "postgres://agora:replace-me@localhost:5432/agora?sslmode=disable"
+
+  # Optional pool tuning.
+  max_open_conns: 4
+  max_idle_conns: 4
+  conn_max_lifetime: "1h"

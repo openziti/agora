@@ -11,6 +11,7 @@ import (
 type ServiceOperations interface {
 	Create(context.Context, *ServiceOptions) (string, error)
 	Delete(context.Context, string) error
+	DeleteWithFilter(context.Context, string) error
 	Find(context.Context, *FilterOptions) ([]*rest_model.ServiceDetail, error)
 	GetByID(context.Context, string) (*rest_model.ServiceDetail, error)
 	GetByName(context.Context, string) (*rest_model.ServiceDetail, error)
@@ -95,4 +96,13 @@ func (m *ServiceManager) GetByName(ctx context.Context, name string) (*rest_mode
 		return nil, err
 	}
 	return oneResult("service", "get_by_name", name, items)
+}
+
+func (m *ServiceManager) DeleteWithFilter(ctx context.Context, filter string) error {
+	return deleteWithFilter(ctx, m, filter, func(item *rest_model.ServiceDetail) string {
+		if item.ID == nil {
+			return ""
+		}
+		return *item.ID
+	})
 }

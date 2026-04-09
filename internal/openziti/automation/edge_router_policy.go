@@ -11,6 +11,7 @@ import (
 type EdgeRouterPolicyOperations interface {
 	Create(context.Context, *EdgeRouterPolicyOptions) (string, error)
 	Delete(context.Context, string) error
+	DeleteWithFilter(context.Context, string) error
 	Find(context.Context, *FilterOptions) ([]*rest_model.EdgeRouterPolicyDetail, error)
 	GetByID(context.Context, string) (*rest_model.EdgeRouterPolicyDetail, error)
 	GetByName(context.Context, string) (*rest_model.EdgeRouterPolicyDetail, error)
@@ -86,4 +87,13 @@ func (m *EdgeRouterPolicyManager) GetByName(ctx context.Context, name string) (*
 		return nil, err
 	}
 	return oneResult("edge_router_policy", "get_by_name", name, items)
+}
+
+func (m *EdgeRouterPolicyManager) DeleteWithFilter(ctx context.Context, filter string) error {
+	return deleteWithFilter(ctx, m, filter, func(item *rest_model.EdgeRouterPolicyDetail) string {
+		if item.ID == nil {
+			return ""
+		}
+		return *item.ID
+	})
 }

@@ -65,6 +65,10 @@ func BuildTagFilter(tag, value string) string {
 	return "tags." + tag + "=\"" + value + "\""
 }
 
+func BuildTagExistsFilter(tag string) string {
+	return "tags." + tag + " != null"
+}
+
 func BuildBoolTagFilter(tag string, value bool) string {
 	return "tags." + tag + "=" + strconv.FormatBool(value)
 }

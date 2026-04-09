@@ -164,6 +164,23 @@ open_ziti:
 	}
 }
 
+func TestLoadAllowsOpenZitiBlockWithoutUPDBCredentials(t *testing.T) {
+	path := writeConfigFile(t, `
+store:
+  dsn: "postgres://user:pass@localhost:5432/agora?sslmode=disable"
+open_ziti:
+  api_endpoint: "https://controller.example"
+`)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("expected config load to succeed, got %v", err)
+	}
+	if cfg.OpenZiti == nil {
+		t.Fatal("expected open_ziti to be allocated")
+	}
+}
+
 func writeConfigFile(t *testing.T, contents string) string {
 	t.Helper()
 

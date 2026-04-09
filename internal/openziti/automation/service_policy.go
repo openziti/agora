@@ -11,6 +11,7 @@ import (
 type ServicePolicyOperations interface {
 	Create(context.Context, *ServicePolicyOptions) (string, error)
 	Delete(context.Context, string) error
+	DeleteWithFilter(context.Context, string) error
 	Find(context.Context, *FilterOptions) ([]*rest_model.ServicePolicyDetail, error)
 	GetByID(context.Context, string) (*rest_model.ServicePolicyDetail, error)
 	GetByName(context.Context, string) (*rest_model.ServicePolicyDetail, error)
@@ -95,6 +96,15 @@ func (m *ServicePolicyManager) GetByName(ctx context.Context, name string) (*res
 		return nil, err
 	}
 	return oneResult("service_policy", "get_by_name", name, items)
+}
+
+func (m *ServicePolicyManager) DeleteWithFilter(ctx context.Context, filter string) error {
+	return deleteWithFilter(ctx, m, filter, func(item *rest_model.ServicePolicyDetail) string {
+		if item.ID == nil {
+			return ""
+		}
+		return *item.ID
+	})
 }
 
 func (m *ServicePolicyManager) CreateBind(ctx context.Context, opts *ServicePolicyOptions) (string, error) {

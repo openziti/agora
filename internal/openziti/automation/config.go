@@ -33,6 +33,6 @@ type AuthConfig struct {
 }
 
 type UPDBAuthConfig struct {
-	Username string
-	Password string
+	Username string `dd:",+required"`
+	Password string `dd:",+required,+secret"`
 }

@@ -38,6 +38,11 @@ var storeCmd = &cobra.Command{
 	Short: "Persistence and schema management commands",
 }
 
+var adminCmd = &cobra.Command{
+	Use:   "admin",
+	Short: "Administrative controller management commands",
+}
+
 func main() {
 	if err := rootCmd.Execute(); err != nil {
 		if panicInstead {

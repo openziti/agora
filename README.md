@@ -74,7 +74,12 @@ go test ./...
 
 The controller expects a YAML config file. At minimum, configure a bind address, one or more admin tokens, and a PostgreSQL DSN.
 
-Example:
+Templates:
+
+- `etc/agora-controller.yaml`: documented baseline template for real deployments
+- `etc/dev-agora-controller.yaml`: local development stub with placeholder/dev-friendly values
+
+Minimal example:
 
 ```yaml
 bind_address: ":8080"
