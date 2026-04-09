@@ -24,11 +24,11 @@ func (s *Account) Encode(e *jx.Encoder) {
 func (s *Account) encodeFields(e *jx.Encoder) {
 	{
 		e.FieldStart("id")
-		json.EncodeUUID(e, s.ID)
+		e.Str(s.ID)
 	}
 	{
 		e.FieldStart("organizationId")
-		json.EncodeUUID(e, s.OrganizationId)
+		e.Str(s.OrganizationId)
 	}
 	{
 		e.FieldStart("email")
@@ -81,8 +81,8 @@ func (s *Account) Decode(d *jx.Decoder) error {
 		case "id":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.ID = v
+				v, err := d.Str()
+				s.ID = string(v)
 				if err != nil {
 					return err
 				}
@@ -93,8 +93,8 @@ func (s *Account) Decode(d *jx.Decoder) error {
 		case "organizationId":
 			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.OrganizationId = v
+				v, err := d.Str()
+				s.OrganizationId = string(v)
 				if err != nil {
 					return err
 				}
@@ -1657,7 +1657,7 @@ func (s *CreateTunnelRequest) Encode(e *jx.Encoder) {
 func (s *CreateTunnelRequest) encodeFields(e *jx.Encoder) {
 	{
 		e.FieldStart("environmentId")
-		json.EncodeUUID(e, s.EnvironmentId)
+		e.Str(s.EnvironmentId)
 	}
 	{
 		e.FieldStart("name")
@@ -1694,8 +1694,8 @@ func (s *CreateTunnelRequest) Decode(d *jx.Decoder) error {
 		case "environmentId":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.EnvironmentId = v
+				v, err := d.Str()
+				s.EnvironmentId = string(v)
 				if err != nil {
 					return err
 				}
@@ -1831,6 +1831,158 @@ func (s *CreateTunnelUnauthorized) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes DeleteAccountConflict as json.
+func (s *DeleteAccountConflict) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes DeleteAccountConflict from json.
+func (s *DeleteAccountConflict) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DeleteAccountConflict to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = DeleteAccountConflict(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *DeleteAccountConflict) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DeleteAccountConflict) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes DeleteAccountInternalServerError as json.
+func (s *DeleteAccountInternalServerError) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes DeleteAccountInternalServerError from json.
+func (s *DeleteAccountInternalServerError) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DeleteAccountInternalServerError to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = DeleteAccountInternalServerError(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *DeleteAccountInternalServerError) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DeleteAccountInternalServerError) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes DeleteAccountNotFound as json.
+func (s *DeleteAccountNotFound) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes DeleteAccountNotFound from json.
+func (s *DeleteAccountNotFound) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DeleteAccountNotFound to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = DeleteAccountNotFound(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *DeleteAccountNotFound) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DeleteAccountNotFound) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes DeleteAccountUnauthorized as json.
+func (s *DeleteAccountUnauthorized) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes DeleteAccountUnauthorized from json.
+func (s *DeleteAccountUnauthorized) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DeleteAccountUnauthorized to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = DeleteAccountUnauthorized(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *DeleteAccountUnauthorized) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DeleteAccountUnauthorized) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes DeleteEnvironmentInternalServerError as json.
 func (s *DeleteEnvironmentInternalServerError) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -1941,6 +2093,158 @@ func (s *DeleteEnvironmentUnauthorized) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *DeleteEnvironmentUnauthorized) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes DeleteOrganizationConflict as json.
+func (s *DeleteOrganizationConflict) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes DeleteOrganizationConflict from json.
+func (s *DeleteOrganizationConflict) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DeleteOrganizationConflict to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = DeleteOrganizationConflict(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *DeleteOrganizationConflict) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DeleteOrganizationConflict) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes DeleteOrganizationInternalServerError as json.
+func (s *DeleteOrganizationInternalServerError) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes DeleteOrganizationInternalServerError from json.
+func (s *DeleteOrganizationInternalServerError) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DeleteOrganizationInternalServerError to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = DeleteOrganizationInternalServerError(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *DeleteOrganizationInternalServerError) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DeleteOrganizationInternalServerError) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes DeleteOrganizationNotFound as json.
+func (s *DeleteOrganizationNotFound) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes DeleteOrganizationNotFound from json.
+func (s *DeleteOrganizationNotFound) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DeleteOrganizationNotFound to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = DeleteOrganizationNotFound(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *DeleteOrganizationNotFound) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DeleteOrganizationNotFound) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes DeleteOrganizationUnauthorized as json.
+func (s *DeleteOrganizationUnauthorized) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes DeleteOrganizationUnauthorized from json.
+func (s *DeleteOrganizationUnauthorized) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DeleteOrganizationUnauthorized to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = DeleteOrganizationUnauthorized(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *DeleteOrganizationUnauthorized) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DeleteOrganizationUnauthorized) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -2070,15 +2374,15 @@ func (s *Environment) Encode(e *jx.Encoder) {
 func (s *Environment) encodeFields(e *jx.Encoder) {
 	{
 		e.FieldStart("id")
-		json.EncodeUUID(e, s.ID)
+		e.Str(s.ID)
 	}
 	{
 		e.FieldStart("organizationId")
-		json.EncodeUUID(e, s.OrganizationId)
+		e.Str(s.OrganizationId)
 	}
 	{
 		e.FieldStart("accountId")
-		json.EncodeUUID(e, s.AccountId)
+		e.Str(s.AccountId)
 	}
 	{
 		if s.Description.Set {
@@ -2141,8 +2445,8 @@ func (s *Environment) Decode(d *jx.Decoder) error {
 		case "id":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.ID = v
+				v, err := d.Str()
+				s.ID = string(v)
 				if err != nil {
 					return err
 				}
@@ -2153,8 +2457,8 @@ func (s *Environment) Decode(d *jx.Decoder) error {
 		case "organizationId":
 			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.OrganizationId = v
+				v, err := d.Str()
+				s.OrganizationId = string(v)
 				if err != nil {
 					return err
 				}
@@ -2165,8 +2469,8 @@ func (s *Environment) Decode(d *jx.Decoder) error {
 		case "accountId":
 			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.AccountId = v
+				v, err := d.Str()
+				s.AccountId = string(v)
 				if err != nil {
 					return err
 				}
@@ -3230,6 +3534,120 @@ func (s *ListTunnelsUnauthorized) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes ListUsersInternalServerError as json.
+func (s *ListUsersInternalServerError) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes ListUsersInternalServerError from json.
+func (s *ListUsersInternalServerError) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ListUsersInternalServerError to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = ListUsersInternalServerError(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ListUsersInternalServerError) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ListUsersInternalServerError) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ListUsersNotFound as json.
+func (s *ListUsersNotFound) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes ListUsersNotFound from json.
+func (s *ListUsersNotFound) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ListUsersNotFound to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = ListUsersNotFound(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ListUsersNotFound) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ListUsersNotFound) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ListUsersUnauthorized as json.
+func (s *ListUsersUnauthorized) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes ListUsersUnauthorized from json.
+func (s *ListUsersUnauthorized) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ListUsersUnauthorized to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = ListUsersUnauthorized(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ListUsersUnauthorized) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ListUsersUnauthorized) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes LoginInternalServerError as json.
 func (s *LoginInternalServerError) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -3566,7 +3984,7 @@ func (s *Organization) Encode(e *jx.Encoder) {
 func (s *Organization) encodeFields(e *jx.Encoder) {
 	{
 		e.FieldStart("id")
-		json.EncodeUUID(e, s.ID)
+		e.Str(s.ID)
 	}
 	{
 		e.FieldStart("name")
@@ -3601,8 +4019,8 @@ func (s *Organization) Decode(d *jx.Decoder) error {
 		case "id":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.ID = v
+				v, err := d.Str()
+				s.ID = string(v)
 				if err != nil {
 					return err
 				}
@@ -3923,15 +4341,15 @@ func (s *Tunnel) Encode(e *jx.Encoder) {
 func (s *Tunnel) encodeFields(e *jx.Encoder) {
 	{
 		e.FieldStart("id")
-		json.EncodeUUID(e, s.ID)
+		e.Str(s.ID)
 	}
 	{
 		e.FieldStart("organizationId")
-		json.EncodeUUID(e, s.OrganizationId)
+		e.Str(s.OrganizationId)
 	}
 	{
 		e.FieldStart("environmentId")
-		json.EncodeUUID(e, s.EnvironmentId)
+		e.Str(s.EnvironmentId)
 	}
 	{
 		e.FieldStart("name")
@@ -3985,8 +4403,8 @@ func (s *Tunnel) Decode(d *jx.Decoder) error {
 		case "id":
 			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.ID = v
+				v, err := d.Str()
+				s.ID = string(v)
 				if err != nil {
 					return err
 				}
@@ -3997,8 +4415,8 @@ func (s *Tunnel) Decode(d *jx.Decoder) error {
 		case "organizationId":
 			requiredBitSet[0] |= 1 << 1
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.OrganizationId = v
+				v, err := d.Str()
+				s.OrganizationId = string(v)
 				if err != nil {
 					return err
 				}
@@ -4009,8 +4427,8 @@ func (s *Tunnel) Decode(d *jx.Decoder) error {
 		case "environmentId":
 			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
-				v, err := json.DecodeUUID(d)
-				s.EnvironmentId = v
+				v, err := d.Str()
+				s.EnvironmentId = string(v)
 				if err != nil {
 					return err
 				}

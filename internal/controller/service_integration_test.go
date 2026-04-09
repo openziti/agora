@@ -83,6 +83,51 @@ func TestServiceHTTPFlow(t *testing.T) {
 		t.Fatalf("expected 1 account, got %d", len(*accounts))
 	}
 
+	createOtherOrgRes, err := adminClient.CreateOrganization(ctx, &api.CreateOrganizationRequest{Name: "beta"})
+	if err != nil {
+		t.Fatalf("create second organization request: %v", err)
+	}
+	otherOrg, ok := createOtherOrgRes.(*api.Organization)
+	if !ok {
+		t.Fatalf("unexpected second create organization response: %T", createOtherOrgRes)
+	}
+
+	if _, err := adminClient.CreateAccount(ctx, &api.CreateAccountRequest{
+		Email:    "bob@example.com",
+		Password: "other-password",
+	}, api.CreateAccountParams{OrganizationId: otherOrg.ID}); err != nil {
+		t.Fatalf("create second account request: %v", err)
+	}
+
+	listUsersRes, err := adminClient.ListUsers(ctx, api.ListUsersParams{})
+	if err != nil {
+		t.Fatalf("list users request: %v", err)
+	}
+	users, ok := listUsersRes.(*api.ListAccountsResponse)
+	if !ok {
+		t.Fatalf("unexpected list users response: %T", listUsersRes)
+	}
+	if len(*users) != 2 {
+		t.Fatalf("expected 2 users, got %d", len(*users))
+	}
+
+	var filteredParams api.ListUsersParams
+	filteredParams.OrganizationId.SetTo(org.ID)
+	filteredUsersRes, err := adminClient.ListUsers(ctx, filteredParams)
+	if err != nil {
+		t.Fatalf("list users by organization request: %v", err)
+	}
+	filteredUsers, ok := filteredUsersRes.(*api.ListAccountsResponse)
+	if !ok {
+		t.Fatalf("unexpected filtered list users response: %T", filteredUsersRes)
+	}
+	if len(*filteredUsers) != 1 {
+		t.Fatalf("expected 1 filtered user, got %d", len(*filteredUsers))
+	}
+	if (*filteredUsers)[0].Email != "alice@example.com" {
+		t.Fatalf("expected filtered user alice@example.com, got %s", (*filteredUsers)[0].Email)
+	}
+
 	loginClient, err := api.NewClient(baseURL, staticSecuritySource{}, api.WithClient(ts.Client()))
 	if err != nil {
 		t.Fatalf("new login client: %v", err)
@@ -206,6 +251,52 @@ func TestServiceHTTPFlow(t *testing.T) {
 
 	if _, err := rotatedClient.GetTunnel(ctx, api.GetTunnelParams{TunnelId: tunnel.ID}); err != nil {
 		t.Fatalf("get tunnel with rotated token: %v", err)
+	}
+
+	deleteAccountRes, err := adminClient.DeleteAccount(ctx, api.DeleteAccountParams{
+		OrganizationId: org.ID,
+		AccountId:      (*accounts)[0].ID,
+	})
+	if err != nil {
+		t.Fatalf("delete account request: %v", err)
+	}
+	if _, ok := deleteAccountRes.(*api.DeleteAccountNoContent); !ok {
+		t.Fatalf("unexpected delete account response: %T", deleteAccountRes)
+	}
+
+	postDeleteAccountsRes, err := adminClient.ListAccounts(ctx, api.ListAccountsParams{OrganizationId: org.ID})
+	if err != nil {
+		t.Fatalf("list accounts after delete request: %v", err)
+	}
+	postDeleteAccounts, ok := postDeleteAccountsRes.(*api.ListAccountsResponse)
+	if !ok {
+		t.Fatalf("unexpected post-delete list accounts response: %T", postDeleteAccountsRes)
+	}
+	if len(*postDeleteAccounts) != 0 {
+		t.Fatalf("expected 0 accounts after delete, got %d", len(*postDeleteAccounts))
+	}
+
+	deleteOrgRes, err := adminClient.DeleteOrganization(ctx, api.DeleteOrganizationParams{OrganizationId: org.ID})
+	if err != nil {
+		t.Fatalf("delete organization request: %v", err)
+	}
+	if _, ok := deleteOrgRes.(*api.DeleteOrganizationNoContent); !ok {
+		t.Fatalf("unexpected delete organization response: %T", deleteOrgRes)
+	}
+
+	postDeleteOrgsRes, err := adminClient.ListOrganizations(ctx)
+	if err != nil {
+		t.Fatalf("list organizations after delete request: %v", err)
+	}
+	postDeleteOrgs, ok := postDeleteOrgsRes.(*api.ListOrganizationsResponse)
+	if !ok {
+		t.Fatalf("unexpected post-delete list organizations response: %T", postDeleteOrgsRes)
+	}
+	if len(*postDeleteOrgs) != 1 {
+		t.Fatalf("expected 1 organization after delete, got %d", len(*postDeleteOrgs))
+	}
+	if (*postDeleteOrgs)[0].Name != "beta" {
+		t.Fatalf("expected remaining organization beta, got %s", (*postDeleteOrgs)[0].Name)
 	}
 }
 

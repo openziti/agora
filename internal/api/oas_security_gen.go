@@ -68,8 +68,11 @@ func (s *Server) securityAccountTokenAuth(ctx context.Context, operationName Ope
 var operationRolesAdminTokenAuth = map[string][]string{
 	CreateAccountOperation:      []string{},
 	CreateOrganizationOperation: []string{},
+	DeleteAccountOperation:      []string{},
+	DeleteOrganizationOperation: []string{},
 	ListAccountsOperation:       []string{},
 	ListOrganizationsOperation:  []string{},
+	ListUsersOperation:          []string{},
 }
 
 func (s *Server) securityAdminTokenAuth(ctx context.Context, operationName OperationName, req *http.Request) (context.Context, bool, error) {

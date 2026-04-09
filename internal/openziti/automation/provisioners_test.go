@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 )
 
@@ -22,9 +21,9 @@ func TestEnvironmentEnableAndDisable(t *testing.T) {
 	}
 
 	result, err := provisioner.Enable(context.Background(), EnvironmentSpec{
-		OrganizationID: uuid.New(),
-		AccountID:      uuid.New(),
-		EnvironmentID:  uuid.New(),
+		OrganizationID: "org_test00000001",
+		AccountID:      "ac_test00000001",
+		EnvironmentID:  "ev_test00000001",
 		IdentityName:   "env-1",
 		Version:        "test",
 	})
@@ -68,9 +67,9 @@ func TestEnvironmentEnableCleansUpOnPolicyFailure(t *testing.T) {
 	}
 
 	if _, err := provisioner.Enable(context.Background(), EnvironmentSpec{
-		OrganizationID: uuid.New(),
-		AccountID:      uuid.New(),
-		EnvironmentID:  uuid.New(),
+		OrganizationID: "org_test00000002",
+		AccountID:      "ac_test00000002",
+		EnvironmentID:  "ev_test00000002",
 		IdentityName:   "env-1",
 	}); err == nil {
 		t.Fatal("expected enable failure")
@@ -94,9 +93,9 @@ func TestTunnelProvisionAndDeprovision(t *testing.T) {
 	}
 
 	result, err := provisioner.Provision(context.Background(), TunnelSpec{
-		OrganizationID:        uuid.New(),
-		EnvironmentID:         uuid.New(),
-		TunnelID:              uuid.New(),
+		OrganizationID:        "org_test00000003",
+		EnvironmentID:         "ev_test00000003",
+		TunnelID:              "tt_test00000003",
 		TunnelName:            "llm-gateway",
 		EnvironmentIdentityID: "identity-1",
 		DialIdentityRoles:     []string{"@identity-1"},
@@ -219,9 +218,9 @@ func TestTunnelProvisionCleansUpOnDialFailure(t *testing.T) {
 	}
 
 	if _, err := provisioner.Provision(context.Background(), TunnelSpec{
-		OrganizationID:        uuid.New(),
-		EnvironmentID:         uuid.New(),
-		TunnelID:              uuid.New(),
+		OrganizationID:        "org_test00000004",
+		EnvironmentID:         "ev_test00000004",
+		TunnelID:              "tt_test00000004",
 		TunnelName:            "llm-gateway",
 		EnvironmentIdentityID: "identity-1",
 		DialIdentityRoles:     []string{"@identity-1"},

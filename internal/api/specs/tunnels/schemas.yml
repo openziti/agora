@@ -12,13 +12,13 @@ tunnel:
   properties:
     id:
       type: string
-      format: uuid
+      pattern: '^tt_[a-z0-9]{12}$'
     organizationId:
       type: string
-      format: uuid
+      pattern: '^org_[a-z0-9]{12}$'
     environmentId:
       type: string
-      format: uuid
+      pattern: '^ev_[a-z0-9]{12}$'
     name:
       type: string
     backendAddress:
@@ -44,7 +44,7 @@ createTunnelRequest:
   properties:
     environmentId:
       type: string
-      format: uuid
+      pattern: '^ev_[a-z0-9]{12}$'
     name:
       type: string
       minLength: 1

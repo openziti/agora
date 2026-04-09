@@ -8,7 +8,15 @@ import (
 	ht "github.com/ogen-go/ogen/http"
 	"github.com/ogen-go/ogen/middleware"
 	"github.com/ogen-go/ogen/ogenerrors"
+	"github.com/ogen-go/ogen/ogenregex"
 )
+
+var regexMap = map[string]ogenregex.Regexp{
+	"^ac_[a-z0-9]{12}$":  ogenregex.MustCompile("^ac_[a-z0-9]{12}$"),
+	"^ev_[a-z0-9]{12}$":  ogenregex.MustCompile("^ev_[a-z0-9]{12}$"),
+	"^org_[a-z0-9]{12}$": ogenregex.MustCompile("^org_[a-z0-9]{12}$"),
+	"^tt_[a-z0-9]{12}$":  ogenregex.MustCompile("^tt_[a-z0-9]{12}$"),
+}
 
 type (
 	optionFunc[C any] func(*C)

@@ -11,7 +11,9 @@ const (
 	CreateEnvironmentOperation      OperationName = "CreateEnvironment"
 	CreateOrganizationOperation     OperationName = "CreateOrganization"
 	CreateTunnelOperation           OperationName = "CreateTunnel"
+	DeleteAccountOperation          OperationName = "DeleteAccount"
 	DeleteEnvironmentOperation      OperationName = "DeleteEnvironment"
+	DeleteOrganizationOperation     OperationName = "DeleteOrganization"
 	DeleteTunnelOperation           OperationName = "DeleteTunnel"
 	GetEnvironmentOperation         OperationName = "GetEnvironment"
 	GetTunnelOperation              OperationName = "GetTunnel"
@@ -19,6 +21,7 @@ const (
 	ListEnvironmentsOperation       OperationName = "ListEnvironments"
 	ListOrganizationsOperation      OperationName = "ListOrganizations"
 	ListTunnelsOperation            OperationName = "ListTunnels"
+	ListUsersOperation              OperationName = "ListUsers"
 	LoginOperation                  OperationName = "Login"
 	RegenerateAccountTokenOperation OperationName = "RegenerateAccountToken"
 )

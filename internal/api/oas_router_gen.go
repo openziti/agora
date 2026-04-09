@@ -40,7 +40,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		s.notFound(w, r)
 		return
 	}
-	args := [1]string{}
+	args := [2]string{}
 
 	// Static code generated router with unwrapped path search.
 	switch {
@@ -61,9 +61,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			switch elem[0] {
-			case 'a': // Prefix: "account/"
+			case 'a': // Prefix: "account"
 
-				if l := len("account/"); len(elem) >= l && elem[0:l] == "account/" {
+				if l := len("account"); len(elem) >= l && elem[0:l] == "account" {
 					elem = elem[l:]
 				} else {
 					break
@@ -73,49 +73,83 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				switch elem[0] {
-				case 'c': // Prefix: "change-password"
+				case '/': // Prefix: "/"
 
-					if l := len("change-password"); len(elem) >= l && elem[0:l] == "change-password" {
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
 					if len(elem) == 0 {
-						// Leaf node.
-						switch r.Method {
-						case "POST":
-							s.handleChangePasswordRequest([0]string{}, elemIsEscaped, w, r)
-						default:
-							s.notAllowed(w, r, "POST")
+						break
+					}
+					switch elem[0] {
+					case 'c': // Prefix: "change-password"
+
+						if l := len("change-password"); len(elem) >= l && elem[0:l] == "change-password" {
+							elem = elem[l:]
+						} else {
+							break
 						}
 
-						return
-					}
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "POST":
+								s.handleChangePasswordRequest([0]string{}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, "POST")
+							}
 
-				case 'l': // Prefix: "login"
-
-					if l := len("login"); len(elem) >= l && elem[0:l] == "login" {
-						elem = elem[l:]
-					} else {
-						break
-					}
-
-					if len(elem) == 0 {
-						// Leaf node.
-						switch r.Method {
-						case "POST":
-							s.handleLoginRequest([0]string{}, elemIsEscaped, w, r)
-						default:
-							s.notAllowed(w, r, "POST")
+							return
 						}
 
-						return
+					case 'l': // Prefix: "login"
+
+						if l := len("login"); len(elem) >= l && elem[0:l] == "login" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "POST":
+								s.handleLoginRequest([0]string{}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, "POST")
+							}
+
+							return
+						}
+
+					case 'r': // Prefix: "regenerate-token"
+
+						if l := len("regenerate-token"); len(elem) >= l && elem[0:l] == "regenerate-token" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "POST":
+								s.handleRegenerateAccountTokenRequest([0]string{}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, "POST")
+							}
+
+							return
+						}
+
 					}
 
-				case 'r': // Prefix: "regenerate-token"
+				case 's': // Prefix: "s"
 
-					if l := len("regenerate-token"); len(elem) >= l && elem[0:l] == "regenerate-token" {
+					if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
 						elem = elem[l:]
 					} else {
 						break
@@ -124,10 +158,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					if len(elem) == 0 {
 						// Leaf node.
 						switch r.Method {
-						case "POST":
-							s.handleRegenerateAccountTokenRequest([0]string{}, elemIsEscaped, w, r)
+						case "GET":
+							s.handleListUsersRequest([0]string{}, elemIsEscaped, w, r)
 						default:
-							s.notAllowed(w, r, "POST")
+							s.notAllowed(w, r, "GET")
 						}
 
 						return
@@ -232,7 +266,16 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					elem = elem[idx:]
 
 					if len(elem) == 0 {
-						break
+						switch r.Method {
+						case "DELETE":
+							s.handleDeleteOrganizationRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, "DELETE")
+						}
+
+						return
 					}
 					switch elem[0] {
 					case '/': // Prefix: "/accounts"
@@ -244,7 +287,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						}
 
 						if len(elem) == 0 {
-							// Leaf node.
 							switch r.Method {
 							case "GET":
 								s.handleListAccountsRequest([1]string{
@@ -259,6 +301,40 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							}
 
 							return
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
+
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							// Param: "accountId"
+							// Leaf parameter, slashes are prohibited
+							idx := strings.IndexByte(elem, '/')
+							if idx >= 0 {
+								break
+							}
+							args[1] = elem
+							elem = ""
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "DELETE":
+									s.handleDeleteAccountRequest([2]string{
+										args[0],
+										args[1],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, "DELETE")
+								}
+
+								return
+							}
+
 						}
 
 					}
@@ -337,7 +413,7 @@ type Route struct {
 	operationID string
 	pathPattern string
 	count       int
-	args        [1]string
+	args        [2]string
 }
 
 // Name returns ogen operation name.
@@ -417,9 +493,9 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 				break
 			}
 			switch elem[0] {
-			case 'a': // Prefix: "account/"
+			case 'a': // Prefix: "account"
 
-				if l := len("account/"); len(elem) >= l && elem[0:l] == "account/" {
+				if l := len("account"); len(elem) >= l && elem[0:l] == "account" {
 					elem = elem[l:]
 				} else {
 					break
@@ -429,57 +505,95 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					break
 				}
 				switch elem[0] {
-				case 'c': // Prefix: "change-password"
+				case '/': // Prefix: "/"
 
-					if l := len("change-password"); len(elem) >= l && elem[0:l] == "change-password" {
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
 					if len(elem) == 0 {
-						// Leaf node.
-						switch method {
-						case "POST":
-							r.name = ChangePasswordOperation
-							r.summary = ""
-							r.operationID = "changePassword"
-							r.pathPattern = "/account/change-password"
-							r.args = args
-							r.count = 0
-							return r, true
-						default:
-							return
+						break
+					}
+					switch elem[0] {
+					case 'c': // Prefix: "change-password"
+
+						if l := len("change-password"); len(elem) >= l && elem[0:l] == "change-password" {
+							elem = elem[l:]
+						} else {
+							break
 						}
-					}
 
-				case 'l': // Prefix: "login"
-
-					if l := len("login"); len(elem) >= l && elem[0:l] == "login" {
-						elem = elem[l:]
-					} else {
-						break
-					}
-
-					if len(elem) == 0 {
-						// Leaf node.
-						switch method {
-						case "POST":
-							r.name = LoginOperation
-							r.summary = ""
-							r.operationID = "login"
-							r.pathPattern = "/account/login"
-							r.args = args
-							r.count = 0
-							return r, true
-						default:
-							return
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "POST":
+								r.name = ChangePasswordOperation
+								r.summary = ""
+								r.operationID = "changePassword"
+								r.pathPattern = "/account/change-password"
+								r.args = args
+								r.count = 0
+								return r, true
+							default:
+								return
+							}
 						}
+
+					case 'l': // Prefix: "login"
+
+						if l := len("login"); len(elem) >= l && elem[0:l] == "login" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "POST":
+								r.name = LoginOperation
+								r.summary = ""
+								r.operationID = "login"
+								r.pathPattern = "/account/login"
+								r.args = args
+								r.count = 0
+								return r, true
+							default:
+								return
+							}
+						}
+
+					case 'r': // Prefix: "regenerate-token"
+
+						if l := len("regenerate-token"); len(elem) >= l && elem[0:l] == "regenerate-token" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "POST":
+								r.name = RegenerateAccountTokenOperation
+								r.summary = ""
+								r.operationID = "regenerateAccountToken"
+								r.pathPattern = "/account/regenerate-token"
+								r.args = args
+								r.count = 0
+								return r, true
+							default:
+								return
+							}
+						}
+
 					}
 
-				case 'r': // Prefix: "regenerate-token"
+				case 's': // Prefix: "s"
 
-					if l := len("regenerate-token"); len(elem) >= l && elem[0:l] == "regenerate-token" {
+					if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
 						elem = elem[l:]
 					} else {
 						break
@@ -488,11 +602,11 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					if len(elem) == 0 {
 						// Leaf node.
 						switch method {
-						case "POST":
-							r.name = RegenerateAccountTokenOperation
+						case "GET":
+							r.name = ListUsersOperation
 							r.summary = ""
-							r.operationID = "regenerateAccountToken"
-							r.pathPattern = "/account/regenerate-token"
+							r.operationID = "listUsers"
+							r.pathPattern = "/accounts"
 							r.args = args
 							r.count = 0
 							return r, true
@@ -626,7 +740,18 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					elem = elem[idx:]
 
 					if len(elem) == 0 {
-						break
+						switch method {
+						case "DELETE":
+							r.name = DeleteOrganizationOperation
+							r.summary = ""
+							r.operationID = "deleteOrganization"
+							r.pathPattern = "/organizations/{organizationId}"
+							r.args = args
+							r.count = 1
+							return r, true
+						default:
+							return
+						}
 					}
 					switch elem[0] {
 					case '/': // Prefix: "/accounts"
@@ -638,7 +763,6 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						}
 
 						if len(elem) == 0 {
-							// Leaf node.
 							switch method {
 							case "GET":
 								r.name = ListAccountsOperation
@@ -659,6 +783,41 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 							default:
 								return
 							}
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
+
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							// Param: "accountId"
+							// Leaf parameter, slashes are prohibited
+							idx := strings.IndexByte(elem, '/')
+							if idx >= 0 {
+								break
+							}
+							args[1] = elem
+							elem = ""
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "DELETE":
+									r.name = DeleteAccountOperation
+									r.summary = ""
+									r.operationID = "deleteAccount"
+									r.pathPattern = "/organizations/{organizationId}/accounts/{accountId}"
+									r.args = args
+									r.count = 2
+									return r, true
+								default:
+									return
+								}
+							}
+
 						}
 
 					}

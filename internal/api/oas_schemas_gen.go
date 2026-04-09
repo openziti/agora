@@ -6,13 +6,12 @@ import (
 	"time"
 
 	"github.com/go-faster/errors"
-	"github.com/google/uuid"
 )
 
 // Ref: #/account
 type Account struct {
-	ID             uuid.UUID     `json:"id"`
-	OrganizationId uuid.UUID     `json:"organizationId"`
+	ID             string        `json:"id"`
+	OrganizationId string        `json:"organizationId"`
 	Email          string        `json:"email"`
 	DisplayName    OptString     `json:"displayName"`
 	Role           AccountRole   `json:"role"`
@@ -22,12 +21,12 @@ type Account struct {
 }
 
 // GetID returns the value of ID.
-func (s *Account) GetID() uuid.UUID {
+func (s *Account) GetID() string {
 	return s.ID
 }
 
 // GetOrganizationId returns the value of OrganizationId.
-func (s *Account) GetOrganizationId() uuid.UUID {
+func (s *Account) GetOrganizationId() string {
 	return s.OrganizationId
 }
 
@@ -62,12 +61,12 @@ func (s *Account) GetUpdatedAt() time.Time {
 }
 
 // SetID sets the value of ID.
-func (s *Account) SetID(val uuid.UUID) {
+func (s *Account) SetID(val string) {
 	s.ID = val
 }
 
 // SetOrganizationId sets the value of OrganizationId.
-func (s *Account) SetOrganizationId(val uuid.UUID) {
+func (s *Account) SetOrganizationId(val string) {
 	s.OrganizationId = val
 }
 
@@ -557,14 +556,14 @@ func (*CreateTunnelNotFound) createTunnelRes() {}
 
 // Ref: #/createTunnelRequest
 type CreateTunnelRequest struct {
-	EnvironmentId  uuid.UUID `json:"environmentId"`
+	EnvironmentId  string    `json:"environmentId"`
 	Name           string    `json:"name"`
 	BackendAddress string    `json:"backendAddress"`
 	ZitiServiceId  OptString `json:"zitiServiceId"`
 }
 
 // GetEnvironmentId returns the value of EnvironmentId.
-func (s *CreateTunnelRequest) GetEnvironmentId() uuid.UUID {
+func (s *CreateTunnelRequest) GetEnvironmentId() string {
 	return s.EnvironmentId
 }
 
@@ -584,7 +583,7 @@ func (s *CreateTunnelRequest) GetZitiServiceId() OptString {
 }
 
 // SetEnvironmentId sets the value of EnvironmentId.
-func (s *CreateTunnelRequest) SetEnvironmentId(val uuid.UUID) {
+func (s *CreateTunnelRequest) SetEnvironmentId(val string) {
 	s.EnvironmentId = val
 }
 
@@ -607,6 +606,27 @@ type CreateTunnelUnauthorized Error
 
 func (*CreateTunnelUnauthorized) createTunnelRes() {}
 
+type DeleteAccountConflict Error
+
+func (*DeleteAccountConflict) deleteAccountRes() {}
+
+type DeleteAccountInternalServerError Error
+
+func (*DeleteAccountInternalServerError) deleteAccountRes() {}
+
+// DeleteAccountNoContent is response for DeleteAccount operation.
+type DeleteAccountNoContent struct{}
+
+func (*DeleteAccountNoContent) deleteAccountRes() {}
+
+type DeleteAccountNotFound Error
+
+func (*DeleteAccountNotFound) deleteAccountRes() {}
+
+type DeleteAccountUnauthorized Error
+
+func (*DeleteAccountUnauthorized) deleteAccountRes() {}
+
 type DeleteEnvironmentInternalServerError Error
 
 func (*DeleteEnvironmentInternalServerError) deleteEnvironmentRes() {}
@@ -623,6 +643,27 @@ func (*DeleteEnvironmentNotFound) deleteEnvironmentRes() {}
 type DeleteEnvironmentUnauthorized Error
 
 func (*DeleteEnvironmentUnauthorized) deleteEnvironmentRes() {}
+
+type DeleteOrganizationConflict Error
+
+func (*DeleteOrganizationConflict) deleteOrganizationRes() {}
+
+type DeleteOrganizationInternalServerError Error
+
+func (*DeleteOrganizationInternalServerError) deleteOrganizationRes() {}
+
+// DeleteOrganizationNoContent is response for DeleteOrganization operation.
+type DeleteOrganizationNoContent struct{}
+
+func (*DeleteOrganizationNoContent) deleteOrganizationRes() {}
+
+type DeleteOrganizationNotFound Error
+
+func (*DeleteOrganizationNotFound) deleteOrganizationRes() {}
+
+type DeleteOrganizationUnauthorized Error
+
+func (*DeleteOrganizationUnauthorized) deleteOrganizationRes() {}
 
 type DeleteTunnelInternalServerError Error
 
@@ -643,9 +684,9 @@ func (*DeleteTunnelUnauthorized) deleteTunnelRes() {}
 
 // Ref: #/environment
 type Environment struct {
-	ID             uuid.UUID        `json:"id"`
-	OrganizationId uuid.UUID        `json:"organizationId"`
-	AccountId      uuid.UUID        `json:"accountId"`
+	ID             string           `json:"id"`
+	OrganizationId string           `json:"organizationId"`
+	AccountId      string           `json:"accountId"`
 	Description    OptString        `json:"description"`
 	Host           OptString        `json:"host"`
 	ZitiIdentityId string           `json:"zitiIdentityId"`
@@ -656,17 +697,17 @@ type Environment struct {
 }
 
 // GetID returns the value of ID.
-func (s *Environment) GetID() uuid.UUID {
+func (s *Environment) GetID() string {
 	return s.ID
 }
 
 // GetOrganizationId returns the value of OrganizationId.
-func (s *Environment) GetOrganizationId() uuid.UUID {
+func (s *Environment) GetOrganizationId() string {
 	return s.OrganizationId
 }
 
 // GetAccountId returns the value of AccountId.
-func (s *Environment) GetAccountId() uuid.UUID {
+func (s *Environment) GetAccountId() string {
 	return s.AccountId
 }
 
@@ -706,17 +747,17 @@ func (s *Environment) GetUpdatedAt() time.Time {
 }
 
 // SetID sets the value of ID.
-func (s *Environment) SetID(val uuid.UUID) {
+func (s *Environment) SetID(val string) {
 	s.ID = val
 }
 
 // SetOrganizationId sets the value of OrganizationId.
-func (s *Environment) SetOrganizationId(val uuid.UUID) {
+func (s *Environment) SetOrganizationId(val string) {
 	s.OrganizationId = val
 }
 
 // SetAccountId sets the value of AccountId.
-func (s *Environment) SetAccountId(val uuid.UUID) {
+func (s *Environment) SetAccountId(val string) {
 	s.AccountId = val
 }
 
@@ -860,6 +901,7 @@ func (*ListAccountsNotFound) listAccountsRes() {}
 type ListAccountsResponse []Account
 
 func (*ListAccountsResponse) listAccountsRes() {}
+func (*ListAccountsResponse) listUsersRes()    {}
 
 type ListAccountsUnauthorized Error
 
@@ -900,6 +942,18 @@ func (*ListTunnelsResponse) listTunnelsRes() {}
 type ListTunnelsUnauthorized Error
 
 func (*ListTunnelsUnauthorized) listTunnelsRes() {}
+
+type ListUsersInternalServerError Error
+
+func (*ListUsersInternalServerError) listUsersRes() {}
+
+type ListUsersNotFound Error
+
+func (*ListUsersNotFound) listUsersRes() {}
+
+type ListUsersUnauthorized Error
+
+func (*ListUsersUnauthorized) listUsersRes() {}
 
 type LoginInternalServerError Error
 
@@ -1121,14 +1175,14 @@ func (o OptString) Or(d string) string {
 
 // Ref: #/organization
 type Organization struct {
-	ID        uuid.UUID `json:"id"`
+	ID        string    `json:"id"`
 	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // GetID returns the value of ID.
-func (s *Organization) GetID() uuid.UUID {
+func (s *Organization) GetID() string {
 	return s.ID
 }
 
@@ -1148,7 +1202,7 @@ func (s *Organization) GetUpdatedAt() time.Time {
 }
 
 // SetID sets the value of ID.
-func (s *Organization) SetID(val uuid.UUID) {
+func (s *Organization) SetID(val string) {
 	s.ID = val
 }
 
@@ -1198,9 +1252,9 @@ func (s *RegenerateTokenRequest) SetEmail(val string) {
 
 // Ref: #/tunnel
 type Tunnel struct {
-	ID             uuid.UUID   `json:"id"`
-	OrganizationId uuid.UUID   `json:"organizationId"`
-	EnvironmentId  uuid.UUID   `json:"environmentId"`
+	ID             string      `json:"id"`
+	OrganizationId string      `json:"organizationId"`
+	EnvironmentId  string      `json:"environmentId"`
 	Name           string      `json:"name"`
 	BackendAddress string      `json:"backendAddress"`
 	ZitiServiceId  OptString   `json:"zitiServiceId"`
@@ -1210,17 +1264,17 @@ type Tunnel struct {
 }
 
 // GetID returns the value of ID.
-func (s *Tunnel) GetID() uuid.UUID {
+func (s *Tunnel) GetID() string {
 	return s.ID
 }
 
 // GetOrganizationId returns the value of OrganizationId.
-func (s *Tunnel) GetOrganizationId() uuid.UUID {
+func (s *Tunnel) GetOrganizationId() string {
 	return s.OrganizationId
 }
 
 // GetEnvironmentId returns the value of EnvironmentId.
-func (s *Tunnel) GetEnvironmentId() uuid.UUID {
+func (s *Tunnel) GetEnvironmentId() string {
 	return s.EnvironmentId
 }
 
@@ -1255,17 +1309,17 @@ func (s *Tunnel) GetUpdatedAt() time.Time {
 }
 
 // SetID sets the value of ID.
-func (s *Tunnel) SetID(val uuid.UUID) {
+func (s *Tunnel) SetID(val string) {
 	s.ID = val
 }
 
 // SetOrganizationId sets the value of OrganizationId.
-func (s *Tunnel) SetOrganizationId(val uuid.UUID) {
+func (s *Tunnel) SetOrganizationId(val string) {
 	s.OrganizationId = val
 }
 
 // SetEnvironmentId sets the value of EnvironmentId.
-func (s *Tunnel) SetEnvironmentId(val uuid.UUID) {
+func (s *Tunnel) SetEnvironmentId(val string) {
 	s.EnvironmentId = val
 }
 

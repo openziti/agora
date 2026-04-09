@@ -13,7 +13,6 @@ import (
 func init() {
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "Enable verbose logging")
 	rootCmd.PersistentFlags().BoolVarP(&panicInstead, "panic", "p", false, "Panic instead of showing pretty errors")
-	rootCmd.AddCommand(storeCmd)
 }
 
 var rootCmd = &cobra.Command{
@@ -33,14 +32,34 @@ var (
 	panicInstead bool
 )
 
-var storeCmd = &cobra.Command{
-	Use:   "store",
-	Short: "Persistence and schema management commands",
-}
-
 var adminCmd = &cobra.Command{
 	Use:   "admin",
 	Short: "Administrative controller management commands",
+}
+
+var adminCreateCmd = &cobra.Command{
+	Use:   "create",
+	Short: "Administrative resource creation commands",
+}
+
+var adminDeleteCmd = &cobra.Command{
+	Use:   "delete",
+	Short: "Administrative resource deletion commands",
+}
+
+var adminListCmd = &cobra.Command{
+	Use:   "list",
+	Short: "Administrative resource listing commands",
+}
+
+var configCmd = &cobra.Command{
+	Use:   "config",
+	Short: "Local environment configuration commands",
+}
+
+var storeCmd = &cobra.Command{
+	Use:   "store",
+	Short: "Persistence and schema management commands",
 }
 
 func main() {

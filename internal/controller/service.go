@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/google/uuid"
 	"github.com/openziti/agora/internal/api"
 	"github.com/openziti/agora/internal/controller/config"
 	"github.com/openziti/agora/internal/persistence"
@@ -18,8 +17,8 @@ type Service struct {
 }
 
 type accountPrincipal struct {
-	AccountID      uuid.UUID
-	OrganizationID uuid.UUID
+	AccountID      string
+	OrganizationID string
 	Email          string
 	Role           persistence.AccountRole
 }

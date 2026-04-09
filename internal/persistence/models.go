@@ -1,13 +1,9 @@
 package persistence
 
-import (
-	"time"
-
-	"github.com/google/uuid"
-)
+import "time"
 
 type Organization struct {
-	ID        uuid.UUID `db:"id"`
+	ID        string    `db:"id"`
 	Name      string    `db:"name"`
 	CreatedAt time.Time `db:"created_at"`
 	UpdatedAt time.Time `db:"updated_at"`
@@ -28,8 +24,8 @@ const (
 )
 
 type Account struct {
-	ID             uuid.UUID     `db:"id"`
-	OrganizationID uuid.UUID     `db:"organization_id"`
+	ID             string        `db:"id"`
+	OrganizationID string        `db:"organization_id"`
 	Email          string        `db:"email"`
 	DisplayName    *string       `db:"display_name"`
 	PasswordSalt   string        `db:"password_salt"`
@@ -49,9 +45,9 @@ const (
 )
 
 type Environment struct {
-	ID             uuid.UUID        `db:"id"`
-	OrganizationID uuid.UUID        `db:"organization_id"`
-	AccountID      uuid.UUID        `db:"account_id"`
+	ID             string           `db:"id"`
+	OrganizationID string           `db:"organization_id"`
+	AccountID      string           `db:"account_id"`
 	Description    *string          `db:"description"`
 	Host           *string          `db:"host"`
 	ZitiIdentityID string           `db:"ziti_identity_id"`
@@ -69,9 +65,9 @@ const (
 )
 
 type Tunnel struct {
-	ID             uuid.UUID   `db:"id"`
-	OrganizationID uuid.UUID   `db:"organization_id"`
-	EnvironmentID  uuid.UUID   `db:"environment_id"`
+	ID             string      `db:"id"`
+	OrganizationID string      `db:"organization_id"`
+	EnvironmentID  string      `db:"environment_id"`
 	Name           string      `db:"name"`
 	BackendAddress string      `db:"backend_address"`
 	ZitiServiceID  *string     `db:"ziti_service_id"`

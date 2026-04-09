@@ -75,7 +75,7 @@
         required: true
         schema:
           type: string
-          format: uuid
+          pattern: '^ev_[a-z0-9]{12}$'
     responses:
       200:
         description: ok
@@ -113,7 +113,7 @@
         required: true
         schema:
           type: string
-          format: uuid
+          pattern: '^ev_[a-z0-9]{12}$'
     responses:
       204:
         description: deleted

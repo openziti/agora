@@ -10,8 +10,14 @@ servers:
 paths:
   /organizations:
     $ref: "admin/paths.yml#/~1organizations"
+  /organizations/{organizationId}:
+    $ref: "admin/paths.yml#/~1organizations~1{organizationId}"
+  /accounts:
+    $ref: "admin/paths.yml#/~1accounts"
   /organizations/{organizationId}/accounts:
     $ref: "admin/paths.yml#/~1organizations~1{organizationId}~1accounts"
+  /organizations/{organizationId}/accounts/{accountId}:
+    $ref: "admin/paths.yml#/~1organizations~1{organizationId}~1accounts~1{accountId}"
 
   /account/login:
     $ref: "account/paths.yml#/~1account~1login"

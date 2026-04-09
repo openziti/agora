@@ -28,10 +28,18 @@ type Handler interface {
 	//
 	// POST /tunnels
 	CreateTunnel(ctx context.Context, req *CreateTunnelRequest) (CreateTunnelRes, error)
+	// DeleteAccount implements deleteAccount operation.
+	//
+	// DELETE /organizations/{organizationId}/accounts/{accountId}
+	DeleteAccount(ctx context.Context, params DeleteAccountParams) (DeleteAccountRes, error)
 	// DeleteEnvironment implements deleteEnvironment operation.
 	//
 	// DELETE /environments/{environmentId}
 	DeleteEnvironment(ctx context.Context, params DeleteEnvironmentParams) (DeleteEnvironmentRes, error)
+	// DeleteOrganization implements deleteOrganization operation.
+	//
+	// DELETE /organizations/{organizationId}
+	DeleteOrganization(ctx context.Context, params DeleteOrganizationParams) (DeleteOrganizationRes, error)
 	// DeleteTunnel implements deleteTunnel operation.
 	//
 	// DELETE /tunnels/{tunnelId}
@@ -60,6 +68,10 @@ type Handler interface {
 	//
 	// GET /tunnels
 	ListTunnels(ctx context.Context) (ListTunnelsRes, error)
+	// ListUsers implements listUsers operation.
+	//
+	// GET /accounts
+	ListUsers(ctx context.Context, params ListUsersParams) (ListUsersRes, error)
 	// Login implements login operation.
 	//
 	// POST /account/login

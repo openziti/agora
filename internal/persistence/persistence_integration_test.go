@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/openziti/agora/internal/persistence/testutil"
 	migrate "github.com/rubenv/sql-migrate"
@@ -140,7 +139,7 @@ func TestRepositoriesCRUDAndConstraints(t *testing.T) {
 
 	if _, err := store.Environments.Create(ctx, store.DB(), Environment{
 		OrganizationID: org.ID,
-		AccountID:      uuid.New(),
+		AccountID:      "ac_doesntexist0",
 		ZitiIdentityID: "ziti-missing-account",
 		State:          EnvironmentStateEnabled,
 	}); !isForeignKeyViolation(err) {
@@ -167,7 +166,7 @@ func TestWithTxRollsBackOnFailure(t *testing.T) {
 	ctx := context.Background()
 	store := migratedTestStore(t)
 
-	orgID := uuid.New()
+	orgID := NewResourceID(PrefixOrganization)
 	err := store.WithTx(ctx, func(tx Queryer) error {
 		_, err := store.Organizations.Create(ctx, tx, Organization{
 			ID:   orgID,
@@ -184,6 +183,80 @@ func TestWithTxRollsBackOnFailure(t *testing.T) {
 
 	if _, err := store.Organizations.GetByID(ctx, store.DB(), orgID); err == nil {
 		t.Fatal("expected organization insert to be rolled back")
+	}
+}
+
+func TestDeleteRepositories(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := migratedTestStore(t)
+
+	org, acct, _ := createOrgAccountEnvironment(t, ctx, store)
+
+	if err := store.Accounts.Delete(ctx, store.DB(), org.ID, acct.ID); err != nil {
+		t.Fatalf("delete account: %v", err)
+	}
+	if _, err := store.Accounts.GetByID(ctx, store.DB(), acct.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected account to be deleted, got %v", err)
+	}
+
+	if err := store.Organizations.Delete(ctx, store.DB(), org.ID); err != nil {
+		t.Fatalf("delete organization: %v", err)
+	}
+	if _, err := store.Organizations.GetByID(ctx, store.DB(), org.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected organization to be deleted, got %v", err)
+	}
+
+	org2, acct2, _ := createOrgAccountEnvironment(t, ctx, store)
+	if err := store.Organizations.Delete(ctx, store.DB(), org2.ID); err != nil {
+		t.Fatalf("delete organization with cascade: %v", err)
+	}
+	if _, err := store.Accounts.GetByID(ctx, store.DB(), acct2.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected cascaded account delete, got %v", err)
+	}
+}
+
+func TestAccountsListSupportsGlobalAndFilteredQueries(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := migratedTestStore(t)
+
+	org1, _, _ := createOrgAccountEnvironment(t, ctx, store)
+	org2, err := store.Organizations.Create(ctx, store.DB(), Organization{Name: "beta"})
+	if err != nil {
+		t.Fatalf("create second organization: %v", err)
+	}
+	if _, err := store.Accounts.Create(ctx, store.DB(), Account{
+		OrganizationID: org2.ID,
+		Email:          "bob@example.com",
+		PasswordSalt:   "salt-2",
+		PasswordHash:   "hash-2",
+		AccountToken:   "account-token-2",
+		Role:           AccountRoleMember,
+		Status:         AccountStatusActive,
+	}); err != nil {
+		t.Fatalf("create second account: %v", err)
+	}
+
+	allAccounts, err := store.Accounts.List(ctx, store.DB(), nil)
+	if err != nil {
+		t.Fatalf("list all accounts: %v", err)
+	}
+	if len(allAccounts) != 2 {
+		t.Fatalf("expected 2 accounts, got %d", len(allAccounts))
+	}
+
+	filteredAccounts, err := store.Accounts.List(ctx, store.DB(), &org1.ID)
+	if err != nil {
+		t.Fatalf("list filtered accounts: %v", err)
+	}
+	if len(filteredAccounts) != 1 {
+		t.Fatalf("expected 1 filtered account, got %d", len(filteredAccounts))
+	}
+	if filteredAccounts[0].OrganizationID != org1.ID {
+		t.Fatalf("expected filtered account in organization %s, got %s", org1.ID, filteredAccounts[0].OrganizationID)
 	}
 }
 

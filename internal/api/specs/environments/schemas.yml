@@ -11,13 +11,13 @@ environment:
   properties:
     id:
       type: string
-      format: uuid
+      pattern: '^ev_[a-z0-9]{12}$'
     organizationId:
       type: string
-      format: uuid
+      pattern: '^org_[a-z0-9]{12}$'
     accountId:
       type: string
-      format: uuid
+      pattern: '^ac_[a-z0-9]{12}$'
     description:
       type: string
     host:

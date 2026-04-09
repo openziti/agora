@@ -7,7 +7,6 @@ import (
 	"net/url"
 
 	"github.com/go-faster/errors"
-	"github.com/google/uuid"
 	"github.com/ogen-go/ogen/conv"
 	"github.com/ogen-go/ogen/middleware"
 	"github.com/ogen-go/ogen/ogenerrors"
@@ -17,7 +16,7 @@ import (
 
 // CreateAccountParams is parameters of createAccount operation.
 type CreateAccountParams struct {
-	OrganizationId uuid.UUID
+	OrganizationId string
 }
 
 func unpackCreateAccountParams(packed middleware.Parameters) (params CreateAccountParams) {
@@ -26,7 +25,7 @@ func unpackCreateAccountParams(packed middleware.Parameters) (params CreateAccou
 			Name: "organizationId",
 			In:   "path",
 		}
-		params.OrganizationId = packed[key].(uuid.UUID)
+		params.OrganizationId = packed[key].(string)
 	}
 	return params
 }
@@ -56,12 +55,28 @@ func decodeCreateAccountParams(args [1]string, argsEscaped bool, r *http.Request
 					return err
 				}
 
-				c, err := conv.ToUUID(val)
+				c, err := conv.ToString(val)
 				if err != nil {
 					return err
 				}
 
 				params.OrganizationId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^org_[a-z0-9]{12}$"],
+				}).Validate(string(params.OrganizationId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
 				return nil
 			}(); err != nil {
 				return err
@@ -80,9 +95,159 @@ func decodeCreateAccountParams(args [1]string, argsEscaped bool, r *http.Request
 	return params, nil
 }
 
+// DeleteAccountParams is parameters of deleteAccount operation.
+type DeleteAccountParams struct {
+	OrganizationId string
+	AccountId      string
+}
+
+func unpackDeleteAccountParams(packed middleware.Parameters) (params DeleteAccountParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "organizationId",
+			In:   "path",
+		}
+		params.OrganizationId = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "accountId",
+			In:   "path",
+		}
+		params.AccountId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeDeleteAccountParams(args [2]string, argsEscaped bool, r *http.Request) (params DeleteAccountParams, _ error) {
+	// Decode path: organizationId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "organizationId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.OrganizationId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^org_[a-z0-9]{12}$"],
+				}).Validate(string(params.OrganizationId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "organizationId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: accountId.
+	if err := func() error {
+		param := args[1]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[1])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "accountId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.AccountId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^ac_[a-z0-9]{12}$"],
+				}).Validate(string(params.AccountId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "accountId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // DeleteEnvironmentParams is parameters of deleteEnvironment operation.
 type DeleteEnvironmentParams struct {
-	EnvironmentId uuid.UUID
+	EnvironmentId string
 }
 
 func unpackDeleteEnvironmentParams(packed middleware.Parameters) (params DeleteEnvironmentParams) {
@@ -91,7 +256,7 @@ func unpackDeleteEnvironmentParams(packed middleware.Parameters) (params DeleteE
 			Name: "environmentId",
 			In:   "path",
 		}
-		params.EnvironmentId = packed[key].(uuid.UUID)
+		params.EnvironmentId = packed[key].(string)
 	}
 	return params
 }
@@ -121,12 +286,28 @@ func decodeDeleteEnvironmentParams(args [1]string, argsEscaped bool, r *http.Req
 					return err
 				}
 
-				c, err := conv.ToUUID(val)
+				c, err := conv.ToString(val)
 				if err != nil {
 					return err
 				}
 
 				params.EnvironmentId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^ev_[a-z0-9]{12}$"],
+				}).Validate(string(params.EnvironmentId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
 				return nil
 			}(); err != nil {
 				return err
@@ -145,9 +326,90 @@ func decodeDeleteEnvironmentParams(args [1]string, argsEscaped bool, r *http.Req
 	return params, nil
 }
 
+// DeleteOrganizationParams is parameters of deleteOrganization operation.
+type DeleteOrganizationParams struct {
+	OrganizationId string
+}
+
+func unpackDeleteOrganizationParams(packed middleware.Parameters) (params DeleteOrganizationParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "organizationId",
+			In:   "path",
+		}
+		params.OrganizationId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeDeleteOrganizationParams(args [1]string, argsEscaped bool, r *http.Request) (params DeleteOrganizationParams, _ error) {
+	// Decode path: organizationId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "organizationId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.OrganizationId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^org_[a-z0-9]{12}$"],
+				}).Validate(string(params.OrganizationId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "organizationId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // DeleteTunnelParams is parameters of deleteTunnel operation.
 type DeleteTunnelParams struct {
-	TunnelId uuid.UUID
+	TunnelId string
 }
 
 func unpackDeleteTunnelParams(packed middleware.Parameters) (params DeleteTunnelParams) {
@@ -156,7 +418,7 @@ func unpackDeleteTunnelParams(packed middleware.Parameters) (params DeleteTunnel
 			Name: "tunnelId",
 			In:   "path",
 		}
-		params.TunnelId = packed[key].(uuid.UUID)
+		params.TunnelId = packed[key].(string)
 	}
 	return params
 }
@@ -186,12 +448,28 @@ func decodeDeleteTunnelParams(args [1]string, argsEscaped bool, r *http.Request)
 					return err
 				}
 
-				c, err := conv.ToUUID(val)
+				c, err := conv.ToString(val)
 				if err != nil {
 					return err
 				}
 
 				params.TunnelId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^tt_[a-z0-9]{12}$"],
+				}).Validate(string(params.TunnelId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
 				return nil
 			}(); err != nil {
 				return err
@@ -212,7 +490,7 @@ func decodeDeleteTunnelParams(args [1]string, argsEscaped bool, r *http.Request)
 
 // GetEnvironmentParams is parameters of getEnvironment operation.
 type GetEnvironmentParams struct {
-	EnvironmentId uuid.UUID
+	EnvironmentId string
 }
 
 func unpackGetEnvironmentParams(packed middleware.Parameters) (params GetEnvironmentParams) {
@@ -221,7 +499,7 @@ func unpackGetEnvironmentParams(packed middleware.Parameters) (params GetEnviron
 			Name: "environmentId",
 			In:   "path",
 		}
-		params.EnvironmentId = packed[key].(uuid.UUID)
+		params.EnvironmentId = packed[key].(string)
 	}
 	return params
 }
@@ -251,12 +529,28 @@ func decodeGetEnvironmentParams(args [1]string, argsEscaped bool, r *http.Reques
 					return err
 				}
 
-				c, err := conv.ToUUID(val)
+				c, err := conv.ToString(val)
 				if err != nil {
 					return err
 				}
 
 				params.EnvironmentId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^ev_[a-z0-9]{12}$"],
+				}).Validate(string(params.EnvironmentId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
 				return nil
 			}(); err != nil {
 				return err
@@ -277,7 +571,7 @@ func decodeGetEnvironmentParams(args [1]string, argsEscaped bool, r *http.Reques
 
 // GetTunnelParams is parameters of getTunnel operation.
 type GetTunnelParams struct {
-	TunnelId uuid.UUID
+	TunnelId string
 }
 
 func unpackGetTunnelParams(packed middleware.Parameters) (params GetTunnelParams) {
@@ -286,7 +580,7 @@ func unpackGetTunnelParams(packed middleware.Parameters) (params GetTunnelParams
 			Name: "tunnelId",
 			In:   "path",
 		}
-		params.TunnelId = packed[key].(uuid.UUID)
+		params.TunnelId = packed[key].(string)
 	}
 	return params
 }
@@ -316,12 +610,28 @@ func decodeGetTunnelParams(args [1]string, argsEscaped bool, r *http.Request) (p
 					return err
 				}
 
-				c, err := conv.ToUUID(val)
+				c, err := conv.ToString(val)
 				if err != nil {
 					return err
 				}
 
 				params.TunnelId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^tt_[a-z0-9]{12}$"],
+				}).Validate(string(params.TunnelId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
 				return nil
 			}(); err != nil {
 				return err
@@ -342,7 +652,7 @@ func decodeGetTunnelParams(args [1]string, argsEscaped bool, r *http.Request) (p
 
 // ListAccountsParams is parameters of listAccounts operation.
 type ListAccountsParams struct {
-	OrganizationId uuid.UUID
+	OrganizationId string
 }
 
 func unpackListAccountsParams(packed middleware.Parameters) (params ListAccountsParams) {
@@ -351,7 +661,7 @@ func unpackListAccountsParams(packed middleware.Parameters) (params ListAccounts
 			Name: "organizationId",
 			In:   "path",
 		}
-		params.OrganizationId = packed[key].(uuid.UUID)
+		params.OrganizationId = packed[key].(string)
 	}
 	return params
 }
@@ -381,12 +691,28 @@ func decodeListAccountsParams(args [1]string, argsEscaped bool, r *http.Request)
 					return err
 				}
 
-				c, err := conv.ToUUID(val)
+				c, err := conv.ToString(val)
 				if err != nil {
 					return err
 				}
 
 				params.OrganizationId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^org_[a-z0-9]{12}$"],
+				}).Validate(string(params.OrganizationId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
 				return nil
 			}(); err != nil {
 				return err
@@ -399,6 +725,93 @@ func decodeListAccountsParams(args [1]string, argsEscaped bool, r *http.Request)
 		return params, &ogenerrors.DecodeParamError{
 			Name: "organizationId",
 			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// ListUsersParams is parameters of listUsers operation.
+type ListUsersParams struct {
+	OrganizationId OptString
+}
+
+func unpackListUsersParams(packed middleware.Parameters) (params ListUsersParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "organizationId",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.OrganizationId = v.(OptString)
+		}
+	}
+	return params
+}
+
+func decodeListUsersParams(args [0]string, argsEscaped bool, r *http.Request) (params ListUsersParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode query: organizationId.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "organizationId",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotOrganizationIdVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotOrganizationIdVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.OrganizationId.SetTo(paramsDotOrganizationIdVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.OrganizationId.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:    0,
+							MinLengthSet: false,
+							MaxLength:    0,
+							MaxLengthSet: false,
+							Email:        false,
+							Hostname:     false,
+							Regex:        regexMap["^org_[a-z0-9]{12}$"],
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "organizationId",
+			In:   "query",
 			Err:  err,
 		}
 	}

@@ -8,14 +8,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 type OrganizationsRepository struct{}
 
 func (r *OrganizationsRepository) Create(ctx context.Context, db Queryer, org Organization) (*Organization, error) {
-	if org.ID == uuid.Nil {
-		org.ID = uuid.New()
+	if org.ID == "" {
+		org.ID = NewResourceID(PrefixOrganization)
 	}
 	now := time.Now().UTC()
 	org.CreatedAt = now
@@ -33,7 +33,7 @@ returning id, name, created_at, updated_at`
 	return &created, nil
 }
 
-func (r *OrganizationsRepository) GetByID(ctx context.Context, db Queryer, id uuid.UUID) (*Organization, error) {
+func (r *OrganizationsRepository) GetByID(ctx context.Context, db Queryer, id string) (*Organization, error) {
 	const query = `
 select id, name, created_at, updated_at
 from organizations
@@ -62,11 +62,31 @@ order by name asc`
 	return organizations, nil
 }
 
+func (r *OrganizationsRepository) Delete(ctx context.Context, db Queryer, id string) error {
+	const query = `delete from organizations where id = $1`
+
+	result, err := db.ExecContext(ctx, query, id)
+	if err != nil {
+		if isForeignKeyConstraint(err) {
+			return ErrConflict
+		}
+		return fmt.Errorf("delete organization: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("delete organization rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 type AccountsRepository struct{}
 
 func (r *AccountsRepository) Create(ctx context.Context, db Queryer, acct Account) (*Account, error) {
-	if acct.ID == uuid.Nil {
-		acct.ID = uuid.New()
+	if acct.ID == "" {
+		acct.ID = NewResourceID(PrefixAccount)
 	}
 	now := time.Now().UTC()
 	acct.CreatedAt = now
@@ -109,7 +129,7 @@ returning id, organization_id, email, display_name, password_salt, password_hash
 	return &created, nil
 }
 
-func (r *AccountsRepository) GetByID(ctx context.Context, db Queryer, id uuid.UUID) (*Account, error) {
+func (r *AccountsRepository) GetByID(ctx context.Context, db Queryer, id string) (*Account, error) {
 	const query = `
 select id, organization_id, email, display_name, password_salt, password_hash, account_token, role, status, created_at, updated_at
 from accounts
@@ -157,21 +177,31 @@ where account_token = $1`
 	return &acct, nil
 }
 
-func (r *AccountsRepository) ListByOrganization(ctx context.Context, db Queryer, organizationID uuid.UUID) ([]Account, error) {
-	const query = `
+func (r *AccountsRepository) ListByOrganization(ctx context.Context, db Queryer, organizationID string) ([]Account, error) {
+	return r.List(ctx, db, &organizationID)
+}
+
+func (r *AccountsRepository) List(ctx context.Context, db Queryer, organizationID *string) ([]Account, error) {
+	query := `
 select id, organization_id, email, display_name, password_salt, password_hash, account_token, role, status, created_at, updated_at
-from accounts
-where organization_id = $1
-order by email asc`
+from accounts`
+	args := []any{}
+	if organizationID != nil {
+		query += `
+where organization_id = $1`
+		args = append(args, *organizationID)
+	}
+	query += `
+order by organization_id asc, email asc`
 
 	var accounts []Account
-	if err := db.SelectContext(ctx, &accounts, query, organizationID); err != nil {
+	if err := db.SelectContext(ctx, &accounts, query, args...); err != nil {
 		return nil, fmt.Errorf("list accounts: %w", err)
 	}
 	return accounts, nil
 }
 
-func (r *AccountsRepository) UpdatePassword(ctx context.Context, db Queryer, accountID uuid.UUID, salt, hash string) error {
+func (r *AccountsRepository) UpdatePassword(ctx context.Context, db Queryer, accountID string, salt, hash string) error {
 	const query = `
 update accounts
 set password_salt = $2, password_hash = $3, updated_at = $4
@@ -192,7 +222,7 @@ where id = $1`
 	return nil
 }
 
-func (r *AccountsRepository) RotateToken(ctx context.Context, db Queryer, accountID uuid.UUID, token string) error {
+func (r *AccountsRepository) RotateToken(ctx context.Context, db Queryer, accountID string, token string) error {
 	const query = `
 update accounts
 set account_token = $2, updated_at = $3
@@ -213,11 +243,31 @@ where id = $1`
 	return nil
 }
 
+func (r *AccountsRepository) Delete(ctx context.Context, db Queryer, organizationID, accountID string) error {
+	const query = `delete from accounts where organization_id = $1 and id = $2`
+
+	result, err := db.ExecContext(ctx, query, organizationID, accountID)
+	if err != nil {
+		if isForeignKeyConstraint(err) {
+			return ErrConflict
+		}
+		return fmt.Errorf("delete account: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("delete account rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 type EnvironmentsRepository struct{}
 
 func (r *EnvironmentsRepository) Create(ctx context.Context, db Queryer, env Environment) (*Environment, error) {
-	if env.ID == uuid.Nil {
-		env.ID = uuid.New()
+	if env.ID == "" {
+		env.ID = NewResourceID(PrefixEnvironment)
 	}
 	now := time.Now().UTC()
 	env.CreatedAt = now
@@ -255,7 +305,7 @@ returning id, organization_id, account_id, description, host, ziti_identity_id, 
 	return &created, nil
 }
 
-func (r *EnvironmentsRepository) GetByID(ctx context.Context, db Queryer, id uuid.UUID) (*Environment, error) {
+func (r *EnvironmentsRepository) GetByID(ctx context.Context, db Queryer, id string) (*Environment, error) {
 	const query = `
 select id, organization_id, account_id, description, host, ziti_identity_id, state, last_seen_at, created_at, updated_at
 from environments
@@ -271,7 +321,7 @@ where id = $1`
 	return &env, nil
 }
 
-func (r *EnvironmentsRepository) ListByOrganization(ctx context.Context, db Queryer, organizationID uuid.UUID) ([]Environment, error) {
+func (r *EnvironmentsRepository) ListByOrganization(ctx context.Context, db Queryer, organizationID string) ([]Environment, error) {
 	const query = `
 select id, organization_id, account_id, description, host, ziti_identity_id, state, last_seen_at, created_at, updated_at
 from environments
@@ -285,7 +335,7 @@ order by created_at asc`
 	return environments, nil
 }
 
-func (r *EnvironmentsRepository) Delete(ctx context.Context, db Queryer, id uuid.UUID, organizationID uuid.UUID) error {
+func (r *EnvironmentsRepository) Delete(ctx context.Context, db Queryer, id string, organizationID string) error {
 	const query = `delete from environments where id = $1 and organization_id = $2`
 
 	result, err := db.ExecContext(ctx, query, id, organizationID)
@@ -302,7 +352,7 @@ func (r *EnvironmentsRepository) Delete(ctx context.Context, db Queryer, id uuid
 	return nil
 }
 
-func (r *EnvironmentsRepository) UpdateLastSeen(ctx context.Context, db Queryer, id uuid.UUID, lastSeenAt time.Time) error {
+func (r *EnvironmentsRepository) UpdateLastSeen(ctx context.Context, db Queryer, id string, lastSeenAt time.Time) error {
 	const query = `
 update environments
 set last_seen_at = $2, updated_at = $3
@@ -326,8 +376,8 @@ where id = $1`
 type TunnelsRepository struct{}
 
 func (r *TunnelsRepository) Create(ctx context.Context, db Queryer, tunnel Tunnel) (*Tunnel, error) {
-	if tunnel.ID == uuid.Nil {
-		tunnel.ID = uuid.New()
+	if tunnel.ID == "" {
+		tunnel.ID = NewResourceID(PrefixTunnel)
 	}
 	now := time.Now().UTC()
 	tunnel.CreatedAt = now
@@ -364,7 +414,7 @@ returning id, organization_id, environment_id, name, backend_address, ziti_servi
 	return &created, nil
 }
 
-func (r *TunnelsRepository) GetByID(ctx context.Context, db Queryer, id uuid.UUID) (*Tunnel, error) {
+func (r *TunnelsRepository) GetByID(ctx context.Context, db Queryer, id string) (*Tunnel, error) {
 	const query = `
 select id, organization_id, environment_id, name, backend_address, ziti_service_id, state, created_at, updated_at
 from tunnels
@@ -380,7 +430,7 @@ where id = $1`
 	return &tunnel, nil
 }
 
-func (r *TunnelsRepository) ListByOrganization(ctx context.Context, db Queryer, organizationID uuid.UUID) ([]Tunnel, error) {
+func (r *TunnelsRepository) ListByOrganization(ctx context.Context, db Queryer, organizationID string) ([]Tunnel, error) {
 	const query = `
 select id, organization_id, environment_id, name, backend_address, ziti_service_id, state, created_at, updated_at
 from tunnels
@@ -394,7 +444,12 @@ order by name asc`
 	return tunnels, nil
 }
 
-func (r *TunnelsRepository) Delete(ctx context.Context, db Queryer, id uuid.UUID, organizationID uuid.UUID) error {
+func isForeignKeyConstraint(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23503"
+}
+
+func (r *TunnelsRepository) Delete(ctx context.Context, db Queryer, id string, organizationID string) error {
 	const query = `delete from tunnels where id = $1 and organization_id = $2`
 
 	result, err := db.ExecContext(ctx, query, id, organizationID)

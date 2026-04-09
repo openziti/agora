@@ -104,14 +104,50 @@ Start the controller with:
 go run ./cmd/agora controller ./agora.yml
 ```
 
+### Configure the Local CLI Environment
+
+Agora keeps local CLI metadata under `~/.agora`, following the same general pattern as `zrok`.
+
+Set the controller API endpoint once:
+
+```bash
+go run ./cmd/agora config set api_endpoint http://127.0.0.1:8080
+```
+
+Inspect or clear it:
+
+```bash
+go run ./cmd/agora config get api_endpoint
+go run ./cmd/agora config unset api_endpoint
+```
+
 ### Manage Migrations
 
 ```bash
-go run ./cmd/agora store migrate up <configPath>
-go run ./cmd/agora store migrate down <configPath>
-go run ./cmd/agora store migrate status <configPath>
-go run ./cmd/agora store check-schema <configPath>
+go run ./cmd/agora admin store migrate ./etc/dev-agora-controller.yaml up
+go run ./cmd/agora admin store migrate ./etc/dev-agora-controller.yaml down --down 1
+go run ./cmd/agora admin store migrate ./etc/dev-agora-controller.yaml status
+go run ./cmd/agora admin store check-schema ./etc/dev-agora-controller.yaml
 ```
+
+### Admin API Commands
+
+```bash
+export AGORA_ADMIN_TOKEN=replace-me
+
+go run ./cmd/agora admin create organization acme
+go run ./cmd/agora admin create user <organizationId> alice@example.com test-password
+go run ./cmd/agora admin list organizations
+go run ./cmd/agora admin list users
+go run ./cmd/agora admin list users --organization-id <organizationId>
+go run ./cmd/agora admin list users --show-ids
+go run ./cmd/agora admin list users --json
+go run ./cmd/agora admin delete user <organizationId> <accountId>
+go run ./cmd/agora admin delete organization <organizationId>
+```
+
+These commands use the local environment endpoint from `~/.agora/config.json` or `AGORA_API_ENDPOINT`, and authenticate with `AGORA_ADMIN_TOKEN`.
+Human-readable list output uses a zrok-style rounded table. Pass `--json` for indented raw resource objects instead.
 
 ## Design Notes
 

@@ -25,6 +25,10 @@ This repository is in early-stage development. Favor simple, explicit structure 
 - Main binary uses Cobra with package-level command groups and per-file leaf commands
 - Follow the same structural pattern used by `zrok`: command tree in `main.go`, individual commands registered via `init()`
 - CLI and controller logging should use `github.com/michaelquigley/df/dl`, not `log/slog` directly
+- CLI commands that talk to the controller API should prefer the local environment root under `~/.agora` over reading controller server config files directly
+- Admin API commands should take their admin token from `AGORA_ADMIN_TOKEN`, not from controller YAML
+- For human-readable list commands, standardize on `go-pretty/table` with the same rounded-table presentation pattern used in `zrok`
+- For machine-readable list output, use `--json` and emit indented raw resource objects rather than CLI-specific wrapper objects
 
 **Persistence Layer** (`internal/persistence/`):
 - PostgreSQL-only persistence built with `sqlx`
@@ -39,6 +43,11 @@ This repository is in early-stage development. Favor simple, explicit structure 
 - When an optional config sub-struct is a pointer, prefer implementing `ApplyDefaults()` on that sub-struct instead of doing post-merge default repair in callers
 - Express unconditional config requirements with `dd:",+required"` struct tags instead of duplicating the same validation in load paths
 - If dynamic config sections are introduced later, keep them within the `dd` binding model instead of introducing a second config-loading pattern
+
+**Local Environment Root** (`environment/`):
+- Keep the local CLI environment rooted under `~/.agora`, following the same general pattern as `zrok`
+- Store local CLI metadata such as API endpoint config and enrolled identities there, not in controller config files
+- Prefer extending the environment package over scattering ad hoc dotfiles or one-off env var parsing across commands
 
 ### Key Architectural Patterns
 

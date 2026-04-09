@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 )
 
 type EnvironmentSpec struct {
-	OrganizationID uuid.UUID
-	AccountID      uuid.UUID
-	EnvironmentID  uuid.UUID
+	OrganizationID string
+	AccountID      string
+	EnvironmentID  string
 	IdentityName   string
 	RoleAttributes []string
 	Version        string

@@ -75,7 +75,7 @@
         required: true
         schema:
           type: string
-          format: uuid
+          pattern: '^org_[a-z0-9]{12}$'
     requestBody:
       required: true
       content:
@@ -125,7 +125,7 @@
         required: true
         schema:
           type: string
-          format: uuid
+          pattern: '^org_[a-z0-9]{12}$'
     responses:
       200:
         description: ok
@@ -141,6 +141,136 @@
               $ref: "../agora.yml#/components/schemas/error"
       404:
         description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/organizations/{organizationId}:
+  delete:
+    tags:
+      - admin
+    operationId: deleteOrganization
+    security:
+      - adminTokenAuth: []
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^org_[a-z0-9]{12}$'
+    responses:
+      204:
+        description: deleted
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/accounts:
+  get:
+    tags:
+      - admin
+    operationId: listUsers
+    security:
+      - adminTokenAuth: []
+    parameters:
+      - name: organizationId
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: '^org_[a-z0-9]{12}$'
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/listAccountsResponse"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/organizations/{organizationId}/accounts/{accountId}:
+  delete:
+    tags:
+      - admin
+    operationId: deleteAccount
+    security:
+      - adminTokenAuth: []
+    parameters:
+      - name: organizationId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^org_[a-z0-9]{12}$'
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^ac_[a-z0-9]{12}$'
+    responses:
+      204:
+        description: deleted
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
         content:
           application/json:
             schema:

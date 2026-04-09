@@ -8,7 +8,7 @@ organization:
   properties:
     id:
       type: string
-      format: uuid
+      pattern: '^org_[a-z0-9]{12}$'
     name:
       type: string
     createdAt:
@@ -45,10 +45,10 @@ account:
   properties:
     id:
       type: string
-      format: uuid
+      pattern: '^ac_[a-z0-9]{12}$'
     organizationId:
       type: string
-      format: uuid
+      pattern: '^org_[a-z0-9]{12}$'
     email:
       type: string
       format: email

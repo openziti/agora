@@ -4,14 +4,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 )
 
 type TunnelSpec struct {
-	OrganizationID        uuid.UUID
-	EnvironmentID         uuid.UUID
-	TunnelID              uuid.UUID
+	OrganizationID        string
+	EnvironmentID         string
+	TunnelID              string
 	TunnelName            string
 	EnvironmentIdentityID string
 	DialIdentityRoles     []string

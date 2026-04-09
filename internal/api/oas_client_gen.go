@@ -41,10 +41,18 @@ type Invoker interface {
 	//
 	// POST /tunnels
 	CreateTunnel(ctx context.Context, request *CreateTunnelRequest) (CreateTunnelRes, error)
+	// DeleteAccount invokes deleteAccount operation.
+	//
+	// DELETE /organizations/{organizationId}/accounts/{accountId}
+	DeleteAccount(ctx context.Context, params DeleteAccountParams) (DeleteAccountRes, error)
 	// DeleteEnvironment invokes deleteEnvironment operation.
 	//
 	// DELETE /environments/{environmentId}
 	DeleteEnvironment(ctx context.Context, params DeleteEnvironmentParams) (DeleteEnvironmentRes, error)
+	// DeleteOrganization invokes deleteOrganization operation.
+	//
+	// DELETE /organizations/{organizationId}
+	DeleteOrganization(ctx context.Context, params DeleteOrganizationParams) (DeleteOrganizationRes, error)
 	// DeleteTunnel invokes deleteTunnel operation.
 	//
 	// DELETE /tunnels/{tunnelId}
@@ -73,6 +81,10 @@ type Invoker interface {
 	//
 	// GET /tunnels
 	ListTunnels(ctx context.Context) (ListTunnelsRes, error)
+	// ListUsers invokes listUsers operation.
+	//
+	// GET /accounts
+	ListUsers(ctx context.Context, params ListUsersParams) (ListUsersRes, error)
 	// Login invokes login operation.
 	//
 	// POST /account/login
@@ -237,7 +249,7 @@ func (c *Client) sendCreateAccount(ctx context.Context, request *CreateAccountRe
 			Explode: false,
 		})
 		if err := func() error {
-			return e.EncodeValue(conv.UUIDToString(params.OrganizationId))
+			return e.EncodeValue(conv.StringToString(params.OrganizationId))
 		}(); err != nil {
 			return res, errors.Wrap(err, "encode path")
 		}
@@ -542,6 +554,110 @@ func (c *Client) sendCreateTunnel(ctx context.Context, request *CreateTunnelRequ
 	return result, nil
 }
 
+// DeleteAccount invokes deleteAccount operation.
+//
+// DELETE /organizations/{organizationId}/accounts/{accountId}
+func (c *Client) DeleteAccount(ctx context.Context, params DeleteAccountParams) (DeleteAccountRes, error) {
+	res, err := c.sendDeleteAccount(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendDeleteAccount(ctx context.Context, params DeleteAccountParams) (res DeleteAccountRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [4]string
+	pathParts[0] = "/organizations/"
+	{
+		// Encode "organizationId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "organizationId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.OrganizationId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/accounts/"
+	{
+		// Encode "accountId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "accountId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.AccountId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAdminTokenAuth(ctx, DeleteAccountOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AdminTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeDeleteAccountResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // DeleteEnvironment invokes deleteEnvironment operation.
 //
 // DELETE /environments/{environmentId}
@@ -563,7 +679,7 @@ func (c *Client) sendDeleteEnvironment(ctx context.Context, params DeleteEnviron
 			Explode: false,
 		})
 		if err := func() error {
-			return e.EncodeValue(conv.UUIDToString(params.EnvironmentId))
+			return e.EncodeValue(conv.StringToString(params.EnvironmentId))
 		}(); err != nil {
 			return res, errors.Wrap(err, "encode path")
 		}
@@ -627,6 +743,91 @@ func (c *Client) sendDeleteEnvironment(ctx context.Context, params DeleteEnviron
 	return result, nil
 }
 
+// DeleteOrganization invokes deleteOrganization operation.
+//
+// DELETE /organizations/{organizationId}
+func (c *Client) DeleteOrganization(ctx context.Context, params DeleteOrganizationParams) (DeleteOrganizationRes, error) {
+	res, err := c.sendDeleteOrganization(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendDeleteOrganization(ctx context.Context, params DeleteOrganizationParams) (res DeleteOrganizationRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/organizations/"
+	{
+		// Encode "organizationId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "organizationId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.OrganizationId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAdminTokenAuth(ctx, DeleteOrganizationOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AdminTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeDeleteOrganizationResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // DeleteTunnel invokes deleteTunnel operation.
 //
 // DELETE /tunnels/{tunnelId}
@@ -648,7 +849,7 @@ func (c *Client) sendDeleteTunnel(ctx context.Context, params DeleteTunnelParams
 			Explode: false,
 		})
 		if err := func() error {
-			return e.EncodeValue(conv.UUIDToString(params.TunnelId))
+			return e.EncodeValue(conv.StringToString(params.TunnelId))
 		}(); err != nil {
 			return res, errors.Wrap(err, "encode path")
 		}
@@ -733,7 +934,7 @@ func (c *Client) sendGetEnvironment(ctx context.Context, params GetEnvironmentPa
 			Explode: false,
 		})
 		if err := func() error {
-			return e.EncodeValue(conv.UUIDToString(params.EnvironmentId))
+			return e.EncodeValue(conv.StringToString(params.EnvironmentId))
 		}(); err != nil {
 			return res, errors.Wrap(err, "encode path")
 		}
@@ -818,7 +1019,7 @@ func (c *Client) sendGetTunnel(ctx context.Context, params GetTunnelParams) (res
 			Explode: false,
 		})
 		if err := func() error {
-			return e.EncodeValue(conv.UUIDToString(params.TunnelId))
+			return e.EncodeValue(conv.StringToString(params.TunnelId))
 		}(); err != nil {
 			return res, errors.Wrap(err, "encode path")
 		}
@@ -903,7 +1104,7 @@ func (c *Client) sendListAccounts(ctx context.Context, params ListAccountsParams
 			Explode: false,
 		})
 		if err := func() error {
-			return e.EncodeValue(conv.UUIDToString(params.OrganizationId))
+			return e.EncodeValue(conv.StringToString(params.OrganizationId))
 		}(); err != nil {
 			return res, errors.Wrap(err, "encode path")
 		}
@@ -1162,6 +1363,93 @@ func (c *Client) sendListTunnels(ctx context.Context) (res ListTunnelsRes, err e
 	defer resp.Body.Close()
 
 	result, err := decodeListTunnelsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ListUsers invokes listUsers operation.
+//
+// GET /accounts
+func (c *Client) ListUsers(ctx context.Context, params ListUsersParams) (ListUsersRes, error) {
+	res, err := c.sendListUsers(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListUsers(ctx context.Context, params ListUsersParams) (res ListUsersRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/accounts"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "organizationId" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "organizationId",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.OrganizationId.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAdminTokenAuth(ctx, ListUsersOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AdminTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeListUsersResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

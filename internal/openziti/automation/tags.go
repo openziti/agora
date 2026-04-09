@@ -3,7 +3,6 @@ package automation
 import (
 	"strconv"
 
-	"github.com/google/uuid"
 	"github.com/openziti/edge-api/rest_model"
 )
 
@@ -33,20 +32,20 @@ func (t *Tags) WithResourceKind(kind string) *Tags {
 	return t.WithTag("agoraResourceKind", kind)
 }
 
-func (t *Tags) WithOrganizationID(id uuid.UUID) *Tags {
-	return t.WithTag("agoraOrganizationId", id.String())
+func (t *Tags) WithOrganizationID(id string) *Tags {
+	return t.WithTag("agoraOrganizationId", id)
 }
 
-func (t *Tags) WithAccountID(id uuid.UUID) *Tags {
-	return t.WithTag("agoraAccountId", id.String())
+func (t *Tags) WithAccountID(id string) *Tags {
+	return t.WithTag("agoraAccountId", id)
 }
 
-func (t *Tags) WithEnvironmentID(id uuid.UUID) *Tags {
-	return t.WithTag("agoraEnvironmentId", id.String())
+func (t *Tags) WithEnvironmentID(id string) *Tags {
+	return t.WithTag("agoraEnvironmentId", id)
 }
 
-func (t *Tags) WithTunnelID(id uuid.UUID) *Tags {
-	return t.WithTag("agoraTunnelId", id.String())
+func (t *Tags) WithTunnelID(id string) *Tags {
+	return t.WithTag("agoraTunnelId", id)
 }
 
 func (t *Tags) WithTunnelName(name string) *Tags {

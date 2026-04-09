@@ -21,8 +21,16 @@ type CreateTunnelRes interface {
 	createTunnelRes()
 }
 
+type DeleteAccountRes interface {
+	deleteAccountRes()
+}
+
 type DeleteEnvironmentRes interface {
 	deleteEnvironmentRes()
+}
+
+type DeleteOrganizationRes interface {
+	deleteOrganizationRes()
 }
 
 type DeleteTunnelRes interface {
@@ -51,6 +59,10 @@ type ListOrganizationsRes interface {
 
 type ListTunnelsRes interface {
 	listTunnelsRes()
+}
+
+type ListUsersRes interface {
+	listUsersRes()
 }
 
 type LoginRes interface {

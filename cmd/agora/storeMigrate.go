@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/michaelquigley/df/dl"
+	ctrlcfg "github.com/openziti/agora/internal/controller/config"
 	"github.com/openziti/agora/internal/persistence"
 	"github.com/spf13/cobra"
 )
@@ -16,37 +16,33 @@ func init() {
 }
 
 type storeMigrateCommand struct {
-	cmd             *cobra.Command
-	dsn             string
-	maxOpenConns    int
-	maxIdleConns    int
-	connMaxLifetime time.Duration
-	steps           int
+	cmd   *cobra.Command
+	steps int
 }
 
 func newStoreMigrateCommand() *storeMigrateCommand {
 	cmd := &cobra.Command{
-		Use:   "migrate <up|down|status>",
+		Use:   "migrate <configPath> <up|down|status>",
 		Short: "Migrate the underlying datastore",
-		Args:  cobra.ExactArgs(1),
+		Args:  cobra.ExactArgs(2),
 	}
 	command := &storeMigrateCommand{cmd: cmd}
-	cmd.Flags().StringVar(&command.dsn, "dsn", os.Getenv("AGORA_DATABASE_URL"), "PostgreSQL connection string")
-	cmd.Flags().IntVar(&command.maxOpenConns, "max-open-conns", 4, "Maximum number of open database connections")
-	cmd.Flags().IntVar(&command.maxIdleConns, "max-idle-conns", 4, "Maximum number of idle database connections")
-	cmd.Flags().DurationVar(&command.connMaxLifetime, "conn-max-lifetime", time.Hour, "Maximum database connection lifetime")
 	cmd.Flags().IntVar(&command.steps, "down", 0, "migrate down N steps (0 = migrate up/status)")
 	cmd.Run = command.run
 	return command
 }
 
 func (cmd *storeMigrateCommand) run(_ *cobra.Command, args []string) {
-	store := openStore(cmd.storeConfig())
+	cfg, err := ctrlcfg.Load(args[0])
+	if err != nil {
+		panic(err)
+	}
+	store := openStore(cfg.Store)
 	defer func() { _ = store.Close() }()
 
 	ctx := context.Background()
 
-	switch args[0] {
+	switch args[1] {
 	case "up":
 		applied, err := persistence.MigrateUp(ctx, store)
 		if err != nil {
@@ -76,15 +72,6 @@ func (cmd *storeMigrateCommand) run(_ *cobra.Command, args []string) {
 			_, _ = fmt.Fprintf(os.Stdout, "%s\t%s\n", status.ID, appliedLabel(status.Applied))
 		}
 	default:
-		panic("invalid migration action: " + args[0])
-	}
-}
-
-func (cmd *storeMigrateCommand) storeConfig() persistence.Config {
-	return persistence.Config{
-		DSN:             cmd.dsn,
-		MaxOpenConns:    cmd.maxOpenConns,
-		MaxIdleConns:    cmd.maxIdleConns,
-		ConnMaxLifetime: cmd.connMaxLifetime,
+		panic("invalid migration action: " + args[1])
 	}
 }
