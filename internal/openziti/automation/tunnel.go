@@ -9,11 +9,12 @@ import (
 
 type TunnelSpec struct {
 	OrganizationID        string
+	AccountID             string
 	EnvironmentID         string
 	TunnelID              string
 	TunnelName            string
+	ServiceName           string
 	EnvironmentIdentityID string
-	DialIdentityRoles     []string
 	EdgeRouterRoles       []string
 	Version               string
 }
@@ -21,8 +22,19 @@ type TunnelSpec struct {
 type ProvisionedTunnel struct {
 	ServiceID                 string
 	BindPolicyID              string
-	DialPolicyID              string
 	ServiceEdgeRouterPolicyID string
+}
+
+type TunnelAccessSpec struct {
+	OrganizationID        string
+	AccountID             string
+	EnvironmentID         string
+	TunnelID              string
+	TunnelName            string
+	AttachmentID          string
+	EnvironmentIdentityID string
+	ServiceID             string
+	Version               string
 }
 
 type TunnelProvisioner struct {
@@ -43,13 +55,14 @@ func (p *TunnelProvisioner) Provision(ctx context.Context, spec TunnelSpec) (*Pr
 	tags := AgoraTags(spec.Version).
 		WithResourceKind("tunnel").
 		WithOrganizationID(spec.OrganizationID).
+		WithAccountID(spec.AccountID).
 		WithEnvironmentID(spec.EnvironmentID).
 		WithTunnelID(spec.TunnelID).
 		WithTunnelName(spec.TunnelName)
 
 	serviceID, err := p.services.Create(ctx, &ServiceOptions{
 		BaseOptions: BaseOptions{
-			Name: spec.TunnelName,
+			Name: spec.ServiceName,
 			Tags: tags,
 		},
 		EncryptionRequired: true,
@@ -95,26 +108,32 @@ func (p *TunnelProvisioner) Provision(ctx context.Context, spec TunnelSpec) (*Pr
 	}
 	result.ServiceEdgeRouterPolicyID = serviceEdgeRouterPolicyID
 
-	if len(spec.DialIdentityRoles) > 0 {
-		dialPolicyID, err := p.servicePolicies.CreateDial(ctx, &ServicePolicyOptions{
-			BaseOptions: BaseOptions{
-				Name: spec.TunnelName + "-dial",
-				Tags: tags,
-			},
-			IdentityRoles: spec.DialIdentityRoles,
-			ServiceRoles:  []string{"@" + serviceID},
-			Semantic:      rest_model.SemanticAllOf,
-		})
-		if err != nil {
-			_ = p.serviceEdgeRouterPolicies.Delete(ctx, serviceEdgeRouterPolicyID)
-			_ = p.servicePolicies.Delete(ctx, bindPolicyID)
-			_ = p.services.Delete(ctx, serviceID)
-			return nil, fmt.Errorf("create tunnel dial policy: %w", err)
-		}
-		result.DialPolicyID = dialPolicyID
-	}
-
 	return result, nil
+}
+
+func (p *TunnelProvisioner) CreateAttachmentDialPolicy(ctx context.Context, spec TunnelAccessSpec) (string, error) {
+	tags := AgoraTags(spec.Version).
+		WithResourceKind("tunnel_attachment").
+		WithOrganizationID(spec.OrganizationID).
+		WithAccountID(spec.AccountID).
+		WithEnvironmentID(spec.EnvironmentID).
+		WithTunnelID(spec.TunnelID).
+		WithTunnelName(spec.TunnelName).
+		WithTag("agoraAttachmentId", spec.AttachmentID)
+
+	dialPolicyID, err := p.servicePolicies.CreateDial(ctx, &ServicePolicyOptions{
+		BaseOptions: BaseOptions{
+			Name: spec.AttachmentID + "-" + spec.ServiceID + "-dial",
+			Tags: tags,
+		},
+		IdentityRoles: []string{"@" + spec.EnvironmentIdentityID},
+		ServiceRoles:  []string{"@" + spec.ServiceID},
+		Semantic:      rest_model.SemanticAllOf,
+	})
+	if err != nil {
+		return "", fmt.Errorf("create tunnel attachment dial policy: %w", err)
+	}
+	return dialPolicyID, nil
 }
 
 type DeprovisionTunnelSpec struct {

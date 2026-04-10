@@ -48,6 +48,14 @@
     operationId: listTunnels
     security:
       - accountTokenAuth: []
+    parameters:
+      - name: scope
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [owned, accessible, all]
+          default: owned
     responses:
       200:
         description: ok
@@ -57,6 +65,51 @@
               $ref: "../agora.yml#/components/schemas/listTunnelsResponse"
       401:
         description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/tunnels/connect:
+  post:
+    tags:
+      - tunnels
+    operationId: connectTunnel
+    security:
+      - accountTokenAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/connectTunnelRequest"
+    responses:
+      201:
+        description: created
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/connectTunnelResponse"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
         content:
           application/json:
             schema:
@@ -120,6 +173,250 @@
         schema:
           type: string
           pattern: '^tt_[a-z0-9]{12}$'
+    responses:
+      204:
+        description: deleted
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/tunnels/{tunnelId}/grants:
+  get:
+    tags:
+      - tunnels
+    operationId: listTunnelGrants
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: tunnelId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^tt_[a-z0-9]{12}$'
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/listTunnelGrantsResponse"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+  post:
+    tags:
+      - tunnels
+    operationId: addTunnelGrant
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: tunnelId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^tt_[a-z0-9]{12}$'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/addTunnelGrantRequest"
+    responses:
+      201:
+        description: created
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/tunnelGrant"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/tunnels/{tunnelId}/grants/{accountId}:
+  delete:
+    tags:
+      - tunnels
+    operationId: removeTunnelGrant
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: tunnelId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^tt_[a-z0-9]{12}$'
+      - name: accountId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^ac_[a-z0-9]{12}$'
+    responses:
+      204:
+        description: deleted
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/tunnels/{tunnelId}/attachments:
+  get:
+    tags:
+      - tunnels
+    operationId: listTunnelAttachments
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: tunnelId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^tt_[a-z0-9]{12}$'
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/listTunnelAttachmentsResponse"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/tunnel-attachments/{attachmentId}/heartbeat:
+  post:
+    tags:
+      - tunnels
+    operationId: heartbeatTunnelAttachment
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: attachmentId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^ta_[a-z0-9]{12}$'
+    responses:
+      204:
+        description: ok
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/tunnel-attachments/{attachmentId}:
+  delete:
+    tags:
+      - tunnels
+    operationId: deleteTunnelAttachment
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: attachmentId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^ta_[a-z0-9]{12}$'
     responses:
       204:
         description: deleted

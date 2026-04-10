@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/michaelquigley/df/dl"
 	"github.com/openziti/agora/internal/api"
@@ -47,12 +48,27 @@ func (s *Service) DisableEnvironment(ctx context.Context, params api.DisableEnvi
 
 	for i := range tunnels {
 		tunnel := tunnels[i]
-		if tunnel.ZitiServiceID != nil {
-			dl.Infof("deprovisioning tunnel service tunnel_id='%s' ziti_service_id='%s' environment_id='%s' %s", tunnel.ID, *tunnel.ZitiServiceID, env.ID, principalLogFields(principal))
-			if err := tunnelLifecycle.Deprovision(ctx, automation.DeprovisionTunnelSpec{ServiceID: *tunnel.ZitiServiceID}); err != nil {
-				dl.Errorf("disable environment tunnel deprovision failed tunnel_id='%s' environment_id='%s' %s: %v", tunnel.ID, env.ID, principalLogFields(principal), err)
-				return &api.DisableEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+		attachments, err := s.store.TunnelAttachments.ListByTunnel(ctx, s.store.DB(), tunnel.ID, tunnel.OrganizationID)
+		if err != nil {
+			dl.Errorf("disable environment tunnel attachment lookup failed tunnel_id='%s' environment_id='%s' %s: %v", tunnel.ID, env.ID, principalLogFields(principal), err)
+			return &api.DisableEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+		}
+		for j := range attachments {
+			if attachments[j].DialPolicyID != nil {
+				if err := tunnelLifecycle.Deprovision(ctx, automation.DeprovisionTunnelSpec{DialPolicyID: *attachments[j].DialPolicyID}); err != nil {
+					dl.Errorf("disable environment attachment deprovision failed attachment_id='%s' tunnel_id='%s' %s: %v", attachments[j].ID, tunnel.ID, principalLogFields(principal), err)
+					return &api.DisableEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+				}
 			}
+		}
+		dl.Infof("deprovisioning tunnel tunnel_id='%s' environment_id='%s' %s", tunnel.ID, env.ID, principalLogFields(principal))
+		if err := tunnelLifecycle.Deprovision(ctx, automation.DeprovisionTunnelSpec{
+			ServiceID:                 optionalStringValue(tunnel.ZitiServiceID),
+			BindPolicyID:              optionalStringValue(tunnel.BindPolicyID),
+			ServiceEdgeRouterPolicyID: optionalStringValue(tunnel.ServiceEdgeRouterPolicyID),
+		}); err != nil {
+			dl.Errorf("disable environment tunnel deprovision failed tunnel_id='%s' environment_id='%s' %s: %v", tunnel.ID, env.ID, principalLogFields(principal), err)
+			return &api.DisableEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 		}
 	}
 
@@ -65,8 +81,24 @@ func (s *Service) DisableEnvironment(ctx context.Context, params api.DisableEnvi
 		return &api.DisableEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
 
+	disconnectedAt := time.Now().UTC()
 	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
 		for i := range tunnels {
+			attachments, err := s.store.TunnelAttachments.ListByTunnel(ctx, tx, tunnels[i].ID, env.OrganizationID)
+			if err != nil {
+				return err
+			}
+			for j := range attachments {
+				if err := s.store.TunnelAttachments.UpdateState(ctx, tx, attachments[j].ID, persistence.TunnelAttachmentStateDisconnected, &disconnectedAt); err != nil {
+					return err
+				}
+			}
+			if err := s.store.TunnelAttachments.DeleteByTunnel(ctx, tx, tunnels[i].ID, env.OrganizationID); err != nil {
+				return err
+			}
+			if err := s.store.TunnelGrants.DeleteByTunnel(ctx, tx, tunnels[i].ID, env.OrganizationID); err != nil {
+				return err
+			}
 			if err := s.store.Tunnels.Delete(ctx, tx, tunnels[i].ID, env.OrganizationID); err != nil {
 				return err
 			}

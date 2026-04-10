@@ -21,10 +21,18 @@ func trimTrailingSlashes(u *url.URL) {
 
 // Invoker invokes operations described by OpenAPI v3 specification.
 type Invoker interface {
+	// AddTunnelGrant invokes addTunnelGrant operation.
+	//
+	// POST /tunnels/{tunnelId}/grants
+	AddTunnelGrant(ctx context.Context, request *AddTunnelGrantRequest, params AddTunnelGrantParams) (AddTunnelGrantRes, error)
 	// ChangePassword invokes changePassword operation.
 	//
 	// POST /account/change-password
 	ChangePassword(ctx context.Context, request *ChangePasswordRequest) (ChangePasswordRes, error)
+	// ConnectTunnel invokes connectTunnel operation.
+	//
+	// POST /tunnels/connect
+	ConnectTunnel(ctx context.Context, request *ConnectTunnelRequest) (ConnectTunnelRes, error)
 	// CreateAccount invokes createAccount operation.
 	//
 	// POST /organizations/{organizationId}/accounts
@@ -49,6 +57,10 @@ type Invoker interface {
 	//
 	// DELETE /tunnels/{tunnelId}
 	DeleteTunnel(ctx context.Context, params DeleteTunnelParams) (DeleteTunnelRes, error)
+	// DeleteTunnelAttachment invokes deleteTunnelAttachment operation.
+	//
+	// DELETE /tunnel-attachments/{attachmentId}
+	DeleteTunnelAttachment(ctx context.Context, params DeleteTunnelAttachmentParams) (DeleteTunnelAttachmentRes, error)
 	// DisableEnvironment invokes disableEnvironment operation.
 	//
 	// DELETE /environments/{environmentId}
@@ -65,6 +77,10 @@ type Invoker interface {
 	//
 	// GET /tunnels/{tunnelId}
 	GetTunnel(ctx context.Context, params GetTunnelParams) (GetTunnelRes, error)
+	// HeartbeatTunnelAttachment invokes heartbeatTunnelAttachment operation.
+	//
+	// POST /tunnel-attachments/{attachmentId}/heartbeat
+	HeartbeatTunnelAttachment(ctx context.Context, params HeartbeatTunnelAttachmentParams) (HeartbeatTunnelAttachmentRes, error)
 	// ListAccounts invokes listAccounts operation.
 	//
 	// GET /organizations/{organizationId}/accounts
@@ -77,10 +93,18 @@ type Invoker interface {
 	//
 	// GET /organizations
 	ListOrganizations(ctx context.Context) (ListOrganizationsRes, error)
+	// ListTunnelAttachments invokes listTunnelAttachments operation.
+	//
+	// GET /tunnels/{tunnelId}/attachments
+	ListTunnelAttachments(ctx context.Context, params ListTunnelAttachmentsParams) (ListTunnelAttachmentsRes, error)
+	// ListTunnelGrants invokes listTunnelGrants operation.
+	//
+	// GET /tunnels/{tunnelId}/grants
+	ListTunnelGrants(ctx context.Context, params ListTunnelGrantsParams) (ListTunnelGrantsRes, error)
 	// ListTunnels invokes listTunnels operation.
 	//
 	// GET /tunnels
-	ListTunnels(ctx context.Context) (ListTunnelsRes, error)
+	ListTunnels(ctx context.Context, params ListTunnelsParams) (ListTunnelsRes, error)
 	// ListUsers invokes listUsers operation.
 	//
 	// GET /accounts
@@ -93,6 +117,10 @@ type Invoker interface {
 	//
 	// POST /account/regenerate-token
 	RegenerateAccountToken(ctx context.Context, request *RegenerateTokenRequest) (RegenerateAccountTokenRes, error)
+	// RemoveTunnelGrant invokes removeTunnelGrant operation.
+	//
+	// DELETE /tunnels/{tunnelId}/grants/{accountId}
+	RemoveTunnelGrant(ctx context.Context, params RemoveTunnelGrantParams) (RemoveTunnelGrantRes, error)
 }
 
 // Client implements OAS client.
@@ -138,6 +166,104 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 		return c.serverURL
 	}
 	return u
+}
+
+// AddTunnelGrant invokes addTunnelGrant operation.
+//
+// POST /tunnels/{tunnelId}/grants
+func (c *Client) AddTunnelGrant(ctx context.Context, request *AddTunnelGrantRequest, params AddTunnelGrantParams) (AddTunnelGrantRes, error) {
+	res, err := c.sendAddTunnelGrant(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendAddTunnelGrant(ctx context.Context, request *AddTunnelGrantRequest, params AddTunnelGrantParams) (res AddTunnelGrantRes, err error) {
+	// Validate request before sending.
+	if err := func() error {
+		if err := request.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return res, errors.Wrap(err, "validate")
+	}
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/tunnels/"
+	{
+		// Encode "tunnelId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "tunnelId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.TunnelId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/grants"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeAddTunnelGrantRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, AddTunnelGrantOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeAddTunnelGrantResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
 }
 
 // ChangePassword invokes changePassword operation.
@@ -212,6 +338,85 @@ func (c *Client) sendChangePassword(ctx context.Context, request *ChangePassword
 	defer resp.Body.Close()
 
 	result, err := decodeChangePasswordResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ConnectTunnel invokes connectTunnel operation.
+//
+// POST /tunnels/connect
+func (c *Client) ConnectTunnel(ctx context.Context, request *ConnectTunnelRequest) (ConnectTunnelRes, error) {
+	res, err := c.sendConnectTunnel(ctx, request)
+	return res, err
+}
+
+func (c *Client) sendConnectTunnel(ctx context.Context, request *ConnectTunnelRequest) (res ConnectTunnelRes, err error) {
+	// Validate request before sending.
+	if err := func() error {
+		if err := request.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return res, errors.Wrap(err, "validate")
+	}
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/tunnels/connect"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeConnectTunnelRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, ConnectTunnelOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeConnectTunnelResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -749,6 +954,91 @@ func (c *Client) sendDeleteTunnel(ctx context.Context, params DeleteTunnelParams
 	return result, nil
 }
 
+// DeleteTunnelAttachment invokes deleteTunnelAttachment operation.
+//
+// DELETE /tunnel-attachments/{attachmentId}
+func (c *Client) DeleteTunnelAttachment(ctx context.Context, params DeleteTunnelAttachmentParams) (DeleteTunnelAttachmentRes, error) {
+	res, err := c.sendDeleteTunnelAttachment(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendDeleteTunnelAttachment(ctx context.Context, params DeleteTunnelAttachmentParams) (res DeleteTunnelAttachmentRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/tunnel-attachments/"
+	{
+		// Encode "attachmentId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "attachmentId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.AttachmentId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, DeleteTunnelAttachmentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeDeleteTunnelAttachmentResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // DisableEnvironment invokes disableEnvironment operation.
 //
 // DELETE /environments/{environmentId}
@@ -1074,6 +1364,92 @@ func (c *Client) sendGetTunnel(ctx context.Context, params GetTunnelParams) (res
 	return result, nil
 }
 
+// HeartbeatTunnelAttachment invokes heartbeatTunnelAttachment operation.
+//
+// POST /tunnel-attachments/{attachmentId}/heartbeat
+func (c *Client) HeartbeatTunnelAttachment(ctx context.Context, params HeartbeatTunnelAttachmentParams) (HeartbeatTunnelAttachmentRes, error) {
+	res, err := c.sendHeartbeatTunnelAttachment(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendHeartbeatTunnelAttachment(ctx context.Context, params HeartbeatTunnelAttachmentParams) (res HeartbeatTunnelAttachmentRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/tunnel-attachments/"
+	{
+		// Encode "attachmentId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "attachmentId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.AttachmentId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/heartbeat"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, HeartbeatTunnelAttachmentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeHeartbeatTunnelAttachmentResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // ListAccounts invokes listAccounts operation.
 //
 // GET /organizations/{organizationId}/accounts
@@ -1294,20 +1670,212 @@ func (c *Client) sendListOrganizations(ctx context.Context) (res ListOrganizatio
 	return result, nil
 }
 
-// ListTunnels invokes listTunnels operation.
+// ListTunnelAttachments invokes listTunnelAttachments operation.
 //
-// GET /tunnels
-func (c *Client) ListTunnels(ctx context.Context) (ListTunnelsRes, error) {
-	res, err := c.sendListTunnels(ctx)
+// GET /tunnels/{tunnelId}/attachments
+func (c *Client) ListTunnelAttachments(ctx context.Context, params ListTunnelAttachmentsParams) (ListTunnelAttachmentsRes, error) {
+	res, err := c.sendListTunnelAttachments(ctx, params)
 	return res, err
 }
 
-func (c *Client) sendListTunnels(ctx context.Context) (res ListTunnelsRes, err error) {
+func (c *Client) sendListTunnelAttachments(ctx context.Context, params ListTunnelAttachmentsParams) (res ListTunnelAttachmentsRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/tunnels/"
+	{
+		// Encode "tunnelId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "tunnelId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.TunnelId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/attachments"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, ListTunnelAttachmentsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeListTunnelAttachmentsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ListTunnelGrants invokes listTunnelGrants operation.
+//
+// GET /tunnels/{tunnelId}/grants
+func (c *Client) ListTunnelGrants(ctx context.Context, params ListTunnelGrantsParams) (ListTunnelGrantsRes, error) {
+	res, err := c.sendListTunnelGrants(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListTunnelGrants(ctx context.Context, params ListTunnelGrantsParams) (res ListTunnelGrantsRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/tunnels/"
+	{
+		// Encode "tunnelId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "tunnelId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.TunnelId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/grants"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, ListTunnelGrantsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeListTunnelGrantsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ListTunnels invokes listTunnels operation.
+//
+// GET /tunnels
+func (c *Client) ListTunnels(ctx context.Context, params ListTunnelsParams) (ListTunnelsRes, error) {
+	res, err := c.sendListTunnels(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListTunnels(ctx context.Context, params ListTunnelsParams) (res ListTunnelsRes, err error) {
 
 	u := uri.Clone(c.requestURL(ctx))
 	var pathParts [1]string
 	pathParts[0] = "/tunnels"
 	uri.AddPathParts(u, pathParts[:]...)
+
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "scope" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "scope",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Scope.Get(); ok {
+				return e.EncodeValue(conv.StringToString(string(val)))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
 
 	r, err := ht.NewRequest(ctx, "GET", u)
 	if err != nil {
@@ -1566,6 +2134,110 @@ func (c *Client) sendRegenerateAccountToken(ctx context.Context, request *Regene
 	defer resp.Body.Close()
 
 	result, err := decodeRegenerateAccountTokenResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// RemoveTunnelGrant invokes removeTunnelGrant operation.
+//
+// DELETE /tunnels/{tunnelId}/grants/{accountId}
+func (c *Client) RemoveTunnelGrant(ctx context.Context, params RemoveTunnelGrantParams) (RemoveTunnelGrantRes, error) {
+	res, err := c.sendRemoveTunnelGrant(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendRemoveTunnelGrant(ctx context.Context, params RemoveTunnelGrantParams) (res RemoveTunnelGrantRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [4]string
+	pathParts[0] = "/tunnels/"
+	{
+		// Encode "tunnelId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "tunnelId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.TunnelId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/grants/"
+	{
+		// Encode "accountId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "accountId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.AccountId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, RemoveTunnelGrantOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeRemoveTunnelGrantResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

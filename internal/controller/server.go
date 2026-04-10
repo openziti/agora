@@ -54,6 +54,7 @@ func Run(cfg *config.Config) error {
 	if err != nil {
 		return fmt.Errorf("build handler: %w", err)
 	}
+	go controller.service.RunTunnelAttachmentReaper(context.Background())
 	dl.Infof("controller http handler ready; listening on '%s'", controller.cfg.BindAddress)
 
 	return http.ListenAndServe(controller.cfg.BindAddress, handler)

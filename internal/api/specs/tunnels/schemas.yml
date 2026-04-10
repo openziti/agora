@@ -3,9 +3,11 @@ tunnel:
   required:
     - id
     - organizationId
+    - accountId
     - environmentId
     - name
-    - backendAddress
+    - mode
+    - backendTarget
     - state
     - createdAt
     - updatedAt
@@ -16,14 +18,23 @@ tunnel:
     organizationId:
       type: string
       pattern: '^org_[a-z0-9]{12}$'
+    accountId:
+      type: string
+      pattern: '^ac_[a-z0-9]{12}$'
     environmentId:
       type: string
       pattern: '^ev_[a-z0-9]{12}$'
     name:
       type: string
-    backendAddress:
+    mode:
+      $ref: "#/tunnelMode"
+    backendTarget:
       type: string
     zitiServiceId:
+      type: string
+    bindPolicyId:
+      type: string
+    serviceEdgeRouterPolicyId:
       type: string
     state:
       type: string
@@ -35,12 +46,17 @@ tunnel:
       type: string
       format: date-time
 
+tunnelMode:
+  type: string
+  enum: [http, tcp, udp]
+
 createTunnelRequest:
   type: object
   required:
     - environmentId
     - name
-    - backendAddress
+    - mode
+    - backendTarget
   properties:
     environmentId:
       type: string
@@ -48,13 +64,142 @@ createTunnelRequest:
     name:
       type: string
       minLength: 1
-    backendAddress:
+    mode:
+      $ref: "#/tunnelMode"
+    backendTarget:
       type: string
       minLength: 1
-    zitiServiceId:
-      type: string
+    grantEmails:
+      type: array
+      items:
+        type: string
+        format: email
 
 listTunnelsResponse:
   type: array
   items:
     $ref: "#/tunnel"
+
+connectTunnelRequest:
+  type: object
+  required:
+    - environmentId
+    - name
+    - listenAddress
+  properties:
+    environmentId:
+      type: string
+      pattern: '^ev_[a-z0-9]{12}$'
+    name:
+      type: string
+      minLength: 1
+    listenAddress:
+      type: string
+      minLength: 1
+
+connectTunnelResponse:
+  type: object
+  required:
+    - tunnel
+    - attachment
+  properties:
+    tunnel:
+      $ref: "#/tunnel"
+    attachment:
+      $ref: "#/tunnelAttachment"
+
+tunnelGrant:
+  type: object
+  required:
+    - tunnelId
+    - accountId
+    - email
+    - createdAt
+  properties:
+    tunnelId:
+      type: string
+      pattern: '^tt_[a-z0-9]{12}$'
+    accountId:
+      type: string
+      pattern: '^ac_[a-z0-9]{12}$'
+    email:
+      type: string
+      format: email
+    createdAt:
+      type: string
+      format: date-time
+
+addTunnelGrantRequest:
+  type: object
+  required:
+    - email
+  properties:
+    email:
+      type: string
+      format: email
+
+listTunnelGrantsResponse:
+  type: array
+  items:
+    $ref: "#/tunnelGrant"
+
+tunnelAttachment:
+  type: object
+  required:
+    - id
+    - tunnelId
+    - organizationId
+    - accountId
+    - environmentId
+    - listenAddress
+    - state
+    - lastHeartbeatAt
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      type: string
+      pattern: '^ta_[a-z0-9]{12}$'
+    tunnelId:
+      type: string
+      pattern: '^tt_[a-z0-9]{12}$'
+    organizationId:
+      type: string
+      pattern: '^org_[a-z0-9]{12}$'
+    accountId:
+      type: string
+      pattern: '^ac_[a-z0-9]{12}$'
+    environmentId:
+      type: string
+      pattern: '^ev_[a-z0-9]{12}$'
+    accountEmail:
+      type: string
+      format: email
+    tunnelName:
+      type: string
+    tunnelMode:
+      $ref: "#/tunnelMode"
+    listenAddress:
+      type: string
+    dialPolicyId:
+      type: string
+    state:
+      type: string
+      enum: [active, stale, disconnected]
+    lastHeartbeatAt:
+      type: string
+      format: date-time
+    disconnectedAt:
+      type: string
+      format: date-time
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+listTunnelAttachmentsResponse:
+  type: array
+  items:
+    $ref: "#/tunnelAttachment"

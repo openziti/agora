@@ -25,6 +25,8 @@ type environmentLifecycle interface {
 }
 
 type tunnelLifecycle interface {
+	Provision(context.Context, automation.TunnelSpec) (*automation.ProvisionedTunnel, error)
+	CreateAttachmentDialPolicy(context.Context, automation.TunnelAccessSpec) (string, error)
 	Deprovision(context.Context, automation.DeprovisionTunnelSpec) error
 }
 
@@ -170,9 +172,11 @@ func mapTunnel(tunnel *persistence.Tunnel) *api.Tunnel {
 	result := &api.Tunnel{
 		ID:             tunnel.ID,
 		OrganizationId: tunnel.OrganizationID,
+		AccountId:      tunnel.AccountID,
 		EnvironmentId:  tunnel.EnvironmentID,
 		Name:           tunnel.Name,
-		BackendAddress: tunnel.BackendAddress,
+		Mode:           api.TunnelMode(tunnel.Mode),
+		BackendTarget:  tunnel.BackendTarget,
 		State:          api.TunnelState(tunnel.State),
 		CreatedAt:      tunnel.CreatedAt,
 		UpdatedAt:      tunnel.UpdatedAt,
@@ -180,6 +184,51 @@ func mapTunnel(tunnel *persistence.Tunnel) *api.Tunnel {
 	if tunnel.ZitiServiceID != nil {
 		result.ZitiServiceId.SetTo(*tunnel.ZitiServiceID)
 	}
+	if tunnel.BindPolicyID != nil {
+		result.BindPolicyId.SetTo(*tunnel.BindPolicyID)
+	}
+	if tunnel.ServiceEdgeRouterPolicyID != nil {
+		result.ServiceEdgeRouterPolicyId.SetTo(*tunnel.ServiceEdgeRouterPolicyID)
+	}
+	return result
+}
+
+func mapTunnelGrant(grant *persistence.TunnelGrant) *api.TunnelGrant {
+	return &api.TunnelGrant{
+		TunnelId:  grant.TunnelID,
+		AccountId: grant.AccountID,
+		Email:     grant.Email,
+		CreatedAt: grant.CreatedAt,
+	}
+}
+
+func mapTunnelAttachment(attachment *persistence.TunnelAttachment) *api.TunnelAttachment {
+	result := &api.TunnelAttachment{
+		ID:              attachment.ID,
+		TunnelId:        attachment.TunnelID,
+		OrganizationId:  attachment.OrganizationID,
+		AccountId:       attachment.AccountID,
+		EnvironmentId:   attachment.EnvironmentID,
+		ListenAddress:   attachment.ListenAddress,
+		State:           api.TunnelAttachmentState(attachment.State),
+		LastHeartbeatAt: attachment.LastHeartbeatAt,
+		CreatedAt:       attachment.CreatedAt,
+		UpdatedAt:       attachment.UpdatedAt,
+	}
+	if attachment.DialPolicyID != nil {
+		result.DialPolicyId.SetTo(*attachment.DialPolicyID)
+	}
+	if attachment.DisconnectedAt != nil {
+		result.DisconnectedAt.SetTo(*attachment.DisconnectedAt)
+	}
+	return result
+}
+
+func mapTunnelAttachmentDetail(attachment *persistence.TunnelAttachmentDetail) *api.TunnelAttachment {
+	result := mapTunnelAttachment(&attachment.TunnelAttachment)
+	result.AccountEmail.SetTo(attachment.AccountEmail)
+	result.TunnelName.SetTo(attachment.TunnelName)
+	result.TunnelMode.SetTo(api.TunnelMode(attachment.TunnelMode))
 	return result
 }
 

@@ -54,23 +54,66 @@ create table environments (
 create table tunnels (
     id text primary key,
     organization_id text not null references organizations(id) on delete cascade,
+    account_id text not null,
     environment_id text not null,
     name text not null,
-    backend_address text not null,
+    mode text not null,
+    backend_target text not null,
     ziti_service_id text unique,
+    bind_policy_id text unique,
+    service_edge_router_policy_id text unique,
     state text not null,
     deleted boolean not null default false,
     created_at timestamptz not null default current_timestamp,
     updated_at timestamptz not null default current_timestamp,
     constraint tunnels_name_not_empty check (btrim(name) <> ''),
-    constraint tunnels_backend_address_not_empty check (btrim(backend_address) <> ''),
+    constraint tunnels_backend_target_not_empty check (btrim(backend_target) <> ''),
+    constraint tunnels_mode_valid check (mode in ('http', 'tcp', 'udp')),
     constraint tunnels_state_valid check (state in ('active', 'disabled')),
+    constraint tunnels_account_organization_fk
+        foreign key (account_id, organization_id) references accounts(id, organization_id) on delete cascade,
     constraint tunnels_environment_organization_fk
         foreign key (environment_id, organization_id) references environments(id, organization_id) on delete cascade,
     constraint tunnels_id_format check (id ~ '^tt_[a-z0-9]{12}$')
 );
 
+create table tunnel_account_grants (
+    tunnel_id text not null references tunnels(id) on delete cascade,
+    account_id text not null,
+    organization_id text not null references organizations(id) on delete cascade,
+    deleted boolean not null default false,
+    created_at timestamptz not null default current_timestamp,
+    updated_at timestamptz not null default current_timestamp,
+    constraint tunnel_account_grants_account_organization_fk
+        foreign key (account_id, organization_id) references accounts(id, organization_id) on delete cascade
+);
+
+create table tunnel_attachments (
+    id text primary key,
+    tunnel_id text not null references tunnels(id) on delete cascade,
+    organization_id text not null references organizations(id) on delete cascade,
+    account_id text not null,
+    environment_id text not null,
+    listen_address text not null,
+    dial_policy_id text unique,
+    state text not null,
+    last_heartbeat_at timestamptz not null,
+    disconnected_at timestamptz,
+    deleted boolean not null default false,
+    created_at timestamptz not null default current_timestamp,
+    updated_at timestamptz not null default current_timestamp,
+    constraint tunnel_attachments_listen_address_not_empty check (btrim(listen_address) <> ''),
+    constraint tunnel_attachments_state_valid check (state in ('active', 'stale', 'disconnected')),
+    constraint tunnel_attachments_account_organization_fk
+        foreign key (account_id, organization_id) references accounts(id, organization_id) on delete cascade,
+    constraint tunnel_attachments_environment_organization_fk
+        foreign key (environment_id, organization_id) references environments(id, organization_id) on delete cascade,
+    constraint tunnel_attachments_id_format check (id ~ '^ta_[a-z0-9]{12}$')
+);
+
 -- +migrate Down
+drop table if exists tunnel_attachments;
+drop table if exists tunnel_account_grants;
 drop table if exists tunnels;
 drop table if exists environments;
 drop table if exists accounts;

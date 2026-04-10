@@ -35,16 +35,23 @@ func findAuthorization(h http.Header, prefix string) (string, bool) {
 }
 
 var operationRolesAccountTokenAuth = map[string][]string{
-	ChangePasswordOperation:         []string{},
-	CreateTunnelOperation:           []string{},
-	DeleteTunnelOperation:           []string{},
-	DisableEnvironmentOperation:     []string{},
-	EnableEnvironmentOperation:      []string{},
-	GetEnvironmentOperation:         []string{},
-	GetTunnelOperation:              []string{},
-	ListEnvironmentsOperation:       []string{},
-	ListTunnelsOperation:            []string{},
-	RegenerateAccountTokenOperation: []string{},
+	AddTunnelGrantOperation:            []string{},
+	ChangePasswordOperation:            []string{},
+	ConnectTunnelOperation:             []string{},
+	CreateTunnelOperation:              []string{},
+	DeleteTunnelOperation:              []string{},
+	DeleteTunnelAttachmentOperation:    []string{},
+	DisableEnvironmentOperation:        []string{},
+	EnableEnvironmentOperation:         []string{},
+	GetEnvironmentOperation:            []string{},
+	GetTunnelOperation:                 []string{},
+	HeartbeatTunnelAttachmentOperation: []string{},
+	ListEnvironmentsOperation:          []string{},
+	ListTunnelAttachmentsOperation:     []string{},
+	ListTunnelGrantsOperation:          []string{},
+	ListTunnelsOperation:               []string{},
+	RegenerateAccountTokenOperation:    []string{},
+	RemoveTunnelGrantOperation:         []string{},
 }
 
 func (s *Server) securityAccountTokenAuth(ctx context.Context, operationName OperationName, req *http.Request) (context.Context, bool, error) {

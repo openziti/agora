@@ -10,6 +10,7 @@ const (
 	PrefixAccount      ResourcePrefix = "ac_"
 	PrefixEnvironment  ResourcePrefix = "ev_"
 	PrefixTunnel       ResourcePrefix = "tt_"
+	PrefixAttachment   ResourcePrefix = "ta_"
 )
 
 const (

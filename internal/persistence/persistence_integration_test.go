@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -80,9 +81,11 @@ func TestRepositoriesCRUDAndConstraints(t *testing.T) {
 	serviceID := "svc-123"
 	tunnel, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
 		OrganizationID: org.ID,
+		AccountID:      acct.ID,
 		EnvironmentID:  env.ID,
 		Name:           tunnelName,
-		BackendAddress: "127.0.0.1:8443",
+		Mode:           TunnelModeTCP,
+		BackendTarget:  "127.0.0.1:8443",
 		ZitiServiceID:  &serviceID,
 	})
 	if err != nil {
@@ -129,12 +132,25 @@ func TestRepositoriesCRUDAndConstraints(t *testing.T) {
 
 	if _, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
 		OrganizationID: org.ID,
+		AccountID:      acct.ID,
 		EnvironmentID:  env.ID,
 		Name:           tunnelName,
-		BackendAddress: "127.0.0.1:9443",
+		Mode:           TunnelModeTCP,
+		BackendTarget:  "127.0.0.1:9443",
 		State:          TunnelStateActive,
 	}); !isUniqueViolation(err) {
 		t.Fatalf("expected tunnel unique violation, got %v", err)
+	}
+	if _, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
+		OrganizationID: org.ID,
+		AccountID:      acct.ID,
+		EnvironmentID:  env.ID,
+		Name:           strings.ToUpper(tunnelName),
+		Mode:           TunnelModeTCP,
+		BackendTarget:  "127.0.0.1:10443",
+		State:          TunnelStateActive,
+	}); !isUniqueViolation(err) {
+		t.Fatalf("expected case-insensitive tunnel unique violation, got %v", err)
 	}
 
 	if _, err := store.Environments.Create(ctx, store.DB(), Environment{
@@ -223,12 +239,14 @@ func TestEnvironmentAndTunnelSoftDeleteBehavior(t *testing.T) {
 	ctx := context.Background()
 	store := migratedTestStore(t)
 
-	org, _, env := createOrgAccountEnvironment(t, ctx, store)
+	org, acct, env := createOrgAccountEnvironment(t, ctx, store)
 	tunnel, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
 		OrganizationID: org.ID,
+		AccountID:      acct.ID,
 		EnvironmentID:  env.ID,
 		Name:           "llm-gateway",
-		BackendAddress: "127.0.0.1:8443",
+		Mode:           TunnelModeTCP,
+		BackendTarget:  "127.0.0.1:8443",
 		State:          TunnelStateActive,
 	})
 	if err != nil {
@@ -243,9 +261,11 @@ func TestEnvironmentAndTunnelSoftDeleteBehavior(t *testing.T) {
 	}
 	if _, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
 		OrganizationID: org.ID,
+		AccountID:      acct.ID,
 		EnvironmentID:  env.ID,
 		Name:           "llm-gateway",
-		BackendAddress: "127.0.0.1:9443",
+		Mode:           TunnelModeTCP,
+		BackendTarget:  "127.0.0.1:9443",
 		State:          TunnelStateActive,
 	}); err != nil {
 		t.Fatalf("expected tunnel name reuse after soft delete, got %v", err)

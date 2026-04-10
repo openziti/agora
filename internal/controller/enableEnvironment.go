@@ -45,6 +45,7 @@ func (s *Service) EnableEnvironment(ctx context.Context, req *api.EnableEnvironm
 		AccountID:      principal.AccountID,
 		EnvironmentID:  envID,
 		IdentityName:   environmentIdentityName(principal.OrganizationID, principal.AccountID, envID),
+		RoleAttributes: environmentRoleAttributes(principal.OrganizationID, principal.AccountID, envID),
 		Version:        automation.DefaultAgoraVersion,
 	})
 	if err != nil {

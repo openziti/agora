@@ -5,12 +5,26 @@ create unique index idx_accounts_account_token_unique on accounts (account_token
 create index idx_environments_account_id on environments (account_id);
 create index idx_environments_organization_id on environments (organization_id);
 create index idx_tunnels_environment_id on tunnels (environment_id);
+create index idx_tunnels_account_id on tunnels (account_id);
 create index idx_tunnels_organization_id on tunnels (organization_id);
-create unique index idx_tunnels_org_name_unique_active on tunnels (organization_id, name) where not deleted;
+create unique index idx_tunnels_org_name_unique_active on tunnels (organization_id, lower(name)) where not deleted;
+create unique index idx_tunnel_account_grants_unique_active on tunnel_account_grants (tunnel_id, account_id) where not deleted;
+create index idx_tunnel_account_grants_account_id on tunnel_account_grants (account_id);
+create index idx_tunnel_attachments_tunnel_id on tunnel_attachments (tunnel_id);
+create index idx_tunnel_attachments_environment_id on tunnel_attachments (environment_id);
+create index idx_tunnel_attachments_account_id on tunnel_attachments (account_id);
+create index idx_tunnel_attachments_last_heartbeat on tunnel_attachments (last_heartbeat_at) where not deleted and state = 'active';
 
 -- +migrate Down
+drop index if exists idx_tunnel_attachments_last_heartbeat;
+drop index if exists idx_tunnel_attachments_account_id;
+drop index if exists idx_tunnel_attachments_environment_id;
+drop index if exists idx_tunnel_attachments_tunnel_id;
+drop index if exists idx_tunnel_account_grants_account_id;
+drop index if exists idx_tunnel_account_grants_unique_active;
 drop index if exists idx_tunnels_org_name_unique_active;
 drop index if exists idx_tunnels_organization_id;
+drop index if exists idx_tunnels_account_id;
 drop index if exists idx_tunnels_environment_id;
 drop index if exists idx_environments_organization_id;
 drop index if exists idx_environments_account_id;

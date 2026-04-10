@@ -8,10 +8,18 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
+	// AddTunnelGrant implements addTunnelGrant operation.
+	//
+	// POST /tunnels/{tunnelId}/grants
+	AddTunnelGrant(ctx context.Context, req *AddTunnelGrantRequest, params AddTunnelGrantParams) (AddTunnelGrantRes, error)
 	// ChangePassword implements changePassword operation.
 	//
 	// POST /account/change-password
 	ChangePassword(ctx context.Context, req *ChangePasswordRequest) (ChangePasswordRes, error)
+	// ConnectTunnel implements connectTunnel operation.
+	//
+	// POST /tunnels/connect
+	ConnectTunnel(ctx context.Context, req *ConnectTunnelRequest) (ConnectTunnelRes, error)
 	// CreateAccount implements createAccount operation.
 	//
 	// POST /organizations/{organizationId}/accounts
@@ -36,6 +44,10 @@ type Handler interface {
 	//
 	// DELETE /tunnels/{tunnelId}
 	DeleteTunnel(ctx context.Context, params DeleteTunnelParams) (DeleteTunnelRes, error)
+	// DeleteTunnelAttachment implements deleteTunnelAttachment operation.
+	//
+	// DELETE /tunnel-attachments/{attachmentId}
+	DeleteTunnelAttachment(ctx context.Context, params DeleteTunnelAttachmentParams) (DeleteTunnelAttachmentRes, error)
 	// DisableEnvironment implements disableEnvironment operation.
 	//
 	// DELETE /environments/{environmentId}
@@ -52,6 +64,10 @@ type Handler interface {
 	//
 	// GET /tunnels/{tunnelId}
 	GetTunnel(ctx context.Context, params GetTunnelParams) (GetTunnelRes, error)
+	// HeartbeatTunnelAttachment implements heartbeatTunnelAttachment operation.
+	//
+	// POST /tunnel-attachments/{attachmentId}/heartbeat
+	HeartbeatTunnelAttachment(ctx context.Context, params HeartbeatTunnelAttachmentParams) (HeartbeatTunnelAttachmentRes, error)
 	// ListAccounts implements listAccounts operation.
 	//
 	// GET /organizations/{organizationId}/accounts
@@ -64,10 +80,18 @@ type Handler interface {
 	//
 	// GET /organizations
 	ListOrganizations(ctx context.Context) (ListOrganizationsRes, error)
+	// ListTunnelAttachments implements listTunnelAttachments operation.
+	//
+	// GET /tunnels/{tunnelId}/attachments
+	ListTunnelAttachments(ctx context.Context, params ListTunnelAttachmentsParams) (ListTunnelAttachmentsRes, error)
+	// ListTunnelGrants implements listTunnelGrants operation.
+	//
+	// GET /tunnels/{tunnelId}/grants
+	ListTunnelGrants(ctx context.Context, params ListTunnelGrantsParams) (ListTunnelGrantsRes, error)
 	// ListTunnels implements listTunnels operation.
 	//
 	// GET /tunnels
-	ListTunnels(ctx context.Context) (ListTunnelsRes, error)
+	ListTunnels(ctx context.Context, params ListTunnelsParams) (ListTunnelsRes, error)
 	// ListUsers implements listUsers operation.
 	//
 	// GET /accounts
@@ -80,6 +104,10 @@ type Handler interface {
 	//
 	// POST /account/regenerate-token
 	RegenerateAccountToken(ctx context.Context, req *RegenerateTokenRequest) (RegenerateAccountTokenRes, error)
+	// RemoveTunnelGrant implements removeTunnelGrant operation.
+	//
+	// DELETE /tunnels/{tunnelId}/grants/{accountId}
+	RemoveTunnelGrant(ctx context.Context, params RemoveTunnelGrantParams) (RemoveTunnelGrantRes, error)
 }
 
 // Server implements http server based on OpenAPI v3 specification and

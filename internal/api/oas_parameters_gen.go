@@ -14,6 +14,87 @@ import (
 	"github.com/ogen-go/ogen/validate"
 )
 
+// AddTunnelGrantParams is parameters of addTunnelGrant operation.
+type AddTunnelGrantParams struct {
+	TunnelId string
+}
+
+func unpackAddTunnelGrantParams(packed middleware.Parameters) (params AddTunnelGrantParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "tunnelId",
+			In:   "path",
+		}
+		params.TunnelId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeAddTunnelGrantParams(args [1]string, argsEscaped bool, r *http.Request) (params AddTunnelGrantParams, _ error) {
+	// Decode path: tunnelId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "tunnelId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.TunnelId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^tt_[a-z0-9]{12}$"],
+				}).Validate(string(params.TunnelId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "tunnelId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // CreateAccountParams is parameters of createAccount operation.
 type CreateAccountParams struct {
 	OrganizationId string
@@ -407,6 +488,87 @@ func decodeDeleteTunnelParams(args [1]string, argsEscaped bool, r *http.Request)
 	return params, nil
 }
 
+// DeleteTunnelAttachmentParams is parameters of deleteTunnelAttachment operation.
+type DeleteTunnelAttachmentParams struct {
+	AttachmentId string
+}
+
+func unpackDeleteTunnelAttachmentParams(packed middleware.Parameters) (params DeleteTunnelAttachmentParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "attachmentId",
+			In:   "path",
+		}
+		params.AttachmentId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeDeleteTunnelAttachmentParams(args [1]string, argsEscaped bool, r *http.Request) (params DeleteTunnelAttachmentParams, _ error) {
+	// Decode path: attachmentId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "attachmentId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.AttachmentId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^ta_[a-z0-9]{12}$"],
+				}).Validate(string(params.AttachmentId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "attachmentId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // DisableEnvironmentParams is parameters of disableEnvironment operation.
 type DisableEnvironmentParams struct {
 	EnvironmentId string
@@ -650,6 +812,87 @@ func decodeGetTunnelParams(args [1]string, argsEscaped bool, r *http.Request) (p
 	return params, nil
 }
 
+// HeartbeatTunnelAttachmentParams is parameters of heartbeatTunnelAttachment operation.
+type HeartbeatTunnelAttachmentParams struct {
+	AttachmentId string
+}
+
+func unpackHeartbeatTunnelAttachmentParams(packed middleware.Parameters) (params HeartbeatTunnelAttachmentParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "attachmentId",
+			In:   "path",
+		}
+		params.AttachmentId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeHeartbeatTunnelAttachmentParams(args [1]string, argsEscaped bool, r *http.Request) (params HeartbeatTunnelAttachmentParams, _ error) {
+	// Decode path: attachmentId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "attachmentId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.AttachmentId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^ta_[a-z0-9]{12}$"],
+				}).Validate(string(params.AttachmentId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "attachmentId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // ListAccountsParams is parameters of listAccounts operation.
 type ListAccountsParams struct {
 	OrganizationId string
@@ -725,6 +968,252 @@ func decodeListAccountsParams(args [1]string, argsEscaped bool, r *http.Request)
 		return params, &ogenerrors.DecodeParamError{
 			Name: "organizationId",
 			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// ListTunnelAttachmentsParams is parameters of listTunnelAttachments operation.
+type ListTunnelAttachmentsParams struct {
+	TunnelId string
+}
+
+func unpackListTunnelAttachmentsParams(packed middleware.Parameters) (params ListTunnelAttachmentsParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "tunnelId",
+			In:   "path",
+		}
+		params.TunnelId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeListTunnelAttachmentsParams(args [1]string, argsEscaped bool, r *http.Request) (params ListTunnelAttachmentsParams, _ error) {
+	// Decode path: tunnelId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "tunnelId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.TunnelId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^tt_[a-z0-9]{12}$"],
+				}).Validate(string(params.TunnelId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "tunnelId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// ListTunnelGrantsParams is parameters of listTunnelGrants operation.
+type ListTunnelGrantsParams struct {
+	TunnelId string
+}
+
+func unpackListTunnelGrantsParams(packed middleware.Parameters) (params ListTunnelGrantsParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "tunnelId",
+			In:   "path",
+		}
+		params.TunnelId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeListTunnelGrantsParams(args [1]string, argsEscaped bool, r *http.Request) (params ListTunnelGrantsParams, _ error) {
+	// Decode path: tunnelId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "tunnelId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.TunnelId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^tt_[a-z0-9]{12}$"],
+				}).Validate(string(params.TunnelId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "tunnelId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// ListTunnelsParams is parameters of listTunnels operation.
+type ListTunnelsParams struct {
+	Scope OptListTunnelsScope
+}
+
+func unpackListTunnelsParams(packed middleware.Parameters) (params ListTunnelsParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "scope",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Scope = v.(OptListTunnelsScope)
+		}
+	}
+	return params
+}
+
+func decodeListTunnelsParams(args [0]string, argsEscaped bool, r *http.Request) (params ListTunnelsParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Set default value for query: scope.
+	{
+		val := ListTunnelsScope("owned")
+		params.Scope.SetTo(val)
+	}
+	// Decode query: scope.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "scope",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotScopeVal ListTunnelsScope
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotScopeVal = ListTunnelsScope(c)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Scope.SetTo(paramsDotScopeVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Scope.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "scope",
+			In:   "query",
 			Err:  err,
 		}
 	}
@@ -812,6 +1301,156 @@ func decodeListUsersParams(args [0]string, argsEscaped bool, r *http.Request) (p
 		return params, &ogenerrors.DecodeParamError{
 			Name: "organizationId",
 			In:   "query",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// RemoveTunnelGrantParams is parameters of removeTunnelGrant operation.
+type RemoveTunnelGrantParams struct {
+	TunnelId  string
+	AccountId string
+}
+
+func unpackRemoveTunnelGrantParams(packed middleware.Parameters) (params RemoveTunnelGrantParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "tunnelId",
+			In:   "path",
+		}
+		params.TunnelId = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "accountId",
+			In:   "path",
+		}
+		params.AccountId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeRemoveTunnelGrantParams(args [2]string, argsEscaped bool, r *http.Request) (params RemoveTunnelGrantParams, _ error) {
+	// Decode path: tunnelId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "tunnelId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.TunnelId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^tt_[a-z0-9]{12}$"],
+				}).Validate(string(params.TunnelId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "tunnelId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: accountId.
+	if err := func() error {
+		param := args[1]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[1])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "accountId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.AccountId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^ac_[a-z0-9]{12}$"],
+				}).Validate(string(params.AccountId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "accountId",
+			In:   "path",
 			Err:  err,
 		}
 	}

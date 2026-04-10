@@ -94,32 +94,29 @@ func TestTunnelProvisionAndDeprovision(t *testing.T) {
 
 	result, err := provisioner.Provision(context.Background(), TunnelSpec{
 		OrganizationID:        "org_test00000003",
+		AccountID:             "ac_test00000003",
 		EnvironmentID:         "ev_test00000003",
 		TunnelID:              "tt_test00000003",
 		TunnelName:            "llm-gateway",
+		ServiceName:           "tt_test00000003",
 		EnvironmentIdentityID: "identity-1",
-		DialIdentityRoles:     []string{"@identity-1"},
 	})
 	if err != nil {
 		t.Fatalf("provision: %v", err)
 	}
-	if result.ServiceID != "service-1" || result.BindPolicyID != "bind-1" || result.DialPolicyID != "dial-1" || result.ServiceEdgeRouterPolicyID != "serp-1" {
+	if result.ServiceID != "service-1" || result.BindPolicyID != "bind-1" || result.ServiceEdgeRouterPolicyID != "serp-1" {
 		t.Fatalf("unexpected tunnel result: %#v", result)
 	}
-	if len(policies.created) != 2 {
-		t.Fatalf("expected 2 service policies, got %d", len(policies.created))
+	if len(policies.created) != 1 {
+		t.Fatalf("expected 1 service policy, got %d", len(policies.created))
 	}
 	if policies.created[0].PolicyType != rest_model.DialBindBind {
 		t.Fatalf("expected bind policy first, got %v", policies.created[0].PolicyType)
-	}
-	if policies.created[1].PolicyType != rest_model.DialBindDial {
-		t.Fatalf("expected dial policy second, got %v", policies.created[1].PolicyType)
 	}
 
 	if err := provisioner.Deprovision(context.Background(), DeprovisionTunnelSpec{
 		ServiceID:                 result.ServiceID,
 		BindPolicyID:              result.BindPolicyID,
-		DialPolicyID:              result.DialPolicyID,
 		ServiceEdgeRouterPolicyID: result.ServiceEdgeRouterPolicyID,
 	}); err != nil {
 		t.Fatalf("deprovision: %v", err)
@@ -203,13 +200,12 @@ func TestCleanupByTagDeletesInDependencyOrder(t *testing.T) {
 	}
 }
 
-func TestTunnelProvisionCleansUpOnDialFailure(t *testing.T) {
+func TestTunnelProvisionCleansUpOnServiceEdgeRouterPolicyFailure(t *testing.T) {
 	services := &fakeServiceOperations{createID: "service-1"}
 	policies := &fakeServicePolicyOperations{
 		createIDs: []string{"bind-1"},
-		dialErr:   errors.New("boom"),
 	}
-	serp := &fakeServiceEdgeRouterPolicyOperations{createID: "serp-1"}
+	serp := &fakeServiceEdgeRouterPolicyOperations{createErr: errors.New("boom")}
 
 	provisioner := &TunnelProvisioner{
 		services:                  services,
@@ -219,19 +215,54 @@ func TestTunnelProvisionCleansUpOnDialFailure(t *testing.T) {
 
 	if _, err := provisioner.Provision(context.Background(), TunnelSpec{
 		OrganizationID:        "org_test00000004",
+		AccountID:             "ac_test00000004",
 		EnvironmentID:         "ev_test00000004",
 		TunnelID:              "tt_test00000004",
 		TunnelName:            "llm-gateway",
+		ServiceName:           "tt_test00000004",
 		EnvironmentIdentityID: "identity-1",
-		DialIdentityRoles:     []string{"@identity-1"},
 	}); err == nil {
 		t.Fatal("expected provision failure")
 	}
-	if len(serp.deleted) != 1 || serp.deleted[0] != "serp-1" {
-		t.Fatalf("expected serp cleanup, got %#v", serp.deleted)
+	if len(policies.deleted) != 1 || policies.deleted[0] != "bind-1" {
+		t.Fatalf("expected bind policy cleanup, got %#v", policies.deleted)
 	}
 	if len(services.deleted) != 1 || services.deleted[0] != "service-1" {
 		t.Fatalf("expected service cleanup, got %#v", services.deleted)
+	}
+}
+
+func TestTunnelCreateAttachmentDialPolicy(t *testing.T) {
+	policies := &fakeServicePolicyOperations{
+		createIDs: []string{"dial-1"},
+	}
+
+	provisioner := &TunnelProvisioner{
+		servicePolicies: policies,
+	}
+
+	dialPolicyID, err := provisioner.CreateAttachmentDialPolicy(context.Background(), TunnelAccessSpec{
+		OrganizationID:        "org_test00000005",
+		AccountID:             "ac_test00000005",
+		EnvironmentID:         "ev_test00000005",
+		TunnelID:              "tt_test00000005",
+		TunnelName:            "llm-gateway",
+		AttachmentID:          "ta_test00000005",
+		EnvironmentIdentityID: "identity-1",
+		ServiceID:             "service-1",
+		Version:               DefaultAgoraVersion,
+	})
+	if err != nil {
+		t.Fatalf("create attachment dial policy: %v", err)
+	}
+	if dialPolicyID != "dial-1" {
+		t.Fatalf("expected dial policy id, got %q", dialPolicyID)
+	}
+	if len(policies.created) != 1 {
+		t.Fatalf("expected 1 dial policy create, got %d", len(policies.created))
+	}
+	if policies.created[0].PolicyType != rest_model.DialBindDial {
+		t.Fatalf("expected dial policy type, got %v", policies.created[0].PolicyType)
 	}
 }
 

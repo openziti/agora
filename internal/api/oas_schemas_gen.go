@@ -226,6 +226,37 @@ func (*AccountTokenResponse) createAccountRes()          {}
 func (*AccountTokenResponse) loginRes()                  {}
 func (*AccountTokenResponse) regenerateAccountTokenRes() {}
 
+type AddTunnelGrantConflict Error
+
+func (*AddTunnelGrantConflict) addTunnelGrantRes() {}
+
+type AddTunnelGrantInternalServerError Error
+
+func (*AddTunnelGrantInternalServerError) addTunnelGrantRes() {}
+
+type AddTunnelGrantNotFound Error
+
+func (*AddTunnelGrantNotFound) addTunnelGrantRes() {}
+
+// Ref: #/addTunnelGrantRequest
+type AddTunnelGrantRequest struct {
+	Email string `json:"email"`
+}
+
+// GetEmail returns the value of Email.
+func (s *AddTunnelGrantRequest) GetEmail() string {
+	return s.Email
+}
+
+// SetEmail sets the value of Email.
+func (s *AddTunnelGrantRequest) SetEmail(val string) {
+	s.Email = val
+}
+
+type AddTunnelGrantUnauthorized Error
+
+func (*AddTunnelGrantUnauthorized) addTunnelGrantRes() {}
+
 type AdminTokenAuth struct {
 	APIKey string
 	Roles  []string
@@ -308,6 +339,87 @@ func (*ChangePasswordUnauthorized) changePasswordRes() {}
 type ChangePasswordUnprocessableEntity Error
 
 func (*ChangePasswordUnprocessableEntity) changePasswordRes() {}
+
+type ConnectTunnelConflict Error
+
+func (*ConnectTunnelConflict) connectTunnelRes() {}
+
+type ConnectTunnelInternalServerError Error
+
+func (*ConnectTunnelInternalServerError) connectTunnelRes() {}
+
+type ConnectTunnelNotFound Error
+
+func (*ConnectTunnelNotFound) connectTunnelRes() {}
+
+// Ref: #/connectTunnelRequest
+type ConnectTunnelRequest struct {
+	EnvironmentId string `json:"environmentId"`
+	Name          string `json:"name"`
+	ListenAddress string `json:"listenAddress"`
+}
+
+// GetEnvironmentId returns the value of EnvironmentId.
+func (s *ConnectTunnelRequest) GetEnvironmentId() string {
+	return s.EnvironmentId
+}
+
+// GetName returns the value of Name.
+func (s *ConnectTunnelRequest) GetName() string {
+	return s.Name
+}
+
+// GetListenAddress returns the value of ListenAddress.
+func (s *ConnectTunnelRequest) GetListenAddress() string {
+	return s.ListenAddress
+}
+
+// SetEnvironmentId sets the value of EnvironmentId.
+func (s *ConnectTunnelRequest) SetEnvironmentId(val string) {
+	s.EnvironmentId = val
+}
+
+// SetName sets the value of Name.
+func (s *ConnectTunnelRequest) SetName(val string) {
+	s.Name = val
+}
+
+// SetListenAddress sets the value of ListenAddress.
+func (s *ConnectTunnelRequest) SetListenAddress(val string) {
+	s.ListenAddress = val
+}
+
+// Ref: #/connectTunnelResponse
+type ConnectTunnelResponse struct {
+	Tunnel     Tunnel           `json:"tunnel"`
+	Attachment TunnelAttachment `json:"attachment"`
+}
+
+// GetTunnel returns the value of Tunnel.
+func (s *ConnectTunnelResponse) GetTunnel() Tunnel {
+	return s.Tunnel
+}
+
+// GetAttachment returns the value of Attachment.
+func (s *ConnectTunnelResponse) GetAttachment() TunnelAttachment {
+	return s.Attachment
+}
+
+// SetTunnel sets the value of Tunnel.
+func (s *ConnectTunnelResponse) SetTunnel(val Tunnel) {
+	s.Tunnel = val
+}
+
+// SetAttachment sets the value of Attachment.
+func (s *ConnectTunnelResponse) SetAttachment(val TunnelAttachment) {
+	s.Attachment = val
+}
+
+func (*ConnectTunnelResponse) connectTunnelRes() {}
+
+type ConnectTunnelUnauthorized Error
+
+func (*ConnectTunnelUnauthorized) connectTunnelRes() {}
 
 type CreateAccountConflict Error
 
@@ -507,10 +619,11 @@ func (*CreateTunnelNotFound) createTunnelRes() {}
 
 // Ref: #/createTunnelRequest
 type CreateTunnelRequest struct {
-	EnvironmentId  string    `json:"environmentId"`
-	Name           string    `json:"name"`
-	BackendAddress string    `json:"backendAddress"`
-	ZitiServiceId  OptString `json:"zitiServiceId"`
+	EnvironmentId string     `json:"environmentId"`
+	Name          string     `json:"name"`
+	Mode          TunnelMode `json:"mode"`
+	BackendTarget string     `json:"backendTarget"`
+	GrantEmails   []string   `json:"grantEmails"`
 }
 
 // GetEnvironmentId returns the value of EnvironmentId.
@@ -523,14 +636,19 @@ func (s *CreateTunnelRequest) GetName() string {
 	return s.Name
 }
 
-// GetBackendAddress returns the value of BackendAddress.
-func (s *CreateTunnelRequest) GetBackendAddress() string {
-	return s.BackendAddress
+// GetMode returns the value of Mode.
+func (s *CreateTunnelRequest) GetMode() TunnelMode {
+	return s.Mode
 }
 
-// GetZitiServiceId returns the value of ZitiServiceId.
-func (s *CreateTunnelRequest) GetZitiServiceId() OptString {
-	return s.ZitiServiceId
+// GetBackendTarget returns the value of BackendTarget.
+func (s *CreateTunnelRequest) GetBackendTarget() string {
+	return s.BackendTarget
+}
+
+// GetGrantEmails returns the value of GrantEmails.
+func (s *CreateTunnelRequest) GetGrantEmails() []string {
+	return s.GrantEmails
 }
 
 // SetEnvironmentId sets the value of EnvironmentId.
@@ -543,14 +661,19 @@ func (s *CreateTunnelRequest) SetName(val string) {
 	s.Name = val
 }
 
-// SetBackendAddress sets the value of BackendAddress.
-func (s *CreateTunnelRequest) SetBackendAddress(val string) {
-	s.BackendAddress = val
+// SetMode sets the value of Mode.
+func (s *CreateTunnelRequest) SetMode(val TunnelMode) {
+	s.Mode = val
 }
 
-// SetZitiServiceId sets the value of ZitiServiceId.
-func (s *CreateTunnelRequest) SetZitiServiceId(val OptString) {
-	s.ZitiServiceId = val
+// SetBackendTarget sets the value of BackendTarget.
+func (s *CreateTunnelRequest) SetBackendTarget(val string) {
+	s.BackendTarget = val
+}
+
+// SetGrantEmails sets the value of GrantEmails.
+func (s *CreateTunnelRequest) SetGrantEmails(val []string) {
+	s.GrantEmails = val
 }
 
 type CreateTunnelUnauthorized Error
@@ -598,6 +721,23 @@ func (*DeleteOrganizationNotFound) deleteOrganizationRes() {}
 type DeleteOrganizationUnauthorized Error
 
 func (*DeleteOrganizationUnauthorized) deleteOrganizationRes() {}
+
+type DeleteTunnelAttachmentInternalServerError Error
+
+func (*DeleteTunnelAttachmentInternalServerError) deleteTunnelAttachmentRes() {}
+
+// DeleteTunnelAttachmentNoContent is response for DeleteTunnelAttachment operation.
+type DeleteTunnelAttachmentNoContent struct{}
+
+func (*DeleteTunnelAttachmentNoContent) deleteTunnelAttachmentRes() {}
+
+type DeleteTunnelAttachmentNotFound Error
+
+func (*DeleteTunnelAttachmentNotFound) deleteTunnelAttachmentRes() {}
+
+type DeleteTunnelAttachmentUnauthorized Error
+
+func (*DeleteTunnelAttachmentUnauthorized) deleteTunnelAttachmentRes() {}
 
 type DeleteTunnelInternalServerError Error
 
@@ -906,6 +1046,23 @@ type GetTunnelUnauthorized Error
 
 func (*GetTunnelUnauthorized) getTunnelRes() {}
 
+type HeartbeatTunnelAttachmentInternalServerError Error
+
+func (*HeartbeatTunnelAttachmentInternalServerError) heartbeatTunnelAttachmentRes() {}
+
+// HeartbeatTunnelAttachmentNoContent is response for HeartbeatTunnelAttachment operation.
+type HeartbeatTunnelAttachmentNoContent struct{}
+
+func (*HeartbeatTunnelAttachmentNoContent) heartbeatTunnelAttachmentRes() {}
+
+type HeartbeatTunnelAttachmentNotFound Error
+
+func (*HeartbeatTunnelAttachmentNotFound) heartbeatTunnelAttachmentRes() {}
+
+type HeartbeatTunnelAttachmentUnauthorized Error
+
+func (*HeartbeatTunnelAttachmentUnauthorized) heartbeatTunnelAttachmentRes() {}
+
 type ListAccountsInternalServerError Error
 
 func (*ListAccountsInternalServerError) listAccountsRes() {}
@@ -947,6 +1104,38 @@ type ListOrganizationsUnauthorized Error
 
 func (*ListOrganizationsUnauthorized) listOrganizationsRes() {}
 
+type ListTunnelAttachmentsInternalServerError Error
+
+func (*ListTunnelAttachmentsInternalServerError) listTunnelAttachmentsRes() {}
+
+type ListTunnelAttachmentsNotFound Error
+
+func (*ListTunnelAttachmentsNotFound) listTunnelAttachmentsRes() {}
+
+type ListTunnelAttachmentsResponse []TunnelAttachment
+
+func (*ListTunnelAttachmentsResponse) listTunnelAttachmentsRes() {}
+
+type ListTunnelAttachmentsUnauthorized Error
+
+func (*ListTunnelAttachmentsUnauthorized) listTunnelAttachmentsRes() {}
+
+type ListTunnelGrantsInternalServerError Error
+
+func (*ListTunnelGrantsInternalServerError) listTunnelGrantsRes() {}
+
+type ListTunnelGrantsNotFound Error
+
+func (*ListTunnelGrantsNotFound) listTunnelGrantsRes() {}
+
+type ListTunnelGrantsResponse []TunnelGrant
+
+func (*ListTunnelGrantsResponse) listTunnelGrantsRes() {}
+
+type ListTunnelGrantsUnauthorized Error
+
+func (*ListTunnelGrantsUnauthorized) listTunnelGrantsRes() {}
+
 type ListTunnelsInternalServerError Error
 
 func (*ListTunnelsInternalServerError) listTunnelsRes() {}
@@ -954,6 +1143,54 @@ func (*ListTunnelsInternalServerError) listTunnelsRes() {}
 type ListTunnelsResponse []Tunnel
 
 func (*ListTunnelsResponse) listTunnelsRes() {}
+
+type ListTunnelsScope string
+
+const (
+	ListTunnelsScopeOwned      ListTunnelsScope = "owned"
+	ListTunnelsScopeAccessible ListTunnelsScope = "accessible"
+	ListTunnelsScopeAll        ListTunnelsScope = "all"
+)
+
+// AllValues returns all ListTunnelsScope values.
+func (ListTunnelsScope) AllValues() []ListTunnelsScope {
+	return []ListTunnelsScope{
+		ListTunnelsScopeOwned,
+		ListTunnelsScopeAccessible,
+		ListTunnelsScopeAll,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ListTunnelsScope) MarshalText() ([]byte, error) {
+	switch s {
+	case ListTunnelsScopeOwned:
+		return []byte(s), nil
+	case ListTunnelsScopeAccessible:
+		return []byte(s), nil
+	case ListTunnelsScopeAll:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ListTunnelsScope) UnmarshalText(data []byte) error {
+	switch ListTunnelsScope(data) {
+	case ListTunnelsScopeOwned:
+		*s = ListTunnelsScopeOwned
+		return nil
+	case ListTunnelsScopeAccessible:
+		*s = ListTunnelsScopeAccessible
+		return nil
+	case ListTunnelsScopeAll:
+		*s = ListTunnelsScopeAll
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 type ListTunnelsUnauthorized Error
 
@@ -1143,6 +1380,52 @@ func (o OptDateTime) Or(d time.Time) time.Time {
 	return d
 }
 
+// NewOptListTunnelsScope returns new OptListTunnelsScope with value set to v.
+func NewOptListTunnelsScope(v ListTunnelsScope) OptListTunnelsScope {
+	return OptListTunnelsScope{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptListTunnelsScope is optional ListTunnelsScope.
+type OptListTunnelsScope struct {
+	Value ListTunnelsScope
+	Set   bool
+}
+
+// IsSet returns true if OptListTunnelsScope was set.
+func (o OptListTunnelsScope) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptListTunnelsScope) Reset() {
+	var v ListTunnelsScope
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptListTunnelsScope) SetTo(v ListTunnelsScope) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptListTunnelsScope) Get() (v ListTunnelsScope, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptListTunnelsScope) Or(d ListTunnelsScope) ListTunnelsScope {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptString returns new OptString with value set to v.
 func NewOptString(v string) OptString {
 	return OptString{
@@ -1183,6 +1466,52 @@ func (o OptString) Get() (v string, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptString) Or(d string) string {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptTunnelMode returns new OptTunnelMode with value set to v.
+func NewOptTunnelMode(v TunnelMode) OptTunnelMode {
+	return OptTunnelMode{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptTunnelMode is optional TunnelMode.
+type OptTunnelMode struct {
+	Value TunnelMode
+	Set   bool
+}
+
+// IsSet returns true if OptTunnelMode was set.
+func (o OptTunnelMode) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptTunnelMode) Reset() {
+	var v TunnelMode
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptTunnelMode) SetTo(v TunnelMode) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptTunnelMode) Get() (v TunnelMode, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptTunnelMode) Or(d TunnelMode) TunnelMode {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -1266,17 +1595,38 @@ func (s *RegenerateTokenRequest) SetEmail(val string) {
 	s.Email = val
 }
 
+type RemoveTunnelGrantInternalServerError Error
+
+func (*RemoveTunnelGrantInternalServerError) removeTunnelGrantRes() {}
+
+// RemoveTunnelGrantNoContent is response for RemoveTunnelGrant operation.
+type RemoveTunnelGrantNoContent struct{}
+
+func (*RemoveTunnelGrantNoContent) removeTunnelGrantRes() {}
+
+type RemoveTunnelGrantNotFound Error
+
+func (*RemoveTunnelGrantNotFound) removeTunnelGrantRes() {}
+
+type RemoveTunnelGrantUnauthorized Error
+
+func (*RemoveTunnelGrantUnauthorized) removeTunnelGrantRes() {}
+
 // Ref: #/tunnel
 type Tunnel struct {
-	ID             string      `json:"id"`
-	OrganizationId string      `json:"organizationId"`
-	EnvironmentId  string      `json:"environmentId"`
-	Name           string      `json:"name"`
-	BackendAddress string      `json:"backendAddress"`
-	ZitiServiceId  OptString   `json:"zitiServiceId"`
-	State          TunnelState `json:"state"`
-	CreatedAt      time.Time   `json:"createdAt"`
-	UpdatedAt      time.Time   `json:"updatedAt"`
+	ID                        string      `json:"id"`
+	OrganizationId            string      `json:"organizationId"`
+	AccountId                 string      `json:"accountId"`
+	EnvironmentId             string      `json:"environmentId"`
+	Name                      string      `json:"name"`
+	Mode                      TunnelMode  `json:"mode"`
+	BackendTarget             string      `json:"backendTarget"`
+	ZitiServiceId             OptString   `json:"zitiServiceId"`
+	BindPolicyId              OptString   `json:"bindPolicyId"`
+	ServiceEdgeRouterPolicyId OptString   `json:"serviceEdgeRouterPolicyId"`
+	State                     TunnelState `json:"state"`
+	CreatedAt                 time.Time   `json:"createdAt"`
+	UpdatedAt                 time.Time   `json:"updatedAt"`
 }
 
 // GetID returns the value of ID.
@@ -1289,6 +1639,11 @@ func (s *Tunnel) GetOrganizationId() string {
 	return s.OrganizationId
 }
 
+// GetAccountId returns the value of AccountId.
+func (s *Tunnel) GetAccountId() string {
+	return s.AccountId
+}
+
 // GetEnvironmentId returns the value of EnvironmentId.
 func (s *Tunnel) GetEnvironmentId() string {
 	return s.EnvironmentId
@@ -1299,14 +1654,29 @@ func (s *Tunnel) GetName() string {
 	return s.Name
 }
 
-// GetBackendAddress returns the value of BackendAddress.
-func (s *Tunnel) GetBackendAddress() string {
-	return s.BackendAddress
+// GetMode returns the value of Mode.
+func (s *Tunnel) GetMode() TunnelMode {
+	return s.Mode
+}
+
+// GetBackendTarget returns the value of BackendTarget.
+func (s *Tunnel) GetBackendTarget() string {
+	return s.BackendTarget
 }
 
 // GetZitiServiceId returns the value of ZitiServiceId.
 func (s *Tunnel) GetZitiServiceId() OptString {
 	return s.ZitiServiceId
+}
+
+// GetBindPolicyId returns the value of BindPolicyId.
+func (s *Tunnel) GetBindPolicyId() OptString {
+	return s.BindPolicyId
+}
+
+// GetServiceEdgeRouterPolicyId returns the value of ServiceEdgeRouterPolicyId.
+func (s *Tunnel) GetServiceEdgeRouterPolicyId() OptString {
+	return s.ServiceEdgeRouterPolicyId
 }
 
 // GetState returns the value of State.
@@ -1334,6 +1704,11 @@ func (s *Tunnel) SetOrganizationId(val string) {
 	s.OrganizationId = val
 }
 
+// SetAccountId sets the value of AccountId.
+func (s *Tunnel) SetAccountId(val string) {
+	s.AccountId = val
+}
+
 // SetEnvironmentId sets the value of EnvironmentId.
 func (s *Tunnel) SetEnvironmentId(val string) {
 	s.EnvironmentId = val
@@ -1344,14 +1719,29 @@ func (s *Tunnel) SetName(val string) {
 	s.Name = val
 }
 
-// SetBackendAddress sets the value of BackendAddress.
-func (s *Tunnel) SetBackendAddress(val string) {
-	s.BackendAddress = val
+// SetMode sets the value of Mode.
+func (s *Tunnel) SetMode(val TunnelMode) {
+	s.Mode = val
+}
+
+// SetBackendTarget sets the value of BackendTarget.
+func (s *Tunnel) SetBackendTarget(val string) {
+	s.BackendTarget = val
 }
 
 // SetZitiServiceId sets the value of ZitiServiceId.
 func (s *Tunnel) SetZitiServiceId(val OptString) {
 	s.ZitiServiceId = val
+}
+
+// SetBindPolicyId sets the value of BindPolicyId.
+func (s *Tunnel) SetBindPolicyId(val OptString) {
+	s.BindPolicyId = val
+}
+
+// SetServiceEdgeRouterPolicyId sets the value of ServiceEdgeRouterPolicyId.
+func (s *Tunnel) SetServiceEdgeRouterPolicyId(val OptString) {
+	s.ServiceEdgeRouterPolicyId = val
 }
 
 // SetState sets the value of State.
@@ -1371,6 +1761,322 @@ func (s *Tunnel) SetUpdatedAt(val time.Time) {
 
 func (*Tunnel) createTunnelRes() {}
 func (*Tunnel) getTunnelRes()    {}
+
+// Ref: #/tunnelAttachment
+type TunnelAttachment struct {
+	ID              string                `json:"id"`
+	TunnelId        string                `json:"tunnelId"`
+	OrganizationId  string                `json:"organizationId"`
+	AccountId       string                `json:"accountId"`
+	EnvironmentId   string                `json:"environmentId"`
+	AccountEmail    OptString             `json:"accountEmail"`
+	TunnelName      OptString             `json:"tunnelName"`
+	TunnelMode      OptTunnelMode         `json:"tunnelMode"`
+	ListenAddress   string                `json:"listenAddress"`
+	DialPolicyId    OptString             `json:"dialPolicyId"`
+	State           TunnelAttachmentState `json:"state"`
+	LastHeartbeatAt time.Time             `json:"lastHeartbeatAt"`
+	DisconnectedAt  OptDateTime           `json:"disconnectedAt"`
+	CreatedAt       time.Time             `json:"createdAt"`
+	UpdatedAt       time.Time             `json:"updatedAt"`
+}
+
+// GetID returns the value of ID.
+func (s *TunnelAttachment) GetID() string {
+	return s.ID
+}
+
+// GetTunnelId returns the value of TunnelId.
+func (s *TunnelAttachment) GetTunnelId() string {
+	return s.TunnelId
+}
+
+// GetOrganizationId returns the value of OrganizationId.
+func (s *TunnelAttachment) GetOrganizationId() string {
+	return s.OrganizationId
+}
+
+// GetAccountId returns the value of AccountId.
+func (s *TunnelAttachment) GetAccountId() string {
+	return s.AccountId
+}
+
+// GetEnvironmentId returns the value of EnvironmentId.
+func (s *TunnelAttachment) GetEnvironmentId() string {
+	return s.EnvironmentId
+}
+
+// GetAccountEmail returns the value of AccountEmail.
+func (s *TunnelAttachment) GetAccountEmail() OptString {
+	return s.AccountEmail
+}
+
+// GetTunnelName returns the value of TunnelName.
+func (s *TunnelAttachment) GetTunnelName() OptString {
+	return s.TunnelName
+}
+
+// GetTunnelMode returns the value of TunnelMode.
+func (s *TunnelAttachment) GetTunnelMode() OptTunnelMode {
+	return s.TunnelMode
+}
+
+// GetListenAddress returns the value of ListenAddress.
+func (s *TunnelAttachment) GetListenAddress() string {
+	return s.ListenAddress
+}
+
+// GetDialPolicyId returns the value of DialPolicyId.
+func (s *TunnelAttachment) GetDialPolicyId() OptString {
+	return s.DialPolicyId
+}
+
+// GetState returns the value of State.
+func (s *TunnelAttachment) GetState() TunnelAttachmentState {
+	return s.State
+}
+
+// GetLastHeartbeatAt returns the value of LastHeartbeatAt.
+func (s *TunnelAttachment) GetLastHeartbeatAt() time.Time {
+	return s.LastHeartbeatAt
+}
+
+// GetDisconnectedAt returns the value of DisconnectedAt.
+func (s *TunnelAttachment) GetDisconnectedAt() OptDateTime {
+	return s.DisconnectedAt
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *TunnelAttachment) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *TunnelAttachment) GetUpdatedAt() time.Time {
+	return s.UpdatedAt
+}
+
+// SetID sets the value of ID.
+func (s *TunnelAttachment) SetID(val string) {
+	s.ID = val
+}
+
+// SetTunnelId sets the value of TunnelId.
+func (s *TunnelAttachment) SetTunnelId(val string) {
+	s.TunnelId = val
+}
+
+// SetOrganizationId sets the value of OrganizationId.
+func (s *TunnelAttachment) SetOrganizationId(val string) {
+	s.OrganizationId = val
+}
+
+// SetAccountId sets the value of AccountId.
+func (s *TunnelAttachment) SetAccountId(val string) {
+	s.AccountId = val
+}
+
+// SetEnvironmentId sets the value of EnvironmentId.
+func (s *TunnelAttachment) SetEnvironmentId(val string) {
+	s.EnvironmentId = val
+}
+
+// SetAccountEmail sets the value of AccountEmail.
+func (s *TunnelAttachment) SetAccountEmail(val OptString) {
+	s.AccountEmail = val
+}
+
+// SetTunnelName sets the value of TunnelName.
+func (s *TunnelAttachment) SetTunnelName(val OptString) {
+	s.TunnelName = val
+}
+
+// SetTunnelMode sets the value of TunnelMode.
+func (s *TunnelAttachment) SetTunnelMode(val OptTunnelMode) {
+	s.TunnelMode = val
+}
+
+// SetListenAddress sets the value of ListenAddress.
+func (s *TunnelAttachment) SetListenAddress(val string) {
+	s.ListenAddress = val
+}
+
+// SetDialPolicyId sets the value of DialPolicyId.
+func (s *TunnelAttachment) SetDialPolicyId(val OptString) {
+	s.DialPolicyId = val
+}
+
+// SetState sets the value of State.
+func (s *TunnelAttachment) SetState(val TunnelAttachmentState) {
+	s.State = val
+}
+
+// SetLastHeartbeatAt sets the value of LastHeartbeatAt.
+func (s *TunnelAttachment) SetLastHeartbeatAt(val time.Time) {
+	s.LastHeartbeatAt = val
+}
+
+// SetDisconnectedAt sets the value of DisconnectedAt.
+func (s *TunnelAttachment) SetDisconnectedAt(val OptDateTime) {
+	s.DisconnectedAt = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *TunnelAttachment) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *TunnelAttachment) SetUpdatedAt(val time.Time) {
+	s.UpdatedAt = val
+}
+
+type TunnelAttachmentState string
+
+const (
+	TunnelAttachmentStateActive       TunnelAttachmentState = "active"
+	TunnelAttachmentStateStale        TunnelAttachmentState = "stale"
+	TunnelAttachmentStateDisconnected TunnelAttachmentState = "disconnected"
+)
+
+// AllValues returns all TunnelAttachmentState values.
+func (TunnelAttachmentState) AllValues() []TunnelAttachmentState {
+	return []TunnelAttachmentState{
+		TunnelAttachmentStateActive,
+		TunnelAttachmentStateStale,
+		TunnelAttachmentStateDisconnected,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TunnelAttachmentState) MarshalText() ([]byte, error) {
+	switch s {
+	case TunnelAttachmentStateActive:
+		return []byte(s), nil
+	case TunnelAttachmentStateStale:
+		return []byte(s), nil
+	case TunnelAttachmentStateDisconnected:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TunnelAttachmentState) UnmarshalText(data []byte) error {
+	switch TunnelAttachmentState(data) {
+	case TunnelAttachmentStateActive:
+		*s = TunnelAttachmentStateActive
+		return nil
+	case TunnelAttachmentStateStale:
+		*s = TunnelAttachmentStateStale
+		return nil
+	case TunnelAttachmentStateDisconnected:
+		*s = TunnelAttachmentStateDisconnected
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/tunnelGrant
+type TunnelGrant struct {
+	TunnelId  string    `json:"tunnelId"`
+	AccountId string    `json:"accountId"`
+	Email     string    `json:"email"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
+// GetTunnelId returns the value of TunnelId.
+func (s *TunnelGrant) GetTunnelId() string {
+	return s.TunnelId
+}
+
+// GetAccountId returns the value of AccountId.
+func (s *TunnelGrant) GetAccountId() string {
+	return s.AccountId
+}
+
+// GetEmail returns the value of Email.
+func (s *TunnelGrant) GetEmail() string {
+	return s.Email
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *TunnelGrant) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// SetTunnelId sets the value of TunnelId.
+func (s *TunnelGrant) SetTunnelId(val string) {
+	s.TunnelId = val
+}
+
+// SetAccountId sets the value of AccountId.
+func (s *TunnelGrant) SetAccountId(val string) {
+	s.AccountId = val
+}
+
+// SetEmail sets the value of Email.
+func (s *TunnelGrant) SetEmail(val string) {
+	s.Email = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *TunnelGrant) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+func (*TunnelGrant) addTunnelGrantRes() {}
+
+// Ref: #/tunnelMode
+type TunnelMode string
+
+const (
+	TunnelModeHTTP TunnelMode = "http"
+	TunnelModeTCP  TunnelMode = "tcp"
+	TunnelModeUDP  TunnelMode = "udp"
+)
+
+// AllValues returns all TunnelMode values.
+func (TunnelMode) AllValues() []TunnelMode {
+	return []TunnelMode{
+		TunnelModeHTTP,
+		TunnelModeTCP,
+		TunnelModeUDP,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TunnelMode) MarshalText() ([]byte, error) {
+	switch s {
+	case TunnelModeHTTP:
+		return []byte(s), nil
+	case TunnelModeTCP:
+		return []byte(s), nil
+	case TunnelModeUDP:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TunnelMode) UnmarshalText(data []byte) error {
+	switch TunnelMode(data) {
+	case TunnelModeHTTP:
+		*s = TunnelModeHTTP
+		return nil
+	case TunnelModeTCP:
+		*s = TunnelModeTCP
+		return nil
+	case TunnelModeUDP:
+		*s = TunnelModeUDP
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 type TunnelState string
 

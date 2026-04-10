@@ -341,60 +341,250 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 				}
 
-			case 't': // Prefix: "tunnels"
+			case 't': // Prefix: "tunnel"
 
-				if l := len("tunnels"); len(elem) >= l && elem[0:l] == "tunnels" {
+				if l := len("tunnel"); len(elem) >= l && elem[0:l] == "tunnel" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
 				if len(elem) == 0 {
-					switch r.Method {
-					case "GET":
-						s.handleListTunnelsRequest([0]string{}, elemIsEscaped, w, r)
-					case "POST":
-						s.handleCreateTunnelRequest([0]string{}, elemIsEscaped, w, r)
-					default:
-						s.notAllowed(w, r, "GET,POST")
-					}
-
-					return
+					break
 				}
 				switch elem[0] {
-				case '/': // Prefix: "/"
+				case '-': // Prefix: "-attachments/"
 
-					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+					if l := len("-attachments/"); len(elem) >= l && elem[0:l] == "-attachments/" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
-					// Param: "tunnelId"
-					// Leaf parameter, slashes are prohibited
+					// Param: "attachmentId"
+					// Match until "/"
 					idx := strings.IndexByte(elem, '/')
-					if idx >= 0 {
-						break
+					if idx < 0 {
+						idx = len(elem)
 					}
-					args[0] = elem
-					elem = ""
+					args[0] = elem[:idx]
+					elem = elem[idx:]
 
 					if len(elem) == 0 {
-						// Leaf node.
 						switch r.Method {
 						case "DELETE":
-							s.handleDeleteTunnelRequest([1]string{
-								args[0],
-							}, elemIsEscaped, w, r)
-						case "GET":
-							s.handleGetTunnelRequest([1]string{
+							s.handleDeleteTunnelAttachmentRequest([1]string{
 								args[0],
 							}, elemIsEscaped, w, r)
 						default:
-							s.notAllowed(w, r, "DELETE,GET")
+							s.notAllowed(w, r, "DELETE")
 						}
 
 						return
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/heartbeat"
+
+						if l := len("/heartbeat"); len(elem) >= l && elem[0:l] == "/heartbeat" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "POST":
+								s.handleHeartbeatTunnelAttachmentRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, "POST")
+							}
+
+							return
+						}
+
+					}
+
+				case 's': // Prefix: "s"
+
+					if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						switch r.Method {
+						case "GET":
+							s.handleListTunnelsRequest([0]string{}, elemIsEscaped, w, r)
+						case "POST":
+							s.handleCreateTunnelRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, "GET,POST")
+						}
+
+						return
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							break
+						}
+						switch elem[0] {
+						case 'c': // Prefix: "connect"
+							origElem := elem
+							if l := len("connect"); len(elem) >= l && elem[0:l] == "connect" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleConnectTunnelRequest([0]string{}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, "POST")
+								}
+
+								return
+							}
+
+							elem = origElem
+						}
+						// Param: "tunnelId"
+						// Match until "/"
+						idx := strings.IndexByte(elem, '/')
+						if idx < 0 {
+							idx = len(elem)
+						}
+						args[0] = elem[:idx]
+						elem = elem[idx:]
+
+						if len(elem) == 0 {
+							switch r.Method {
+							case "DELETE":
+								s.handleDeleteTunnelRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							case "GET":
+								s.handleGetTunnelRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, "DELETE,GET")
+							}
+
+							return
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
+
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								break
+							}
+							switch elem[0] {
+							case 'a': // Prefix: "attachments"
+
+								if l := len("attachments"); len(elem) >= l && elem[0:l] == "attachments" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch r.Method {
+									case "GET":
+										s.handleListTunnelAttachmentsRequest([1]string{
+											args[0],
+										}, elemIsEscaped, w, r)
+									default:
+										s.notAllowed(w, r, "GET")
+									}
+
+									return
+								}
+
+							case 'g': // Prefix: "grants"
+
+								if l := len("grants"); len(elem) >= l && elem[0:l] == "grants" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									switch r.Method {
+									case "GET":
+										s.handleListTunnelGrantsRequest([1]string{
+											args[0],
+										}, elemIsEscaped, w, r)
+									case "POST":
+										s.handleAddTunnelGrantRequest([1]string{
+											args[0],
+										}, elemIsEscaped, w, r)
+									default:
+										s.notAllowed(w, r, "GET,POST")
+									}
+
+									return
+								}
+								switch elem[0] {
+								case '/': // Prefix: "/"
+
+									if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+										elem = elem[l:]
+									} else {
+										break
+									}
+
+									// Param: "accountId"
+									// Leaf parameter, slashes are prohibited
+									idx := strings.IndexByte(elem, '/')
+									if idx >= 0 {
+										break
+									}
+									args[1] = elem
+									elem = ""
+
+									if len(elem) == 0 {
+										// Leaf node.
+										switch r.Method {
+										case "DELETE":
+											s.handleRemoveTunnelGrantRequest([2]string{
+												args[0],
+												args[1],
+											}, elemIsEscaped, w, r)
+										default:
+											s.notAllowed(w, r, "DELETE")
+										}
+
+										return
+									}
+
+								}
+
+							}
+
+						}
+
 					}
 
 				}
@@ -824,76 +1014,283 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 
 				}
 
-			case 't': // Prefix: "tunnels"
+			case 't': // Prefix: "tunnel"
 
-				if l := len("tunnels"); len(elem) >= l && elem[0:l] == "tunnels" {
+				if l := len("tunnel"); len(elem) >= l && elem[0:l] == "tunnel" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
 				if len(elem) == 0 {
-					switch method {
-					case "GET":
-						r.name = ListTunnelsOperation
-						r.summary = ""
-						r.operationID = "listTunnels"
-						r.pathPattern = "/tunnels"
-						r.args = args
-						r.count = 0
-						return r, true
-					case "POST":
-						r.name = CreateTunnelOperation
-						r.summary = ""
-						r.operationID = "createTunnel"
-						r.pathPattern = "/tunnels"
-						r.args = args
-						r.count = 0
-						return r, true
-					default:
-						return
-					}
+					break
 				}
 				switch elem[0] {
-				case '/': // Prefix: "/"
+				case '-': // Prefix: "-attachments/"
 
-					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+					if l := len("-attachments/"); len(elem) >= l && elem[0:l] == "-attachments/" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
-					// Param: "tunnelId"
-					// Leaf parameter, slashes are prohibited
+					// Param: "attachmentId"
+					// Match until "/"
 					idx := strings.IndexByte(elem, '/')
-					if idx >= 0 {
-						break
+					if idx < 0 {
+						idx = len(elem)
 					}
-					args[0] = elem
-					elem = ""
+					args[0] = elem[:idx]
+					elem = elem[idx:]
 
 					if len(elem) == 0 {
-						// Leaf node.
 						switch method {
 						case "DELETE":
-							r.name = DeleteTunnelOperation
+							r.name = DeleteTunnelAttachmentOperation
 							r.summary = ""
-							r.operationID = "deleteTunnel"
-							r.pathPattern = "/tunnels/{tunnelId}"
-							r.args = args
-							r.count = 1
-							return r, true
-						case "GET":
-							r.name = GetTunnelOperation
-							r.summary = ""
-							r.operationID = "getTunnel"
-							r.pathPattern = "/tunnels/{tunnelId}"
+							r.operationID = "deleteTunnelAttachment"
+							r.pathPattern = "/tunnel-attachments/{attachmentId}"
 							r.args = args
 							r.count = 1
 							return r, true
 						default:
 							return
 						}
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/heartbeat"
+
+						if l := len("/heartbeat"); len(elem) >= l && elem[0:l] == "/heartbeat" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "POST":
+								r.name = HeartbeatTunnelAttachmentOperation
+								r.summary = ""
+								r.operationID = "heartbeatTunnelAttachment"
+								r.pathPattern = "/tunnel-attachments/{attachmentId}/heartbeat"
+								r.args = args
+								r.count = 1
+								return r, true
+							default:
+								return
+							}
+						}
+
+					}
+
+				case 's': // Prefix: "s"
+
+					if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						switch method {
+						case "GET":
+							r.name = ListTunnelsOperation
+							r.summary = ""
+							r.operationID = "listTunnels"
+							r.pathPattern = "/tunnels"
+							r.args = args
+							r.count = 0
+							return r, true
+						case "POST":
+							r.name = CreateTunnelOperation
+							r.summary = ""
+							r.operationID = "createTunnel"
+							r.pathPattern = "/tunnels"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							break
+						}
+						switch elem[0] {
+						case 'c': // Prefix: "connect"
+							origElem := elem
+							if l := len("connect"); len(elem) >= l && elem[0:l] == "connect" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = ConnectTunnelOperation
+									r.summary = ""
+									r.operationID = "connectTunnel"
+									r.pathPattern = "/tunnels/connect"
+									r.args = args
+									r.count = 0
+									return r, true
+								default:
+									return
+								}
+							}
+
+							elem = origElem
+						}
+						// Param: "tunnelId"
+						// Match until "/"
+						idx := strings.IndexByte(elem, '/')
+						if idx < 0 {
+							idx = len(elem)
+						}
+						args[0] = elem[:idx]
+						elem = elem[idx:]
+
+						if len(elem) == 0 {
+							switch method {
+							case "DELETE":
+								r.name = DeleteTunnelOperation
+								r.summary = ""
+								r.operationID = "deleteTunnel"
+								r.pathPattern = "/tunnels/{tunnelId}"
+								r.args = args
+								r.count = 1
+								return r, true
+							case "GET":
+								r.name = GetTunnelOperation
+								r.summary = ""
+								r.operationID = "getTunnel"
+								r.pathPattern = "/tunnels/{tunnelId}"
+								r.args = args
+								r.count = 1
+								return r, true
+							default:
+								return
+							}
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
+
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								break
+							}
+							switch elem[0] {
+							case 'a': // Prefix: "attachments"
+
+								if l := len("attachments"); len(elem) >= l && elem[0:l] == "attachments" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch method {
+									case "GET":
+										r.name = ListTunnelAttachmentsOperation
+										r.summary = ""
+										r.operationID = "listTunnelAttachments"
+										r.pathPattern = "/tunnels/{tunnelId}/attachments"
+										r.args = args
+										r.count = 1
+										return r, true
+									default:
+										return
+									}
+								}
+
+							case 'g': // Prefix: "grants"
+
+								if l := len("grants"); len(elem) >= l && elem[0:l] == "grants" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									switch method {
+									case "GET":
+										r.name = ListTunnelGrantsOperation
+										r.summary = ""
+										r.operationID = "listTunnelGrants"
+										r.pathPattern = "/tunnels/{tunnelId}/grants"
+										r.args = args
+										r.count = 1
+										return r, true
+									case "POST":
+										r.name = AddTunnelGrantOperation
+										r.summary = ""
+										r.operationID = "addTunnelGrant"
+										r.pathPattern = "/tunnels/{tunnelId}/grants"
+										r.args = args
+										r.count = 1
+										return r, true
+									default:
+										return
+									}
+								}
+								switch elem[0] {
+								case '/': // Prefix: "/"
+
+									if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+										elem = elem[l:]
+									} else {
+										break
+									}
+
+									// Param: "accountId"
+									// Leaf parameter, slashes are prohibited
+									idx := strings.IndexByte(elem, '/')
+									if idx >= 0 {
+										break
+									}
+									args[1] = elem
+									elem = ""
+
+									if len(elem) == 0 {
+										// Leaf node.
+										switch method {
+										case "DELETE":
+											r.name = RemoveTunnelGrantOperation
+											r.summary = ""
+											r.operationID = "removeTunnelGrant"
+											r.pathPattern = "/tunnels/{tunnelId}/grants/{accountId}"
+											r.args = args
+											r.count = 2
+											return r, true
+										default:
+											return
+										}
+									}
+
+								}
+
+							}
+
+						}
+
 					}
 
 				}

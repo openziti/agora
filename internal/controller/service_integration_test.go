@@ -188,9 +188,10 @@ func TestServiceHTTPFlow(t *testing.T) {
 	}
 
 	createTunnelRes, err := accountClient.CreateTunnel(ctx, &api.CreateTunnelRequest{
-		EnvironmentId:  env.ID,
-		Name:           "llm-gateway",
-		BackendAddress: "127.0.0.1:8443",
+		EnvironmentId: env.ID,
+		Name:          "llm-gateway",
+		Mode:          api.TunnelModeTCP,
+		BackendTarget: "127.0.0.1:8443",
 	})
 	if err != nil {
 		t.Fatalf("create tunnel request: %v", err)
@@ -200,7 +201,7 @@ func TestServiceHTTPFlow(t *testing.T) {
 		t.Fatalf("unexpected create tunnel response: %T", createTunnelRes)
 	}
 
-	listTunnelsRes, err := accountClient.ListTunnels(ctx)
+	listTunnelsRes, err := accountClient.ListTunnels(ctx, api.ListTunnelsParams{})
 	if err != nil {
 		t.Fatalf("list tunnels request: %v", err)
 	}
@@ -232,7 +233,7 @@ func TestServiceHTTPFlow(t *testing.T) {
 		t.Fatalf("expected 0 environments after disable, got %d", len(*postDisableEnvironments))
 	}
 
-	postDisableTunnelsRes, err := accountClient.ListTunnels(ctx)
+	postDisableTunnelsRes, err := accountClient.ListTunnels(ctx, api.ListTunnelsParams{})
 	if err != nil {
 		t.Fatalf("list tunnels after disable request: %v", err)
 	}
@@ -363,7 +364,31 @@ func (f *fakeEnvironmentLifecycle) Disable(_ context.Context, spec automation.De
 }
 
 type fakeTunnelLifecycle struct {
+	provisionResult  *automation.ProvisionedTunnel
+	provisionCalls   []automation.TunnelSpec
+	attachmentResult string
+	attachmentCalls  []automation.TunnelAccessSpec
 	deprovisionCalls []automation.DeprovisionTunnelSpec
+}
+
+func (f *fakeTunnelLifecycle) Provision(_ context.Context, spec automation.TunnelSpec) (*automation.ProvisionedTunnel, error) {
+	f.provisionCalls = append(f.provisionCalls, spec)
+	if f.provisionResult != nil {
+		return f.provisionResult, nil
+	}
+	return &automation.ProvisionedTunnel{
+		ServiceID:                 "service-1",
+		BindPolicyID:              "bind-1",
+		ServiceEdgeRouterPolicyID: "serp-1",
+	}, nil
+}
+
+func (f *fakeTunnelLifecycle) CreateAttachmentDialPolicy(_ context.Context, spec automation.TunnelAccessSpec) (string, error) {
+	f.attachmentCalls = append(f.attachmentCalls, spec)
+	if f.attachmentResult != "" {
+		return f.attachmentResult, nil
+	}
+	return "dial-1", nil
 }
 
 func (f *fakeTunnelLifecycle) Deprovision(_ context.Context, spec automation.DeprovisionTunnelSpec) error {
