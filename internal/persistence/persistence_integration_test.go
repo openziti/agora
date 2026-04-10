@@ -217,6 +217,55 @@ func TestDeleteRepositories(t *testing.T) {
 	}
 }
 
+func TestEnvironmentAndTunnelSoftDeleteBehavior(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := migratedTestStore(t)
+
+	org, _, env := createOrgAccountEnvironment(t, ctx, store)
+	tunnel, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
+		OrganizationID: org.ID,
+		EnvironmentID:  env.ID,
+		Name:           "llm-gateway",
+		BackendAddress: "127.0.0.1:8443",
+		State:          TunnelStateActive,
+	})
+	if err != nil {
+		t.Fatalf("create tunnel: %v", err)
+	}
+
+	if err := store.Tunnels.Delete(ctx, store.DB(), tunnel.ID, org.ID); err != nil {
+		t.Fatalf("delete tunnel: %v", err)
+	}
+	if _, err := store.Tunnels.GetByID(ctx, store.DB(), tunnel.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected deleted tunnel to be hidden, got %v", err)
+	}
+	if _, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
+		OrganizationID: org.ID,
+		EnvironmentID:  env.ID,
+		Name:           "llm-gateway",
+		BackendAddress: "127.0.0.1:9443",
+		State:          TunnelStateActive,
+	}); err != nil {
+		t.Fatalf("expected tunnel name reuse after soft delete, got %v", err)
+	}
+
+	if err := store.Environments.Delete(ctx, store.DB(), env.ID, org.ID); err != nil {
+		t.Fatalf("delete environment: %v", err)
+	}
+	if _, err := store.Environments.GetByID(ctx, store.DB(), env.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected deleted environment to be hidden, got %v", err)
+	}
+	environments, err := store.Environments.ListByOrganization(ctx, store.DB(), org.ID)
+	if err != nil {
+		t.Fatalf("list environments: %v", err)
+	}
+	if len(environments) != 0 {
+		t.Fatalf("expected 0 active environments, got %d", len(environments))
+	}
+}
+
 func TestAccountsListSupportsGlobalAndFilteredQueries(t *testing.T) {
 	t.Parallel()
 
@@ -315,13 +364,15 @@ func createOrgAccountEnvironment(t *testing.T, ctx context.Context, store *Store
 
 	description := "build agent"
 	host := "agent-01"
+	edgeRouterPolicyID := "erp-01"
 	env, err := store.Environments.Create(ctx, store.DB(), Environment{
-		OrganizationID: org.ID,
-		AccountID:      acct.ID,
-		Description:    &description,
-		Host:           &host,
-		ZitiIdentityID: "ziti-identity-01",
-		State:          EnvironmentStateEnabled,
+		OrganizationID:     org.ID,
+		AccountID:          acct.ID,
+		Description:        &description,
+		Host:               &host,
+		ZitiIdentityID:     "ziti-identity-01",
+		EdgeRouterPolicyID: &edgeRouterPolicyID,
+		State:              EnvironmentStateEnabled,
 	})
 	if err != nil {
 		t.Fatalf("create environment: %v", err)

@@ -36,10 +36,10 @@ func findAuthorization(h http.Header, prefix string) (string, bool) {
 
 var operationRolesAccountTokenAuth = map[string][]string{
 	ChangePasswordOperation:         []string{},
-	CreateEnvironmentOperation:      []string{},
 	CreateTunnelOperation:           []string{},
-	DeleteEnvironmentOperation:      []string{},
 	DeleteTunnelOperation:           []string{},
+	DisableEnvironmentOperation:     []string{},
+	EnableEnvironmentOperation:      []string{},
 	GetEnvironmentOperation:         []string{},
 	GetTunnelOperation:              []string{},
 	ListEnvironmentsOperation:       []string{},

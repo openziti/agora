@@ -45,16 +45,18 @@ const (
 )
 
 type Environment struct {
-	ID             string           `db:"id"`
-	OrganizationID string           `db:"organization_id"`
-	AccountID      string           `db:"account_id"`
-	Description    *string          `db:"description"`
-	Host           *string          `db:"host"`
-	ZitiIdentityID string           `db:"ziti_identity_id"`
-	State          EnvironmentState `db:"state"`
-	LastSeenAt     *time.Time       `db:"last_seen_at"`
-	CreatedAt      time.Time        `db:"created_at"`
-	UpdatedAt      time.Time        `db:"updated_at"`
+	ID                 string           `db:"id"`
+	OrganizationID     string           `db:"organization_id"`
+	AccountID          string           `db:"account_id"`
+	Description        *string          `db:"description"`
+	Host               *string          `db:"host"`
+	ZitiIdentityID     string           `db:"ziti_identity_id"`
+	EdgeRouterPolicyID *string          `db:"edge_router_policy_id"`
+	State              EnvironmentState `db:"state"`
+	Deleted            bool             `db:"deleted"`
+	LastSeenAt         *time.Time       `db:"last_seen_at"`
+	CreatedAt          time.Time        `db:"created_at"`
+	UpdatedAt          time.Time        `db:"updated_at"`
 }
 
 type TunnelState string
@@ -72,6 +74,7 @@ type Tunnel struct {
 	BackendAddress string      `db:"backend_address"`
 	ZitiServiceID  *string     `db:"ziti_service_id"`
 	State          TunnelState `db:"state"`
+	Deleted        bool        `db:"deleted"`
 	CreatedAt      time.Time   `db:"created_at"`
 	UpdatedAt      time.Time   `db:"updated_at"`
 }

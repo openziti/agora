@@ -37,7 +37,9 @@ create table environments (
     description text,
     host text,
     ziti_identity_id text not null unique,
+    edge_router_policy_id text,
     state text not null,
+    deleted boolean not null default false,
     last_seen_at timestamptz,
     created_at timestamptz not null default current_timestamp,
     updated_at timestamptz not null default current_timestamp,
@@ -57,6 +59,7 @@ create table tunnels (
     backend_address text not null,
     ziti_service_id text unique,
     state text not null,
+    deleted boolean not null default false,
     created_at timestamptz not null default current_timestamp,
     updated_at timestamptz not null default current_timestamp,
     constraint tunnels_name_not_empty check (btrim(name) <> ''),
@@ -64,7 +67,6 @@ create table tunnels (
     constraint tunnels_state_valid check (state in ('active', 'disabled')),
     constraint tunnels_environment_organization_fk
         foreign key (environment_id, organization_id) references environments(id, organization_id) on delete cascade,
-    constraint tunnels_org_name_unique unique (organization_id, name),
     constraint tunnels_id_format check (id ~ '^tt_[a-z0-9]{12}$')
 );
 

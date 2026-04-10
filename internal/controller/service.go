@@ -8,13 +8,26 @@ import (
 
 	"github.com/openziti/agora/internal/api"
 	"github.com/openziti/agora/internal/controller/config"
+	"github.com/openziti/agora/internal/openziti/automation"
 	"github.com/openziti/agora/internal/persistence"
 )
 
 type Service struct {
-	cfg   *config.Config
-	store *persistence.Store
+	cfg              *config.Config
+	store            *persistence.Store
+	lifecycleFactory environmentLifecycleFactory
 }
+
+type environmentLifecycle interface {
+	Enable(context.Context, automation.EnvironmentSpec) (*automation.ProvisionedEnvironment, error)
+	Disable(context.Context, automation.DeprovisionEnvironmentSpec) error
+}
+
+type tunnelLifecycle interface {
+	Deprovision(context.Context, automation.DeprovisionTunnelSpec) error
+}
+
+type environmentLifecycleFactory func(context.Context) (environmentLifecycle, tunnelLifecycle, error)
 
 type accountPrincipal struct {
 	AccountID      string
@@ -28,7 +41,11 @@ type adminPrincipal struct {
 }
 
 func NewService(cfg *config.Config, store *persistence.Store) *Service {
-	return &Service{cfg: cfg, store: store}
+	return &Service{
+		cfg:              cfg,
+		store:            store,
+		lifecycleFactory: defaultEnvironmentLifecycleFactory(cfg),
+	}
 }
 
 func NewHandler(svc *Service) (http.Handler, error) {
@@ -126,6 +143,13 @@ func mapEnvironment(env *persistence.Environment) *api.Environment {
 	return result
 }
 
+func mapEnableEnvironmentResponse(env *persistence.Environment, enrollmentJSON []byte) *api.EnableEnvironmentResponse {
+	return &api.EnableEnvironmentResponse{
+		Environment:    *mapEnvironment(env),
+		EnrollmentJson: string(enrollmentJSON),
+	}
+}
+
 func mapTunnel(tunnel *persistence.Tunnel) *api.Tunnel {
 	result := &api.Tunnel{
 		ID:             tunnel.ID,
@@ -145,4 +169,14 @@ func mapTunnel(tunnel *persistence.Tunnel) *api.Tunnel {
 
 func normalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
+}
+
+func defaultEnvironmentLifecycleFactory(cfg *config.Config) environmentLifecycleFactory {
+	return func(ctx context.Context) (environmentLifecycle, tunnelLifecycle, error) {
+		client, err := openZitiClient(ctx, cfg)
+		if err != nil {
+			return nil, nil, err
+		}
+		return automation.NewEnvironmentProvisioner(client), automation.NewTunnelProvisioner(client), nil
+	}
 }

@@ -6,8 +6,10 @@ create index idx_environments_account_id on environments (account_id);
 create index idx_environments_organization_id on environments (organization_id);
 create index idx_tunnels_environment_id on tunnels (environment_id);
 create index idx_tunnels_organization_id on tunnels (organization_id);
+create unique index idx_tunnels_org_name_unique_active on tunnels (organization_id, name) where not deleted;
 
 -- +migrate Down
+drop index if exists idx_tunnels_org_name_unique_active;
 drop index if exists idx_tunnels_organization_id;
 drop index if exists idx_tunnels_environment_id;
 drop index if exists idx_environments_organization_id;

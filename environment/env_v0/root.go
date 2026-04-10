@@ -25,9 +25,10 @@ type config struct {
 }
 
 type environment struct {
-	AccountToken string `json:"account_token"`
-	ZitiIdentity string `json:"ziti_identity"`
-	APIEndpoint  string `json:"api_endpoint"`
+	EnvironmentID string `json:"environment_id"`
+	AccountToken  string `json:"account_token"`
+	ZitiIdentity  string `json:"ziti_identity"`
+	APIEndpoint   string `json:"api_endpoint"`
 }
 
 func Default() (*Root, error) {
@@ -186,9 +187,10 @@ func loadEnvironment() (*env_core.Environment, error) {
 		return nil, err
 	}
 	return &env_core.Environment{
-		AccountToken: env.AccountToken,
-		ZitiIdentity: env.ZitiIdentity,
-		APIEndpoint:  env.APIEndpoint,
+		EnvironmentID: env.EnvironmentID,
+		AccountToken:  env.AccountToken,
+		ZitiIdentity:  env.ZitiIdentity,
+		APIEndpoint:   env.APIEndpoint,
 	}, nil
 }
 
@@ -198,9 +200,10 @@ func saveEnvironment(env *env_core.Environment) error {
 		return err
 	}
 	data, err := json.MarshalIndent(&environment{
-		AccountToken: env.AccountToken,
-		ZitiIdentity: env.ZitiIdentity,
-		APIEndpoint:  env.APIEndpoint,
+		EnvironmentID: env.EnvironmentID,
+		AccountToken:  env.AccountToken,
+		ZitiIdentity:  env.ZitiIdentity,
+		APIEndpoint:   env.APIEndpoint,
 	}, "", "  ")
 	if err != nil {
 		return err

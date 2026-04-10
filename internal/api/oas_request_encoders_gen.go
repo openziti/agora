@@ -38,20 +38,6 @@ func encodeCreateAccountRequest(
 	return nil
 }
 
-func encodeCreateEnvironmentRequest(
-	req *CreateEnvironmentRequest,
-	r *http.Request,
-) error {
-	const contentType = "application/json"
-	e := new(jx.Encoder)
-	{
-		req.Encode(e)
-	}
-	encoded := e.Bytes()
-	ht.SetBody(r, bytes.NewReader(encoded), contentType)
-	return nil
-}
-
 func encodeCreateOrganizationRequest(
 	req *CreateOrganizationRequest,
 	r *http.Request,
@@ -68,6 +54,20 @@ func encodeCreateOrganizationRequest(
 
 func encodeCreateTunnelRequest(
 	req *CreateTunnelRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeEnableEnvironmentRequest(
+	req *EnableEnvironmentRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"

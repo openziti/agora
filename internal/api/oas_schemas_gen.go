@@ -466,55 +466,6 @@ type CreateAccountUnauthorized Error
 
 func (*CreateAccountUnauthorized) createAccountRes() {}
 
-type CreateEnvironmentConflict Error
-
-func (*CreateEnvironmentConflict) createEnvironmentRes() {}
-
-type CreateEnvironmentInternalServerError Error
-
-func (*CreateEnvironmentInternalServerError) createEnvironmentRes() {}
-
-// Ref: #/createEnvironmentRequest
-type CreateEnvironmentRequest struct {
-	Description    OptString `json:"description"`
-	Host           OptString `json:"host"`
-	ZitiIdentityId string    `json:"zitiIdentityId"`
-}
-
-// GetDescription returns the value of Description.
-func (s *CreateEnvironmentRequest) GetDescription() OptString {
-	return s.Description
-}
-
-// GetHost returns the value of Host.
-func (s *CreateEnvironmentRequest) GetHost() OptString {
-	return s.Host
-}
-
-// GetZitiIdentityId returns the value of ZitiIdentityId.
-func (s *CreateEnvironmentRequest) GetZitiIdentityId() string {
-	return s.ZitiIdentityId
-}
-
-// SetDescription sets the value of Description.
-func (s *CreateEnvironmentRequest) SetDescription(val OptString) {
-	s.Description = val
-}
-
-// SetHost sets the value of Host.
-func (s *CreateEnvironmentRequest) SetHost(val OptString) {
-	s.Host = val
-}
-
-// SetZitiIdentityId sets the value of ZitiIdentityId.
-func (s *CreateEnvironmentRequest) SetZitiIdentityId(val string) {
-	s.ZitiIdentityId = val
-}
-
-type CreateEnvironmentUnauthorized Error
-
-func (*CreateEnvironmentUnauthorized) createEnvironmentRes() {}
-
 type CreateOrganizationConflict Error
 
 func (*CreateOrganizationConflict) createOrganizationRes() {}
@@ -627,23 +578,6 @@ type DeleteAccountUnauthorized Error
 
 func (*DeleteAccountUnauthorized) deleteAccountRes() {}
 
-type DeleteEnvironmentInternalServerError Error
-
-func (*DeleteEnvironmentInternalServerError) deleteEnvironmentRes() {}
-
-// DeleteEnvironmentNoContent is response for DeleteEnvironment operation.
-type DeleteEnvironmentNoContent struct{}
-
-func (*DeleteEnvironmentNoContent) deleteEnvironmentRes() {}
-
-type DeleteEnvironmentNotFound Error
-
-func (*DeleteEnvironmentNotFound) deleteEnvironmentRes() {}
-
-type DeleteEnvironmentUnauthorized Error
-
-func (*DeleteEnvironmentUnauthorized) deleteEnvironmentRes() {}
-
 type DeleteOrganizationConflict Error
 
 func (*DeleteOrganizationConflict) deleteOrganizationRes() {}
@@ -681,6 +615,89 @@ func (*DeleteTunnelNotFound) deleteTunnelRes() {}
 type DeleteTunnelUnauthorized Error
 
 func (*DeleteTunnelUnauthorized) deleteTunnelRes() {}
+
+type DisableEnvironmentInternalServerError Error
+
+func (*DisableEnvironmentInternalServerError) disableEnvironmentRes() {}
+
+// DisableEnvironmentNoContent is response for DisableEnvironment operation.
+type DisableEnvironmentNoContent struct{}
+
+func (*DisableEnvironmentNoContent) disableEnvironmentRes() {}
+
+type DisableEnvironmentNotFound Error
+
+func (*DisableEnvironmentNotFound) disableEnvironmentRes() {}
+
+type DisableEnvironmentUnauthorized Error
+
+func (*DisableEnvironmentUnauthorized) disableEnvironmentRes() {}
+
+type EnableEnvironmentConflict Error
+
+func (*EnableEnvironmentConflict) enableEnvironmentRes() {}
+
+type EnableEnvironmentInternalServerError Error
+
+func (*EnableEnvironmentInternalServerError) enableEnvironmentRes() {}
+
+// Ref: #/enableEnvironmentRequest
+type EnableEnvironmentRequest struct {
+	Description OptString `json:"description"`
+	Host        OptString `json:"host"`
+}
+
+// GetDescription returns the value of Description.
+func (s *EnableEnvironmentRequest) GetDescription() OptString {
+	return s.Description
+}
+
+// GetHost returns the value of Host.
+func (s *EnableEnvironmentRequest) GetHost() OptString {
+	return s.Host
+}
+
+// SetDescription sets the value of Description.
+func (s *EnableEnvironmentRequest) SetDescription(val OptString) {
+	s.Description = val
+}
+
+// SetHost sets the value of Host.
+func (s *EnableEnvironmentRequest) SetHost(val OptString) {
+	s.Host = val
+}
+
+// Ref: #/enableEnvironmentResponse
+type EnableEnvironmentResponse struct {
+	Environment    Environment `json:"environment"`
+	EnrollmentJson string      `json:"enrollmentJson"`
+}
+
+// GetEnvironment returns the value of Environment.
+func (s *EnableEnvironmentResponse) GetEnvironment() Environment {
+	return s.Environment
+}
+
+// GetEnrollmentJson returns the value of EnrollmentJson.
+func (s *EnableEnvironmentResponse) GetEnrollmentJson() string {
+	return s.EnrollmentJson
+}
+
+// SetEnvironment sets the value of Environment.
+func (s *EnableEnvironmentResponse) SetEnvironment(val Environment) {
+	s.Environment = val
+}
+
+// SetEnrollmentJson sets the value of EnrollmentJson.
+func (s *EnableEnvironmentResponse) SetEnrollmentJson(val string) {
+	s.EnrollmentJson = val
+}
+
+func (*EnableEnvironmentResponse) enableEnvironmentRes() {}
+
+type EnableEnvironmentUnauthorized Error
+
+func (*EnableEnvironmentUnauthorized) enableEnvironmentRes() {}
 
 // Ref: #/environment
 type Environment struct {
@@ -796,8 +813,7 @@ func (s *Environment) SetUpdatedAt(val time.Time) {
 	s.UpdatedAt = val
 }
 
-func (*Environment) createEnvironmentRes() {}
-func (*Environment) getEnvironmentRes()    {}
+func (*Environment) getEnvironmentRes() {}
 
 type EnvironmentState string
 

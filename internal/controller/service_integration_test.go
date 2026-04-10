@@ -8,6 +8,7 @@ import (
 
 	"github.com/openziti/agora/internal/api"
 	ctrlcfg "github.com/openziti/agora/internal/controller/config"
+	"github.com/openziti/agora/internal/openziti/automation"
 	"github.com/openziti/agora/internal/persistence"
 	"github.com/openziti/agora/internal/persistence/testutil"
 )
@@ -35,6 +36,17 @@ func TestServiceHTTPFlow(t *testing.T) {
 	cfg.AdminTokens = []string{"admin-token"}
 
 	service := NewService(cfg, store)
+	envLifecycle := &fakeEnvironmentLifecycle{
+		enableResult: &automation.ProvisionedEnvironment{
+			IdentityID:     "ziti-env-1",
+			EnrollmentJSON: []byte(`{"id":"ziti-env-1"}`),
+			PolicyID:       "erp-1",
+		},
+	}
+	fakeTunnelLifecycle := &fakeTunnelLifecycle{}
+	service.lifecycleFactory = func(context.Context) (environmentLifecycle, tunnelLifecycle, error) {
+		return envLifecycle, fakeTunnelLifecycle, nil
+	}
 	handler, err := NewHandler(service)
 	if err != nil {
 		t.Fatalf("new handler: %v", err)
@@ -153,16 +165,15 @@ func TestServiceHTTPFlow(t *testing.T) {
 		t.Fatalf("new account client: %v", err)
 	}
 
-	createEnvRes, err := accountClient.CreateEnvironment(ctx, &api.CreateEnvironmentRequest{
-		ZitiIdentityId: "ziti-env-1",
-	})
+	enableEnvRes, err := accountClient.EnableEnvironment(ctx, &api.EnableEnvironmentRequest{})
 	if err != nil {
-		t.Fatalf("create environment request: %v", err)
+		t.Fatalf("enable environment request: %v", err)
 	}
-	env, ok := createEnvRes.(*api.Environment)
+	enabledEnv, ok := enableEnvRes.(*api.EnableEnvironmentResponse)
 	if !ok {
-		t.Fatalf("unexpected create environment response: %T", createEnvRes)
+		t.Fatalf("unexpected enable environment response: %T", enableEnvRes)
 	}
+	env := enabledEnv.Environment
 
 	listEnvsRes, err := accountClient.ListEnvironments(ctx)
 	if err != nil {
@@ -184,7 +195,7 @@ func TestServiceHTTPFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create tunnel request: %v", err)
 	}
-	tunnel, ok := createTunnelRes.(*api.Tunnel)
+	_, ok = createTunnelRes.(*api.Tunnel)
 	if !ok {
 		t.Fatalf("unexpected create tunnel response: %T", createTunnelRes)
 	}
@@ -199,6 +210,38 @@ func TestServiceHTTPFlow(t *testing.T) {
 	}
 	if len(*tunnels) != 1 {
 		t.Fatalf("expected 1 tunnel, got %d", len(*tunnels))
+	}
+
+	disableEnvRes, err := accountClient.DisableEnvironment(ctx, api.DisableEnvironmentParams{EnvironmentId: env.ID})
+	if err != nil {
+		t.Fatalf("disable environment request: %v", err)
+	}
+	if _, ok := disableEnvRes.(*api.DisableEnvironmentNoContent); !ok {
+		t.Fatalf("unexpected disable environment response: %T", disableEnvRes)
+	}
+
+	postDisableEnvsRes, err := accountClient.ListEnvironments(ctx)
+	if err != nil {
+		t.Fatalf("list environments after disable request: %v", err)
+	}
+	postDisableEnvironments, ok := postDisableEnvsRes.(*api.ListEnvironmentsResponse)
+	if !ok {
+		t.Fatalf("unexpected post-disable list environments response: %T", postDisableEnvsRes)
+	}
+	if len(*postDisableEnvironments) != 0 {
+		t.Fatalf("expected 0 environments after disable, got %d", len(*postDisableEnvironments))
+	}
+
+	postDisableTunnelsRes, err := accountClient.ListTunnels(ctx)
+	if err != nil {
+		t.Fatalf("list tunnels after disable request: %v", err)
+	}
+	postDisableTunnels, ok := postDisableTunnelsRes.(*api.ListTunnelsResponse)
+	if !ok {
+		t.Fatalf("unexpected post-disable list tunnels response: %T", postDisableTunnelsRes)
+	}
+	if len(*postDisableTunnels) != 0 {
+		t.Fatalf("expected 0 tunnels after disable, got %d", len(*postDisableTunnels))
 	}
 
 	changePasswordRes, err := accountClient.ChangePassword(ctx, &api.ChangePasswordRequest{
@@ -242,15 +285,6 @@ func TestServiceHTTPFlow(t *testing.T) {
 	}
 	if rotatedTokenResp.AccountToken == newLoginTokenResp.AccountToken {
 		t.Fatalf("expected token rotation to change the account token")
-	}
-
-	rotatedClient, err := api.NewClient(baseURL, staticSecuritySource{accountToken: rotatedTokenResp.AccountToken}, api.WithClient(ts.Client()))
-	if err != nil {
-		t.Fatalf("new rotated client: %v", err)
-	}
-
-	if _, err := rotatedClient.GetTunnel(ctx, api.GetTunnelParams{TunnelId: tunnel.ID}); err != nil {
-		t.Fatalf("get tunnel with rotated token: %v", err)
 	}
 
 	deleteAccountRes, err := adminClient.DeleteAccount(ctx, api.DeleteAccountParams{
@@ -311,4 +345,28 @@ func (s staticSecuritySource) AccountTokenAuth(context.Context, api.OperationNam
 
 func (s staticSecuritySource) AdminTokenAuth(context.Context, api.OperationName) (api.AdminTokenAuth, error) {
 	return api.AdminTokenAuth{APIKey: s.adminToken}, nil
+}
+
+type fakeEnvironmentLifecycle struct {
+	enableResult *automation.ProvisionedEnvironment
+	enableErr    error
+	disableCalls []automation.DeprovisionEnvironmentSpec
+}
+
+func (f *fakeEnvironmentLifecycle) Enable(context.Context, automation.EnvironmentSpec) (*automation.ProvisionedEnvironment, error) {
+	return f.enableResult, f.enableErr
+}
+
+func (f *fakeEnvironmentLifecycle) Disable(_ context.Context, spec automation.DeprovisionEnvironmentSpec) error {
+	f.disableCalls = append(f.disableCalls, spec)
+	return nil
+}
+
+type fakeTunnelLifecycle struct {
+	deprovisionCalls []automation.DeprovisionTunnelSpec
+}
+
+func (f *fakeTunnelLifecycle) Deprovision(_ context.Context, spec automation.DeprovisionTunnelSpec) error {
+	f.deprovisionCalls = append(f.deprovisionCalls, spec)
+	return nil
 }

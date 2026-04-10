@@ -9,10 +9,6 @@ type CreateAccountRes interface {
 	createAccountRes()
 }
 
-type CreateEnvironmentRes interface {
-	createEnvironmentRes()
-}
-
 type CreateOrganizationRes interface {
 	createOrganizationRes()
 }
@@ -25,16 +21,20 @@ type DeleteAccountRes interface {
 	deleteAccountRes()
 }
 
-type DeleteEnvironmentRes interface {
-	deleteEnvironmentRes()
-}
-
 type DeleteOrganizationRes interface {
 	deleteOrganizationRes()
 }
 
 type DeleteTunnelRes interface {
 	deleteTunnelRes()
+}
+
+type DisableEnvironmentRes interface {
+	disableEnvironmentRes()
+}
+
+type EnableEnvironmentRes interface {
+	enableEnvironmentRes()
 }
 
 type GetEnvironmentRes interface {

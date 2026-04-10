@@ -24,9 +24,10 @@ type Root interface {
 }
 
 type Environment struct {
-	AccountToken string
-	ZitiIdentity string
-	APIEndpoint  string
+	EnvironmentID string
+	AccountToken  string
+	ZitiIdentity  string
+	APIEndpoint   string
 }
 
 type Config struct {

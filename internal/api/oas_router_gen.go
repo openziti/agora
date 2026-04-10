@@ -182,7 +182,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					case "GET":
 						s.handleListEnvironmentsRequest([0]string{}, elemIsEscaped, w, r)
 					case "POST":
-						s.handleCreateEnvironmentRequest([0]string{}, elemIsEscaped, w, r)
+						s.handleEnableEnvironmentRequest([0]string{}, elemIsEscaped, w, r)
 					default:
 						s.notAllowed(w, r, "GET,POST")
 					}
@@ -211,7 +211,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						// Leaf node.
 						switch r.Method {
 						case "DELETE":
-							s.handleDeleteEnvironmentRequest([1]string{
+							s.handleDisableEnvironmentRequest([1]string{
 								args[0],
 							}, elemIsEscaped, w, r)
 						case "GET":
@@ -636,9 +636,9 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						r.count = 0
 						return r, true
 					case "POST":
-						r.name = CreateEnvironmentOperation
+						r.name = EnableEnvironmentOperation
 						r.summary = ""
-						r.operationID = "createEnvironment"
+						r.operationID = "enableEnvironment"
 						r.pathPattern = "/environments"
 						r.args = args
 						r.count = 0
@@ -669,9 +669,9 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						// Leaf node.
 						switch method {
 						case "DELETE":
-							r.name = DeleteEnvironmentOperation
+							r.name = DisableEnvironmentOperation
 							r.summary = ""
-							r.operationID = "deleteEnvironment"
+							r.operationID = "disableEnvironment"
 							r.pathPattern = "/environments/{environmentId}"
 							r.args = args
 							r.count = 1

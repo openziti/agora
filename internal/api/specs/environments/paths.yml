@@ -2,7 +2,7 @@
   post:
     tags:
       - environments
-    operationId: createEnvironment
+    operationId: enableEnvironment
     security:
       - accountTokenAuth: []
     requestBody:
@@ -10,14 +10,14 @@
       content:
         application/json:
           schema:
-            $ref: "../agora.yml#/components/schemas/createEnvironmentRequest"
+            $ref: "../agora.yml#/components/schemas/enableEnvironmentRequest"
     responses:
       201:
-        description: created
+        description: enabled
         content:
           application/json:
             schema:
-              $ref: "../agora.yml#/components/schemas/environment"
+              $ref: "../agora.yml#/components/schemas/enableEnvironmentResponse"
       401:
         description: unauthorized
         content:
@@ -104,7 +104,7 @@
   delete:
     tags:
       - environments
-    operationId: deleteEnvironment
+    operationId: disableEnvironment
     security:
       - accountTokenAuth: []
     parameters:
@@ -116,7 +116,7 @@
           pattern: '^ev_[a-z0-9]{12}$'
     responses:
       204:
-        description: deleted
+        description: disabled
       401:
         description: unauthorized
         content:

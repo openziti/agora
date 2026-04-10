@@ -245,87 +245,6 @@ func decodeDeleteAccountParams(args [2]string, argsEscaped bool, r *http.Request
 	return params, nil
 }
 
-// DeleteEnvironmentParams is parameters of deleteEnvironment operation.
-type DeleteEnvironmentParams struct {
-	EnvironmentId string
-}
-
-func unpackDeleteEnvironmentParams(packed middleware.Parameters) (params DeleteEnvironmentParams) {
-	{
-		key := middleware.ParameterKey{
-			Name: "environmentId",
-			In:   "path",
-		}
-		params.EnvironmentId = packed[key].(string)
-	}
-	return params
-}
-
-func decodeDeleteEnvironmentParams(args [1]string, argsEscaped bool, r *http.Request) (params DeleteEnvironmentParams, _ error) {
-	// Decode path: environmentId.
-	if err := func() error {
-		param := args[0]
-		if argsEscaped {
-			unescaped, err := url.PathUnescape(args[0])
-			if err != nil {
-				return errors.Wrap(err, "unescape path")
-			}
-			param = unescaped
-		}
-		if len(param) > 0 {
-			d := uri.NewPathDecoder(uri.PathDecoderConfig{
-				Param:   "environmentId",
-				Value:   param,
-				Style:   uri.PathStyleSimple,
-				Explode: false,
-			})
-
-			if err := func() error {
-				val, err := d.DecodeValue()
-				if err != nil {
-					return err
-				}
-
-				c, err := conv.ToString(val)
-				if err != nil {
-					return err
-				}
-
-				params.EnvironmentId = c
-				return nil
-			}(); err != nil {
-				return err
-			}
-			if err := func() error {
-				if err := (validate.String{
-					MinLength:    0,
-					MinLengthSet: false,
-					MaxLength:    0,
-					MaxLengthSet: false,
-					Email:        false,
-					Hostname:     false,
-					Regex:        regexMap["^ev_[a-z0-9]{12}$"],
-				}).Validate(string(params.EnvironmentId)); err != nil {
-					return errors.Wrap(err, "string")
-				}
-				return nil
-			}(); err != nil {
-				return err
-			}
-		} else {
-			return validate.ErrFieldRequired
-		}
-		return nil
-	}(); err != nil {
-		return params, &ogenerrors.DecodeParamError{
-			Name: "environmentId",
-			In:   "path",
-			Err:  err,
-		}
-	}
-	return params, nil
-}
-
 // DeleteOrganizationParams is parameters of deleteOrganization operation.
 type DeleteOrganizationParams struct {
 	OrganizationId string
@@ -481,6 +400,87 @@ func decodeDeleteTunnelParams(args [1]string, argsEscaped bool, r *http.Request)
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "tunnelId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// DisableEnvironmentParams is parameters of disableEnvironment operation.
+type DisableEnvironmentParams struct {
+	EnvironmentId string
+}
+
+func unpackDisableEnvironmentParams(packed middleware.Parameters) (params DisableEnvironmentParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "environmentId",
+			In:   "path",
+		}
+		params.EnvironmentId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeDisableEnvironmentParams(args [1]string, argsEscaped bool, r *http.Request) (params DisableEnvironmentParams, _ error) {
+	// Decode path: environmentId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "environmentId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.EnvironmentId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^ev_[a-z0-9]{12}$"],
+				}).Validate(string(params.EnvironmentId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "environmentId",
 			In:   "path",
 			Err:  err,
 		}

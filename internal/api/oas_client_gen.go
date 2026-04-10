@@ -29,10 +29,6 @@ type Invoker interface {
 	//
 	// POST /organizations/{organizationId}/accounts
 	CreateAccount(ctx context.Context, request *CreateAccountRequest, params CreateAccountParams) (CreateAccountRes, error)
-	// CreateEnvironment invokes createEnvironment operation.
-	//
-	// POST /environments
-	CreateEnvironment(ctx context.Context, request *CreateEnvironmentRequest) (CreateEnvironmentRes, error)
 	// CreateOrganization invokes createOrganization operation.
 	//
 	// POST /organizations
@@ -45,10 +41,6 @@ type Invoker interface {
 	//
 	// DELETE /organizations/{organizationId}/accounts/{accountId}
 	DeleteAccount(ctx context.Context, params DeleteAccountParams) (DeleteAccountRes, error)
-	// DeleteEnvironment invokes deleteEnvironment operation.
-	//
-	// DELETE /environments/{environmentId}
-	DeleteEnvironment(ctx context.Context, params DeleteEnvironmentParams) (DeleteEnvironmentRes, error)
 	// DeleteOrganization invokes deleteOrganization operation.
 	//
 	// DELETE /organizations/{organizationId}
@@ -57,6 +49,14 @@ type Invoker interface {
 	//
 	// DELETE /tunnels/{tunnelId}
 	DeleteTunnel(ctx context.Context, params DeleteTunnelParams) (DeleteTunnelRes, error)
+	// DisableEnvironment invokes disableEnvironment operation.
+	//
+	// DELETE /environments/{environmentId}
+	DisableEnvironment(ctx context.Context, params DisableEnvironmentParams) (DisableEnvironmentRes, error)
+	// EnableEnvironment invokes enableEnvironment operation.
+	//
+	// POST /environments
+	EnableEnvironment(ctx context.Context, request *EnableEnvironmentRequest) (EnableEnvironmentRes, error)
 	// GetEnvironment invokes getEnvironment operation.
 	//
 	// GET /environments/{environmentId}
@@ -310,85 +310,6 @@ func (c *Client) sendCreateAccount(ctx context.Context, request *CreateAccountRe
 	defer resp.Body.Close()
 
 	result, err := decodeCreateAccountResponse(resp)
-	if err != nil {
-		return res, errors.Wrap(err, "decode response")
-	}
-
-	return result, nil
-}
-
-// CreateEnvironment invokes createEnvironment operation.
-//
-// POST /environments
-func (c *Client) CreateEnvironment(ctx context.Context, request *CreateEnvironmentRequest) (CreateEnvironmentRes, error) {
-	res, err := c.sendCreateEnvironment(ctx, request)
-	return res, err
-}
-
-func (c *Client) sendCreateEnvironment(ctx context.Context, request *CreateEnvironmentRequest) (res CreateEnvironmentRes, err error) {
-	// Validate request before sending.
-	if err := func() error {
-		if err := request.Validate(); err != nil {
-			return err
-		}
-		return nil
-	}(); err != nil {
-		return res, errors.Wrap(err, "validate")
-	}
-
-	u := uri.Clone(c.requestURL(ctx))
-	var pathParts [1]string
-	pathParts[0] = "/environments"
-	uri.AddPathParts(u, pathParts[:]...)
-
-	r, err := ht.NewRequest(ctx, "POST", u)
-	if err != nil {
-		return res, errors.Wrap(err, "create request")
-	}
-	if err := encodeCreateEnvironmentRequest(request, r); err != nil {
-		return res, errors.Wrap(err, "encode request")
-	}
-
-	{
-		type bitset = [1]uint8
-		var satisfied bitset
-		{
-
-			switch err := c.securityAccountTokenAuth(ctx, CreateEnvironmentOperation, r); {
-			case err == nil: // if NO error
-				satisfied[0] |= 1 << 0
-			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
-				// Skip this security.
-			default:
-				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
-			}
-		}
-
-		if ok := func() bool {
-		nextRequirement:
-			for _, requirement := range []bitset{
-				{0b00000001},
-			} {
-				for i, mask := range requirement {
-					if satisfied[i]&mask != mask {
-						continue nextRequirement
-					}
-				}
-				return true
-			}
-			return false
-		}(); !ok {
-			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
-		}
-	}
-
-	resp, err := c.cfg.Client.Do(r)
-	if err != nil {
-		return res, errors.Wrap(err, "do request")
-	}
-	defer resp.Body.Close()
-
-	result, err := decodeCreateEnvironmentResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -658,91 +579,6 @@ func (c *Client) sendDeleteAccount(ctx context.Context, params DeleteAccountPara
 	return result, nil
 }
 
-// DeleteEnvironment invokes deleteEnvironment operation.
-//
-// DELETE /environments/{environmentId}
-func (c *Client) DeleteEnvironment(ctx context.Context, params DeleteEnvironmentParams) (DeleteEnvironmentRes, error) {
-	res, err := c.sendDeleteEnvironment(ctx, params)
-	return res, err
-}
-
-func (c *Client) sendDeleteEnvironment(ctx context.Context, params DeleteEnvironmentParams) (res DeleteEnvironmentRes, err error) {
-
-	u := uri.Clone(c.requestURL(ctx))
-	var pathParts [2]string
-	pathParts[0] = "/environments/"
-	{
-		// Encode "environmentId" parameter.
-		e := uri.NewPathEncoder(uri.PathEncoderConfig{
-			Param:   "environmentId",
-			Style:   uri.PathStyleSimple,
-			Explode: false,
-		})
-		if err := func() error {
-			return e.EncodeValue(conv.StringToString(params.EnvironmentId))
-		}(); err != nil {
-			return res, errors.Wrap(err, "encode path")
-		}
-		encoded, err := e.Result()
-		if err != nil {
-			return res, errors.Wrap(err, "encode path")
-		}
-		pathParts[1] = encoded
-	}
-	uri.AddPathParts(u, pathParts[:]...)
-
-	r, err := ht.NewRequest(ctx, "DELETE", u)
-	if err != nil {
-		return res, errors.Wrap(err, "create request")
-	}
-
-	{
-		type bitset = [1]uint8
-		var satisfied bitset
-		{
-
-			switch err := c.securityAccountTokenAuth(ctx, DeleteEnvironmentOperation, r); {
-			case err == nil: // if NO error
-				satisfied[0] |= 1 << 0
-			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
-				// Skip this security.
-			default:
-				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
-			}
-		}
-
-		if ok := func() bool {
-		nextRequirement:
-			for _, requirement := range []bitset{
-				{0b00000001},
-			} {
-				for i, mask := range requirement {
-					if satisfied[i]&mask != mask {
-						continue nextRequirement
-					}
-				}
-				return true
-			}
-			return false
-		}(); !ok {
-			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
-		}
-	}
-
-	resp, err := c.cfg.Client.Do(r)
-	if err != nil {
-		return res, errors.Wrap(err, "do request")
-	}
-	defer resp.Body.Close()
-
-	result, err := decodeDeleteEnvironmentResponse(resp)
-	if err != nil {
-		return res, errors.Wrap(err, "decode response")
-	}
-
-	return result, nil
-}
-
 // DeleteOrganization invokes deleteOrganization operation.
 //
 // DELETE /organizations/{organizationId}
@@ -906,6 +742,161 @@ func (c *Client) sendDeleteTunnel(ctx context.Context, params DeleteTunnelParams
 	defer resp.Body.Close()
 
 	result, err := decodeDeleteTunnelResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// DisableEnvironment invokes disableEnvironment operation.
+//
+// DELETE /environments/{environmentId}
+func (c *Client) DisableEnvironment(ctx context.Context, params DisableEnvironmentParams) (DisableEnvironmentRes, error) {
+	res, err := c.sendDisableEnvironment(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendDisableEnvironment(ctx context.Context, params DisableEnvironmentParams) (res DisableEnvironmentRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/environments/"
+	{
+		// Encode "environmentId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "environmentId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.EnvironmentId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, DisableEnvironmentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeDisableEnvironmentResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// EnableEnvironment invokes enableEnvironment operation.
+//
+// POST /environments
+func (c *Client) EnableEnvironment(ctx context.Context, request *EnableEnvironmentRequest) (EnableEnvironmentRes, error) {
+	res, err := c.sendEnableEnvironment(ctx, request)
+	return res, err
+}
+
+func (c *Client) sendEnableEnvironment(ctx context.Context, request *EnableEnvironmentRequest) (res EnableEnvironmentRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/environments"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeEnableEnvironmentRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, EnableEnvironmentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeEnableEnvironmentResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

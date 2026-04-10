@@ -278,11 +278,11 @@ func (r *EnvironmentsRepository) Create(ctx context.Context, db Queryer, env Env
 
 	const query = `
 insert into environments (
-	id, organization_id, account_id, description, host, ziti_identity_id, state, last_seen_at, created_at, updated_at
+	id, organization_id, account_id, description, host, ziti_identity_id, edge_router_policy_id, state, deleted, last_seen_at, created_at, updated_at
 ) values (
-	$1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+	$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 )
-returning id, organization_id, account_id, description, host, ziti_identity_id, state, last_seen_at, created_at, updated_at`
+returning id, organization_id, account_id, description, host, ziti_identity_id, edge_router_policy_id, state, deleted, last_seen_at, created_at, updated_at`
 
 	var created Environment
 	if err := db.GetContext(
@@ -295,7 +295,9 @@ returning id, organization_id, account_id, description, host, ziti_identity_id, 
 		env.Description,
 		env.Host,
 		env.ZitiIdentityID,
+		env.EdgeRouterPolicyID,
 		env.State,
+		env.Deleted,
 		env.LastSeenAt,
 		env.CreatedAt,
 		env.UpdatedAt,
@@ -307,9 +309,9 @@ returning id, organization_id, account_id, description, host, ziti_identity_id, 
 
 func (r *EnvironmentsRepository) GetByID(ctx context.Context, db Queryer, id string) (*Environment, error) {
 	const query = `
-select id, organization_id, account_id, description, host, ziti_identity_id, state, last_seen_at, created_at, updated_at
+select id, organization_id, account_id, description, host, ziti_identity_id, edge_router_policy_id, state, deleted, last_seen_at, created_at, updated_at
 from environments
-where id = $1`
+where id = $1 and not deleted`
 
 	var env Environment
 	if err := db.GetContext(ctx, &env, query, id); err != nil {
@@ -323,9 +325,9 @@ where id = $1`
 
 func (r *EnvironmentsRepository) ListByOrganization(ctx context.Context, db Queryer, organizationID string) ([]Environment, error) {
 	const query = `
-select id, organization_id, account_id, description, host, ziti_identity_id, state, last_seen_at, created_at, updated_at
+select id, organization_id, account_id, description, host, ziti_identity_id, edge_router_policy_id, state, deleted, last_seen_at, created_at, updated_at
 from environments
-where organization_id = $1
+where organization_id = $1 and not deleted
 order by created_at asc`
 
 	var environments []Environment
@@ -336,9 +338,13 @@ order by created_at asc`
 }
 
 func (r *EnvironmentsRepository) Delete(ctx context.Context, db Queryer, id string, organizationID string) error {
-	const query = `delete from environments where id = $1 and organization_id = $2`
+	const query = `
+update environments
+set state = $3, deleted = true, updated_at = $4
+where id = $1 and organization_id = $2 and not deleted`
 
-	result, err := db.ExecContext(ctx, query, id, organizationID)
+	updatedAt := time.Now().UTC()
+	result, err := db.ExecContext(ctx, query, id, organizationID, EnvironmentStateDisabled, updatedAt)
 	if err != nil {
 		return fmt.Errorf("delete environment: %w", err)
 	}
@@ -352,11 +358,25 @@ func (r *EnvironmentsRepository) Delete(ctx context.Context, db Queryer, id stri
 	return nil
 }
 
+func (r *EnvironmentsRepository) ListByAccount(ctx context.Context, db Queryer, accountID string) ([]Environment, error) {
+	const query = `
+select id, organization_id, account_id, description, host, ziti_identity_id, edge_router_policy_id, state, deleted, last_seen_at, created_at, updated_at
+from environments
+where account_id = $1 and not deleted
+order by created_at asc`
+
+	var environments []Environment
+	if err := db.SelectContext(ctx, &environments, query, accountID); err != nil {
+		return nil, fmt.Errorf("list account environments: %w", err)
+	}
+	return environments, nil
+}
+
 func (r *EnvironmentsRepository) UpdateLastSeen(ctx context.Context, db Queryer, id string, lastSeenAt time.Time) error {
 	const query = `
 update environments
 set last_seen_at = $2, updated_at = $3
-where id = $1`
+where id = $1 and not deleted`
 
 	updatedAt := time.Now().UTC()
 	result, err := db.ExecContext(ctx, query, id, lastSeenAt.UTC(), updatedAt)
@@ -388,11 +408,11 @@ func (r *TunnelsRepository) Create(ctx context.Context, db Queryer, tunnel Tunne
 
 	const query = `
 insert into tunnels (
-	id, organization_id, environment_id, name, backend_address, ziti_service_id, state, created_at, updated_at
+	id, organization_id, environment_id, name, backend_address, ziti_service_id, state, deleted, created_at, updated_at
 ) values (
-	$1, $2, $3, $4, $5, $6, $7, $8, $9
+	$1, $2, $3, $4, $5, $6, $7, $8, $9, $10
 )
-returning id, organization_id, environment_id, name, backend_address, ziti_service_id, state, created_at, updated_at`
+returning id, organization_id, environment_id, name, backend_address, ziti_service_id, state, deleted, created_at, updated_at`
 
 	var created Tunnel
 	if err := db.GetContext(
@@ -406,6 +426,7 @@ returning id, organization_id, environment_id, name, backend_address, ziti_servi
 		tunnel.BackendAddress,
 		tunnel.ZitiServiceID,
 		tunnel.State,
+		tunnel.Deleted,
 		tunnel.CreatedAt,
 		tunnel.UpdatedAt,
 	); err != nil {
@@ -416,9 +437,9 @@ returning id, organization_id, environment_id, name, backend_address, ziti_servi
 
 func (r *TunnelsRepository) GetByID(ctx context.Context, db Queryer, id string) (*Tunnel, error) {
 	const query = `
-select id, organization_id, environment_id, name, backend_address, ziti_service_id, state, created_at, updated_at
+select id, organization_id, environment_id, name, backend_address, ziti_service_id, state, deleted, created_at, updated_at
 from tunnels
-where id = $1`
+where id = $1 and not deleted`
 
 	var tunnel Tunnel
 	if err := db.GetContext(ctx, &tunnel, query, id); err != nil {
@@ -432,9 +453,9 @@ where id = $1`
 
 func (r *TunnelsRepository) ListByOrganization(ctx context.Context, db Queryer, organizationID string) ([]Tunnel, error) {
 	const query = `
-select id, organization_id, environment_id, name, backend_address, ziti_service_id, state, created_at, updated_at
+select id, organization_id, environment_id, name, backend_address, ziti_service_id, state, deleted, created_at, updated_at
 from tunnels
-where organization_id = $1
+where organization_id = $1 and not deleted
 order by name asc`
 
 	var tunnels []Tunnel
@@ -450,9 +471,13 @@ func isForeignKeyConstraint(err error) bool {
 }
 
 func (r *TunnelsRepository) Delete(ctx context.Context, db Queryer, id string, organizationID string) error {
-	const query = `delete from tunnels where id = $1 and organization_id = $2`
+	const query = `
+update tunnels
+set state = $3, deleted = true, updated_at = $4
+where id = $1 and organization_id = $2 and not deleted`
 
-	result, err := db.ExecContext(ctx, query, id, organizationID)
+	updatedAt := time.Now().UTC()
+	result, err := db.ExecContext(ctx, query, id, organizationID, TunnelStateDisabled, updatedAt)
 	if err != nil {
 		return fmt.Errorf("delete tunnel: %w", err)
 	}
@@ -464,6 +489,20 @@ func (r *TunnelsRepository) Delete(ctx context.Context, db Queryer, id string, o
 		return ErrNotFound
 	}
 	return nil
+}
+
+func (r *TunnelsRepository) ListByEnvironment(ctx context.Context, db Queryer, environmentID, organizationID string) ([]Tunnel, error) {
+	const query = `
+select id, organization_id, environment_id, name, backend_address, ziti_service_id, state, deleted, created_at, updated_at
+from tunnels
+where environment_id = $1 and organization_id = $2 and not deleted
+order by name asc`
+
+	var tunnels []Tunnel
+	if err := db.SelectContext(ctx, &tunnels, query, environmentID, organizationID); err != nil {
+		return nil, fmt.Errorf("list environment tunnels: %w", err)
+	}
+	return tunnels, nil
 }
 
 func isNotFound(err error) bool {

@@ -16,10 +16,6 @@ type Handler interface {
 	//
 	// POST /organizations/{organizationId}/accounts
 	CreateAccount(ctx context.Context, req *CreateAccountRequest, params CreateAccountParams) (CreateAccountRes, error)
-	// CreateEnvironment implements createEnvironment operation.
-	//
-	// POST /environments
-	CreateEnvironment(ctx context.Context, req *CreateEnvironmentRequest) (CreateEnvironmentRes, error)
 	// CreateOrganization implements createOrganization operation.
 	//
 	// POST /organizations
@@ -32,10 +28,6 @@ type Handler interface {
 	//
 	// DELETE /organizations/{organizationId}/accounts/{accountId}
 	DeleteAccount(ctx context.Context, params DeleteAccountParams) (DeleteAccountRes, error)
-	// DeleteEnvironment implements deleteEnvironment operation.
-	//
-	// DELETE /environments/{environmentId}
-	DeleteEnvironment(ctx context.Context, params DeleteEnvironmentParams) (DeleteEnvironmentRes, error)
 	// DeleteOrganization implements deleteOrganization operation.
 	//
 	// DELETE /organizations/{organizationId}
@@ -44,6 +36,14 @@ type Handler interface {
 	//
 	// DELETE /tunnels/{tunnelId}
 	DeleteTunnel(ctx context.Context, params DeleteTunnelParams) (DeleteTunnelRes, error)
+	// DisableEnvironment implements disableEnvironment operation.
+	//
+	// DELETE /environments/{environmentId}
+	DisableEnvironment(ctx context.Context, params DisableEnvironmentParams) (DisableEnvironmentRes, error)
+	// EnableEnvironment implements enableEnvironment operation.
+	//
+	// POST /environments
+	EnableEnvironment(ctx context.Context, req *EnableEnvironmentRequest) (EnableEnvironmentRes, error)
 	// GetEnvironment implements getEnvironment operation.
 	//
 	// GET /environments/{environmentId}

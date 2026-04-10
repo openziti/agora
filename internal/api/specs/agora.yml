@@ -72,8 +72,10 @@ components:
       $ref: "account/schemas.yml#/regenerateTokenRequest"
     environment:
       $ref: "environments/schemas.yml#/environment"
-    createEnvironmentRequest:
-      $ref: "environments/schemas.yml#/createEnvironmentRequest"
+    enableEnvironmentRequest:
+      $ref: "environments/schemas.yml#/enableEnvironmentRequest"
+    enableEnvironmentResponse:
+      $ref: "environments/schemas.yml#/enableEnvironmentResponse"
     listEnvironmentsResponse:
       $ref: "environments/schemas.yml#/listEnvironmentsResponse"
     tunnel:

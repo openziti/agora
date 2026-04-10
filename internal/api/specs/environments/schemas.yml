@@ -37,16 +37,23 @@ environment:
       type: string
       format: date-time
 
-createEnvironmentRequest:
+enableEnvironmentRequest:
   type: object
-  required:
-    - zitiIdentityId
   properties:
     description:
       type: string
     host:
       type: string
-    zitiIdentityId:
+
+enableEnvironmentResponse:
+  type: object
+  required:
+    - environment
+    - enrollmentJson
+  properties:
+    environment:
+      $ref: "#/environment"
+    enrollmentJson:
       type: string
       minLength: 1
 

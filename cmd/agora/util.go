@@ -28,11 +28,15 @@ func appliedLabel(applied bool) string {
 }
 
 type staticSecuritySource struct {
-	adminToken string
+	accountToken string
+	adminToken   string
 }
 
 func (s staticSecuritySource) AccountTokenAuth(context.Context, api.OperationName) (api.AccountTokenAuth, error) {
-	return api.AccountTokenAuth{}, fmt.Errorf("account token auth not configured for admin command")
+	if s.accountToken == "" {
+		return api.AccountTokenAuth{}, fmt.Errorf("account token auth not configured")
+	}
+	return api.AccountTokenAuth{APIKey: s.accountToken}, nil
 }
 
 func (s staticSecuritySource) AdminTokenAuth(context.Context, api.OperationName) (api.AdminTokenAuth, error) {
@@ -53,10 +57,22 @@ func openAdminAPIClient() *api.Client {
 		panic("please set AGORA_ADMIN_TOKEN to a valid admin token")
 	}
 	_ = from
-	baseURL := strings.TrimRight(apiEndpoint, "/") + "/v1"
-	client, err := api.NewClient(baseURL, staticSecuritySource{adminToken: adminToken}, api.WithClient(http.DefaultClient))
+	client, err := newAPIClient(apiEndpoint, staticSecuritySource{adminToken: adminToken})
 	if err != nil {
 		panic(err)
 	}
 	return client
+}
+
+func openAccountAPIClient(apiEndpoint, accountToken string) *api.Client {
+	client, err := newAPIClient(apiEndpoint, staticSecuritySource{accountToken: accountToken})
+	if err != nil {
+		panic(err)
+	}
+	return client
+}
+
+func newAPIClient(apiEndpoint string, source staticSecuritySource) (*api.Client, error) {
+	baseURL := strings.TrimRight(apiEndpoint, "/") + "/v1"
+	return api.NewClient(baseURL, source, api.WithClient(http.DefaultClient))
 }
