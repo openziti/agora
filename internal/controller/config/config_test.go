@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -178,6 +179,48 @@ open_ziti:
 	}
 	if cfg.OpenZiti == nil {
 		t.Fatal("expected open_ziti to be allocated")
+	}
+}
+
+func TestInspectRedactsSecrets(t *testing.T) {
+	path := writeConfigFile(t, `
+admin_tokens:
+  - "admin-token"
+store:
+  dsn: "postgres://user:pass@localhost:5432/agora?sslmode=disable"
+open_ziti:
+  api_endpoint: "https://controller.example"
+  auth:
+    updb:
+      username: "admin"
+      password: "secret"
+`)
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("load config: %v", err)
+	}
+
+	inspected := dd.MustInspect(cfg)
+	for _, secret := range []string{
+		"admin-token",
+		"postgres://user:pass@localhost:5432/agora?sslmode=disable",
+	} {
+		if strings.Contains(inspected, secret) {
+			t.Fatalf("expected inspect output to redact %q, got: %s", secret, inspected)
+		}
+	}
+	if !strings.Contains(inspected, "password (secret)") {
+		t.Fatalf("expected inspect output to mark password as secret, got: %s", inspected)
+	}
+	if !strings.Contains(inspected, "dsn (secret)") {
+		t.Fatalf("expected inspect output to mark dsn as secret, got: %s", inspected)
+	}
+	if !strings.Contains(inspected, "admin_tokens (secret)") {
+		t.Fatalf("expected inspect output to mark admin tokens as secret, got: %s", inspected)
+	}
+	if !strings.Contains(inspected, "<set>") {
+		t.Fatalf("expected inspect output to redact secret values, got: %s", inspected)
 	}
 }
 

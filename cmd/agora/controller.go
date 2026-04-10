@@ -1,6 +1,8 @@
 package main
 
 import (
+	"github.com/michaelquigley/df/dd"
+	"github.com/michaelquigley/df/dl"
 	"github.com/openziti/agora/internal/controller"
 	"github.com/openziti/agora/internal/controller/config"
 	"github.com/spf13/cobra"
@@ -31,6 +33,7 @@ func (cmd *controllerCommand) run(_ *cobra.Command, args []string) {
 	if err != nil {
 		panic(err)
 	}
+	dl.Info(dd.MustInspect(cfg))
 	if err := controller.Run(cfg); err != nil {
 		panic(err)
 	}

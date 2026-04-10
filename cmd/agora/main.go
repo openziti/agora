@@ -5,9 +5,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/michaelquigley/df/dl"
-	"github.com/spf13/cobra"
 	"log/slog"
+
+	"github.com/michaelquigley/df/dl"
+	"github.com/michaelquigley/pfxlog"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 func init() {
@@ -19,11 +22,14 @@ var rootCmd = &cobra.Command{
 	Use:   strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0])),
 	Short: "agora",
 	PersistentPreRun: func(_ *cobra.Command, _ []string) {
-		level := slog.LevelInfo
+		slogLevel := slog.LevelInfo
+		logrusLevel := logrus.InfoLevel
 		if verbose {
-			level = slog.LevelDebug
+			slogLevel = slog.LevelDebug
+			logrusLevel = logrus.DebugLevel
 		}
-		dl.Init(dl.DefaultOptions().SetLevel(level).SetTrimPrefix("github.com/openziti/"))
+		dl.Init(dl.DefaultOptions().SetLevel(slogLevel).SetTrimPrefix("github.com/openziti/"))
+		pfxlog.GlobalInit(logrusLevel, pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/"))
 	},
 }
 

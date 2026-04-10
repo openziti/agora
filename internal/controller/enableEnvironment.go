@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/michaelquigley/df/dl"
 	"github.com/openziti/agora/internal/api"
 	"github.com/openziti/agora/internal/openziti/automation"
 	"github.com/openziti/agora/internal/persistence"
@@ -12,6 +13,7 @@ import (
 func (s *Service) EnableEnvironment(ctx context.Context, req *api.EnableEnvironmentRequest) (api.EnableEnvironmentRes, error) {
 	principal, err := requireAccountPrincipal(ctx)
 	if err != nil {
+		dl.Warn("unauthorized enable environment request")
 		return &api.EnableEnvironmentUnauthorized{Code: "unauthorized", Message: "unauthorized"}, nil
 	}
 
@@ -24,9 +26,17 @@ func (s *Service) EnableEnvironment(ctx context.Context, req *api.EnableEnvironm
 	if value, ok := req.Description.Get(); ok {
 		description = value
 	}
+	dl.Infof(
+		"enabling environment host='%s' description='%s' environment_id='%s' %s",
+		host,
+		description,
+		envID,
+		principalLogFields(principal),
+	)
 
 	envLifecycle, _, err := s.lifecycleFactory(ctx)
 	if err != nil {
+		dl.Errorf("enable environment lifecycle initialization failed environment_id='%s' %s: %v", envID, principalLogFields(principal), err)
 		return &api.EnableEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
 
@@ -38,6 +48,7 @@ func (s *Service) EnableEnvironment(ctx context.Context, req *api.EnableEnvironm
 		Version:        automation.DefaultAgoraVersion,
 	})
 	if err != nil {
+		dl.Errorf("enable environment provisioning failed environment_id='%s' %s: %v", envID, principalLogFields(principal), err)
 		return &api.EnableEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
 
@@ -58,12 +69,14 @@ func (s *Service) EnableEnvironment(ctx context.Context, req *api.EnableEnvironm
 
 	created, err := s.store.Environments.Create(ctx, s.store.DB(), env)
 	if err != nil {
+		dl.Errorf("enable environment persistence failed environment_id='%s' ziti_identity_id='%s' %s: %v", envID, provisioned.IdentityID, principalLogFields(principal), err)
 		_ = envLifecycle.Disable(ctx, automation.DeprovisionEnvironmentSpec{
 			IdentityID:         provisioned.IdentityID,
 			EdgeRouterPolicyID: provisioned.PolicyID,
 		})
 		return &api.EnableEnvironmentConflict{Code: "conflict", Message: err.Error()}, nil
 	}
+	dl.Infof("enabled environment environment_id='%s' ziti_identity_id='%s' %s", created.ID, created.ZitiIdentityID, principalLogFields(principal))
 
 	return mapEnableEnvironmentResponse(created, provisioned.EnrollmentJSON), nil
 }

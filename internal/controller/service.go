@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/michaelquigley/df/dl"
 	"github.com/openziti/agora/internal/api"
 	"github.com/openziti/agora/internal/controller/config"
 	"github.com/openziti/agora/internal/openziti/automation"
@@ -55,11 +56,24 @@ func NewHandler(svc *Service) (http.Handler, error) {
 func (s *Service) HandleAccountTokenAuth(ctx context.Context, _ api.OperationName, token api.AccountTokenAuth) (context.Context, error) {
 	acct, err := s.store.Accounts.FindByToken(ctx, s.store.DB(), token.APIKey)
 	if err != nil {
+		dl.Warnf("account token authentication failed: %v", err)
 		return ctx, err
 	}
 	if acct.Status != persistence.AccountStatusActive {
+		dl.Warnf(
+			"account token authentication rejected for email='%s' account_id='%s' organization_id='%s': account disabled",
+			acct.Email,
+			acct.ID,
+			acct.OrganizationID,
+		)
 		return ctx, errors.New("account disabled")
 	}
+	dl.Debugf(
+		"authenticated account token for email='%s' account_id='%s' organization_id='%s'",
+		acct.Email,
+		acct.ID,
+		acct.OrganizationID,
+	)
 	return context.WithValue(ctx, accountPrincipalKey{}, &accountPrincipal{
 		AccountID:      acct.ID,
 		OrganizationID: acct.OrganizationID,
@@ -71,9 +85,11 @@ func (s *Service) HandleAccountTokenAuth(ctx context.Context, _ api.OperationNam
 func (s *Service) HandleAdminTokenAuth(ctx context.Context, _ api.OperationName, token api.AdminTokenAuth) (context.Context, error) {
 	for _, allowed := range s.cfg.AdminTokens {
 		if token.APIKey == allowed {
+			dl.Debug("authenticated admin token")
 			return context.WithValue(ctx, adminPrincipalKey{}, &adminPrincipal{Token: token.APIKey}), nil
 		}
 	}
+	dl.Warn("admin token authentication failed")
 	return ctx, errors.New("unauthorized admin token")
 }
 

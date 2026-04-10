@@ -11,7 +11,7 @@ import (
 
 type Config struct {
 	BindAddress string
-	AdminTokens []string
+	AdminTokens []string `dd:",+secret"`
 	OpenZiti    *automation.Config
 	Store       persistence.Config `dd:",+required"`
 }
