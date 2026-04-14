@@ -36,6 +36,7 @@ func (OpenZitiFactory) New(identityPath string) (OverlayContext, error) {
 
 func (c *openZitiContext) Listen(serviceName string) (net.Listener, error) {
 	return c.ctx.ListenWithOptions(serviceName, &ziti.ListenOptions{
+		DoNotSaveDialerIdentity:      false,
 		ConnectTimeout:               5 * time.Minute,
 		WaitForNEstablishedListeners: 1,
 	})

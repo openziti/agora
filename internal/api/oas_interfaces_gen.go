@@ -41,6 +41,10 @@ type DeleteTunnelRes interface {
 	deleteTunnelRes()
 }
 
+type DeleteTunnelServeRes interface {
+	deleteTunnelServeRes()
+}
+
 type DisableEnvironmentRes interface {
 	disableEnvironmentRes()
 }
@@ -59,6 +63,10 @@ type GetTunnelRes interface {
 
 type HeartbeatTunnelAttachmentRes interface {
 	heartbeatTunnelAttachmentRes()
+}
+
+type HeartbeatTunnelServeRes interface {
+	heartbeatTunnelServeRes()
 }
 
 type ListAccountsRes interface {
@@ -99,4 +107,8 @@ type RegenerateAccountTokenRes interface {
 
 type RemoveTunnelGrantRes interface {
 	removeTunnelGrantRes()
+}
+
+type StartTunnelServeRes interface {
+	startTunnelServeRes()
 }

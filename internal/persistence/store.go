@@ -26,6 +26,7 @@ type Store struct {
 	Tunnels           *TunnelsRepository
 	TunnelGrants      *TunnelGrantsRepository
 	TunnelAttachments *TunnelAttachmentsRepository
+	TunnelServes      *TunnelServesRepository
 }
 
 func Open(ctx context.Context, cfg Config) (*Store, error) {
@@ -61,6 +62,7 @@ func Open(ctx context.Context, cfg Config) (*Store, error) {
 	store.Tunnels = &TunnelsRepository{}
 	store.TunnelGrants = &TunnelGrantsRepository{}
 	store.TunnelAttachments = &TunnelAttachmentsRepository{}
+	store.TunnelServes = &TunnelServesRepository{}
 
 	return store, nil
 }

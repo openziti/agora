@@ -232,6 +232,33 @@ func mapTunnelAttachmentDetail(attachment *persistence.TunnelAttachmentDetail) *
 	return result
 }
 
+func mapTunnelServe(serve *persistence.TunnelServeDetail) *api.TunnelServe {
+	result := &api.TunnelServe{
+		ID:              serve.ID,
+		TunnelId:        serve.TunnelID,
+		OrganizationId:  serve.OrganizationID,
+		AccountId:       serve.AccountID,
+		EnvironmentId:   serve.EnvironmentID,
+		State:           api.TunnelServeState(serve.State),
+		LastHeartbeatAt: serve.LastHeartbeatAt,
+		CreatedAt:       serve.CreatedAt,
+		UpdatedAt:       serve.UpdatedAt,
+	}
+	if serve.EnvironmentHost != nil {
+		result.EnvironmentHost.SetTo(*serve.EnvironmentHost)
+	}
+	if serve.TunnelName != "" {
+		result.TunnelName.SetTo(serve.TunnelName)
+	}
+	if serve.TunnelMode != "" {
+		result.TunnelMode.SetTo(api.TunnelMode(serve.TunnelMode))
+	}
+	if serve.DisconnectedAt != nil {
+		result.DisconnectedAt.SetTo(*serve.DisconnectedAt)
+	}
+	return result
+}
+
 func normalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }

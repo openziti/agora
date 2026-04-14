@@ -121,6 +121,58 @@
             schema:
               $ref: "../agora.yml#/components/schemas/error"
 
+/tunnels/{tunnelId}/serve:
+  post:
+    tags:
+      - tunnels
+    operationId: startTunnelServe
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: tunnelId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^tt_[a-z0-9]{12}$'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/startTunnelServeRequest"
+    responses:
+      201:
+        description: created
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/tunnelServe"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
 /tunnels/{tunnelId}:
   get:
     tags:
@@ -417,6 +469,78 @@
         schema:
           type: string
           pattern: '^ta_[a-z0-9]{12}$'
+    responses:
+      204:
+        description: deleted
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/tunnel-serves/{serveId}/heartbeat:
+  post:
+    tags:
+      - tunnels
+    operationId: heartbeatTunnelServe
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: serveId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^ts_[a-z0-9]{12}$'
+    responses:
+      204:
+        description: ok
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/tunnel-serves/{serveId}:
+  delete:
+    tags:
+      - tunnels
+    operationId: deleteTunnelServe
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: serveId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^ts_[a-z0-9]{12}$'
     responses:
       204:
         description: deleted

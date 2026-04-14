@@ -108,6 +108,15 @@ connectTunnelResponse:
     attachment:
       $ref: "#/tunnelAttachment"
 
+startTunnelServeRequest:
+  type: object
+  required:
+    - environmentId
+  properties:
+    environmentId:
+      type: string
+      pattern: '^ev_[a-z0-9]{12}$'
+
 tunnelGrant:
   type: object
   required:
@@ -203,3 +212,53 @@ listTunnelAttachmentsResponse:
   type: array
   items:
     $ref: "#/tunnelAttachment"
+
+tunnelServe:
+  type: object
+  required:
+    - id
+    - tunnelId
+    - organizationId
+    - accountId
+    - environmentId
+    - state
+    - lastHeartbeatAt
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      type: string
+      pattern: '^ts_[a-z0-9]{12}$'
+    tunnelId:
+      type: string
+      pattern: '^tt_[a-z0-9]{12}$'
+    organizationId:
+      type: string
+      pattern: '^org_[a-z0-9]{12}$'
+    accountId:
+      type: string
+      pattern: '^ac_[a-z0-9]{12}$'
+    environmentId:
+      type: string
+      pattern: '^ev_[a-z0-9]{12}$'
+    environmentHost:
+      type: string
+    tunnelName:
+      type: string
+    tunnelMode:
+      $ref: "#/tunnelMode"
+    state:
+      type: string
+      enum: [active, stale, disconnected]
+    lastHeartbeatAt:
+      type: string
+      format: date-time
+    disconnectedAt:
+      type: string
+      format: date-time
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time

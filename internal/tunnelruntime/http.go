@@ -25,7 +25,10 @@ func ServeHTTP(ctx context.Context, factory OverlayFactory, identityPath, servic
 	}
 
 	server := &http.Server{
-		Handler: httputil.NewSingleHostReverseProxy(targetURL),
+		Handler: serveHTTPRequestLogger(serviceName, backendTarget, httputil.NewSingleHostReverseProxy(targetURL)),
+		ConnContext: func(ctx context.Context, conn net.Conn) context.Context {
+			return context.WithValue(ctx, overlayPeerInfoContextKey{}, overlayPeerInfoFromConn(conn))
+		},
 	}
 	closeOnDone(ctx, listener)
 	go func() {
@@ -54,7 +57,7 @@ func ConnectHTTP(ctx context.Context, factory OverlayFactory, identityPath, serv
 
 	server := &http.Server{
 		Addr:    listenAddress,
-		Handler: proxy,
+		Handler: connectHTTPRequestLogger(serviceName, listenAddress, proxy),
 	}
 	go func() {
 		<-ctx.Done()

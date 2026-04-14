@@ -84,6 +84,18 @@ func (s *Service) DisableEnvironment(ctx context.Context, params api.DisableEnvi
 	disconnectedAt := time.Now().UTC()
 	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
 		for i := range tunnels {
+			activeServe, err := s.store.TunnelServes.GetActiveByTunnel(ctx, tx, tunnels[i].ID, env.OrganizationID)
+			if err != nil && !errors.Is(err, persistence.ErrNotFound) {
+				return err
+			}
+			if err == nil {
+				if err := s.store.TunnelServes.UpdateState(ctx, tx, activeServe.ID, persistence.TunnelServeStateDisconnected, &disconnectedAt); err != nil {
+					return err
+				}
+			}
+			if err := s.store.TunnelServes.DeleteByTunnel(ctx, tx, tunnels[i].ID, env.OrganizationID); err != nil {
+				return err
+			}
 			attachments, err := s.store.TunnelAttachments.ListByTunnel(ctx, tx, tunnels[i].ID, env.OrganizationID)
 			if err != nil {
 				return err

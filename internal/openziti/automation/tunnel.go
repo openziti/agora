@@ -94,7 +94,7 @@ func (p *TunnelProvisioner) Provision(ctx context.Context, spec TunnelSpec) (*Pr
 	}
 	serviceEdgeRouterPolicyID, err := p.serviceEdgeRouterPolicies.Create(ctx, &ServiceEdgeRouterPolicyOptions{
 		BaseOptions: BaseOptions{
-			Name: spec.TunnelName + "-serp",
+			Name: spec.TunnelID + "-serp",
 			Tags: tags,
 		},
 		ServiceRoles:    []string{"@" + serviceID},

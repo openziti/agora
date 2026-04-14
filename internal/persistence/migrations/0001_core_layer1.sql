@@ -111,7 +111,28 @@ create table tunnel_attachments (
     constraint tunnel_attachments_id_format check (id ~ '^ta_[a-z0-9]{12}$')
 );
 
+create table tunnel_serves (
+    id text primary key,
+    tunnel_id text not null references tunnels(id) on delete cascade,
+    organization_id text not null references organizations(id) on delete cascade,
+    account_id text not null,
+    environment_id text not null,
+    state text not null,
+    last_heartbeat_at timestamptz not null,
+    disconnected_at timestamptz,
+    deleted boolean not null default false,
+    created_at timestamptz not null default current_timestamp,
+    updated_at timestamptz not null default current_timestamp,
+    constraint tunnel_serves_state_valid check (state in ('active', 'stale', 'disconnected')),
+    constraint tunnel_serves_account_organization_fk
+        foreign key (account_id, organization_id) references accounts(id, organization_id) on delete cascade,
+    constraint tunnel_serves_environment_organization_fk
+        foreign key (environment_id, organization_id) references environments(id, organization_id) on delete cascade,
+    constraint tunnel_serves_id_format check (id ~ '^ts_[a-z0-9]{12}$')
+);
+
 -- +migrate Down
+drop table if exists tunnel_serves;
 drop table if exists tunnel_attachments;
 drop table if exists tunnel_account_grants;
 drop table if exists tunnels;

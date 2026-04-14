@@ -353,56 +353,124 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				switch elem[0] {
-				case '-': // Prefix: "-attachments/"
+				case '-': // Prefix: "-"
 
-					if l := len("-attachments/"); len(elem) >= l && elem[0:l] == "-attachments/" {
+					if l := len("-"); len(elem) >= l && elem[0:l] == "-" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
-					// Param: "attachmentId"
-					// Match until "/"
-					idx := strings.IndexByte(elem, '/')
-					if idx < 0 {
-						idx = len(elem)
-					}
-					args[0] = elem[:idx]
-					elem = elem[idx:]
-
 					if len(elem) == 0 {
-						switch r.Method {
-						case "DELETE":
-							s.handleDeleteTunnelAttachmentRequest([1]string{
-								args[0],
-							}, elemIsEscaped, w, r)
-						default:
-							s.notAllowed(w, r, "DELETE")
-						}
-
-						return
+						break
 					}
 					switch elem[0] {
-					case '/': // Prefix: "/heartbeat"
+					case 'a': // Prefix: "attachments/"
 
-						if l := len("/heartbeat"); len(elem) >= l && elem[0:l] == "/heartbeat" {
+						if l := len("attachments/"); len(elem) >= l && elem[0:l] == "attachments/" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
+						// Param: "attachmentId"
+						// Match until "/"
+						idx := strings.IndexByte(elem, '/')
+						if idx < 0 {
+							idx = len(elem)
+						}
+						args[0] = elem[:idx]
+						elem = elem[idx:]
+
 						if len(elem) == 0 {
-							// Leaf node.
 							switch r.Method {
-							case "POST":
-								s.handleHeartbeatTunnelAttachmentRequest([1]string{
+							case "DELETE":
+								s.handleDeleteTunnelAttachmentRequest([1]string{
 									args[0],
 								}, elemIsEscaped, w, r)
 							default:
-								s.notAllowed(w, r, "POST")
+								s.notAllowed(w, r, "DELETE")
 							}
 
 							return
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/heartbeat"
+
+							if l := len("/heartbeat"); len(elem) >= l && elem[0:l] == "/heartbeat" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleHeartbeatTunnelAttachmentRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, "POST")
+								}
+
+								return
+							}
+
+						}
+
+					case 's': // Prefix: "serves/"
+
+						if l := len("serves/"); len(elem) >= l && elem[0:l] == "serves/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "serveId"
+						// Match until "/"
+						idx := strings.IndexByte(elem, '/')
+						if idx < 0 {
+							idx = len(elem)
+						}
+						args[0] = elem[:idx]
+						elem = elem[idx:]
+
+						if len(elem) == 0 {
+							switch r.Method {
+							case "DELETE":
+								s.handleDeleteTunnelServeRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, "DELETE")
+							}
+
+							return
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/heartbeat"
+
+							if l := len("/heartbeat"); len(elem) >= l && elem[0:l] == "/heartbeat" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleHeartbeatTunnelServeRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, "POST")
+								}
+
+								return
+							}
+
 						}
 
 					}
@@ -579,6 +647,28 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 										return
 									}
 
+								}
+
+							case 's': // Prefix: "serve"
+
+								if l := len("serve"); len(elem) >= l && elem[0:l] == "serve" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch r.Method {
+									case "POST":
+										s.handleStartTunnelServeRequest([1]string{
+											args[0],
+										}, elemIsEscaped, w, r)
+									default:
+										s.notAllowed(w, r, "POST")
+									}
+
+									return
 								}
 
 							}
@@ -1026,60 +1116,132 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					break
 				}
 				switch elem[0] {
-				case '-': // Prefix: "-attachments/"
+				case '-': // Prefix: "-"
 
-					if l := len("-attachments/"); len(elem) >= l && elem[0:l] == "-attachments/" {
+					if l := len("-"); len(elem) >= l && elem[0:l] == "-" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
-					// Param: "attachmentId"
-					// Match until "/"
-					idx := strings.IndexByte(elem, '/')
-					if idx < 0 {
-						idx = len(elem)
-					}
-					args[0] = elem[:idx]
-					elem = elem[idx:]
-
 					if len(elem) == 0 {
-						switch method {
-						case "DELETE":
-							r.name = DeleteTunnelAttachmentOperation
-							r.summary = ""
-							r.operationID = "deleteTunnelAttachment"
-							r.pathPattern = "/tunnel-attachments/{attachmentId}"
-							r.args = args
-							r.count = 1
-							return r, true
-						default:
-							return
-						}
+						break
 					}
 					switch elem[0] {
-					case '/': // Prefix: "/heartbeat"
+					case 'a': // Prefix: "attachments/"
 
-						if l := len("/heartbeat"); len(elem) >= l && elem[0:l] == "/heartbeat" {
+						if l := len("attachments/"); len(elem) >= l && elem[0:l] == "attachments/" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
+						// Param: "attachmentId"
+						// Match until "/"
+						idx := strings.IndexByte(elem, '/')
+						if idx < 0 {
+							idx = len(elem)
+						}
+						args[0] = elem[:idx]
+						elem = elem[idx:]
+
 						if len(elem) == 0 {
-							// Leaf node.
 							switch method {
-							case "POST":
-								r.name = HeartbeatTunnelAttachmentOperation
+							case "DELETE":
+								r.name = DeleteTunnelAttachmentOperation
 								r.summary = ""
-								r.operationID = "heartbeatTunnelAttachment"
-								r.pathPattern = "/tunnel-attachments/{attachmentId}/heartbeat"
+								r.operationID = "deleteTunnelAttachment"
+								r.pathPattern = "/tunnel-attachments/{attachmentId}"
 								r.args = args
 								r.count = 1
 								return r, true
 							default:
 								return
 							}
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/heartbeat"
+
+							if l := len("/heartbeat"); len(elem) >= l && elem[0:l] == "/heartbeat" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = HeartbeatTunnelAttachmentOperation
+									r.summary = ""
+									r.operationID = "heartbeatTunnelAttachment"
+									r.pathPattern = "/tunnel-attachments/{attachmentId}/heartbeat"
+									r.args = args
+									r.count = 1
+									return r, true
+								default:
+									return
+								}
+							}
+
+						}
+
+					case 's': // Prefix: "serves/"
+
+						if l := len("serves/"); len(elem) >= l && elem[0:l] == "serves/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "serveId"
+						// Match until "/"
+						idx := strings.IndexByte(elem, '/')
+						if idx < 0 {
+							idx = len(elem)
+						}
+						args[0] = elem[:idx]
+						elem = elem[idx:]
+
+						if len(elem) == 0 {
+							switch method {
+							case "DELETE":
+								r.name = DeleteTunnelServeOperation
+								r.summary = ""
+								r.operationID = "deleteTunnelServe"
+								r.pathPattern = "/tunnel-serves/{serveId}"
+								r.args = args
+								r.count = 1
+								return r, true
+							default:
+								return
+							}
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/heartbeat"
+
+							if l := len("/heartbeat"); len(elem) >= l && elem[0:l] == "/heartbeat" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = HeartbeatTunnelServeOperation
+									r.summary = ""
+									r.operationID = "heartbeatTunnelServe"
+									r.pathPattern = "/tunnel-serves/{serveId}/heartbeat"
+									r.args = args
+									r.count = 1
+									return r, true
+								default:
+									return
+								}
+							}
+
 						}
 
 					}
@@ -1285,6 +1447,30 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 										}
 									}
 
+								}
+
+							case 's': // Prefix: "serve"
+
+								if l := len("serve"); len(elem) >= l && elem[0:l] == "serve" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch method {
+									case "POST":
+										r.name = StartTunnelServeOperation
+										r.summary = ""
+										r.operationID = "startTunnelServe"
+										r.pathPattern = "/tunnels/{tunnelId}/serve"
+										r.args = args
+										r.count = 1
+										return r, true
+									default:
+										return
+									}
 								}
 
 							}

@@ -11,6 +11,7 @@ const (
 	PrefixEnvironment  ResourcePrefix = "ev_"
 	PrefixTunnel       ResourcePrefix = "tt_"
 	PrefixAttachment   ResourcePrefix = "ta_"
+	PrefixTunnelServe  ResourcePrefix = "ts_"
 )
 
 const (

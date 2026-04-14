@@ -19,7 +19,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const tunnelAttachmentHeartbeatInterval = 15 * time.Second
+const (
+	tunnelAttachmentHeartbeatInterval = 15 * time.Second
+	tunnelServeHeartbeatInterval      = 15 * time.Second
+)
 
 var tunnelCmd = &cobra.Command{
 	Use:   "tunnel",
@@ -162,6 +165,39 @@ func cleanupAttachment(client *api.Client, attachmentID string) {
 	}
 }
 
+func startTunnelServeHeartbeats(ctx context.Context, client *api.Client, serveID string) {
+	ticker := time.NewTicker(tunnelServeHeartbeatInterval)
+	go func() {
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if _, err := client.HeartbeatTunnelServe(context.Background(), api.HeartbeatTunnelServeParams{ServeId: serveID}); err != nil {
+					_, _ = fmt.Fprintf(os.Stderr, "warning: tunnel serve heartbeat failed: %v\n", err)
+				}
+			}
+		}
+	}()
+}
+
+func cleanupTunnelServe(client *api.Client, serveID string) {
+	res, err := client.DeleteTunnelServe(context.Background(), api.DeleteTunnelServeParams{ServeId: serveID})
+	if err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "warning: tunnel serve cleanup failed: %v\n", err)
+		return
+	}
+	switch res.(type) {
+	case *api.DeleteTunnelServeNoContent:
+		return
+	case *api.DeleteTunnelServeNotFound:
+		return
+	default:
+		_, _ = fmt.Fprintf(os.Stderr, "warning: tunnel serve cleanup returned %T\n", res)
+	}
+}
+
 func ensureTunnelCreatedOrReused(client *api.Client, req *api.CreateTunnelRequest, environmentID string) *api.Tunnel {
 	res, err := client.CreateTunnel(context.Background(), req)
 	if err != nil {
@@ -224,7 +260,7 @@ func listTunnelGrantsOrPanic(client *api.Client, tunnelID string) *api.ListTunne
 
 func isNotFoundResponse(res any) bool {
 	switch res.(type) {
-	case *api.DeleteTunnelAttachmentNotFound, *api.DeleteTunnelNotFound, *api.RemoveTunnelGrantNotFound:
+	case *api.DeleteTunnelAttachmentNotFound, *api.DeleteTunnelNotFound, *api.DeleteTunnelServeNotFound, *api.RemoveTunnelGrantNotFound:
 		return true
 	default:
 		return false
@@ -287,7 +323,7 @@ func ensureResponseNoContent(res any) {
 		return
 	}
 	switch res.(type) {
-	case *api.DeleteTunnelNoContent, *api.RemoveTunnelGrantNoContent, *api.DeleteTunnelAttachmentNoContent, *api.HeartbeatTunnelAttachmentNoContent:
+	case *api.DeleteTunnelNoContent, *api.RemoveTunnelGrantNoContent, *api.DeleteTunnelAttachmentNoContent, *api.DeleteTunnelServeNoContent, *api.HeartbeatTunnelAttachmentNoContent, *api.HeartbeatTunnelServeNoContent:
 		return
 	default:
 		panic(fmt.Sprintf("unexpected no-content response: %T", res))

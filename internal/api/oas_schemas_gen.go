@@ -752,6 +752,23 @@ type DeleteTunnelNotFound Error
 
 func (*DeleteTunnelNotFound) deleteTunnelRes() {}
 
+type DeleteTunnelServeInternalServerError Error
+
+func (*DeleteTunnelServeInternalServerError) deleteTunnelServeRes() {}
+
+// DeleteTunnelServeNoContent is response for DeleteTunnelServe operation.
+type DeleteTunnelServeNoContent struct{}
+
+func (*DeleteTunnelServeNoContent) deleteTunnelServeRes() {}
+
+type DeleteTunnelServeNotFound Error
+
+func (*DeleteTunnelServeNotFound) deleteTunnelServeRes() {}
+
+type DeleteTunnelServeUnauthorized Error
+
+func (*DeleteTunnelServeUnauthorized) deleteTunnelServeRes() {}
+
 type DeleteTunnelUnauthorized Error
 
 func (*DeleteTunnelUnauthorized) deleteTunnelRes() {}
@@ -1062,6 +1079,23 @@ func (*HeartbeatTunnelAttachmentNotFound) heartbeatTunnelAttachmentRes() {}
 type HeartbeatTunnelAttachmentUnauthorized Error
 
 func (*HeartbeatTunnelAttachmentUnauthorized) heartbeatTunnelAttachmentRes() {}
+
+type HeartbeatTunnelServeInternalServerError Error
+
+func (*HeartbeatTunnelServeInternalServerError) heartbeatTunnelServeRes() {}
+
+// HeartbeatTunnelServeNoContent is response for HeartbeatTunnelServe operation.
+type HeartbeatTunnelServeNoContent struct{}
+
+func (*HeartbeatTunnelServeNoContent) heartbeatTunnelServeRes() {}
+
+type HeartbeatTunnelServeNotFound Error
+
+func (*HeartbeatTunnelServeNotFound) heartbeatTunnelServeRes() {}
+
+type HeartbeatTunnelServeUnauthorized Error
+
+func (*HeartbeatTunnelServeUnauthorized) heartbeatTunnelServeRes() {}
 
 type ListAccountsInternalServerError Error
 
@@ -1612,6 +1646,37 @@ type RemoveTunnelGrantUnauthorized Error
 
 func (*RemoveTunnelGrantUnauthorized) removeTunnelGrantRes() {}
 
+type StartTunnelServeConflict Error
+
+func (*StartTunnelServeConflict) startTunnelServeRes() {}
+
+type StartTunnelServeInternalServerError Error
+
+func (*StartTunnelServeInternalServerError) startTunnelServeRes() {}
+
+type StartTunnelServeNotFound Error
+
+func (*StartTunnelServeNotFound) startTunnelServeRes() {}
+
+// Ref: #/startTunnelServeRequest
+type StartTunnelServeRequest struct {
+	EnvironmentId string `json:"environmentId"`
+}
+
+// GetEnvironmentId returns the value of EnvironmentId.
+func (s *StartTunnelServeRequest) GetEnvironmentId() string {
+	return s.EnvironmentId
+}
+
+// SetEnvironmentId sets the value of EnvironmentId.
+func (s *StartTunnelServeRequest) SetEnvironmentId(val string) {
+	s.EnvironmentId = val
+}
+
+type StartTunnelServeUnauthorized Error
+
+func (*StartTunnelServeUnauthorized) startTunnelServeRes() {}
+
 // Ref: #/tunnel
 type Tunnel struct {
 	ID                        string      `json:"id"`
@@ -2072,6 +2137,203 @@ func (s *TunnelMode) UnmarshalText(data []byte) error {
 		return nil
 	case TunnelModeUDP:
 		*s = TunnelModeUDP
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/tunnelServe
+type TunnelServe struct {
+	ID              string           `json:"id"`
+	TunnelId        string           `json:"tunnelId"`
+	OrganizationId  string           `json:"organizationId"`
+	AccountId       string           `json:"accountId"`
+	EnvironmentId   string           `json:"environmentId"`
+	EnvironmentHost OptString        `json:"environmentHost"`
+	TunnelName      OptString        `json:"tunnelName"`
+	TunnelMode      OptTunnelMode    `json:"tunnelMode"`
+	State           TunnelServeState `json:"state"`
+	LastHeartbeatAt time.Time        `json:"lastHeartbeatAt"`
+	DisconnectedAt  OptDateTime      `json:"disconnectedAt"`
+	CreatedAt       time.Time        `json:"createdAt"`
+	UpdatedAt       time.Time        `json:"updatedAt"`
+}
+
+// GetID returns the value of ID.
+func (s *TunnelServe) GetID() string {
+	return s.ID
+}
+
+// GetTunnelId returns the value of TunnelId.
+func (s *TunnelServe) GetTunnelId() string {
+	return s.TunnelId
+}
+
+// GetOrganizationId returns the value of OrganizationId.
+func (s *TunnelServe) GetOrganizationId() string {
+	return s.OrganizationId
+}
+
+// GetAccountId returns the value of AccountId.
+func (s *TunnelServe) GetAccountId() string {
+	return s.AccountId
+}
+
+// GetEnvironmentId returns the value of EnvironmentId.
+func (s *TunnelServe) GetEnvironmentId() string {
+	return s.EnvironmentId
+}
+
+// GetEnvironmentHost returns the value of EnvironmentHost.
+func (s *TunnelServe) GetEnvironmentHost() OptString {
+	return s.EnvironmentHost
+}
+
+// GetTunnelName returns the value of TunnelName.
+func (s *TunnelServe) GetTunnelName() OptString {
+	return s.TunnelName
+}
+
+// GetTunnelMode returns the value of TunnelMode.
+func (s *TunnelServe) GetTunnelMode() OptTunnelMode {
+	return s.TunnelMode
+}
+
+// GetState returns the value of State.
+func (s *TunnelServe) GetState() TunnelServeState {
+	return s.State
+}
+
+// GetLastHeartbeatAt returns the value of LastHeartbeatAt.
+func (s *TunnelServe) GetLastHeartbeatAt() time.Time {
+	return s.LastHeartbeatAt
+}
+
+// GetDisconnectedAt returns the value of DisconnectedAt.
+func (s *TunnelServe) GetDisconnectedAt() OptDateTime {
+	return s.DisconnectedAt
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *TunnelServe) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *TunnelServe) GetUpdatedAt() time.Time {
+	return s.UpdatedAt
+}
+
+// SetID sets the value of ID.
+func (s *TunnelServe) SetID(val string) {
+	s.ID = val
+}
+
+// SetTunnelId sets the value of TunnelId.
+func (s *TunnelServe) SetTunnelId(val string) {
+	s.TunnelId = val
+}
+
+// SetOrganizationId sets the value of OrganizationId.
+func (s *TunnelServe) SetOrganizationId(val string) {
+	s.OrganizationId = val
+}
+
+// SetAccountId sets the value of AccountId.
+func (s *TunnelServe) SetAccountId(val string) {
+	s.AccountId = val
+}
+
+// SetEnvironmentId sets the value of EnvironmentId.
+func (s *TunnelServe) SetEnvironmentId(val string) {
+	s.EnvironmentId = val
+}
+
+// SetEnvironmentHost sets the value of EnvironmentHost.
+func (s *TunnelServe) SetEnvironmentHost(val OptString) {
+	s.EnvironmentHost = val
+}
+
+// SetTunnelName sets the value of TunnelName.
+func (s *TunnelServe) SetTunnelName(val OptString) {
+	s.TunnelName = val
+}
+
+// SetTunnelMode sets the value of TunnelMode.
+func (s *TunnelServe) SetTunnelMode(val OptTunnelMode) {
+	s.TunnelMode = val
+}
+
+// SetState sets the value of State.
+func (s *TunnelServe) SetState(val TunnelServeState) {
+	s.State = val
+}
+
+// SetLastHeartbeatAt sets the value of LastHeartbeatAt.
+func (s *TunnelServe) SetLastHeartbeatAt(val time.Time) {
+	s.LastHeartbeatAt = val
+}
+
+// SetDisconnectedAt sets the value of DisconnectedAt.
+func (s *TunnelServe) SetDisconnectedAt(val OptDateTime) {
+	s.DisconnectedAt = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *TunnelServe) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *TunnelServe) SetUpdatedAt(val time.Time) {
+	s.UpdatedAt = val
+}
+
+func (*TunnelServe) startTunnelServeRes() {}
+
+type TunnelServeState string
+
+const (
+	TunnelServeStateActive       TunnelServeState = "active"
+	TunnelServeStateStale        TunnelServeState = "stale"
+	TunnelServeStateDisconnected TunnelServeState = "disconnected"
+)
+
+// AllValues returns all TunnelServeState values.
+func (TunnelServeState) AllValues() []TunnelServeState {
+	return []TunnelServeState{
+		TunnelServeStateActive,
+		TunnelServeStateStale,
+		TunnelServeStateDisconnected,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TunnelServeState) MarshalText() ([]byte, error) {
+	switch s {
+	case TunnelServeStateActive:
+		return []byte(s), nil
+	case TunnelServeStateStale:
+		return []byte(s), nil
+	case TunnelServeStateDisconnected:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TunnelServeState) UnmarshalText(data []byte) error {
+	switch TunnelServeState(data) {
+	case TunnelServeStateActive:
+		*s = TunnelServeStateActive
+		return nil
+	case TunnelServeStateStale:
+		*s = TunnelServeStateStale
+		return nil
+	case TunnelServeStateDisconnected:
+		*s = TunnelServeStateDisconnected
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

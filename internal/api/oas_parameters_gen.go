@@ -569,6 +569,87 @@ func decodeDeleteTunnelAttachmentParams(args [1]string, argsEscaped bool, r *htt
 	return params, nil
 }
 
+// DeleteTunnelServeParams is parameters of deleteTunnelServe operation.
+type DeleteTunnelServeParams struct {
+	ServeId string
+}
+
+func unpackDeleteTunnelServeParams(packed middleware.Parameters) (params DeleteTunnelServeParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "serveId",
+			In:   "path",
+		}
+		params.ServeId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeDeleteTunnelServeParams(args [1]string, argsEscaped bool, r *http.Request) (params DeleteTunnelServeParams, _ error) {
+	// Decode path: serveId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "serveId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.ServeId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^ts_[a-z0-9]{12}$"],
+				}).Validate(string(params.ServeId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "serveId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // DisableEnvironmentParams is parameters of disableEnvironment operation.
 type DisableEnvironmentParams struct {
 	EnvironmentId string
@@ -886,6 +967,87 @@ func decodeHeartbeatTunnelAttachmentParams(args [1]string, argsEscaped bool, r *
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "attachmentId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// HeartbeatTunnelServeParams is parameters of heartbeatTunnelServe operation.
+type HeartbeatTunnelServeParams struct {
+	ServeId string
+}
+
+func unpackHeartbeatTunnelServeParams(packed middleware.Parameters) (params HeartbeatTunnelServeParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "serveId",
+			In:   "path",
+		}
+		params.ServeId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeHeartbeatTunnelServeParams(args [1]string, argsEscaped bool, r *http.Request) (params HeartbeatTunnelServeParams, _ error) {
+	// Decode path: serveId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "serveId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.ServeId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^ts_[a-z0-9]{12}$"],
+				}).Validate(string(params.ServeId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "serveId",
 			In:   "path",
 			Err:  err,
 		}
@@ -1450,6 +1612,87 @@ func decodeRemoveTunnelGrantParams(args [2]string, argsEscaped bool, r *http.Req
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "accountId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// StartTunnelServeParams is parameters of startTunnelServe operation.
+type StartTunnelServeParams struct {
+	TunnelId string
+}
+
+func unpackStartTunnelServeParams(packed middleware.Parameters) (params StartTunnelServeParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "tunnelId",
+			In:   "path",
+		}
+		params.TunnelId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeStartTunnelServeParams(args [1]string, argsEscaped bool, r *http.Request) (params StartTunnelServeParams, _ error) {
+	// Decode path: tunnelId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "tunnelId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.TunnelId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^tt_[a-z0-9]{12}$"],
+				}).Validate(string(params.TunnelId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "tunnelId",
 			In:   "path",
 			Err:  err,
 		}

@@ -14,8 +14,18 @@ create index idx_tunnel_attachments_tunnel_id on tunnel_attachments (tunnel_id);
 create index idx_tunnel_attachments_environment_id on tunnel_attachments (environment_id);
 create index idx_tunnel_attachments_account_id on tunnel_attachments (account_id);
 create index idx_tunnel_attachments_last_heartbeat on tunnel_attachments (last_heartbeat_at) where not deleted and state = 'active';
+create unique index idx_tunnel_serves_tunnel_unique_active on tunnel_serves (tunnel_id) where not deleted and state = 'active';
+create index idx_tunnel_serves_tunnel_id on tunnel_serves (tunnel_id);
+create index idx_tunnel_serves_environment_id on tunnel_serves (environment_id);
+create index idx_tunnel_serves_account_id on tunnel_serves (account_id);
+create index idx_tunnel_serves_last_heartbeat on tunnel_serves (last_heartbeat_at) where not deleted and state = 'active';
 
 -- +migrate Down
+drop index if exists idx_tunnel_serves_last_heartbeat;
+drop index if exists idx_tunnel_serves_account_id;
+drop index if exists idx_tunnel_serves_environment_id;
+drop index if exists idx_tunnel_serves_tunnel_id;
+drop index if exists idx_tunnel_serves_tunnel_unique_active;
 drop index if exists idx_tunnel_attachments_last_heartbeat;
 drop index if exists idx_tunnel_attachments_account_id;
 drop index if exists idx_tunnel_attachments_environment_id;

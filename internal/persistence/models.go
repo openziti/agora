@@ -137,3 +137,32 @@ type TunnelAttachmentDetail struct {
 	TunnelName   string     `db:"tunnel_name"`
 	TunnelMode   TunnelMode `db:"tunnel_mode"`
 }
+
+type TunnelServeState string
+
+const (
+	TunnelServeStateActive       TunnelServeState = "active"
+	TunnelServeStateStale        TunnelServeState = "stale"
+	TunnelServeStateDisconnected TunnelServeState = "disconnected"
+)
+
+type TunnelServe struct {
+	ID              string           `db:"id"`
+	TunnelID        string           `db:"tunnel_id"`
+	OrganizationID  string           `db:"organization_id"`
+	AccountID       string           `db:"account_id"`
+	EnvironmentID   string           `db:"environment_id"`
+	State           TunnelServeState `db:"state"`
+	LastHeartbeatAt time.Time        `db:"last_heartbeat_at"`
+	DisconnectedAt  *time.Time       `db:"disconnected_at"`
+	Deleted         bool             `db:"deleted"`
+	CreatedAt       time.Time        `db:"created_at"`
+	UpdatedAt       time.Time        `db:"updated_at"`
+}
+
+type TunnelServeDetail struct {
+	TunnelServe
+	EnvironmentHost *string `db:"environment_host"`
+	TunnelName      string  `db:"tunnel_name"`
+	TunnelMode      string  `db:"tunnel_mode"`
+}

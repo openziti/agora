@@ -48,6 +48,10 @@ type Handler interface {
 	//
 	// DELETE /tunnel-attachments/{attachmentId}
 	DeleteTunnelAttachment(ctx context.Context, params DeleteTunnelAttachmentParams) (DeleteTunnelAttachmentRes, error)
+	// DeleteTunnelServe implements deleteTunnelServe operation.
+	//
+	// DELETE /tunnel-serves/{serveId}
+	DeleteTunnelServe(ctx context.Context, params DeleteTunnelServeParams) (DeleteTunnelServeRes, error)
 	// DisableEnvironment implements disableEnvironment operation.
 	//
 	// DELETE /environments/{environmentId}
@@ -68,6 +72,10 @@ type Handler interface {
 	//
 	// POST /tunnel-attachments/{attachmentId}/heartbeat
 	HeartbeatTunnelAttachment(ctx context.Context, params HeartbeatTunnelAttachmentParams) (HeartbeatTunnelAttachmentRes, error)
+	// HeartbeatTunnelServe implements heartbeatTunnelServe operation.
+	//
+	// POST /tunnel-serves/{serveId}/heartbeat
+	HeartbeatTunnelServe(ctx context.Context, params HeartbeatTunnelServeParams) (HeartbeatTunnelServeRes, error)
 	// ListAccounts implements listAccounts operation.
 	//
 	// GET /organizations/{organizationId}/accounts
@@ -108,6 +116,10 @@ type Handler interface {
 	//
 	// DELETE /tunnels/{tunnelId}/grants/{accountId}
 	RemoveTunnelGrant(ctx context.Context, params RemoveTunnelGrantParams) (RemoveTunnelGrantRes, error)
+	// StartTunnelServe implements startTunnelServe operation.
+	//
+	// POST /tunnels/{tunnelId}/serve
+	StartTunnelServe(ctx context.Context, req *StartTunnelServeRequest, params StartTunnelServeParams) (StartTunnelServeRes, error)
 }
 
 // Server implements http server based on OpenAPI v3 specification and

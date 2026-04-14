@@ -35,6 +35,22 @@ func (s *Service) CreateTunnel(ctx context.Context, req *api.CreateTunnelRequest
 		return &api.CreateTunnelInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
 
+	existing, err := s.store.Tunnels.GetByName(ctx, s.store.DB(), principal.OrganizationID, req.Name)
+	if err == nil {
+		dl.Warnf(
+			"create tunnel rejected due to existing name name='%s' existing_tunnel_id='%s' existing_environment_id='%s' %s",
+			req.Name,
+			existing.ID,
+			existing.EnvironmentID,
+			principalLogFields(principal),
+		)
+		return &api.CreateTunnelConflict{Code: "conflict", Message: "tunnel name already exists"}, nil
+	}
+	if !errors.Is(err, persistence.ErrNotFound) {
+		dl.Errorf("create tunnel existing-name lookup failed name='%s' %s: %v", req.Name, principalLogFields(principal), err)
+		return &api.CreateTunnelInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+	}
+
 	grantedAccounts, err := s.resolveGrantAccounts(ctx, principal, req.GrantEmails)
 	if err != nil {
 		if errors.Is(err, persistence.ErrNotFound) {

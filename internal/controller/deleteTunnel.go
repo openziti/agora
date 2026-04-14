@@ -62,6 +62,18 @@ func (s *Service) DeleteTunnel(ctx context.Context, params api.DeleteTunnelParam
 
 	disconnectedAt := time.Now().UTC()
 	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+		activeServe, err := s.store.TunnelServes.GetActiveByTunnel(ctx, tx, tunnel.ID, tunnel.OrganizationID)
+		if err != nil && !errors.Is(err, persistence.ErrNotFound) {
+			return err
+		}
+		if err == nil {
+			if err := s.store.TunnelServes.UpdateState(ctx, tx, activeServe.ID, persistence.TunnelServeStateDisconnected, &disconnectedAt); err != nil {
+				return err
+			}
+		}
+		if err := s.store.TunnelServes.DeleteByTunnel(ctx, tx, tunnel.ID, tunnel.OrganizationID); err != nil {
+			return err
+		}
 		for i := range attachments {
 			if err := s.store.TunnelAttachments.UpdateState(ctx, tx, attachments[i].ID, persistence.TunnelAttachmentStateDisconnected, &disconnectedAt); err != nil {
 				return err

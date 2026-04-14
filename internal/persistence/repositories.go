@@ -840,6 +840,179 @@ where tunnel_id = $1 and organization_id = $2 and not deleted`
 	return nil
 }
 
+type TunnelServesRepository struct{}
+
+func (r *TunnelServesRepository) Create(ctx context.Context, db Queryer, serve TunnelServe) (*TunnelServe, error) {
+	if serve.ID == "" {
+		serve.ID = NewResourceID(PrefixTunnelServe)
+	}
+	now := time.Now().UTC()
+	serve.CreatedAt = now
+	serve.UpdatedAt = now
+	if serve.LastHeartbeatAt.IsZero() {
+		serve.LastHeartbeatAt = now
+	}
+	if serve.State == "" {
+		serve.State = TunnelServeStateActive
+	}
+
+	const query = `
+insert into tunnel_serves (
+	id, tunnel_id, organization_id, account_id, environment_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
+) values (
+	$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+)
+returning id, tunnel_id, organization_id, account_id, environment_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at`
+
+	var created TunnelServe
+	if err := db.GetContext(
+		ctx,
+		&created,
+		query,
+		serve.ID,
+		serve.TunnelID,
+		serve.OrganizationID,
+		serve.AccountID,
+		serve.EnvironmentID,
+		serve.State,
+		serve.LastHeartbeatAt,
+		serve.DisconnectedAt,
+		serve.Deleted,
+		serve.CreatedAt,
+		serve.UpdatedAt,
+	); err != nil {
+		return nil, fmt.Errorf("create tunnel serve: %w", err)
+	}
+	return &created, nil
+}
+
+func (r *TunnelServesRepository) GetByIDForAccount(ctx context.Context, db Queryer, id, organizationID, accountID string) (*TunnelServe, error) {
+	const query = `
+select id, tunnel_id, organization_id, account_id, environment_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
+from tunnel_serves
+where id = $1 and organization_id = $2 and account_id = $3 and not deleted`
+
+	var serve TunnelServe
+	if err := db.GetContext(ctx, &serve, query, id, organizationID, accountID); err != nil {
+		if isNotFound(err) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("get tunnel serve for account: %w", err)
+	}
+	return &serve, nil
+}
+
+func (r *TunnelServesRepository) GetActiveByTunnel(ctx context.Context, db Queryer, tunnelID, organizationID string) (*TunnelServeDetail, error) {
+	const query = `
+select
+	s.id, s.tunnel_id, s.organization_id, s.account_id, s.environment_id, s.state, s.last_heartbeat_at, s.disconnected_at, s.deleted, s.created_at, s.updated_at,
+	e.host as environment_host,
+	t.name as tunnel_name,
+	t.mode as tunnel_mode
+from tunnel_serves s
+inner join environments e on e.id = s.environment_id and e.organization_id = s.organization_id and not e.deleted
+inner join tunnels t on t.id = s.tunnel_id and t.organization_id = s.organization_id and not t.deleted
+where s.tunnel_id = $1 and s.organization_id = $2 and not s.deleted and s.state = 'active'
+order by s.created_at desc
+limit 1`
+
+	var serve TunnelServeDetail
+	if err := db.GetContext(ctx, &serve, query, tunnelID, organizationID); err != nil {
+		if isNotFound(err) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("get active tunnel serve: %w", err)
+	}
+	return &serve, nil
+}
+
+func (r *TunnelServesRepository) ListExpiredActive(ctx context.Context, db Queryer, before time.Time) ([]TunnelServe, error) {
+	const query = `
+select id, tunnel_id, organization_id, account_id, environment_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
+from tunnel_serves
+where not deleted and state = 'active' and last_heartbeat_at < $1
+order by last_heartbeat_at asc`
+
+	var serves []TunnelServe
+	if err := db.SelectContext(ctx, &serves, query, before.UTC()); err != nil {
+		return nil, fmt.Errorf("list expired tunnel serves: %w", err)
+	}
+	return serves, nil
+}
+
+func (r *TunnelServesRepository) Heartbeat(ctx context.Context, db Queryer, id, organizationID, accountID string, at time.Time) error {
+	const query = `
+update tunnel_serves
+set state = 'active', last_heartbeat_at = $4, updated_at = $5
+where id = $1 and organization_id = $2 and account_id = $3 and not deleted`
+
+	updatedAt := time.Now().UTC()
+	result, err := db.ExecContext(ctx, query, id, organizationID, accountID, at.UTC(), updatedAt)
+	if err != nil {
+		return fmt.Errorf("heartbeat tunnel serve: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("heartbeat tunnel serve rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *TunnelServesRepository) UpdateState(ctx context.Context, db Queryer, id string, state TunnelServeState, disconnectedAt *time.Time) error {
+	const query = `
+update tunnel_serves
+set state = $2, disconnected_at = $3, updated_at = $4
+where id = $1 and not deleted`
+
+	result, err := db.ExecContext(ctx, query, id, state, disconnectedAt, time.Now().UTC())
+	if err != nil {
+		return fmt.Errorf("update tunnel serve state: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("update tunnel serve state rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *TunnelServesRepository) DeleteByTunnel(ctx context.Context, db Queryer, tunnelID, organizationID string) error {
+	const query = `
+update tunnel_serves
+set deleted = true, updated_at = $3
+where tunnel_id = $1 and organization_id = $2 and not deleted`
+
+	if _, err := db.ExecContext(ctx, query, tunnelID, organizationID, time.Now().UTC()); err != nil {
+		return fmt.Errorf("delete tunnel serves by tunnel: %w", err)
+	}
+	return nil
+}
+
+func (r *TunnelServesRepository) Delete(ctx context.Context, db Queryer, id, organizationID, accountID string) error {
+	const query = `
+update tunnel_serves
+set deleted = true, updated_at = $4
+where id = $1 and organization_id = $2 and account_id = $3 and not deleted`
+
+	result, err := db.ExecContext(ctx, query, id, organizationID, accountID, time.Now().UTC())
+	if err != nil {
+		return fmt.Errorf("delete tunnel serve: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("delete tunnel serve rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func isNotFound(err error) bool {
 	return errors.Is(err, sql.ErrNoRows)
 }

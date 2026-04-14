@@ -35,6 +35,8 @@ paths:
     $ref: "tunnels/paths.yml#/~1tunnels"
   /tunnels/connect:
     $ref: "tunnels/paths.yml#/~1tunnels~1connect"
+  /tunnels/{tunnelId}/serve:
+    $ref: "tunnels/paths.yml#/~1tunnels~1{tunnelId}~1serve"
   /tunnels/{tunnelId}:
     $ref: "tunnels/paths.yml#/~1tunnels~1{tunnelId}"
   /tunnels/{tunnelId}/grants:
@@ -47,6 +49,10 @@ paths:
     $ref: "tunnels/paths.yml#/~1tunnel-attachments~1{attachmentId}~1heartbeat"
   /tunnel-attachments/{attachmentId}:
     $ref: "tunnels/paths.yml#/~1tunnel-attachments~1{attachmentId}"
+  /tunnel-serves/{serveId}/heartbeat:
+    $ref: "tunnels/paths.yml#/~1tunnel-serves~1{serveId}~1heartbeat"
+  /tunnel-serves/{serveId}:
+    $ref: "tunnels/paths.yml#/~1tunnel-serves~1{serveId}"
 
 components:
   securitySchemes:
@@ -100,6 +106,8 @@ components:
       $ref: "tunnels/schemas.yml#/connectTunnelRequest"
     connectTunnelResponse:
       $ref: "tunnels/schemas.yml#/connectTunnelResponse"
+    startTunnelServeRequest:
+      $ref: "tunnels/schemas.yml#/startTunnelServeRequest"
     tunnelGrant:
       $ref: "tunnels/schemas.yml#/tunnelGrant"
     addTunnelGrantRequest:
@@ -110,3 +118,5 @@ components:
       $ref: "tunnels/schemas.yml#/tunnelAttachment"
     listTunnelAttachmentsResponse:
       $ref: "tunnels/schemas.yml#/listTunnelAttachmentsResponse"
+    tunnelServe:
+      $ref: "tunnels/schemas.yml#/tunnelServe"

@@ -41,17 +41,20 @@ var operationRolesAccountTokenAuth = map[string][]string{
 	CreateTunnelOperation:              []string{},
 	DeleteTunnelOperation:              []string{},
 	DeleteTunnelAttachmentOperation:    []string{},
+	DeleteTunnelServeOperation:         []string{},
 	DisableEnvironmentOperation:        []string{},
 	EnableEnvironmentOperation:         []string{},
 	GetEnvironmentOperation:            []string{},
 	GetTunnelOperation:                 []string{},
 	HeartbeatTunnelAttachmentOperation: []string{},
+	HeartbeatTunnelServeOperation:      []string{},
 	ListEnvironmentsOperation:          []string{},
 	ListTunnelAttachmentsOperation:     []string{},
 	ListTunnelGrantsOperation:          []string{},
 	ListTunnelsOperation:               []string{},
 	RegenerateAccountTokenOperation:    []string{},
 	RemoveTunnelGrantOperation:         []string{},
+	StartTunnelServeOperation:          []string{},
 }
 
 func (s *Server) securityAccountTokenAuth(ctx context.Context, operationName OperationName, req *http.Request) (context.Context, bool, error) {

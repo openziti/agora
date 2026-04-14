@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/openziti/agora/internal/api"
@@ -30,11 +31,32 @@ func newTunnelServeCommand() *tunnelServeCommand {
 	cmd.Flags().StringSliceVar(&command.grantEmails, "grant", nil, "Grant access to an account email (repeatable)")
 	panicIfErr(cmd.MarkFlagRequired("mode"))
 	panicIfErr(cmd.MarkFlagRequired("backend"))
-	cmd.Run = command.run
+	cmd.RunE = command.runE
 	return command
 }
 
-func (cmd *tunnelServeCommand) run(_ *cobra.Command, args []string) {
+func (cmd *tunnelServeCommand) runE(_ *cobra.Command, args []string) (err error) {
+	defer func() {
+		recovered := recover()
+		if recovered == nil {
+			return
+		}
+		if panicInstead {
+			panic(recovered)
+		}
+		switch typed := recovered.(type) {
+		case error:
+			err = typed
+		default:
+			err = fmt.Errorf("%v", typed)
+		}
+	}()
+
+	cmd.run(args)
+	return nil
+}
+
+func (cmd *tunnelServeCommand) run(args []string) {
 	panicIfUnsupportedMode(cmd.mode)
 	mode := api.TunnelMode(cmd.mode)
 	panicIfErr(validateModeAndTarget(mode, cmd.backend))
@@ -56,6 +78,30 @@ func (cmd *tunnelServeCommand) run(_ *cobra.Command, args []string) {
 
 	ctx, cancel := signalContext()
 	defer cancel()
+
+	serveRes, err := client.StartTunnelServe(context.Background(), &api.StartTunnelServeRequest{
+		EnvironmentId: env.EnvironmentID,
+	}, api.StartTunnelServeParams{TunnelId: tunnel.ID})
+	panicIfErr(err)
+
+	serve, ok := serveRes.(*api.TunnelServe)
+	if !ok {
+		switch typed := serveRes.(type) {
+		case *api.StartTunnelServeNotFound:
+			panic(typed.Message)
+		case *api.StartTunnelServeConflict:
+			panic(typed.Message)
+		case *api.StartTunnelServeUnauthorized:
+			panic(typed.Message)
+		case *api.StartTunnelServeInternalServerError:
+			panic(typed.Message)
+		default:
+			panic(fmt.Sprintf("unexpected start tunnel serve response: %T", serveRes))
+		}
+	}
+	defer cleanupTunnelServe(client, serve.ID)
+
+	startTunnelServeHeartbeats(ctx, client, serve.ID)
 
 	identityPath := requireEnvironmentIdentityPath(root)
 	fmt.Printf("serving tunnel '%s' mode='%s' backend='%s'\n", tunnel.Name, tunnel.Mode, tunnel.BackendTarget)

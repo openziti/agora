@@ -113,6 +113,9 @@ func TestTunnelProvisionAndDeprovision(t *testing.T) {
 	if policies.created[0].PolicyType != rest_model.DialBindBind {
 		t.Fatalf("expected bind policy first, got %v", policies.created[0].PolicyType)
 	}
+	if serp.created == nil || serp.created.Name != "tt_test00000003-serp" {
+		t.Fatalf("expected service-edge-router policy name to be tunnel-id based, got %#v", serp.created)
+	}
 
 	if err := provisioner.Deprovision(context.Background(), DeprovisionTunnelSpec{
 		ServiceID:                 result.ServiceID,
@@ -398,10 +401,12 @@ func (f *fakeServicePolicyOperations) CreateDial(_ context.Context, opts *Servic
 type fakeServiceEdgeRouterPolicyOperations struct {
 	createID  string
 	createErr error
+	created   *ServiceEdgeRouterPolicyOptions
 	deleted   []string
 }
 
-func (f *fakeServiceEdgeRouterPolicyOperations) Create(context.Context, *ServiceEdgeRouterPolicyOptions) (string, error) {
+func (f *fakeServiceEdgeRouterPolicyOperations) Create(_ context.Context, opts *ServiceEdgeRouterPolicyOptions) (string, error) {
+	f.created = opts
 	return f.createID, f.createErr
 }
 func (f *fakeServiceEdgeRouterPolicyOperations) Delete(_ context.Context, id string) error {
