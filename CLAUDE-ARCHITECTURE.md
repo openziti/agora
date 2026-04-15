@@ -14,17 +14,17 @@ Agora is built on the OpenZiti zero-trust overlay network, extending a decade of
 
 Agora serves two distinct but complementary use cases:
 
-**Secure connectivity.** Operators deploy services (llm-gateway, mcp-gateway, databases, custom applications) on the Agora network and make them reachable through named tunnels, scoped to workgroups. No agent concepts are required. This is the Layer 1 use case.
+**Secure connectivity.** Operators deploy services (llm-gateway, mcp-gateway, databases, custom applications) on the Agora network and make them reachable through named tunnels, scoped to workgroups. No agent concepts are required. This is the Layer 1 (Network) use case.
 
-**Governed agent collaboration.** AI agents discover each other's capabilities through a policy-gated catalog, negotiate engagement contracts, and interact within governed sessions. This is the Layer 2 use case, built on top of the same Layer 1 primitives.
+**Governed agent collaboration.** AI agents discover each other's capabilities through a policy-gated catalog, negotiate engagement contracts, and interact within governed sessions. This is the Layer 2 (Collaboration) use case, built on top of the same Layer 1 (Network) primitives.
 
 ---
 
 ## 2. Layered Architecture
 
-Agora's architecture is organized in three layers. Each layer builds on the one below it. Layer 1 is useful without Layer 2. Layer 2 requires Layer 1.
+Agora's architecture is organized in three layers. Each layer builds on the one below it. Layer 1 (Network) is useful without Layer 2 (Collaboration). Layer 2 (Collaboration) requires Layer 1 (Network).
 
-### Layer 0 — OpenZiti Fabric
+### Layer 0 (Fabric) — OpenZiti Fabric
 
 Inherited, not built. The OpenZiti overlay network provides:
 
@@ -34,9 +34,9 @@ Inherited, not built. The OpenZiti overlay network provides:
 - Software-defined perimeters (dark by default — no exposed endpoints)
 - Smart routing across the overlay
 
-Agora does not modify or extend Layer 0. It consumes it as a foundation.
+Agora does not modify or extend Layer 0 (Fabric). It consumes it as a foundation.
 
-### Layer 1 — Connectivity Primitives
+### Layer 1 (Network) — Connectivity Primitives
 
 The zrok-spiritual layer. Provides the operational primitives for getting on the network and creating secure connectivity:
 
@@ -47,11 +47,11 @@ The zrok-spiritual layer. Provides the operational primitives for getting on the
 - **Metrics** — time-series observability built into the controller
 - **Limits** — resource governance per account
 
-Layer 1 is sufficient for the secure connectivity use case. An operator deploying llm-gateway uses Layer 0 + Layer 1 only.
+Layer 1 (Network) is sufficient for the secure connectivity use case. An operator deploying llm-gateway uses Layer 0 (Fabric) + Layer 1 (Network) only.
 
-### Layer 2 — Agent Services
+### Layer 2 (Collaboration) — Agent Services
 
-The agent collaboration layer. Built entirely on Layer 1 primitives:
+The agent collaboration layer. Built entirely on Layer 1 (Network) primitives:
 
 - **Workgroups** — policy boundaries controlling visibility and interaction scope
 - **Catalog** — intrinsic discovery service with policy-gated visibility
@@ -92,7 +92,7 @@ Tunnels are created with `agora create tunnel <name> --backend <address>` (CLI) 
 
 Tunnels can be scoped to workgroups, controlling which identities on the network can connect to them. A tunnel not assigned to any workgroup is accessible only to its owning environment.
 
-Under the hood, sessions (Layer 2) are tunnels with additional governance metadata. The session establishment flow creates a tunnel and attaches a resolved contract to it.
+Under the hood, sessions in Layer 2 (Collaboration) are tunnels with additional governance metadata. The session establishment flow creates a tunnel and attaches a resolved contract to it.
 
 ### 3.5 Identity Model
 
@@ -125,7 +125,7 @@ The catalog holds **advertisements** (see §3.8) and enforces **visibility polic
 
 For the initial implementation, the catalog is a filtered query over advertisements stored in PostgreSQL. Discovery queries support filtering by capability type, name pattern, and workgroup scope. Semantic search (embedding-based similarity matching) is a later enhancement that could leverage pgvector in the same PostgreSQL instance.
 
-Tunnels (Layer 1 resources) can also be listed in the catalog as a degenerate form of advertisement — an advertisement with no contract requirements, representing infrastructure that is simply available for connection within its workgroup scope. This keeps the catalog as a unified discovery mechanism for both agent capabilities and infrastructure services.
+Tunnels, which are Layer 1 (Network) resources, can also be listed in the catalog as a degenerate form of advertisement — an advertisement with no contract requirements, representing infrastructure that is simply available for connection within its workgroup scope. This keeps the catalog as a unified discovery mechanism for both agent capabilities and infrastructure services.
 
 ### 3.8 Advertisement
 
@@ -151,7 +151,7 @@ A private, policy-governed communication channel between agents. A session is es
 3. Both sides evaluate the contract (see §3.10)
 4. If the contract resolves successfully, a session is established
 
-Under the hood, a session is a tunnel (Layer 1) with a resolved contract attached as enforceable metadata. The session has a managed lifecycle: established, active, suspended, closed. Either party or the policy framework can close a session. Contract terms (time limits, envelope counts, interaction constraints) are enforced by the infrastructure.
+Under the hood, a session is a Layer 1 (Network) tunnel with a resolved contract attached as enforceable metadata. The session has a managed lifecycle: established, active, suspended, closed. Either party or the policy framework can close a session. Contract terms (time limits, envelope counts, interaction constraints) are enforced by the infrastructure.
 
 ### 3.10 Contract
 
@@ -334,7 +334,7 @@ agora list tunnels
 
 ### 6.4 Agent Commands
 
-Agent-layer operations (Layer 2):
+Agent-layer operations for Layer 2 (Collaboration):
 
 ```
 agora advertise <name> --capability <type> --workgroup <name>
@@ -427,12 +427,12 @@ Custom metrics can be emitted by any component using the same ingest API with ar
 
 Resource limits are enforced per account by the controller. Limits are configured in the controller's database and checked at resource creation time.
 
-**Layer 1 limits:**
+**Layer 1 (Network) limits:**
 - Environments per account
 - Tunnels per environment
 - Metric ingest rate (samples per second)
 
-**Layer 2 limits:**
+**Layer 2 (Collaboration) limits:**
 - Advertisements per account
 - Active sessions per account
 
@@ -483,7 +483,7 @@ Agora composes with the existing llm-gateway and mcp-gateway products to create 
 
 **mcp-gateway** provides secure MCP tool access. On the Agora network, mcp-gateway is deployed identically — a service with a named tunnel, scoped to a workgroup. Agents access tools through it, inheriting the same zero-trust security model as all other connectivity.
 
-Both gateways are Layer 1 consumers — they use tunnels and workgroup scoping but do not require advertisements, sessions, or contracts. They are infrastructure services, not agent-layer participants.
+Both gateways are Layer 1 (Network) consumers — they use tunnels and workgroup scoping but do not require advertisements, sessions, or contracts. They are infrastructure services, not Layer 2 (Collaboration) participants.
 
 **Instrumentation role.** Beyond connectivity, the gateways serve as the primary integration points for ATF Behavior and Data Governance tooling. Behavioral monitoring tools (anomaly detection, intent drift analysis) plug in at the gateway layer to observe inference patterns and tool usage. Content inspection tools (PII detection via Microsoft Presidio or equivalent, toxicity filtering, prompt injection detection) enforce data governance policies at the gateway before requests reach their destinations. The gateways see all traffic that passes through them with full identity context (who is making the request, from which workgroup, within which session), making them the natural enforcement surface for application-layer controls that the network fabric itself does not provide.
 

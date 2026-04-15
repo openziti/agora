@@ -10,15 +10,15 @@ The architecture is defined in [CLAUDE-ARCHITECTURE.md](./CLAUDE-ARCHITECTURE.md
 
 Agora is organized in layers:
 
-- Layer 0: the OpenZiti fabric provides cryptographic identity, mutual authentication, end-to-end encryption, and dark-by-default connectivity
-- Layer 1: Agora connectivity primitives including organizations, accounts, environments, and tunnels
-- Layer 2: agent collaboration services including workgroups, catalog/discovery, advertisements, sessions, contracts, and envelopes
+- Layer 0 (Fabric): the OpenZiti fabric provides cryptographic identity, mutual authentication, end-to-end encryption, and dark-by-default connectivity
+- Layer 1 (Network): Agora connectivity primitives including organizations, accounts, environments, and tunnels
+- Layer 2 (Collaboration): agent collaboration services including workgroups, catalog/discovery, advertisements, sessions, contracts, and envelopes
 
-This repository is currently focused on the Layer 1 foundation plus the controller API scaffolding that higher layers will build on.
+This repository is currently focused on the Layer 1 (Network) foundation plus the local runtime and controller surfaces that higher layers will build on.
 
 ## Current Status
 
-The codebase is still early-stage, but it already includes the main structural pieces for the controller:
+The codebase is still early-stage, but it already includes the main structural pieces for a working Layer 1 (Network) slice:
 
 - a Cobra-based `agora` CLI
 - a PostgreSQL-only persistence layer built with `sqlx`
@@ -26,8 +26,10 @@ The codebase is still early-stage, but it already includes the main structural p
 - an OpenAPI 3.0.3 specification under `internal/api/specs`
 - generated server and client bindings using `ogen`
 - a handwritten controller service that implements the generated `ogen` interfaces
+- real OpenZiti-backed environment and tunnel lifecycle flows
+- a phase 1 local `agora network` agent over gRPC+UDS
 
-The current API surface covers the first Layer 1 slice:
+The current API surface covers the first Layer 1 (Network) slice:
 
 - organization administration
 - account creation and token-based authentication
@@ -39,7 +41,9 @@ The current API surface covers the first Layer 1 slice:
 - `cmd/agora/`: CLI entrypoints and Cobra command wiring
 - `internal/api/`: generated `ogen` code and the modular OpenAPI spec
 - `internal/controller/`: handwritten controller service, auth logic, and HTTP server wiring
+- `internal/networkagent/`: local `agora network` agent, client, and protobuf service implementation
 - `internal/persistence/`: store, repositories, models, migration management, and integration tests
+- `internal/tunnelruntime/`: HTTP/TCP/UDP tunnel runtime implementations used by `serve` and `connect`
 - `CLAUDE-ARCHITECTURE.md`: high-level architecture and product direction
 - `AGENTS.md`: contributor rules and project conventions
 
@@ -54,7 +58,7 @@ The current API surface covers the first Layer 1 slice:
 ### Project Conventions
 
 - Logging is handled through `github.com/michaelquigley/df/dl`
-- Structured config binding is handled through `github.com/michaelquigley/df/dd`
+- Structured config and handwritten JSON/YAML binding/unbinding are handled through `github.com/michaelquigley/df/dd`
 
 ### Generate API Code
 
@@ -63,6 +67,14 @@ The current API surface covers the first Layer 1 slice:
 ```
 
 This regenerates the `ogen` client/server package from `internal/api/specs/agora.yml`.
+
+### Generate Protobuf Code
+
+```bash
+./bin/generate_pb.sh
+```
+
+This regenerates the committed protobuf/gRPC stubs used by the local `agora network` agent API.
 
 ### Run Tests
 
@@ -154,4 +166,4 @@ Human-readable list output uses a zrok-style rounded table. Pass `--json` for in
 - PostgreSQL is the only supported database
 - the OpenAPI specification is the source of truth for the controller API
 - generated `ogen` code should be regenerated, not edited by hand
-- Layer 1 should remain useful on its own for secure service connectivity, even before the full Layer 2 agent collaboration model is implemented
+- Layer 1 (Network) should remain useful on its own for secure service connectivity, even before the full Layer 2 (Collaboration) model is implemented

@@ -90,6 +90,9 @@ func (cmd *enableCommand) run(_ *cobra.Command, args []string) {
 		_ = root.DeleteEnvironment()
 		panic(err)
 	}
+	if err := reloadNetworkAgentIfRunning(root); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "warning: failed to reload agora network runtime: %v\n", err)
+	}
 
 	fmt.Printf("enabled environment '%s'\n", enabled.Environment.ID)
 }

@@ -2,7 +2,7 @@
 
 ## Agora
 
-Agora is a native zero-trust overlay network for agent-to-agent communication, built on OpenZiti. It provides secure connectivity primitives at Layer 1 and governed agent collaboration services at Layer 2.
+Agora is a native zero-trust overlay network for agent-to-agent communication, built on OpenZiti. It provides secure connectivity primitives at Layer 1 (Network) and governed agent collaboration services at Layer 2 (Collaboration).
 
 This repository is in early-stage development. Favor simple, explicit structure and keep implementation aligned with `CLAUDE-ARCHITECTURE.md`.
 
@@ -36,8 +36,9 @@ This repository is in early-stage development. Favor simple, explicit structure 
 - Repository methods accept `context.Context` and a shared query/transaction interface
 
 **Configuration Binding**:
-- Structured config loading and binding should use `github.com/michaelquigley/df/dd`
+- Structured config loading and all handwritten JSON/YAML binding and unbinding should use `github.com/michaelquigley/df/dd`
 - Prefer `dd.MergeYAMLFile(...)` over manual file reads plus `yaml.Unmarshal(...)`
+- Prefer `dd.Bind...` / `dd.Unbind...` helpers over `encoding/json`, `yaml.Unmarshal(...)`, or ad hoc marshal/unmarshal logic in handwritten code
 - `dd` binds struct fields using `snake_case` by default; do not add YAML tags to config structs unless there is a concrete need to override that mapping
 - Keep root-level configuration defaults in `DefaultConfig()`
 - When an optional config sub-struct is a pointer, prefer implementing `ApplyDefaults()` on that sub-struct instead of doing post-merge default repair in callers
@@ -54,6 +55,8 @@ This repository is in early-stage development. Favor simple, explicit structure 
 **API Generation**:
 - Agora uses OpenAPI 3.x as the API contract
 - Generate Go API bindings with `ogen`
+- Regenerate REST bindings with `./bin/generate_rest.sh`
+- Regenerate protobuf/gRPC bindings with `./bin/generate_pb.sh`
 - Treat the OpenAPI specification as the source of truth
 - Do not hand-edit generated code
 - Keep generated code in clearly designated locations and regenerate it from the spec instead of patching outputs manually
@@ -69,7 +72,7 @@ This repository is in early-stage development. Favor simple, explicit structure 
 
 **Multi-tenancy**:
 - Organizations are the top-level tenant boundary
-- Keep Layer 1 resources org-scoped unless the architecture explicitly requires otherwise
+- Keep Layer 1 (Network) resources org-scoped unless the architecture explicitly requires otherwise
 - Enforce org boundaries in the database schema, not just in application logic
 
 **Generated vs handwritten code**:
@@ -84,7 +87,7 @@ This repository is in early-stage development. Favor simple, explicit structure 
 - Dynamic values in user-facing outputs should be surrounded by single quotes when practical
 - Never introduce emoji in outputs or source comments
 - Use `github.com/michaelquigley/df/dl` for logging; do not introduce direct `slog` logger wiring as a parallel logging pattern
-- Use `github.com/michaelquigley/df/dd` for config binding/unbinding instead of ad hoc YAML parsing
+- Use `github.com/michaelquigley/df/dd` for handwritten config and JSON/YAML binding/unbinding instead of ad hoc stdlib or YAML parsing paths
 - Prefer tagless config structs when `dd`'s default `snake_case` field mapping is sufficient
 - Prefer `ApplyDefaults()` on optional config pointer structs over ad hoc `if cfg.Sub.Field == ...` post-processing
 - Keep package APIs explicit and small; prefer simple structs and functions over hidden framework behavior

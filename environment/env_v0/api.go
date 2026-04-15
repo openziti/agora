@@ -88,6 +88,37 @@ func (r *Root) IsEnabled() bool {
 	return r.env != nil
 }
 
+func (r *Root) Network() *env_core.Network {
+	return r.net
+}
+
+func (r *Root) SetNetwork(network *env_core.Network) error {
+	if err := assertMetadata(); err != nil {
+		return err
+	}
+	if err := saveNetwork(network); err != nil {
+		return err
+	}
+	r.net = network
+	return nil
+}
+
+func (r *Root) DeleteNetwork() error {
+	path, err := networkFile()
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	r.net = nil
+	return nil
+}
+
+func (r *Root) NetworkSocketPath() (string, error) {
+	return networkSocketFile()
+}
+
 func (r *Root) ZitiIdentityNamed(name string) (string, error) {
 	return identityFile(name)
 }

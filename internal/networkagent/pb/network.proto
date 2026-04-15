@@ -1,0 +1,143 @@
+syntax = "proto3";
+
+package agora.network.v1;
+
+option go_package = "github.com/openziti/agora/internal/networkagent/pb;networkpb";
+
+import "google/protobuf/timestamp.proto";
+
+enum RuntimeState {
+  RUNTIME_STATE_UNSPECIFIED = 0;
+  RUNTIME_STATE_CONFIGURED = 1;
+  RUNTIME_STATE_STARTING = 2;
+  RUNTIME_STATE_RUNNING = 3;
+  RUNTIME_STATE_ERROR = 4;
+  RUNTIME_STATE_STOPPED = 5;
+}
+
+message PingRequest {}
+
+message PingResponse {
+  int32 pid = 1;
+  google.protobuf.Timestamp started_at = 2;
+}
+
+message ShutdownRequest {}
+
+message ShutdownResponse {}
+
+message ReloadEnvironmentRequest {}
+
+message ReloadEnvironmentResponse {
+  NetworkStatus status = 1;
+}
+
+message GetNetworkStatusRequest {}
+
+message GetNetworkStatusResponse {
+  NetworkStatus status = 1;
+}
+
+message DesiredServe {
+  string tunnel_id = 1;
+  string name = 2;
+  string mode = 3;
+  string backend_target = 4;
+  repeated string grant_emails = 5;
+}
+
+message ManagedServeStatus {
+  DesiredServe desired = 1;
+  RuntimeState state = 2;
+  string tunnel_id = 3;
+  string serve_id = 4;
+  string last_error = 5;
+  google.protobuf.Timestamp last_started_at = 6;
+}
+
+message EnsureServeRequest {
+  string tunnel_id = 1;
+  string name = 2;
+  string mode = 3;
+  string backend_target = 4;
+  repeated string grant_emails = 5;
+}
+
+message EnsureServeResponse {
+  ManagedServeStatus serve = 1;
+}
+
+message RemoveServeRequest {
+  string tunnel_id = 1;
+  string name = 2;
+}
+
+message RemoveServeResponse {}
+
+message ListServesRequest {}
+
+message ListServesResponse {
+  repeated ManagedServeStatus serves = 1;
+}
+
+message DesiredConnect {
+  string tunnel_id = 1;
+  string name = 2;
+  string listen_address = 3;
+}
+
+message ManagedConnectStatus {
+  DesiredConnect desired = 1;
+  RuntimeState state = 2;
+  string tunnel_id = 3;
+  string attachment_id = 4;
+  string last_error = 5;
+  google.protobuf.Timestamp last_started_at = 6;
+}
+
+message EnsureConnectRequest {
+  string tunnel_id = 1;
+  string name = 2;
+  string listen_address = 3;
+}
+
+message EnsureConnectResponse {
+  ManagedConnectStatus connect = 1;
+}
+
+message RemoveConnectRequest {
+  string tunnel_id = 1;
+  string name = 2;
+  string listen_address = 3;
+}
+
+message RemoveConnectResponse {}
+
+message ListConnectsRequest {}
+
+message ListConnectsResponse {
+  repeated ManagedConnectStatus connects = 1;
+}
+
+message NetworkStatus {
+  int32 pid = 1;
+  google.protobuf.Timestamp started_at = 2;
+  string socket_path = 3;
+  bool environment_enabled = 4;
+  string environment_id = 5;
+  repeated ManagedServeStatus serves = 6;
+  repeated ManagedConnectStatus connects = 7;
+}
+
+service NetworkService {
+  rpc Ping(PingRequest) returns (PingResponse);
+  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
+  rpc ReloadEnvironment(ReloadEnvironmentRequest) returns (ReloadEnvironmentResponse);
+  rpc GetNetworkStatus(GetNetworkStatusRequest) returns (GetNetworkStatusResponse);
+  rpc EnsureServe(EnsureServeRequest) returns (EnsureServeResponse);
+  rpc RemoveServe(RemoveServeRequest) returns (RemoveServeResponse);
+  rpc ListServes(ListServesRequest) returns (ListServesResponse);
+  rpc EnsureConnect(EnsureConnectRequest) returns (EnsureConnectResponse);
+  rpc RemoveConnect(RemoveConnectRequest) returns (RemoveConnectResponse);
+  rpc ListConnects(ListConnectsRequest) returns (ListConnectsResponse);
+}

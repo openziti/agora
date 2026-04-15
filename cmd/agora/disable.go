@@ -53,6 +53,9 @@ func (cmd *disableCommand) run(_ *cobra.Command, _ []string) {
 	if err := root.DeleteZitiIdentityNamed(environmentIdentityName); err != nil {
 		panic(err)
 	}
+	if err := reloadNetworkAgentIfRunning(root); err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to reload agora network runtime: %v\n", err)
+	}
 
 	fmt.Println("disabled local environment")
 }

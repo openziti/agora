@@ -47,6 +47,22 @@ func environmentFile() (string, error) {
 	return filepath.Join(root, "environment.json"), nil
 }
 
+func networkFile() (string, error) {
+	root, err := rootDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, "network.json"), nil
+}
+
+func networkSocketFile() (string, error) {
+	root, err := rootDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(root, "network.sock"), nil
+}
+
 func identitiesDir() (string, error) {
 	root, err := rootDir()
 	if err != nil {

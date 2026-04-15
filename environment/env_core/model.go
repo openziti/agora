@@ -18,6 +18,11 @@ type Root interface {
 	SetEnvironment(env *Environment) error
 	DeleteEnvironment() error
 
+	Network() *Network
+	SetNetwork(network *Network) error
+	DeleteNetwork() error
+	NetworkSocketPath() (string, error)
+
 	ZitiIdentityNamed(name string) (string, error)
 	SaveZitiIdentityNamed(name, data string) error
 	DeleteZitiIdentityNamed(name string) error
@@ -32,6 +37,25 @@ type Environment struct {
 
 type Config struct {
 	APIEndpoint string
+}
+
+type Network struct {
+	Serves   []ManagedServe
+	Connects []ManagedConnect
+}
+
+type ManagedServe struct {
+	TunnelID      string
+	Name          string
+	Mode          api.TunnelMode
+	BackendTarget string
+	GrantEmails   []string
+}
+
+type ManagedConnect struct {
+	TunnelID      string
+	Name          string
+	ListenAddress string
 }
 
 type Metadata struct {
