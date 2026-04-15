@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v6.33.2
-// source: internal/networkagent/pb/network.proto
+// source: internal/network/agent/pb/network.proto
 
 package networkpb
 
@@ -459,5 +459,5 @@ var NetworkService_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "internal/networkagent/pb/network.proto",
+	Metadata: "internal/network/agent/pb/network.proto",
 }

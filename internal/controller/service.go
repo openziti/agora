@@ -9,7 +9,7 @@ import (
 	"github.com/michaelquigley/df/dl"
 	"github.com/openziti/agora/internal/api"
 	"github.com/openziti/agora/internal/controller/config"
-	"github.com/openziti/agora/internal/openziti/automation"
+	"github.com/openziti/agora/internal/fabric/openziti/automation"
 	"github.com/openziti/agora/internal/persistence"
 )
 

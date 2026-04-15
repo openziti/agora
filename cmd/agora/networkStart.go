@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/michaelquigley/df/dl"
-	"github.com/openziti/agora/internal/networkagent"
+	networkagent "github.com/openziti/agora/internal/network/agent"
 	"github.com/spf13/cobra"
 )
 

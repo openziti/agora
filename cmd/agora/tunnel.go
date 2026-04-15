@@ -15,7 +15,7 @@ import (
 	"github.com/openziti/agora/environment"
 	"github.com/openziti/agora/environment/env_core"
 	"github.com/openziti/agora/internal/api"
-	"github.com/openziti/agora/internal/tunnelruntime"
+	"github.com/openziti/agora/internal/network/tunnelruntime"
 	"github.com/spf13/cobra"
 )
 

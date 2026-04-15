@@ -7,8 +7,8 @@ import (
 
 	"github.com/openziti/agora/environment"
 	"github.com/openziti/agora/environment/env_core"
-	"github.com/openziti/agora/internal/networkagent"
-	networkpb "github.com/openziti/agora/internal/networkagent/pb"
+	networkagent "github.com/openziti/agora/internal/network/agent"
+	networkpb "github.com/openziti/agora/internal/network/agent/pb"
 	"github.com/spf13/cobra"
 )
 

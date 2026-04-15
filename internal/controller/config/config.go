@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/michaelquigley/df/dd"
-	"github.com/openziti/agora/internal/openziti/automation"
+	"github.com/openziti/agora/internal/fabric/openziti/automation"
 	"github.com/openziti/agora/internal/persistence"
 )
 

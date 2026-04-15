@@ -50,6 +50,13 @@ This repository is in early-stage development. Favor simple, explicit structure 
 - Store local CLI metadata such as API endpoint config and enrolled identities there, not in controller config files
 - Prefer extending the environment package over scattering ad hoc dotfiles or one-off env var parsing across commands
 
+**Internal Package Naming**:
+- Layer-owned internal packages should follow the conceptual layer names:
+- `internal/fabric/...` for Layer 0 (Fabric) implementation code
+- `internal/network/...` for Layer 1 (Network) implementation code
+- `internal/collaboration/...` for Layer 2 (Collaboration) implementation code when that code exists
+- Keep cross-cutting packages such as `internal/controller`, `internal/persistence`, `internal/api`, and `internal/clioutput` at the top level rather than forcing them into a layer namespace
+
 ### Key Architectural Patterns
 
 **API Generation**:

@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/openziti/agora/internal/networkagent"
+	networkagent "github.com/openziti/agora/internal/network/agent"
 	"github.com/spf13/cobra"
 )
 

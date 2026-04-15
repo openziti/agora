@@ -1,4 +1,4 @@
-package networkagent
+package agent
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/openziti/agora/environment/env_core"
-	networkpb "github.com/openziti/agora/internal/networkagent/pb"
+	networkpb "github.com/openziti/agora/internal/network/agent/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"

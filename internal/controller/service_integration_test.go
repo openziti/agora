@@ -8,7 +8,7 @@ import (
 
 	"github.com/openziti/agora/internal/api"
 	ctrlcfg "github.com/openziti/agora/internal/controller/config"
-	"github.com/openziti/agora/internal/openziti/automation"
+	"github.com/openziti/agora/internal/fabric/openziti/automation"
 	"github.com/openziti/agora/internal/persistence"
 	"github.com/openziti/agora/internal/persistence/testutil"
 )

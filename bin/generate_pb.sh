@@ -16,4 +16,4 @@ PATH="$TMP_BIN:$PATH" protoc \
   --go_opt=paths=source_relative \
   --go-grpc_out="$ROOT_DIR" \
   --go-grpc_opt=paths=source_relative \
-  "$ROOT_DIR/internal/networkagent/pb/network.proto"
+  "$ROOT_DIR/internal/network/agent/pb/network.proto"

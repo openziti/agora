@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package agora.network.v1;
 
-option go_package = "github.com/openziti/agora/internal/networkagent/pb;networkpb";
+option go_package = "github.com/openziti/agora/internal/network/agent/pb;networkpb";
 
 import "google/protobuf/timestamp.proto";
 

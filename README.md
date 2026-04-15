@@ -41,11 +41,21 @@ The current API surface covers the first Layer 1 (Network) slice:
 - `cmd/agora/`: CLI entrypoints and Cobra command wiring
 - `internal/api/`: generated `ogen` code and the modular OpenAPI spec
 - `internal/controller/`: handwritten controller service, auth logic, and HTTP server wiring
-- `internal/networkagent/`: local `agora network` agent, client, and protobuf service implementation
+- `internal/fabric/openziti/automation/`: Layer 0 (Fabric) OpenZiti automation primitives
+- `internal/network/agent/`: local `agora network` agent, client, and protobuf service implementation
+- `internal/network/tunnelruntime/`: HTTP/TCP/UDP tunnel runtime implementations used by `serve` and `connect`
 - `internal/persistence/`: store, repositories, models, migration management, and integration tests
-- `internal/tunnelruntime/`: HTTP/TCP/UDP tunnel runtime implementations used by `serve` and `connect`
+- `internal/collaboration/`: reserved for future Layer 2 (Collaboration) package-owned code
 - `CLAUDE-ARCHITECTURE.md`: high-level architecture and product direction
 - `AGENTS.md`: contributor rules and project conventions
+
+Layer-owned internal packages follow the conceptual layer names:
+
+- `internal/fabric/...` for Layer 0 (Fabric)
+- `internal/network/...` for Layer 1 (Network)
+- `internal/collaboration/...` for Layer 2 (Collaboration)
+
+Cross-cutting packages such as `internal/controller`, `internal/persistence`, `internal/api`, and `internal/clioutput` intentionally remain top-level.
 
 ## Development
 

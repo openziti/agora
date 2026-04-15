@@ -1,4 +1,4 @@
-package networkagent
+package agent
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 
 	"github.com/michaelquigley/df/dl"
 	"github.com/openziti/agora/environment/env_core"
-	networkpb "github.com/openziti/agora/internal/networkagent/pb"
+	networkpb "github.com/openziti/agora/internal/network/agent/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
