@@ -2,7 +2,9 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -14,7 +16,30 @@ import (
 const (
 	tunnelServeHeartbeatInterval      = 15 * time.Second
 	tunnelAttachmentHeartbeatInterval = 15 * time.Second
+
+	defaultTunnelRetryInitialDelay = time.Second
+	defaultTunnelRetryMaxDelay     = 30 * time.Second
+	defaultTunnelRetryMultiplier   = 2.0
+	defaultTunnelRetryJitter       = 0.2
+
+	tunnelHeartbeatFailureThreshold = 3
 )
+
+var errStaleManagedAttempt = errors.New("stale managed tunnel attempt")
+
+type serveAttempt struct {
+	generation   uint64
+	env          *env_core.Environment
+	desired      env_core.ManagedServe
+	identityPath string
+}
+
+type connectAttempt struct {
+	generation   uint64
+	env          *env_core.Environment
+	desired      env_core.ManagedConnect
+	identityPath string
+}
 
 func (a *Agent) EnsureServe(ctx context.Context, req *networkpb.EnsureServeRequest) (*networkpb.EnsureServeResponse, error) {
 	desired, err := validateDesiredServe(req)
@@ -22,7 +47,7 @@ func (a *Agent) EnsureServe(ctx context.Context, req *networkpb.EnsureServeReque
 		return nil, err
 	}
 
-	root, env, actor, oldServe, err := a.prepareServeEnsure(desired)
+	actor, oldServe, err := a.prepareServeEnsure(desired)
 	if err != nil {
 		return nil, err
 	}
@@ -30,44 +55,9 @@ func (a *Agent) EnsureServe(ctx context.Context, req *networkpb.EnsureServeReque
 		a.stopServeActor(oldServe)
 	}
 
-	identityPath, err := root.ZitiIdentityNamed(environmentIdentityName)
-	if err != nil {
-		a.failServeActor(actor, err)
+	if err := a.runServeAttempt(ctx, actor, 0, true); err != nil {
 		return nil, err
 	}
-
-	tunnel, serve, err := a.controller.StartServe(ctx, env, desired)
-	if err != nil {
-		a.failServeActor(actor, err)
-		return nil, err
-	}
-
-	desired.TunnelID = tunnel.ID
-	if err := a.updateServeDesired(actor, desired); err != nil {
-		_ = a.controller.StopServe(context.Background(), env, serve.ID)
-		a.failServeActor(actor, err)
-		return nil, err
-	}
-
-	actorCtx, cancel := context.WithCancel(context.Background())
-	handle, err := a.runtimeHost.StartServe(actorCtx, identityPath, tunnel)
-	if err != nil {
-		cancel()
-		_ = a.controller.StopServe(context.Background(), env, serve.ID)
-		a.failServeActor(actor, err)
-		return nil, err
-	}
-
-	startedAt := a.now().UTC()
-	if !a.markServeRunning(actor, env, tunnel.ID, serve.ID, startedAt, cancel) {
-		cancel()
-		_ = a.controller.StopServe(context.Background(), env, serve.ID)
-		return nil, fmt.Errorf("managed serve start was canceled")
-	}
-
-	go a.runServeHeartbeatLoop(actorCtx, actor, serve.ID)
-	go a.watchServeActor(actor, handle.Done())
-
 	return &networkpb.EnsureServeResponse{Serve: a.snapshotServeStatus(actor)}, nil
 }
 
@@ -86,7 +76,7 @@ func (a *Agent) EnsureConnect(ctx context.Context, req *networkpb.EnsureConnectR
 		return nil, err
 	}
 
-	root, env, actor, oldConnect, err := a.prepareConnectEnsure(desired)
+	actor, oldConnect, err := a.prepareConnectEnsure(desired)
 	if err != nil {
 		return nil, err
 	}
@@ -94,44 +84,9 @@ func (a *Agent) EnsureConnect(ctx context.Context, req *networkpb.EnsureConnectR
 		a.stopConnectActor(oldConnect)
 	}
 
-	identityPath, err := root.ZitiIdentityNamed(environmentIdentityName)
-	if err != nil {
-		a.failConnectActor(actor, err)
+	if err := a.runConnectAttempt(ctx, actor, 0, true); err != nil {
 		return nil, err
 	}
-
-	tunnel, attachment, err := a.controller.StartConnect(ctx, env, desired)
-	if err != nil {
-		a.failConnectActor(actor, err)
-		return nil, err
-	}
-
-	desired.TunnelID = tunnel.ID
-	if err := a.updateConnectDesired(actor, desired); err != nil {
-		_ = a.controller.StopAttachment(context.Background(), env, attachment.ID)
-		a.failConnectActor(actor, err)
-		return nil, err
-	}
-
-	actorCtx, cancel := context.WithCancel(context.Background())
-	handle, err := a.runtimeHost.StartConnect(actorCtx, identityPath, tunnel, attachment.ListenAddress)
-	if err != nil {
-		cancel()
-		_ = a.controller.StopAttachment(context.Background(), env, attachment.ID)
-		a.failConnectActor(actor, err)
-		return nil, err
-	}
-
-	startedAt := a.now().UTC()
-	if !a.markConnectRunning(actor, env, tunnel.ID, attachment.ID, startedAt, cancel) {
-		cancel()
-		_ = a.controller.StopAttachment(context.Background(), env, attachment.ID)
-		return nil, fmt.Errorf("managed connect start was canceled")
-	}
-
-	go a.runConnectHeartbeatLoop(actorCtx, actor, attachment.ID)
-	go a.watchConnectActor(actor, handle.Done())
-
 	return &networkpb.EnsureConnectResponse{Connect: a.snapshotConnectStatus(actor)}, nil
 }
 
@@ -144,24 +99,47 @@ func (a *Agent) RemoveConnect(_ context.Context, req *networkpb.RemoveConnectReq
 	return &networkpb.RemoveConnectResponse{}, nil
 }
 
-func (a *Agent) prepareServeEnsure(desired env_core.ManagedServe) (env_core.Root, *env_core.Environment, *managedServe, *managedServe, error) {
+func (a *Agent) startConfiguredActorsLocked() {
+	serves := make([]*managedServe, 0, len(a.serves))
+	connects := make([]*managedConnect, 0, len(a.connects))
+	for _, actor := range a.serves {
+		serves = append(serves, actor)
+	}
+	for _, actor := range a.connects {
+		connects = append(connects, actor)
+	}
+
+	for _, actor := range serves {
+		go func(actor *managedServe) {
+			_ = a.runServeAttempt(context.Background(), actor, 0, true)
+		}(actor)
+	}
+	for _, actor := range connects {
+		go func(actor *managedConnect) {
+			_ = a.runConnectAttempt(context.Background(), actor, 0, true)
+		}(actor)
+	}
+}
+
+func (a *Agent) prepareServeEnsure(desired env_core.ManagedServe) (*managedServe, *managedServe, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
 	if a.env == nil {
-		return nil, nil, nil, nil, fmt.Errorf("no environment is enabled")
+		return nil, nil, fmt.Errorf("no environment is enabled")
 	}
-	env := cloneEnvironment(a.env)
-	root := a.root
+	if _, err := a.root.ZitiIdentityNamed(environmentIdentityName); err != nil {
+		return nil, nil, err
+	}
 
 	upsertServe(a.network, desired)
 	if err := persistNetwork(a.root, a.network); err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	actor := &managedServe{
 		desired:  desired,
-		state:    networkpb.RuntimeState_RUNTIME_STATE_STARTING,
+		state:    networkpb.RuntimeState_RUNTIME_STATE_CONFIGURED,
 		tunnelID: desired.TunnelID,
 	}
 	key, old := a.findServeActorLocked(desired.TunnelID, desired.Name)
@@ -170,27 +148,28 @@ func (a *Agent) prepareServeEnsure(desired env_core.ManagedServe) (env_core.Root
 	}
 	a.serves[serveKey(desired)] = actor
 
-	return root, env, actor, old, nil
+	return actor, old, nil
 }
 
-func (a *Agent) prepareConnectEnsure(desired env_core.ManagedConnect) (env_core.Root, *env_core.Environment, *managedConnect, *managedConnect, error) {
+func (a *Agent) prepareConnectEnsure(desired env_core.ManagedConnect) (*managedConnect, *managedConnect, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
 	if a.env == nil {
-		return nil, nil, nil, nil, fmt.Errorf("no environment is enabled")
+		return nil, nil, fmt.Errorf("no environment is enabled")
 	}
-	env := cloneEnvironment(a.env)
-	root := a.root
+	if _, err := a.root.ZitiIdentityNamed(environmentIdentityName); err != nil {
+		return nil, nil, err
+	}
 
 	upsertConnect(a.network, desired)
 	if err := persistNetwork(a.root, a.network); err != nil {
-		return nil, nil, nil, nil, err
+		return nil, nil, err
 	}
 
 	actor := &managedConnect{
 		desired:  desired,
-		state:    networkpb.RuntimeState_RUNTIME_STATE_STARTING,
+		state:    networkpb.RuntimeState_RUNTIME_STATE_CONFIGURED,
 		tunnelID: desired.TunnelID,
 	}
 	key, old := a.findConnectActorLocked(desired.TunnelID, desired.Name, desired.ListenAddress)
@@ -199,15 +178,225 @@ func (a *Agent) prepareConnectEnsure(desired env_core.ManagedConnect) (env_core.
 	}
 	a.connects[connectKey(desired)] = actor
 
-	return root, env, actor, old, nil
+	return actor, old, nil
 }
 
-func (a *Agent) updateServeDesired(actor *managedServe, desired env_core.ManagedServe) error {
+func (a *Agent) runServeAttempt(ctx context.Context, actor *managedServe, expectedGeneration uint64, scheduleRetry bool) error {
+	attempt, err := a.prepareServeAttempt(actor, expectedGeneration)
+	if err != nil {
+		if errors.Is(err, errStaleManagedAttempt) {
+			return nil
+		}
+		return err
+	}
+
+	tunnel, serve, err := a.controller.StartServe(ctx, attempt.env, attempt.desired)
+	if err != nil {
+		a.recordServeAttemptFailure(actor, attempt.generation, err, scheduleRetry)
+		return err
+	}
+
+	desired := attempt.desired
+	desired.TunnelID = tunnel.ID
+	if err := a.updateServeDesired(actor, attempt.generation, desired); err != nil {
+		_ = a.controller.StopServe(context.Background(), attempt.env, serve.ID)
+		a.recordServeAttemptFailure(actor, attempt.generation, err, scheduleRetry)
+		return err
+	}
+
+	actorCtx, cancel := context.WithCancel(context.Background())
+	handle, err := a.runtimeHost.StartServe(actorCtx, attempt.identityPath, tunnel)
+	if err != nil {
+		cancel()
+		_ = a.controller.StopServe(context.Background(), attempt.env, serve.ID)
+		a.recordServeAttemptFailure(actor, attempt.generation, err, scheduleRetry)
+		return err
+	}
+
+	startedAt := a.now().UTC()
+	if !a.markServeRunning(actor, attempt.generation, attempt.env, tunnel.ID, serve.ID, startedAt, cancel) {
+		cancel()
+		_ = a.controller.StopServe(context.Background(), attempt.env, serve.ID)
+		return nil
+	}
+
+	go a.runServeHeartbeatLoop(actorCtx, actor, serve.ID, attempt.generation)
+	go a.watchServeActor(actor, handle.Done(), attempt.generation)
+	return nil
+}
+
+func (a *Agent) runConnectAttempt(ctx context.Context, actor *managedConnect, expectedGeneration uint64, scheduleRetry bool) error {
+	attempt, err := a.prepareConnectAttempt(actor, expectedGeneration)
+	if err != nil {
+		if errors.Is(err, errStaleManagedAttempt) {
+			return nil
+		}
+		return err
+	}
+
+	tunnel, attachment, err := a.controller.StartConnect(ctx, attempt.env, attempt.desired)
+	if err != nil {
+		a.recordConnectAttemptFailure(actor, attempt.generation, err, scheduleRetry)
+		return err
+	}
+
+	desired := attempt.desired
+	desired.TunnelID = tunnel.ID
+	if err := a.updateConnectDesired(actor, attempt.generation, desired); err != nil {
+		_ = a.controller.StopAttachment(context.Background(), attempt.env, attachment.ID)
+		a.recordConnectAttemptFailure(actor, attempt.generation, err, scheduleRetry)
+		return err
+	}
+
+	actorCtx, cancel := context.WithCancel(context.Background())
+	handle, err := a.runtimeHost.StartConnect(actorCtx, attempt.identityPath, tunnel, attachment.ListenAddress)
+	if err != nil {
+		cancel()
+		_ = a.controller.StopAttachment(context.Background(), attempt.env, attachment.ID)
+		a.recordConnectAttemptFailure(actor, attempt.generation, err, scheduleRetry)
+		return err
+	}
+
+	startedAt := a.now().UTC()
+	if !a.markConnectRunning(actor, attempt.generation, attempt.env, tunnel.ID, attachment.ID, startedAt, cancel) {
+		cancel()
+		_ = a.controller.StopAttachment(context.Background(), attempt.env, attachment.ID)
+		return nil
+	}
+
+	go a.runConnectHeartbeatLoop(actorCtx, actor, attachment.ID, attempt.generation)
+	go a.watchConnectActor(actor, handle.Done(), attempt.generation)
+	return nil
+}
+
+func (a *Agent) prepareServeAttempt(actor *managedServe, expectedGeneration uint64) (*serveAttempt, error) {
+	a.mu.Lock()
+	if !a.hasServeActorLocked(actor) {
+		a.mu.Unlock()
+		return nil, errStaleManagedAttempt
+	}
+	if expectedGeneration != 0 && actor.generation != expectedGeneration {
+		a.mu.Unlock()
+		return nil, errStaleManagedAttempt
+	}
+
+	actor.generation++
+	generation := actor.generation
+	if actor.retryTimer != nil {
+		actor.retryTimer.Stop()
+		actor.retryTimer = nil
+	}
+	actor.nextRetryAt = nil
+	oldCancel := actor.cancel
+	oldEnv := cloneEnvironment(actor.env)
+	oldServeID := actor.serveID
+	actor.cancel = nil
+	actor.env = nil
+	actor.serveID = ""
+	actor.state = networkpb.RuntimeState_RUNTIME_STATE_STARTING
+	actor.lastError = ""
+	actor.transientHeartbeatFailures = 0
+	env := cloneEnvironment(a.env)
+	desired := actor.desired
+	root := a.root
+	a.mu.Unlock()
+
+	if oldCancel != nil {
+		oldCancel()
+	}
+	if oldServeID != "" && oldEnv != nil {
+		if err := a.controller.StopServe(context.Background(), oldEnv, oldServeID); err != nil {
+			dl.Warnf("agora network failed to delete serve_id='%s': %v", oldServeID, err)
+		}
+	}
+
+	if env == nil {
+		err := fmt.Errorf("no environment is enabled")
+		a.recordServePrerequisiteFailure(actor, generation, err)
+		return nil, err
+	}
+
+	identityPath, err := root.ZitiIdentityNamed(environmentIdentityName)
+	if err != nil {
+		a.recordServePrerequisiteFailure(actor, generation, err)
+		return nil, err
+	}
+
+	return &serveAttempt{
+		generation:   generation,
+		env:          env,
+		desired:      desired,
+		identityPath: identityPath,
+	}, nil
+}
+
+func (a *Agent) prepareConnectAttempt(actor *managedConnect, expectedGeneration uint64) (*connectAttempt, error) {
+	a.mu.Lock()
+	if !a.hasConnectActorLocked(actor) {
+		a.mu.Unlock()
+		return nil, errStaleManagedAttempt
+	}
+	if expectedGeneration != 0 && actor.generation != expectedGeneration {
+		a.mu.Unlock()
+		return nil, errStaleManagedAttempt
+	}
+
+	actor.generation++
+	generation := actor.generation
+	if actor.retryTimer != nil {
+		actor.retryTimer.Stop()
+		actor.retryTimer = nil
+	}
+	actor.nextRetryAt = nil
+	oldCancel := actor.cancel
+	oldEnv := cloneEnvironment(actor.env)
+	oldAttachmentID := actor.attachmentID
+	actor.cancel = nil
+	actor.env = nil
+	actor.attachmentID = ""
+	actor.state = networkpb.RuntimeState_RUNTIME_STATE_STARTING
+	actor.lastError = ""
+	actor.transientHeartbeatFailures = 0
+	env := cloneEnvironment(a.env)
+	desired := actor.desired
+	root := a.root
+	a.mu.Unlock()
+
+	if oldCancel != nil {
+		oldCancel()
+	}
+	if oldAttachmentID != "" && oldEnv != nil {
+		if err := a.controller.StopAttachment(context.Background(), oldEnv, oldAttachmentID); err != nil {
+			dl.Warnf("agora network failed to delete attachment_id='%s': %v", oldAttachmentID, err)
+		}
+	}
+
+	if env == nil {
+		err := fmt.Errorf("no environment is enabled")
+		a.recordConnectPrerequisiteFailure(actor, generation, err)
+		return nil, err
+	}
+
+	identityPath, err := root.ZitiIdentityNamed(environmentIdentityName)
+	if err != nil {
+		a.recordConnectPrerequisiteFailure(actor, generation, err)
+		return nil, err
+	}
+
+	return &connectAttempt{
+		generation:   generation,
+		env:          env,
+		desired:      desired,
+		identityPath: identityPath,
+	}, nil
+}
+
+func (a *Agent) updateServeDesired(actor *managedServe, generation uint64, desired env_core.ManagedServe) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	if !a.hasServeActorLocked(actor) {
-		return fmt.Errorf("managed serve start was canceled")
+	if !a.hasServeActorLocked(actor) || actor.generation != generation {
+		return errStaleManagedAttempt
 	}
 	actor.desired = desired
 	actor.tunnelID = desired.TunnelID
@@ -219,12 +408,12 @@ func (a *Agent) updateServeDesired(actor *managedServe, desired env_core.Managed
 	return nil
 }
 
-func (a *Agent) updateConnectDesired(actor *managedConnect, desired env_core.ManagedConnect) error {
+func (a *Agent) updateConnectDesired(actor *managedConnect, generation uint64, desired env_core.ManagedConnect) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
-	if !a.hasConnectActorLocked(actor) {
-		return fmt.Errorf("managed connect start was canceled")
+	if !a.hasConnectActorLocked(actor) || actor.generation != generation {
+		return errStaleManagedAttempt
 	}
 	actor.desired = desired
 	actor.tunnelID = desired.TunnelID
@@ -236,34 +425,77 @@ func (a *Agent) updateConnectDesired(actor *managedConnect, desired env_core.Man
 	return nil
 }
 
-func (a *Agent) failServeActor(actor *managedServe, err error) {
+func (a *Agent) recordServePrerequisiteFailure(actor *managedServe, generation uint64, err error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if !a.hasServeActorLocked(actor) {
+
+	if !a.hasServeActorLocked(actor) || actor.generation != generation {
 		return
 	}
 	actor.state = networkpb.RuntimeState_RUNTIME_STATE_ERROR
+	actor.lastError = err.Error()
+	actor.retryAttempt = 0
+	actor.nextRetryAt = nil
+}
+
+func (a *Agent) recordConnectPrerequisiteFailure(actor *managedConnect, generation uint64, err error) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if !a.hasConnectActorLocked(actor) || actor.generation != generation {
+		return
+	}
+	actor.state = networkpb.RuntimeState_RUNTIME_STATE_ERROR
+	actor.lastError = err.Error()
+	actor.retryAttempt = 0
+	actor.nextRetryAt = nil
+}
+
+func (a *Agent) recordServeAttemptFailure(actor *managedServe, generation uint64, err error, scheduleRetry bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if !a.hasServeActorLocked(actor) || actor.generation != generation {
+		return
+	}
+	actor.state = networkpb.RuntimeState_RUNTIME_STATE_ERROR
+	actor.lastError = err.Error()
+	actor.cancel = nil
 	actor.serveID = ""
-	actor.lastError = err.Error()
-	actor.cancel = nil
+	actor.env = nil
+	actor.transientHeartbeatFailures = 0
+	if !scheduleRetry {
+		actor.nextRetryAt = nil
+		return
+	}
+	a.scheduleServeRetryLocked(actor)
 }
 
-func (a *Agent) failConnectActor(actor *managedConnect, err error) {
+func (a *Agent) recordConnectAttemptFailure(actor *managedConnect, generation uint64, err error, scheduleRetry bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if !a.hasConnectActorLocked(actor) {
+
+	if !a.hasConnectActorLocked(actor) || actor.generation != generation {
 		return
 	}
 	actor.state = networkpb.RuntimeState_RUNTIME_STATE_ERROR
-	actor.attachmentID = ""
 	actor.lastError = err.Error()
 	actor.cancel = nil
+	actor.attachmentID = ""
+	actor.env = nil
+	actor.transientHeartbeatFailures = 0
+	if !scheduleRetry {
+		actor.nextRetryAt = nil
+		return
+	}
+	a.scheduleConnectRetryLocked(actor)
 }
 
-func (a *Agent) markServeRunning(actor *managedServe, env *env_core.Environment, tunnelID, serveID string, startedAt time.Time, cancel context.CancelFunc) bool {
+func (a *Agent) markServeRunning(actor *managedServe, generation uint64, env *env_core.Environment, tunnelID, serveID string, startedAt time.Time, cancel context.CancelFunc) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if !a.hasServeActorLocked(actor) {
+
+	if !a.hasServeActorLocked(actor) || actor.generation != generation {
 		return false
 	}
 	actor.env = cloneEnvironment(env)
@@ -272,14 +504,18 @@ func (a *Agent) markServeRunning(actor *managedServe, env *env_core.Environment,
 	actor.serveID = serveID
 	actor.lastError = ""
 	actor.lastStartedAt = &startedAt
+	actor.nextRetryAt = nil
+	actor.retryAttempt = 0
+	actor.transientHeartbeatFailures = 0
 	actor.cancel = cancel
 	return true
 }
 
-func (a *Agent) markConnectRunning(actor *managedConnect, env *env_core.Environment, tunnelID, attachmentID string, startedAt time.Time, cancel context.CancelFunc) bool {
+func (a *Agent) markConnectRunning(actor *managedConnect, generation uint64, env *env_core.Environment, tunnelID, attachmentID string, startedAt time.Time, cancel context.CancelFunc) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if !a.hasConnectActorLocked(actor) {
+
+	if !a.hasConnectActorLocked(actor) || actor.generation != generation {
 		return false
 	}
 	actor.env = cloneEnvironment(env)
@@ -288,14 +524,18 @@ func (a *Agent) markConnectRunning(actor *managedConnect, env *env_core.Environm
 	actor.attachmentID = attachmentID
 	actor.lastError = ""
 	actor.lastStartedAt = &startedAt
+	actor.nextRetryAt = nil
+	actor.retryAttempt = 0
+	actor.transientHeartbeatFailures = 0
 	actor.cancel = cancel
 	return true
 }
 
-func (a *Agent) watchServeActor(actor *managedServe, done <-chan error) {
+func (a *Agent) watchServeActor(actor *managedServe, done <-chan error, generation uint64) {
 	err := <-done
+
 	a.mu.Lock()
-	if !a.hasServeActorLocked(actor) {
+	if !a.hasServeActorLocked(actor) || actor.generation != generation {
 		a.mu.Unlock()
 		return
 	}
@@ -303,13 +543,16 @@ func (a *Agent) watchServeActor(actor *managedServe, done <-chan error) {
 	env := cloneEnvironment(actor.env)
 	serveID := actor.serveID
 	actor.cancel = nil
+	actor.env = nil
 	actor.serveID = ""
 	if err != nil {
-		actor.state = networkpb.RuntimeState_RUNTIME_STATE_ERROR
 		actor.lastError = err.Error()
 	} else {
-		actor.state = networkpb.RuntimeState_RUNTIME_STATE_CONFIGURED
+		actor.lastError = "serve runtime exited"
 	}
+	actor.state = networkpb.RuntimeState_RUNTIME_STATE_ERROR
+	actor.transientHeartbeatFailures = 0
+	a.scheduleServeRetryLocked(actor)
 	a.mu.Unlock()
 
 	if cancel != nil {
@@ -322,10 +565,11 @@ func (a *Agent) watchServeActor(actor *managedServe, done <-chan error) {
 	}
 }
 
-func (a *Agent) watchConnectActor(actor *managedConnect, done <-chan error) {
+func (a *Agent) watchConnectActor(actor *managedConnect, done <-chan error, generation uint64) {
 	err := <-done
+
 	a.mu.Lock()
-	if !a.hasConnectActorLocked(actor) {
+	if !a.hasConnectActorLocked(actor) || actor.generation != generation {
 		a.mu.Unlock()
 		return
 	}
@@ -333,13 +577,16 @@ func (a *Agent) watchConnectActor(actor *managedConnect, done <-chan error) {
 	env := cloneEnvironment(actor.env)
 	attachmentID := actor.attachmentID
 	actor.cancel = nil
+	actor.env = nil
 	actor.attachmentID = ""
 	if err != nil {
-		actor.state = networkpb.RuntimeState_RUNTIME_STATE_ERROR
 		actor.lastError = err.Error()
 	} else {
-		actor.state = networkpb.RuntimeState_RUNTIME_STATE_CONFIGURED
+		actor.lastError = "connect runtime exited"
 	}
+	actor.state = networkpb.RuntimeState_RUNTIME_STATE_ERROR
+	actor.transientHeartbeatFailures = 0
+	a.scheduleConnectRetryLocked(actor)
 	a.mu.Unlock()
 
 	if cancel != nil {
@@ -356,12 +603,28 @@ func (a *Agent) stopServeActor(actor *managedServe) {
 	if actor == nil {
 		return
 	}
-	if actor.cancel != nil {
-		actor.cancel()
+
+	a.mu.Lock()
+	actor.generation++
+	if actor.retryTimer != nil {
+		actor.retryTimer.Stop()
+		actor.retryTimer = nil
 	}
-	if actor.serveID != "" && actor.env != nil {
-		if err := a.controller.StopServe(context.Background(), actor.env, actor.serveID); err != nil {
-			dl.Warnf("agora network failed to delete serve_id='%s': %v", actor.serveID, err)
+	actor.nextRetryAt = nil
+	cancel := actor.cancel
+	env := cloneEnvironment(actor.env)
+	serveID := actor.serveID
+	actor.cancel = nil
+	actor.env = nil
+	actor.serveID = ""
+	a.mu.Unlock()
+
+	if cancel != nil {
+		cancel()
+	}
+	if serveID != "" && env != nil {
+		if err := a.controller.StopServe(context.Background(), env, serveID); err != nil {
+			dl.Warnf("agora network failed to delete serve_id='%s': %v", serveID, err)
 		}
 	}
 }
@@ -370,44 +633,180 @@ func (a *Agent) stopConnectActor(actor *managedConnect) {
 	if actor == nil {
 		return
 	}
-	if actor.cancel != nil {
-		actor.cancel()
+
+	a.mu.Lock()
+	actor.generation++
+	if actor.retryTimer != nil {
+		actor.retryTimer.Stop()
+		actor.retryTimer = nil
 	}
-	if actor.attachmentID != "" && actor.env != nil {
-		if err := a.controller.StopAttachment(context.Background(), actor.env, actor.attachmentID); err != nil {
-			dl.Warnf("agora network failed to delete attachment_id='%s': %v", actor.attachmentID, err)
+	actor.nextRetryAt = nil
+	cancel := actor.cancel
+	env := cloneEnvironment(actor.env)
+	attachmentID := actor.attachmentID
+	actor.cancel = nil
+	actor.env = nil
+	actor.attachmentID = ""
+	a.mu.Unlock()
+
+	if cancel != nil {
+		cancel()
+	}
+	if attachmentID != "" && env != nil {
+		if err := a.controller.StopAttachment(context.Background(), env, attachmentID); err != nil {
+			dl.Warnf("agora network failed to delete attachment_id='%s': %v", attachmentID, err)
 		}
 	}
 }
 
-func (a *Agent) runServeHeartbeatLoop(ctx context.Context, actor *managedServe, serveID string) {
-	ticker := time.NewTicker(tunnelServeHeartbeatInterval)
+func (a *Agent) runServeHeartbeatLoop(ctx context.Context, actor *managedServe, serveID string, generation uint64) {
+	ticker := time.NewTicker(a.serveHeartbeatInterval)
 	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			if err := a.controller.HeartbeatServe(context.Background(), actor.env, serveID); err != nil {
+				if isCurrentRuntimeControllerError(err) {
+					dl.Warnf("agora network serve heartbeat failed permanently serve_id='%s': %v", serveID, err)
+					go func() {
+						_ = a.runServeAttempt(context.Background(), actor, generation, true)
+					}()
+					return
+				}
+				if thresholdReached := a.incrementServeHeartbeatFailures(actor, generation); thresholdReached {
+					dl.Warnf("agora network serve heartbeat failed repeatedly serve_id='%s': %v", serveID, err)
+					go func() {
+						_ = a.runServeAttempt(context.Background(), actor, generation, true)
+					}()
+					return
+				}
 				dl.Warnf("agora network serve heartbeat failed serve_id='%s': %v", serveID, err)
+				continue
 			}
+			a.resetServeHeartbeatFailures(actor, generation)
 		}
 	}
 }
 
-func (a *Agent) runConnectHeartbeatLoop(ctx context.Context, actor *managedConnect, attachmentID string) {
-	ticker := time.NewTicker(tunnelAttachmentHeartbeatInterval)
+func (a *Agent) runConnectHeartbeatLoop(ctx context.Context, actor *managedConnect, attachmentID string, generation uint64) {
+	ticker := time.NewTicker(a.connectHeartbeatInterval)
 	defer ticker.Stop()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
 			if err := a.controller.HeartbeatAttachment(context.Background(), actor.env, attachmentID); err != nil {
+				if isCurrentRuntimeControllerError(err) {
+					dl.Warnf("agora network attachment heartbeat failed permanently attachment_id='%s': %v", attachmentID, err)
+					go func() {
+						_ = a.runConnectAttempt(context.Background(), actor, generation, true)
+					}()
+					return
+				}
+				if thresholdReached := a.incrementConnectHeartbeatFailures(actor, generation); thresholdReached {
+					dl.Warnf("agora network attachment heartbeat failed repeatedly attachment_id='%s': %v", attachmentID, err)
+					go func() {
+						_ = a.runConnectAttempt(context.Background(), actor, generation, true)
+					}()
+					return
+				}
 				dl.Warnf("agora network attachment heartbeat failed attachment_id='%s': %v", attachmentID, err)
+				continue
 			}
+			a.resetConnectHeartbeatFailures(actor, generation)
 		}
 	}
+}
+
+func (a *Agent) incrementServeHeartbeatFailures(actor *managedServe, generation uint64) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if !a.hasServeActorLocked(actor) || actor.generation != generation {
+		return false
+	}
+	actor.transientHeartbeatFailures++
+	return actor.transientHeartbeatFailures >= tunnelHeartbeatFailureThreshold
+}
+
+func (a *Agent) incrementConnectHeartbeatFailures(actor *managedConnect, generation uint64) bool {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if !a.hasConnectActorLocked(actor) || actor.generation != generation {
+		return false
+	}
+	actor.transientHeartbeatFailures++
+	return actor.transientHeartbeatFailures >= tunnelHeartbeatFailureThreshold
+}
+
+func (a *Agent) resetServeHeartbeatFailures(actor *managedServe, generation uint64) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if !a.hasServeActorLocked(actor) || actor.generation != generation {
+		return
+	}
+	actor.transientHeartbeatFailures = 0
+}
+
+func (a *Agent) resetConnectHeartbeatFailures(actor *managedConnect, generation uint64) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+
+	if !a.hasConnectActorLocked(actor) || actor.generation != generation {
+		return
+	}
+	actor.transientHeartbeatFailures = 0
+}
+
+func (a *Agent) scheduleServeRetryLocked(actor *managedServe) {
+	actor.retryAttempt++
+	delay := a.retryDelay(actor.retryAttempt)
+	nextRetryAt := a.now().UTC().Add(delay)
+	actor.nextRetryAt = &nextRetryAt
+	generation := actor.generation
+	actor.retryTimer = time.AfterFunc(delay, func() {
+		_ = a.runServeAttempt(context.Background(), actor, generation, true)
+	})
+}
+
+func (a *Agent) scheduleConnectRetryLocked(actor *managedConnect) {
+	actor.retryAttempt++
+	delay := a.retryDelay(actor.retryAttempt)
+	nextRetryAt := a.now().UTC().Add(delay)
+	actor.nextRetryAt = &nextRetryAt
+	generation := actor.generation
+	actor.retryTimer = time.AfterFunc(delay, func() {
+		_ = a.runConnectAttempt(context.Background(), actor, generation, true)
+	})
+}
+
+func (a *Agent) retryDelay(attempt uint32) time.Duration {
+	if attempt == 0 {
+		return 0
+	}
+
+	delay := float64(a.retryInitialDelay)
+	if attempt > 1 {
+		delay = delay * math.Pow(a.retryMultiplier, float64(attempt-1))
+	}
+	if maxDelay := float64(a.retryMaxDelay); maxDelay > 0 && delay > maxDelay {
+		delay = maxDelay
+	}
+	if a.retryJitter > 0 {
+		jitter := 1 + ((a.retryRand()*2)-1)*a.retryJitter
+		delay = delay * jitter
+	}
+	if delay < 0 {
+		delay = 0
+	}
+	return time.Duration(delay)
 }
 
 func (a *Agent) removeServeActor(serveID, tunnelID, name string) (*managedServe, error) {

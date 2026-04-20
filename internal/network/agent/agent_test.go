@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"path/filepath"
@@ -366,6 +367,423 @@ func TestAgentReloadEnvironmentDisablesHeartbeat(t *testing.T) {
 	}
 }
 
+func TestAgentRestoresDesiredServeAndConnectOnStart(t *testing.T) {
+	rootPath := filepath.Join(t.TempDir(), ".agora")
+	environment.SetRootDirName(rootPath)
+
+	root := loadTestRoot(t)
+	if err := root.SetEnvironment(&env_core.Environment{
+		EnvironmentID: "ev_test00000025",
+		AccountToken:  "account-token",
+		APIEndpoint:   "http://controller.example",
+	}); err != nil {
+		t.Fatalf("set environment: %v", err)
+	}
+	if err := root.SaveZitiIdentityNamed(environmentIdentityName, `{"ztAPI":"test"}`); err != nil {
+		t.Fatalf("save identity: %v", err)
+	}
+	if err := root.SetNetwork(&env_core.Network{
+		Serves: []env_core.ManagedServe{{
+			Name:          "gateway",
+			Mode:          api.TunnelModeHTTP,
+			BackendTarget: "https://backend.example",
+		}},
+		Connects: []env_core.ManagedConnect{{
+			Name:          "gateway",
+			ListenAddress: "127.0.0.1:8080",
+		}},
+	}); err != nil {
+		t.Fatalf("set network: %v", err)
+	}
+
+	var serveStarts atomic.Int32
+	var connectStarts atomic.Int32
+	controller := &fakeTunnelController{
+		startServe: func(context.Context, *env_core.Environment, env_core.ManagedServe) (*api.Tunnel, *api.TunnelServe, error) {
+			serveStarts.Add(1)
+			return &api.Tunnel{
+				ID:            "tt_test00000025",
+				EnvironmentId: "ev_test00000025",
+				Name:          "gateway",
+				Mode:          api.TunnelModeHTTP,
+				BackendTarget: "https://backend.example",
+			}, &api.TunnelServe{ID: "ts_test00000025"}, nil
+		},
+		startConnect: func(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {
+			connectStarts.Add(1)
+			return &api.Tunnel{
+				ID:            "tt_test00000025",
+				EnvironmentId: "ev_test00000025",
+				Name:          "gateway",
+				Mode:          api.TunnelModeHTTP,
+				BackendTarget: "https://backend.example",
+			}, &api.TunnelAttachment{ID: "ta_test00000025", ListenAddress: "127.0.0.1:8080"}, nil
+		},
+	}
+
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+		agent.controller = controller
+		agent.runtimeHost = fakeRuntimeHost{}
+	})
+	defer cleanup()
+
+	serve := waitForServeState(t, client, "gateway", networkpb.RuntimeState_RUNTIME_STATE_RUNNING)
+	if serve.ServeId != "ts_test00000025" {
+		t.Fatalf("unexpected serve restore status: %#v", serve)
+	}
+	connect := waitForConnectState(t, client, "gateway", "127.0.0.1:8080", networkpb.RuntimeState_RUNTIME_STATE_RUNNING)
+	if connect.AttachmentId != "ta_test00000025" {
+		t.Fatalf("unexpected connect restore status: %#v", connect)
+	}
+	if serveStarts.Load() != 1 {
+		t.Fatalf("expected one serve restore attempt, got %d", serveStarts.Load())
+	}
+	if connectStarts.Load() != 1 {
+		t.Fatalf("expected one connect restore attempt, got %d", connectStarts.Load())
+	}
+}
+
+func TestAgentEnsureServeRetriesAfterInitialFailure(t *testing.T) {
+	rootPath := filepath.Join(t.TempDir(), ".agora")
+	environment.SetRootDirName(rootPath)
+
+	root := loadTestRoot(t)
+	if err := root.SetEnvironment(&env_core.Environment{
+		EnvironmentID: "ev_test00000026",
+		AccountToken:  "account-token",
+		APIEndpoint:   "http://controller.example",
+	}); err != nil {
+		t.Fatalf("set environment: %v", err)
+	}
+	if err := root.SaveZitiIdentityNamed(environmentIdentityName, `{"ztAPI":"test"}`); err != nil {
+		t.Fatalf("save identity: %v", err)
+	}
+
+	var attempts atomic.Int32
+	controller := &fakeTunnelController{
+		startServe: func(context.Context, *env_core.Environment, env_core.ManagedServe) (*api.Tunnel, *api.TunnelServe, error) {
+			if attempts.Add(1) == 1 {
+				return nil, nil, errors.New("controller unavailable")
+			}
+			return &api.Tunnel{
+				ID:            "tt_test00000026",
+				EnvironmentId: "ev_test00000026",
+				Name:          "gateway",
+				Mode:          api.TunnelModeHTTP,
+				BackendTarget: "https://backend.example",
+			}, &api.TunnelServe{ID: "ts_test00000026"}, nil
+		},
+		startConnect: func(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {
+			return nil, nil, errors.New("unexpected connect start")
+		},
+	}
+
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+		agent.controller = controller
+		agent.runtimeHost = fakeRuntimeHost{}
+		agent.retryInitialDelay = 40 * time.Millisecond
+		agent.retryMaxDelay = 40 * time.Millisecond
+		agent.retryJitter = 0
+	})
+	defer cleanup()
+
+	if _, err := client.EnsureServe(context.Background(), &networkpb.EnsureServeRequest{
+		Name:          "gateway",
+		Mode:          "http",
+		BackendTarget: "https://backend.example",
+	}); err == nil {
+		t.Fatal("expected initial ensure serve failure")
+	}
+
+	status := waitForServeRetry(t, client, "gateway", 1)
+	if status.NextRetryAt == nil {
+		t.Fatalf("expected scheduled retry, got %#v", status)
+	}
+	if attempts.Load() != 1 {
+		t.Fatalf("expected one immediate start attempt, got %d", attempts.Load())
+	}
+
+	serve := waitForServeState(t, client, "gateway", networkpb.RuntimeState_RUNTIME_STATE_RUNNING)
+	if serve.ServeId != "ts_test00000026" {
+		t.Fatalf("unexpected recovered serve status: %#v", serve)
+	}
+	if attempts.Load() < 2 {
+		t.Fatalf("expected background retry attempt, got %d", attempts.Load())
+	}
+}
+
+func TestAgentRetriesAfterUnexpectedRuntimeExit(t *testing.T) {
+	rootPath := filepath.Join(t.TempDir(), ".agora")
+	environment.SetRootDirName(rootPath)
+
+	root := loadTestRoot(t)
+	if err := root.SetEnvironment(&env_core.Environment{
+		EnvironmentID: "ev_test00000027",
+		AccountToken:  "account-token",
+		APIEndpoint:   "http://controller.example",
+	}); err != nil {
+		t.Fatalf("set environment: %v", err)
+	}
+	if err := root.SaveZitiIdentityNamed(environmentIdentityName, `{"ztAPI":"test"}`); err != nil {
+		t.Fatalf("save identity: %v", err)
+	}
+
+	var starts atomic.Int32
+	controller := &fakeTunnelController{
+		startServe: func(context.Context, *env_core.Environment, env_core.ManagedServe) (*api.Tunnel, *api.TunnelServe, error) {
+			start := starts.Add(1)
+			return &api.Tunnel{
+				ID:            "tt_test00000027",
+				EnvironmentId: "ev_test00000027",
+				Name:          "gateway",
+				Mode:          api.TunnelModeHTTP,
+				BackendTarget: "https://backend.example",
+			}, &api.TunnelServe{ID: fmt.Sprintf("ts_test0000002%d", start)}, nil
+		},
+		startConnect: func(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {
+			return nil, nil, errors.New("unexpected connect start")
+		},
+	}
+
+	var runtimeStarts atomic.Int32
+	runtimeHost := fakeRuntimeHost{
+		startServeFunc: func(ctx context.Context, _ string, _ *api.Tunnel) (runtimeHandle, error) {
+			if runtimeStarts.Add(1) == 1 {
+				return newTimedRuntimeHandle(ctx, 15*time.Millisecond, errors.New("backend crashed")), nil
+			}
+			return newFakeRuntimeHandle(ctx), nil
+		},
+	}
+
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+		agent.controller = controller
+		agent.runtimeHost = runtimeHost
+		agent.retryInitialDelay = 20 * time.Millisecond
+		agent.retryMaxDelay = 20 * time.Millisecond
+		agent.retryJitter = 0
+	})
+	defer cleanup()
+
+	if _, err := client.EnsureServe(context.Background(), &networkpb.EnsureServeRequest{
+		Name:          "gateway",
+		Mode:          "http",
+		BackendTarget: "https://backend.example",
+	}); err != nil {
+		t.Fatalf("ensure serve: %v", err)
+	}
+
+	serve := waitForServeID(t, client, "gateway", "ts_test00000022")
+	if serve.ServeId != "ts_test00000022" {
+		t.Fatalf("expected restarted serve id, got %#v", serve)
+	}
+	if starts.Load() < 2 {
+		t.Fatalf("expected retry after runtime exit, got %d starts", starts.Load())
+	}
+}
+
+func TestAgentServeHeartbeatCurrentResourceFailureReconcilesImmediately(t *testing.T) {
+	rootPath := filepath.Join(t.TempDir(), ".agora")
+	environment.SetRootDirName(rootPath)
+
+	root := loadTestRoot(t)
+	if err := root.SetEnvironment(&env_core.Environment{
+		EnvironmentID: "ev_test00000028",
+		AccountToken:  "account-token",
+		APIEndpoint:   "http://controller.example",
+	}); err != nil {
+		t.Fatalf("set environment: %v", err)
+	}
+	if err := root.SaveZitiIdentityNamed(environmentIdentityName, `{"ztAPI":"test"}`); err != nil {
+		t.Fatalf("save identity: %v", err)
+	}
+
+	var starts atomic.Int32
+	controller := &fakeTunnelController{
+		startServe: func(context.Context, *env_core.Environment, env_core.ManagedServe) (*api.Tunnel, *api.TunnelServe, error) {
+			start := starts.Add(1)
+			return &api.Tunnel{
+				ID:            "tt_test00000028",
+				EnvironmentId: "ev_test00000028",
+				Name:          "gateway",
+				Mode:          api.TunnelModeHTTP,
+				BackendTarget: "https://backend.example",
+			}, &api.TunnelServe{ID: fmt.Sprintf("ts_test0000003%d", start)}, nil
+		},
+		heartbeatServe: func(context.Context, *env_core.Environment, string) error {
+			if starts.Load() == 1 {
+				return newControllerError(controllerErrorKindCurrentRuntime, "serve not found")
+			}
+			return nil
+		},
+		startConnect: func(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {
+			return nil, nil, errors.New("unexpected connect start")
+		},
+	}
+
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+		agent.controller = controller
+		agent.runtimeHost = fakeRuntimeHost{}
+		agent.serveHeartbeatInterval = 15 * time.Millisecond
+		agent.retryInitialDelay = 200 * time.Millisecond
+		agent.retryMaxDelay = 200 * time.Millisecond
+		agent.retryJitter = 0
+	})
+	defer cleanup()
+
+	if _, err := client.EnsureServe(context.Background(), &networkpb.EnsureServeRequest{
+		Name:          "gateway",
+		Mode:          "http",
+		BackendTarget: "https://backend.example",
+	}); err != nil {
+		t.Fatalf("ensure serve: %v", err)
+	}
+
+	serve := waitForServeID(t, client, "gateway", "ts_test00000032")
+	if serve.ServeId != "ts_test00000032" {
+		t.Fatalf("expected heartbeat-triggered restart, got %#v", serve)
+	}
+	if starts.Load() < 2 {
+		t.Fatalf("expected immediate reconcile after heartbeat failure, got %d starts", starts.Load())
+	}
+}
+
+func TestAgentReloadEnvironmentRecoversMissingPrerequisites(t *testing.T) {
+	rootPath := filepath.Join(t.TempDir(), ".agora")
+	environment.SetRootDirName(rootPath)
+
+	root := loadTestRoot(t)
+	if err := root.SetNetwork(&env_core.Network{
+		Serves: []env_core.ManagedServe{{
+			Name:          "gateway",
+			Mode:          api.TunnelModeHTTP,
+			BackendTarget: "https://backend.example",
+		}},
+	}); err != nil {
+		t.Fatalf("set network: %v", err)
+	}
+
+	var starts atomic.Int32
+	controller := &fakeTunnelController{
+		startServe: func(context.Context, *env_core.Environment, env_core.ManagedServe) (*api.Tunnel, *api.TunnelServe, error) {
+			starts.Add(1)
+			return &api.Tunnel{
+				ID:            "tt_test00000029",
+				EnvironmentId: "ev_test00000029",
+				Name:          "gateway",
+				Mode:          api.TunnelModeHTTP,
+				BackendTarget: "https://backend.example",
+			}, &api.TunnelServe{ID: "ts_test00000029"}, nil
+		},
+		startConnect: func(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {
+			return nil, nil, errors.New("unexpected connect start")
+		},
+	}
+
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+		agent.controller = controller
+		agent.runtimeHost = fakeRuntimeHost{}
+		agent.retryInitialDelay = 20 * time.Millisecond
+		agent.retryMaxDelay = 20 * time.Millisecond
+		agent.retryJitter = 0
+	})
+	defer cleanup()
+
+	serve := waitForServeState(t, client, "gateway", networkpb.RuntimeState_RUNTIME_STATE_ERROR)
+	if serve.NextRetryAt != nil {
+		t.Fatalf("expected no retry while prerequisites are missing, got %#v", serve)
+	}
+	if starts.Load() != 0 {
+		t.Fatalf("expected no controller starts without prerequisites, got %d", starts.Load())
+	}
+
+	if err := root.SetEnvironment(&env_core.Environment{
+		EnvironmentID: "ev_test00000029",
+		AccountToken:  "account-token",
+		APIEndpoint:   "http://controller.example",
+	}); err != nil {
+		t.Fatalf("set environment: %v", err)
+	}
+	if err := root.SaveZitiIdentityNamed(environmentIdentityName, `{"ztAPI":"test"}`); err != nil {
+		t.Fatalf("save identity: %v", err)
+	}
+
+	if _, err := client.ReloadEnvironment(context.Background(), &networkpb.ReloadEnvironmentRequest{}); err != nil {
+		t.Fatalf("reload environment: %v", err)
+	}
+
+	serve = waitForServeState(t, client, "gateway", networkpb.RuntimeState_RUNTIME_STATE_RUNNING)
+	if serve.ServeId != "ts_test00000029" {
+		t.Fatalf("unexpected recovered serve status: %#v", serve)
+	}
+	if starts.Load() != 1 {
+		t.Fatalf("expected one controller start after reload, got %d", starts.Load())
+	}
+}
+
+func TestAgentRemoveServeCancelsPendingRetry(t *testing.T) {
+	rootPath := filepath.Join(t.TempDir(), ".agora")
+	environment.SetRootDirName(rootPath)
+
+	root := loadTestRoot(t)
+	if err := root.SetEnvironment(&env_core.Environment{
+		EnvironmentID: "ev_test00000030",
+		AccountToken:  "account-token",
+		APIEndpoint:   "http://controller.example",
+	}); err != nil {
+		t.Fatalf("set environment: %v", err)
+	}
+	if err := root.SaveZitiIdentityNamed(environmentIdentityName, `{"ztAPI":"test"}`); err != nil {
+		t.Fatalf("save identity: %v", err)
+	}
+
+	var attempts atomic.Int32
+	controller := &fakeTunnelController{
+		startServe: func(context.Context, *env_core.Environment, env_core.ManagedServe) (*api.Tunnel, *api.TunnelServe, error) {
+			attempts.Add(1)
+			return nil, nil, errors.New("controller unavailable")
+		},
+		startConnect: func(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {
+			return nil, nil, errors.New("unexpected connect start")
+		},
+	}
+
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+		agent.controller = controller
+		agent.runtimeHost = fakeRuntimeHost{}
+		agent.retryInitialDelay = 40 * time.Millisecond
+		agent.retryMaxDelay = 40 * time.Millisecond
+		agent.retryJitter = 0
+	})
+	defer cleanup()
+
+	if _, err := client.EnsureServe(context.Background(), &networkpb.EnsureServeRequest{
+		Name:          "gateway",
+		Mode:          "http",
+		BackendTarget: "https://backend.example",
+	}); err == nil {
+		t.Fatal("expected initial ensure serve failure")
+	}
+
+	waitForServeRetry(t, client, "gateway", 1)
+
+	if _, err := client.RemoveServe(context.Background(), &networkpb.RemoveServeRequest{Name: "gateway"}); err != nil {
+		t.Fatalf("remove serve: %v", err)
+	}
+
+	time.Sleep(120 * time.Millisecond)
+
+	status, err := client.GetNetworkStatus(context.Background(), &networkpb.GetNetworkStatusRequest{})
+	if err != nil {
+		t.Fatalf("get network status: %v", err)
+	}
+	if len(status.Status.Serves) != 0 {
+		t.Fatalf("expected removed serve to stay removed, got %#v", status.Status.Serves)
+	}
+	if attempts.Load() != 1 {
+		t.Fatalf("expected no additional retry after remove, got %d attempts", attempts.Load())
+	}
+}
+
 func startBufferedTestAgent(t *testing.T) (*Agent, networkpb.NetworkServiceClient, <-chan error, func()) {
 	return startBufferedTestAgentWithOptions(t, nil)
 }
@@ -449,6 +867,106 @@ func waitForHeartbeatState(t *testing.T, client networkpb.NetworkServiceClient, 
 	return nil
 }
 
+func waitForServeState(t *testing.T, client networkpb.NetworkServiceClient, name string, expected networkpb.RuntimeState) *networkpb.ManagedServeStatus {
+	t.Helper()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		resp, err := client.GetNetworkStatus(context.Background(), &networkpb.GetNetworkStatusRequest{})
+		if err != nil {
+			t.Fatalf("get network status: %v", err)
+		}
+		for _, serve := range resp.Status.Serves {
+			if strings.EqualFold(serve.Desired.Name, name) && serve.State == expected {
+				return serve
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	resp, err := client.GetNetworkStatus(context.Background(), &networkpb.GetNetworkStatusRequest{})
+	if err != nil {
+		t.Fatalf("get final network status: %v", err)
+	}
+	t.Fatalf("timed out waiting for serve '%s' state %s, got %#v", name, expected.String(), resp.Status.Serves)
+	return nil
+}
+
+func waitForConnectState(t *testing.T, client networkpb.NetworkServiceClient, name, listenAddress string, expected networkpb.RuntimeState) *networkpb.ManagedConnectStatus {
+	t.Helper()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		resp, err := client.GetNetworkStatus(context.Background(), &networkpb.GetNetworkStatusRequest{})
+		if err != nil {
+			t.Fatalf("get network status: %v", err)
+		}
+		for _, connect := range resp.Status.Connects {
+			if strings.EqualFold(connect.Desired.Name, name) && connect.Desired.ListenAddress == listenAddress && connect.State == expected {
+				return connect
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	resp, err := client.GetNetworkStatus(context.Background(), &networkpb.GetNetworkStatusRequest{})
+	if err != nil {
+		t.Fatalf("get final network status: %v", err)
+	}
+	t.Fatalf("timed out waiting for connect '%s' listen='%s' state %s, got %#v", name, listenAddress, expected.String(), resp.Status.Connects)
+	return nil
+}
+
+func waitForServeID(t *testing.T, client networkpb.NetworkServiceClient, name, serveID string) *networkpb.ManagedServeStatus {
+	t.Helper()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		resp, err := client.GetNetworkStatus(context.Background(), &networkpb.GetNetworkStatusRequest{})
+		if err != nil {
+			t.Fatalf("get network status: %v", err)
+		}
+		for _, serve := range resp.Status.Serves {
+			if strings.EqualFold(serve.Desired.Name, name) && serve.ServeId == serveID {
+				return serve
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	resp, err := client.GetNetworkStatus(context.Background(), &networkpb.GetNetworkStatusRequest{})
+	if err != nil {
+		t.Fatalf("get final network status: %v", err)
+	}
+	t.Fatalf("timed out waiting for serve '%s' id '%s', got %#v", name, serveID, resp.Status.Serves)
+	return nil
+}
+
+func waitForServeRetry(t *testing.T, client networkpb.NetworkServiceClient, name string, retryAttempt uint32) *networkpb.ManagedServeStatus {
+	t.Helper()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		resp, err := client.GetNetworkStatus(context.Background(), &networkpb.GetNetworkStatusRequest{})
+		if err != nil {
+			t.Fatalf("get network status: %v", err)
+		}
+		for _, serve := range resp.Status.Serves {
+			if strings.EqualFold(serve.Desired.Name, name) && serve.RetryAttempt == retryAttempt {
+				return serve
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	resp, err := client.GetNetworkStatus(context.Background(), &networkpb.GetNetworkStatusRequest{})
+	if err != nil {
+		t.Fatalf("get final network status: %v", err)
+	}
+	t.Fatalf("timed out waiting for serve '%s' retry attempt %d, got %#v", name, retryAttempt, resp.Status.Serves)
+	return nil
+}
+
 type fakeTunnelController struct {
 	startServe          func(context.Context, *env_core.Environment, env_core.ManagedServe) (*api.Tunnel, *api.TunnelServe, error)
 	heartbeatServe      func(context.Context, *env_core.Environment, string) error
@@ -494,13 +1012,22 @@ func (f *fakeTunnelController) StopAttachment(ctx context.Context, env *env_core
 	return f.stopAttachment(ctx, env, attachmentID)
 }
 
-type fakeRuntimeHost struct{}
+type fakeRuntimeHost struct {
+	startServeFunc   func(context.Context, string, *api.Tunnel) (runtimeHandle, error)
+	startConnectFunc func(context.Context, string, *api.Tunnel, string) (runtimeHandle, error)
+}
 
-func (fakeRuntimeHost) StartServe(ctx context.Context, _ string, _ *api.Tunnel) (runtimeHandle, error) {
+func (f fakeRuntimeHost) StartServe(ctx context.Context, identityPath string, tunnel *api.Tunnel) (runtimeHandle, error) {
+	if f.startServeFunc != nil {
+		return f.startServeFunc(ctx, identityPath, tunnel)
+	}
 	return newFakeRuntimeHandle(ctx), nil
 }
 
-func (fakeRuntimeHost) StartConnect(ctx context.Context, _ string, _ *api.Tunnel, _ string) (runtimeHandle, error) {
+func (f fakeRuntimeHost) StartConnect(ctx context.Context, identityPath string, tunnel *api.Tunnel, listenAddress string) (runtimeHandle, error) {
+	if f.startConnectFunc != nil {
+		return f.startConnectFunc(ctx, identityPath, tunnel, listenAddress)
+	}
 	return newFakeRuntimeHandle(ctx), nil
 }
 
@@ -520,4 +1047,18 @@ func newFakeRuntimeHandle(ctx context.Context) runtimeHandle {
 
 func (h *fakeRuntimeHandle) Done() <-chan error {
 	return h.done
+}
+
+func newTimedRuntimeHandle(ctx context.Context, delay time.Duration, result error) runtimeHandle {
+	done := make(chan error, 1)
+	go func() {
+		defer close(done)
+		select {
+		case <-ctx.Done():
+			done <- nil
+		case <-time.After(delay):
+			done <- result
+		}
+	}()
+	return &fakeRuntimeHandle{done: done}
 }

@@ -610,6 +610,8 @@ type ManagedServeStatus struct {
 	ServeId       string                 `protobuf:"bytes,4,opt,name=serve_id,json=serveId,proto3" json:"serve_id,omitempty"`
 	LastError     string                 `protobuf:"bytes,5,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
 	LastStartedAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=last_started_at,json=lastStartedAt,proto3" json:"last_started_at,omitempty"`
+	NextRetryAt   *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=next_retry_at,json=nextRetryAt,proto3" json:"next_retry_at,omitempty"`
+	RetryAttempt  uint32                 `protobuf:"varint,8,opt,name=retry_attempt,json=retryAttempt,proto3" json:"retry_attempt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -684,6 +686,20 @@ func (x *ManagedServeStatus) GetLastStartedAt() *timestamppb.Timestamp {
 		return x.LastStartedAt
 	}
 	return nil
+}
+
+func (x *ManagedServeStatus) GetNextRetryAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.NextRetryAt
+	}
+	return nil
+}
+
+func (x *ManagedServeStatus) GetRetryAttempt() uint32 {
+	if x != nil {
+		return x.RetryAttempt
+	}
+	return 0
 }
 
 type EnsureServeRequest struct {
@@ -1050,6 +1066,8 @@ type ManagedConnectStatus struct {
 	AttachmentId  string                 `protobuf:"bytes,4,opt,name=attachment_id,json=attachmentId,proto3" json:"attachment_id,omitempty"`
 	LastError     string                 `protobuf:"bytes,5,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
 	LastStartedAt *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=last_started_at,json=lastStartedAt,proto3" json:"last_started_at,omitempty"`
+	NextRetryAt   *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=next_retry_at,json=nextRetryAt,proto3" json:"next_retry_at,omitempty"`
+	RetryAttempt  uint32                 `protobuf:"varint,8,opt,name=retry_attempt,json=retryAttempt,proto3" json:"retry_attempt,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1124,6 +1142,20 @@ func (x *ManagedConnectStatus) GetLastStartedAt() *timestamppb.Timestamp {
 		return x.LastStartedAt
 	}
 	return nil
+}
+
+func (x *ManagedConnectStatus) GetNextRetryAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.NextRetryAt
+	}
+	return nil
+}
+
+func (x *ManagedConnectStatus) GetRetryAttempt() uint32 {
+	if x != nil {
+		return x.RetryAttempt
+	}
+	return 0
 }
 
 type EnsureConnectRequest struct {
@@ -1543,7 +1575,7 @@ const file_internal_network_agent_pb_network_proto_rawDesc = "" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
 	"\x04mode\x18\x03 \x01(\tR\x04mode\x12%\n" +
 	"\x0ebackend_target\x18\x04 \x01(\tR\rbackendTarget\x12!\n" +
-	"\fgrant_emails\x18\x05 \x03(\tR\vgrantEmails\"\x9f\x02\n" +
+	"\fgrant_emails\x18\x05 \x03(\tR\vgrantEmails\"\x84\x03\n" +
 	"\x12ManagedServeStatus\x128\n" +
 	"\adesired\x18\x01 \x01(\v2\x1e.agora.network.v1.DesiredServeR\adesired\x124\n" +
 	"\x05state\x18\x02 \x01(\x0e2\x1e.agora.network.v1.RuntimeStateR\x05state\x12\x1b\n" +
@@ -1551,7 +1583,9 @@ const file_internal_network_agent_pb_network_proto_rawDesc = "" +
 	"\bserve_id\x18\x04 \x01(\tR\aserveId\x12\x1d\n" +
 	"\n" +
 	"last_error\x18\x05 \x01(\tR\tlastError\x12B\n" +
-	"\x0flast_started_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\rlastStartedAt\"\xa3\x01\n" +
+	"\x0flast_started_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\rlastStartedAt\x12>\n" +
+	"\rnext_retry_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\vnextRetryAt\x12#\n" +
+	"\rretry_attempt\x18\b \x01(\rR\fretryAttempt\"\xa3\x01\n" +
 	"\x12EnsureServeRequest\x12\x1b\n" +
 	"\ttunnel_id\x18\x01 \x01(\tR\btunnelId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -1571,7 +1605,7 @@ const file_internal_network_agent_pb_network_proto_rawDesc = "" +
 	"\x0eDesiredConnect\x12\x1b\n" +
 	"\ttunnel_id\x18\x01 \x01(\tR\btunnelId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12%\n" +
-	"\x0elisten_address\x18\x03 \x01(\tR\rlistenAddress\"\xad\x02\n" +
+	"\x0elisten_address\x18\x03 \x01(\tR\rlistenAddress\"\x92\x03\n" +
 	"\x14ManagedConnectStatus\x12:\n" +
 	"\adesired\x18\x01 \x01(\v2 .agora.network.v1.DesiredConnectR\adesired\x124\n" +
 	"\x05state\x18\x02 \x01(\x0e2\x1e.agora.network.v1.RuntimeStateR\x05state\x12\x1b\n" +
@@ -1579,7 +1613,9 @@ const file_internal_network_agent_pb_network_proto_rawDesc = "" +
 	"\rattachment_id\x18\x04 \x01(\tR\fattachmentId\x12\x1d\n" +
 	"\n" +
 	"last_error\x18\x05 \x01(\tR\tlastError\x12B\n" +
-	"\x0flast_started_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\rlastStartedAt\"n\n" +
+	"\x0flast_started_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\rlastStartedAt\x12>\n" +
+	"\rnext_retry_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\vnextRetryAt\x12#\n" +
+	"\rretry_attempt\x18\b \x01(\rR\fretryAttempt\"n\n" +
 	"\x14EnsureConnectRequest\x12\x1b\n" +
 	"\ttunnel_id\x18\x01 \x01(\tR\btunnelId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12%\n" +
@@ -1688,42 +1724,44 @@ var file_internal_network_agent_pb_network_proto_depIdxs = []int32{
 	11, // 6: agora.network.v1.ManagedServeStatus.desired:type_name -> agora.network.v1.DesiredServe
 	0,  // 7: agora.network.v1.ManagedServeStatus.state:type_name -> agora.network.v1.RuntimeState
 	28, // 8: agora.network.v1.ManagedServeStatus.last_started_at:type_name -> google.protobuf.Timestamp
-	12, // 9: agora.network.v1.EnsureServeResponse.serve:type_name -> agora.network.v1.ManagedServeStatus
-	12, // 10: agora.network.v1.ListServesResponse.serves:type_name -> agora.network.v1.ManagedServeStatus
-	19, // 11: agora.network.v1.ManagedConnectStatus.desired:type_name -> agora.network.v1.DesiredConnect
-	0,  // 12: agora.network.v1.ManagedConnectStatus.state:type_name -> agora.network.v1.RuntimeState
-	28, // 13: agora.network.v1.ManagedConnectStatus.last_started_at:type_name -> google.protobuf.Timestamp
-	20, // 14: agora.network.v1.EnsureConnectResponse.connect:type_name -> agora.network.v1.ManagedConnectStatus
-	20, // 15: agora.network.v1.ListConnectsResponse.connects:type_name -> agora.network.v1.ManagedConnectStatus
-	28, // 16: agora.network.v1.NetworkStatus.started_at:type_name -> google.protobuf.Timestamp
-	12, // 17: agora.network.v1.NetworkStatus.serves:type_name -> agora.network.v1.ManagedServeStatus
-	20, // 18: agora.network.v1.NetworkStatus.connects:type_name -> agora.network.v1.ManagedConnectStatus
-	10, // 19: agora.network.v1.NetworkStatus.environment_heartbeat:type_name -> agora.network.v1.EnvironmentHeartbeatStatus
-	2,  // 20: agora.network.v1.NetworkService.Ping:input_type -> agora.network.v1.PingRequest
-	4,  // 21: agora.network.v1.NetworkService.Shutdown:input_type -> agora.network.v1.ShutdownRequest
-	6,  // 22: agora.network.v1.NetworkService.ReloadEnvironment:input_type -> agora.network.v1.ReloadEnvironmentRequest
-	8,  // 23: agora.network.v1.NetworkService.GetNetworkStatus:input_type -> agora.network.v1.GetNetworkStatusRequest
-	13, // 24: agora.network.v1.NetworkService.EnsureServe:input_type -> agora.network.v1.EnsureServeRequest
-	15, // 25: agora.network.v1.NetworkService.RemoveServe:input_type -> agora.network.v1.RemoveServeRequest
-	17, // 26: agora.network.v1.NetworkService.ListServes:input_type -> agora.network.v1.ListServesRequest
-	21, // 27: agora.network.v1.NetworkService.EnsureConnect:input_type -> agora.network.v1.EnsureConnectRequest
-	23, // 28: agora.network.v1.NetworkService.RemoveConnect:input_type -> agora.network.v1.RemoveConnectRequest
-	25, // 29: agora.network.v1.NetworkService.ListConnects:input_type -> agora.network.v1.ListConnectsRequest
-	3,  // 30: agora.network.v1.NetworkService.Ping:output_type -> agora.network.v1.PingResponse
-	5,  // 31: agora.network.v1.NetworkService.Shutdown:output_type -> agora.network.v1.ShutdownResponse
-	7,  // 32: agora.network.v1.NetworkService.ReloadEnvironment:output_type -> agora.network.v1.ReloadEnvironmentResponse
-	9,  // 33: agora.network.v1.NetworkService.GetNetworkStatus:output_type -> agora.network.v1.GetNetworkStatusResponse
-	14, // 34: agora.network.v1.NetworkService.EnsureServe:output_type -> agora.network.v1.EnsureServeResponse
-	16, // 35: agora.network.v1.NetworkService.RemoveServe:output_type -> agora.network.v1.RemoveServeResponse
-	18, // 36: agora.network.v1.NetworkService.ListServes:output_type -> agora.network.v1.ListServesResponse
-	22, // 37: agora.network.v1.NetworkService.EnsureConnect:output_type -> agora.network.v1.EnsureConnectResponse
-	24, // 38: agora.network.v1.NetworkService.RemoveConnect:output_type -> agora.network.v1.RemoveConnectResponse
-	26, // 39: agora.network.v1.NetworkService.ListConnects:output_type -> agora.network.v1.ListConnectsResponse
-	30, // [30:40] is the sub-list for method output_type
-	20, // [20:30] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	28, // 9: agora.network.v1.ManagedServeStatus.next_retry_at:type_name -> google.protobuf.Timestamp
+	12, // 10: agora.network.v1.EnsureServeResponse.serve:type_name -> agora.network.v1.ManagedServeStatus
+	12, // 11: agora.network.v1.ListServesResponse.serves:type_name -> agora.network.v1.ManagedServeStatus
+	19, // 12: agora.network.v1.ManagedConnectStatus.desired:type_name -> agora.network.v1.DesiredConnect
+	0,  // 13: agora.network.v1.ManagedConnectStatus.state:type_name -> agora.network.v1.RuntimeState
+	28, // 14: agora.network.v1.ManagedConnectStatus.last_started_at:type_name -> google.protobuf.Timestamp
+	28, // 15: agora.network.v1.ManagedConnectStatus.next_retry_at:type_name -> google.protobuf.Timestamp
+	20, // 16: agora.network.v1.EnsureConnectResponse.connect:type_name -> agora.network.v1.ManagedConnectStatus
+	20, // 17: agora.network.v1.ListConnectsResponse.connects:type_name -> agora.network.v1.ManagedConnectStatus
+	28, // 18: agora.network.v1.NetworkStatus.started_at:type_name -> google.protobuf.Timestamp
+	12, // 19: agora.network.v1.NetworkStatus.serves:type_name -> agora.network.v1.ManagedServeStatus
+	20, // 20: agora.network.v1.NetworkStatus.connects:type_name -> agora.network.v1.ManagedConnectStatus
+	10, // 21: agora.network.v1.NetworkStatus.environment_heartbeat:type_name -> agora.network.v1.EnvironmentHeartbeatStatus
+	2,  // 22: agora.network.v1.NetworkService.Ping:input_type -> agora.network.v1.PingRequest
+	4,  // 23: agora.network.v1.NetworkService.Shutdown:input_type -> agora.network.v1.ShutdownRequest
+	6,  // 24: agora.network.v1.NetworkService.ReloadEnvironment:input_type -> agora.network.v1.ReloadEnvironmentRequest
+	8,  // 25: agora.network.v1.NetworkService.GetNetworkStatus:input_type -> agora.network.v1.GetNetworkStatusRequest
+	13, // 26: agora.network.v1.NetworkService.EnsureServe:input_type -> agora.network.v1.EnsureServeRequest
+	15, // 27: agora.network.v1.NetworkService.RemoveServe:input_type -> agora.network.v1.RemoveServeRequest
+	17, // 28: agora.network.v1.NetworkService.ListServes:input_type -> agora.network.v1.ListServesRequest
+	21, // 29: agora.network.v1.NetworkService.EnsureConnect:input_type -> agora.network.v1.EnsureConnectRequest
+	23, // 30: agora.network.v1.NetworkService.RemoveConnect:input_type -> agora.network.v1.RemoveConnectRequest
+	25, // 31: agora.network.v1.NetworkService.ListConnects:input_type -> agora.network.v1.ListConnectsRequest
+	3,  // 32: agora.network.v1.NetworkService.Ping:output_type -> agora.network.v1.PingResponse
+	5,  // 33: agora.network.v1.NetworkService.Shutdown:output_type -> agora.network.v1.ShutdownResponse
+	7,  // 34: agora.network.v1.NetworkService.ReloadEnvironment:output_type -> agora.network.v1.ReloadEnvironmentResponse
+	9,  // 35: agora.network.v1.NetworkService.GetNetworkStatus:output_type -> agora.network.v1.GetNetworkStatusResponse
+	14, // 36: agora.network.v1.NetworkService.EnsureServe:output_type -> agora.network.v1.EnsureServeResponse
+	16, // 37: agora.network.v1.NetworkService.RemoveServe:output_type -> agora.network.v1.RemoveServeResponse
+	18, // 38: agora.network.v1.NetworkService.ListServes:output_type -> agora.network.v1.ListServesResponse
+	22, // 39: agora.network.v1.NetworkService.EnsureConnect:output_type -> agora.network.v1.EnsureConnectResponse
+	24, // 40: agora.network.v1.NetworkService.RemoveConnect:output_type -> agora.network.v1.RemoveConnectResponse
+	26, // 41: agora.network.v1.NetworkService.ListConnects:output_type -> agora.network.v1.ListConnectsResponse
+	32, // [32:42] is the sub-list for method output_type
+	22, // [22:32] is the sub-list for method input_type
+	22, // [22:22] is the sub-list for extension type_name
+	22, // [22:22] is the sub-list for extension extendee
+	0,  // [0:22] is the sub-list for field type_name
 }
 
 func init() { file_internal_network_agent_pb_network_proto_init() }

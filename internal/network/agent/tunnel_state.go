@@ -10,25 +10,35 @@ import (
 )
 
 type managedServe struct {
-	desired       env_core.ManagedServe
-	env           *env_core.Environment
-	state         networkpb.RuntimeState
-	tunnelID      string
-	serveID       string
-	lastError     string
-	lastStartedAt *time.Time
-	cancel        context.CancelFunc
+	desired                    env_core.ManagedServe
+	env                        *env_core.Environment
+	state                      networkpb.RuntimeState
+	tunnelID                   string
+	serveID                    string
+	lastError                  string
+	lastStartedAt              *time.Time
+	nextRetryAt                *time.Time
+	retryAttempt               uint32
+	generation                 uint64
+	transientHeartbeatFailures int
+	cancel                     context.CancelFunc
+	retryTimer                 *time.Timer
 }
 
 type managedConnect struct {
-	desired       env_core.ManagedConnect
-	env           *env_core.Environment
-	state         networkpb.RuntimeState
-	tunnelID      string
-	attachmentID  string
-	lastError     string
-	lastStartedAt *time.Time
-	cancel        context.CancelFunc
+	desired                    env_core.ManagedConnect
+	env                        *env_core.Environment
+	state                      networkpb.RuntimeState
+	tunnelID                   string
+	attachmentID               string
+	lastError                  string
+	lastStartedAt              *time.Time
+	nextRetryAt                *time.Time
+	retryAttempt               uint32
+	generation                 uint64
+	transientHeartbeatFailures int
+	cancel                     context.CancelFunc
+	retryTimer                 *time.Timer
 }
 
 func configuredServes(networkState *env_core.Network) map[string]*managedServe {
@@ -64,13 +74,17 @@ func serveStatusProto(actor *managedServe) *networkpb.ManagedServeStatus {
 			BackendTarget: actor.desired.BackendTarget,
 			GrantEmails:   append([]string(nil), actor.desired.GrantEmails...),
 		},
-		State:     actor.state,
-		TunnelId:  actor.tunnelID,
-		ServeId:   actor.serveID,
-		LastError: actor.lastError,
+		State:        actor.state,
+		TunnelId:     actor.tunnelID,
+		ServeId:      actor.serveID,
+		LastError:    actor.lastError,
+		RetryAttempt: actor.retryAttempt,
 	}
 	if actor.lastStartedAt != nil {
 		status.LastStartedAt = timestamppb.New(actor.lastStartedAt.UTC())
+	}
+	if actor.nextRetryAt != nil {
+		status.NextRetryAt = timestamppb.New(actor.nextRetryAt.UTC())
 	}
 	return status
 }
@@ -86,9 +100,13 @@ func connectStatusProto(actor *managedConnect) *networkpb.ManagedConnectStatus {
 		TunnelId:     actor.tunnelID,
 		AttachmentId: actor.attachmentID,
 		LastError:    actor.lastError,
+		RetryAttempt: actor.retryAttempt,
 	}
 	if actor.lastStartedAt != nil {
 		status.LastStartedAt = timestamppb.New(actor.lastStartedAt.UTC())
+	}
+	if actor.nextRetryAt != nil {
+		status.NextRetryAt = timestamppb.New(actor.nextRetryAt.UTC())
 	}
 	return status
 }

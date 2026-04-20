@@ -56,11 +56,15 @@ func newNetworkStatusCommand() *cobra.Command {
 
 			if len(status.Serves) > 0 {
 				t := clioutput.NewTable()
-				t.AppendHeader(table.Row{"Serve", "Mode", "Backend", "State", "Tunnel ID", "Serve ID", "Last Started", "Last Error"})
+				t.AppendHeader(table.Row{"Serve", "Mode", "Backend", "State", "Tunnel ID", "Serve ID", "Retry", "Next Retry", "Last Started", "Last Error"})
 				for _, serve := range status.Serves {
 					lastStarted := "-"
 					if serve.LastStartedAt != nil {
 						lastStarted = clioutput.TimeUTC(serve.LastStartedAt.AsTime())
+					}
+					nextRetry := "-"
+					if serve.NextRetryAt != nil {
+						nextRetry = clioutput.TimeUTC(serve.NextRetryAt.AsTime())
 					}
 					t.AppendRow(table.Row{
 						serve.Desired.Name,
@@ -69,6 +73,8 @@ func newNetworkStatusCommand() *cobra.Command {
 						formatRuntimeState(serve.State),
 						clioutput.StringOrDash(serve.TunnelId),
 						clioutput.StringOrDash(serve.ServeId),
+						serve.RetryAttempt,
+						nextRetry,
 						lastStarted,
 						clioutput.StringOrDash(serve.LastError),
 					})
@@ -78,11 +84,15 @@ func newNetworkStatusCommand() *cobra.Command {
 
 			if len(status.Connects) > 0 {
 				t := clioutput.NewTable()
-				t.AppendHeader(table.Row{"Connect", "Listen", "State", "Tunnel ID", "Attachment ID", "Last Started", "Last Error"})
+				t.AppendHeader(table.Row{"Connect", "Listen", "State", "Tunnel ID", "Attachment ID", "Retry", "Next Retry", "Last Started", "Last Error"})
 				for _, connect := range status.Connects {
 					lastStarted := "-"
 					if connect.LastStartedAt != nil {
 						lastStarted = clioutput.TimeUTC(connect.LastStartedAt.AsTime())
+					}
+					nextRetry := "-"
+					if connect.NextRetryAt != nil {
+						nextRetry = clioutput.TimeUTC(connect.NextRetryAt.AsTime())
 					}
 					t.AppendRow(table.Row{
 						connect.Desired.Name,
@@ -90,6 +100,8 @@ func newNetworkStatusCommand() *cobra.Command {
 						formatRuntimeState(connect.State),
 						clioutput.StringOrDash(connect.TunnelId),
 						clioutput.StringOrDash(connect.AttachmentId),
+						connect.RetryAttempt,
+						nextRetry,
 						lastStarted,
 						clioutput.StringOrDash(connect.LastError),
 					})

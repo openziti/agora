@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net"
 	"os"
 	"path/filepath"
@@ -32,14 +33,21 @@ type Agent struct {
 	startedAt  time.Time
 	pid        int
 
-	now                     func() time.Time
-	heartbeatInterval       time.Duration
-	heartbeatTTL            time.Duration
-	heartbeatRequestTimeout time.Duration
-	heartbeatSender         func(context.Context, *env_core.Environment) (bool, error)
-	heartbeat               environmentHeartbeat
-	controller              tunnelController
-	runtimeHost             tunnelRuntimeHost
+	now                      func() time.Time
+	heartbeatInterval        time.Duration
+	heartbeatTTL             time.Duration
+	heartbeatRequestTimeout  time.Duration
+	heartbeatSender          func(context.Context, *env_core.Environment) (bool, error)
+	heartbeat                environmentHeartbeat
+	controller               tunnelController
+	runtimeHost              tunnelRuntimeHost
+	serveHeartbeatInterval   time.Duration
+	connectHeartbeatInterval time.Duration
+	retryInitialDelay        time.Duration
+	retryMaxDelay            time.Duration
+	retryMultiplier          float64
+	retryJitter              float64
+	retryRand                func() float64
 
 	grpcServer *grpc.Server
 	shutdownCh chan struct{}
@@ -56,21 +64,28 @@ func New() (*Agent, error) {
 		return nil, err
 	}
 	agent := &Agent{
-		root:                    root,
-		env:                     env,
-		network:                 networkState,
-		serves:                  configuredServes(networkState),
-		connects:                configuredConnects(networkState),
-		socketPath:              socketPath,
-		startedAt:               time.Now().UTC(),
-		pid:                     os.Getpid(),
-		now:                     time.Now,
-		heartbeatInterval:       defaultEnvironmentHeartbeatInterval,
-		heartbeatTTL:            defaultEnvironmentHeartbeatTTL,
-		heartbeatRequestTimeout: defaultEnvironmentHeartbeatRequestTimeout,
-		shutdownCh:              make(chan struct{}),
-		controller:              apiTunnelController{},
-		runtimeHost:             defaultRuntimeHost{},
+		root:                     root,
+		env:                      env,
+		network:                  networkState,
+		serves:                   configuredServes(networkState),
+		connects:                 configuredConnects(networkState),
+		socketPath:               socketPath,
+		startedAt:                time.Now().UTC(),
+		pid:                      os.Getpid(),
+		now:                      time.Now,
+		heartbeatInterval:        defaultEnvironmentHeartbeatInterval,
+		heartbeatTTL:             defaultEnvironmentHeartbeatTTL,
+		heartbeatRequestTimeout:  defaultEnvironmentHeartbeatRequestTimeout,
+		shutdownCh:               make(chan struct{}),
+		controller:               apiTunnelController{},
+		runtimeHost:              defaultRuntimeHost{},
+		serveHeartbeatInterval:   tunnelServeHeartbeatInterval,
+		connectHeartbeatInterval: tunnelAttachmentHeartbeatInterval,
+		retryInitialDelay:        defaultTunnelRetryInitialDelay,
+		retryMaxDelay:            defaultTunnelRetryMaxDelay,
+		retryMultiplier:          defaultTunnelRetryMultiplier,
+		retryJitter:              defaultTunnelRetryJitter,
+		retryRand:                rand.Float64,
 	}
 	agent.heartbeatSender = agent.sendEnvironmentHeartbeat
 	return agent, nil
@@ -116,6 +131,7 @@ func (a *Agent) runServer(ctx context.Context, listener net.Listener, cleanup fu
 	a.grpcServer = server
 	a.mu.Lock()
 	a.replaceEnvironmentHeartbeatLoopLocked()
+	a.startConfiguredActorsLocked()
 	a.mu.Unlock()
 
 	serveErrCh := make(chan error, 1)
@@ -222,6 +238,7 @@ func (a *Agent) ReloadEnvironment(context.Context, *networkpb.ReloadEnvironmentR
 	a.serves = configuredServes(networkState)
 	a.connects = configuredConnects(networkState)
 	a.replaceEnvironmentHeartbeatLoopLocked()
+	a.startConfiguredActorsLocked()
 	return &networkpb.ReloadEnvironmentResponse{Status: a.snapshotStatusLocked()}, nil
 }
 

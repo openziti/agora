@@ -69,6 +69,8 @@ message ManagedServeStatus {
   string serve_id = 4;
   string last_error = 5;
   google.protobuf.Timestamp last_started_at = 6;
+  google.protobuf.Timestamp next_retry_at = 7;
+  uint32 retry_attempt = 8;
 }
 
 message EnsureServeRequest {
@@ -110,6 +112,8 @@ message ManagedConnectStatus {
   string attachment_id = 4;
   string last_error = 5;
   google.protobuf.Timestamp last_started_at = 6;
+  google.protobuf.Timestamp next_retry_at = 7;
+  uint32 retry_attempt = 8;
 }
 
 message EnsureConnectRequest {

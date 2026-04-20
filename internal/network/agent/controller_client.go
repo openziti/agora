@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -35,6 +36,41 @@ type tunnelController interface {
 }
 
 type apiTunnelController struct{}
+
+type controllerErrorKind string
+
+const (
+	controllerErrorKindTransient      controllerErrorKind = "transient"
+	controllerErrorKindCurrentRuntime controllerErrorKind = "current_runtime"
+)
+
+type controllerError struct {
+	kind controllerErrorKind
+	err  error
+}
+
+func (e *controllerError) Error() string {
+	return e.err.Error()
+}
+
+func (e *controllerError) Unwrap() error {
+	return e.err
+}
+
+func newControllerError(kind controllerErrorKind, format string, args ...any) error {
+	return &controllerError{
+		kind: kind,
+		err:  fmt.Errorf(format, args...),
+	}
+}
+
+func isCurrentRuntimeControllerError(err error) bool {
+	var controllerErr *controllerError
+	if errors.As(err, &controllerErr) {
+		return controllerErr.kind == controllerErrorKindCurrentRuntime
+	}
+	return false
+}
 
 func newAccountAPIClient(apiEndpoint, accountToken string) (*api.Client, error) {
 	baseURL := strings.TrimRight(apiEndpoint, "/") + "/v1"
@@ -99,11 +135,11 @@ func (apiTunnelController) HeartbeatServe(ctx context.Context, env *env_core.Env
 	case *api.HeartbeatTunnelServeNoContent:
 		return nil
 	case *api.HeartbeatTunnelServeNotFound:
-		return fmt.Errorf("%s", typed.Message)
+		return newControllerError(controllerErrorKindCurrentRuntime, "%s", typed.Message)
 	case *api.HeartbeatTunnelServeUnauthorized:
-		return fmt.Errorf("%s", typed.Message)
+		return newControllerError(controllerErrorKindCurrentRuntime, "%s", typed.Message)
 	case *api.HeartbeatTunnelServeInternalServerError:
-		return fmt.Errorf("%s", typed.Message)
+		return newControllerError(controllerErrorKindTransient, "%s", typed.Message)
 	default:
 		return fmt.Errorf("unexpected tunnel serve heartbeat response: %T", res)
 	}
@@ -172,11 +208,11 @@ func (apiTunnelController) HeartbeatAttachment(ctx context.Context, env *env_cor
 	case *api.HeartbeatTunnelAttachmentNoContent:
 		return nil
 	case *api.HeartbeatTunnelAttachmentNotFound:
-		return fmt.Errorf("%s", typed.Message)
+		return newControllerError(controllerErrorKindCurrentRuntime, "%s", typed.Message)
 	case *api.HeartbeatTunnelAttachmentUnauthorized:
-		return fmt.Errorf("%s", typed.Message)
+		return newControllerError(controllerErrorKindCurrentRuntime, "%s", typed.Message)
 	case *api.HeartbeatTunnelAttachmentInternalServerError:
-		return fmt.Errorf("%s", typed.Message)
+		return newControllerError(controllerErrorKindTransient, "%s", typed.Message)
 	default:
 		return fmt.Errorf("unexpected attachment heartbeat response: %T", res)
 	}
