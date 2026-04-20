@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/openziti/agora/internal/api"
+	networkpb "github.com/openziti/agora/internal/network/agent/pb"
 	"github.com/spf13/cobra"
 )
 
@@ -13,8 +14,9 @@ func init() {
 }
 
 type tunnelConnectCommand struct {
-	listen string
-	cmd    *cobra.Command
+	listen     string
+	foreground bool
+	cmd        *cobra.Command
 }
 
 func newTunnelConnectCommand() *tunnelConnectCommand {
@@ -25,14 +27,61 @@ func newTunnelConnectCommand() *tunnelConnectCommand {
 	}
 	command := &tunnelConnectCommand{cmd: cmd}
 	cmd.Flags().StringVar(&command.listen, "listen", "", "Local listen address for the consumer side")
+	cmd.Flags().BoolVar(&command.foreground, "foreground", false, "Run the tunnel runtime directly instead of using the local network agent")
 	panicIfErr(cmd.MarkFlagRequired("listen"))
-	cmd.Run = command.run
+	cmd.RunE = command.runE
 	return command
 }
 
-func (cmd *tunnelConnectCommand) run(_ *cobra.Command, args []string) {
+func (cmd *tunnelConnectCommand) runE(_ *cobra.Command, args []string) (err error) {
+	defer func() {
+		recovered := recover()
+		if recovered == nil {
+			return
+		}
+		if panicInstead {
+			panic(recovered)
+		}
+		switch typed := recovered.(type) {
+		case error:
+			err = typed
+		default:
+			err = fmt.Errorf("%v", typed)
+		}
+	}()
+
+	cmd.run(args)
+	return nil
+}
+
+func (cmd *tunnelConnectCommand) run(args []string) {
 	panicIfErr(validateListenAddress(cmd.listen))
 
+	if cmd.foreground {
+		cmd.runForeground(args)
+		return
+	}
+
+	root := requireEnabledRoot()
+	client, cleanup := requireRunningNetworkClient(root)
+	defer cleanup()
+
+	res, err := client.EnsureConnect(context.Background(), &networkpb.EnsureConnectRequest{
+		Name:          args[0],
+		ListenAddress: cmd.listen,
+	})
+	panicIfErr(err)
+
+	fmt.Printf(
+		"connected tunnel '%s' state='%s' tunnel_id='%s' attachment_id='%s'\n",
+		res.Connect.Desired.Name,
+		formatRuntimeState(res.Connect.State),
+		res.Connect.TunnelId,
+		res.Connect.AttachmentId,
+	)
+}
+
+func (cmd *tunnelConnectCommand) runForeground(args []string) {
 	root := requireEnabledRoot()
 	env := root.Environment()
 	client := openEnvironmentAPIClient(root)

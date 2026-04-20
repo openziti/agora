@@ -16,6 +16,7 @@ import (
 	"github.com/openziti/agora/environment/env_core"
 	"github.com/openziti/agora/internal/api"
 	"github.com/openziti/agora/internal/network/tunnelruntime"
+	"github.com/openziti/agora/internal/persistence"
 	"github.com/spf13/cobra"
 )
 
@@ -78,6 +79,25 @@ func resolveTunnelByName(client *api.Client, name string, scope api.ListTunnelsS
 		}
 	}
 	return nil
+}
+
+func resolveTunnelByID(client *api.Client, tunnelID string) *api.Tunnel {
+	res, err := client.GetTunnel(context.Background(), api.GetTunnelParams{TunnelId: tunnelID})
+	if err != nil {
+		panic(err)
+	}
+	switch typed := res.(type) {
+	case *api.Tunnel:
+		return typed
+	case *api.GetTunnelNotFound:
+		panic(typed.Message)
+	case *api.GetTunnelUnauthorized:
+		panic(typed.Message)
+	case *api.GetTunnelInternalServerError:
+		panic(typed.Message)
+	default:
+		panic(fmt.Sprintf("unexpected get tunnel response: %T", res))
+	}
 }
 
 func validateModeAndTarget(mode api.TunnelMode, target string) error {
@@ -275,6 +295,13 @@ func mustResolveManagedTunnel(client *api.Client, name string) *api.Tunnel {
 	return tunnel
 }
 
+func resolveManagedTunnelIdentifier(client *api.Client, token string) *api.Tunnel {
+	if strings.HasPrefix(token, string(persistence.PrefixTunnel)) {
+		return resolveTunnelByID(client, token)
+	}
+	return mustResolveManagedTunnel(client, token)
+}
+
 func ignoreConflictGrantAdd(client *api.Client, tunnelID, email string) {
 	res, err := client.AddTunnelGrant(context.Background(), &api.AddTunnelGrantRequest{Email: email}, api.AddTunnelGrantParams{TunnelId: tunnelID})
 	if err != nil {
@@ -342,4 +369,104 @@ func ignoreNotFound(err error, res any) error {
 
 func isClosedError(err error) bool {
 	return errors.Is(err, net.ErrClosed)
+}
+
+func isTunnelID(token string) bool {
+	return strings.HasPrefix(token, string(persistence.PrefixTunnel))
+}
+
+func isTunnelServeID(token string) bool {
+	return strings.HasPrefix(token, string(persistence.PrefixTunnelServe))
+}
+
+func isTunnelAttachmentID(token string) bool {
+	return strings.HasPrefix(token, string(persistence.PrefixAttachment))
+}
+
+func removeLocalDesiredServe(root env_core.Root, tunnelID, name string) (bool, error) {
+	networkState := root.Network()
+	if networkState == nil {
+		return false, nil
+	}
+	cloned := &env_core.Network{
+		Serves:   append([]env_core.ManagedServe(nil), networkState.Serves...),
+		Connects: append([]env_core.ManagedConnect(nil), networkState.Connects...),
+	}
+	before := len(cloned.Serves)
+	filtered := make([]env_core.ManagedServe, 0, len(cloned.Serves))
+	for _, serve := range cloned.Serves {
+		if (tunnelID != "" && serve.TunnelID == tunnelID) || (name != "" && strings.EqualFold(serve.Name, name)) {
+			continue
+		}
+		filtered = append(filtered, serve)
+	}
+	cloned.Serves = filtered
+	if before == len(cloned.Serves) {
+		return false, nil
+	}
+	if len(cloned.Serves) == 0 && len(cloned.Connects) == 0 {
+		return true, root.DeleteNetwork()
+	}
+	return true, root.SetNetwork(cloned)
+}
+
+func removeLocalDesiredConnect(root env_core.Root, tunnelID, name, listenAddress string) (bool, error) {
+	networkState := root.Network()
+	if networkState == nil {
+		return false, nil
+	}
+	cloned := &env_core.Network{
+		Serves:   append([]env_core.ManagedServe(nil), networkState.Serves...),
+		Connects: append([]env_core.ManagedConnect(nil), networkState.Connects...),
+	}
+	before := len(cloned.Connects)
+	filtered := make([]env_core.ManagedConnect, 0, len(cloned.Connects))
+	for _, connect := range cloned.Connects {
+		matchID := tunnelID != "" && connect.TunnelID == tunnelID && connect.ListenAddress == listenAddress
+		matchName := name != "" && strings.EqualFold(connect.Name, name) && connect.ListenAddress == listenAddress
+		if matchID || matchName {
+			continue
+		}
+		filtered = append(filtered, connect)
+	}
+	cloned.Connects = filtered
+	if before == len(cloned.Connects) {
+		return false, nil
+	}
+	if len(cloned.Serves) == 0 && len(cloned.Connects) == 0 {
+		return true, root.DeleteNetwork()
+	}
+	return true, root.SetNetwork(cloned)
+}
+
+func removeLocalDesiredTunnel(root env_core.Root, tunnelID, name string) error {
+	removedServe, err := removeLocalDesiredServe(root, tunnelID, name)
+	if err != nil {
+		return err
+	}
+	networkState := root.Network()
+	if networkState == nil {
+		return nil
+	}
+	cloned := &env_core.Network{
+		Serves:   append([]env_core.ManagedServe(nil), networkState.Serves...),
+		Connects: append([]env_core.ManagedConnect(nil), networkState.Connects...),
+	}
+	filtered := make([]env_core.ManagedConnect, 0, len(cloned.Connects))
+	changed := removedServe
+	for _, connect := range cloned.Connects {
+		if (tunnelID != "" && connect.TunnelID == tunnelID) || (name != "" && strings.EqualFold(connect.Name, name)) {
+			changed = true
+			continue
+		}
+		filtered = append(filtered, connect)
+	}
+	if !changed {
+		return nil
+	}
+	cloned.Connects = filtered
+	if len(cloned.Serves) == 0 && len(cloned.Connects) == 0 {
+		return root.DeleteNetwork()
+	}
+	return root.SetNetwork(cloned)
 }

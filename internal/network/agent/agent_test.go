@@ -13,6 +13,7 @@ import (
 
 	"github.com/openziti/agora/environment"
 	"github.com/openziti/agora/environment/env_core"
+	"github.com/openziti/agora/internal/api"
 	networkpb "github.com/openziti/agora/internal/network/agent/pb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -56,11 +57,46 @@ func TestAgentEnsureServeAndConnectPersistDesiredState(t *testing.T) {
 	rootPath := filepath.Join(t.TempDir(), ".agora")
 	environment.SetRootDirName(rootPath)
 
-	_, client, _, cleanup := startBufferedTestAgent(t)
+	root := loadTestRoot(t)
+	if err := root.SetEnvironment(&env_core.Environment{
+		EnvironmentID: "ev_test00000002",
+		AccountToken:  "account-token",
+		APIEndpoint:   "http://controller.example",
+	}); err != nil {
+		t.Fatalf("set environment: %v", err)
+	}
+	if err := root.SaveZitiIdentityNamed(environmentIdentityName, `{"ztAPI":"test"}`); err != nil {
+		t.Fatalf("save identity: %v", err)
+	}
+
+	controller := &fakeTunnelController{
+		startServe: func(context.Context, *env_core.Environment, env_core.ManagedServe) (*api.Tunnel, *api.TunnelServe, error) {
+			return &api.Tunnel{
+				ID:            "tt_test00000001",
+				EnvironmentId: "ev_test00000002",
+				Name:          "gateway",
+				Mode:          api.TunnelModeHTTP,
+				BackendTarget: "https://backend.example",
+			}, &api.TunnelServe{ID: "ts_test00000001"}, nil
+		},
+		startConnect: func(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {
+			return &api.Tunnel{
+				ID:            "tt_test00000001",
+				EnvironmentId: "ev_test00000002",
+				Name:          "gateway",
+				Mode:          api.TunnelModeHTTP,
+				BackendTarget: "https://backend.example",
+			}, &api.TunnelAttachment{ID: "ta_test00000001", ListenAddress: "127.0.0.1:8080"}, nil
+		},
+	}
+
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+		agent.controller = controller
+		agent.runtimeHost = fakeRuntimeHost{}
+	})
 	defer cleanup()
 
 	if _, err := client.EnsureServe(context.Background(), &networkpb.EnsureServeRequest{
-		TunnelId:      "tt_test00000001",
 		Name:          "gateway",
 		Mode:          "http",
 		BackendTarget: "https://backend.example",
@@ -80,11 +116,17 @@ func TestAgentEnsureServeAndConnectPersistDesiredState(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get network status: %v", err)
 	}
-	if len(status.Status.Serves) != 1 || status.Status.Serves[0].State != networkpb.RuntimeState_RUNTIME_STATE_CONFIGURED {
+	if len(status.Status.Serves) != 1 || status.Status.Serves[0].State != networkpb.RuntimeState_RUNTIME_STATE_RUNNING {
 		t.Fatalf("unexpected serve status: %#v", status.Status.Serves)
 	}
-	if len(status.Status.Connects) != 1 || status.Status.Connects[0].State != networkpb.RuntimeState_RUNTIME_STATE_CONFIGURED {
+	if status.Status.Serves[0].ServeId != "ts_test00000001" {
+		t.Fatalf("unexpected serve id: %#v", status.Status.Serves[0])
+	}
+	if len(status.Status.Connects) != 1 || status.Status.Connects[0].State != networkpb.RuntimeState_RUNTIME_STATE_RUNNING {
 		t.Fatalf("unexpected connect status: %#v", status.Status.Connects)
+	}
+	if status.Status.Connects[0].AttachmentId != "ta_test00000001" {
+		t.Fatalf("unexpected attachment id: %#v", status.Status.Connects[0])
 	}
 
 	loadedRoot := loadTestRoot(t)
@@ -92,12 +134,11 @@ func TestAgentEnsureServeAndConnectPersistDesiredState(t *testing.T) {
 		t.Fatalf("unexpected persisted network state: %#v", loadedRoot.Network())
 	}
 
-	if _, err := client.RemoveServe(context.Background(), &networkpb.RemoveServeRequest{TunnelId: "tt_test00000001"}); err != nil {
+	if _, err := client.RemoveServe(context.Background(), &networkpb.RemoveServeRequest{ServeId: "ts_test00000001"}); err != nil {
 		t.Fatalf("remove serve: %v", err)
 	}
 	if _, err := client.RemoveConnect(context.Background(), &networkpb.RemoveConnectRequest{
-		TunnelId:      "tt_test00000001",
-		ListenAddress: "127.0.0.1:8080",
+		AttachmentId: "ta_test00000001",
 	}); err != nil {
 		t.Fatalf("remove connect: %v", err)
 	}
@@ -406,4 +447,77 @@ func waitForHeartbeatState(t *testing.T, client networkpb.NetworkServiceClient, 
 	}
 	t.Fatalf("timed out waiting for heartbeat state %s, got %#v", expected.String(), resp.Status.EnvironmentHeartbeat)
 	return nil
+}
+
+type fakeTunnelController struct {
+	startServe          func(context.Context, *env_core.Environment, env_core.ManagedServe) (*api.Tunnel, *api.TunnelServe, error)
+	heartbeatServe      func(context.Context, *env_core.Environment, string) error
+	stopServe           func(context.Context, *env_core.Environment, string) error
+	startConnect        func(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error)
+	heartbeatAttachment func(context.Context, *env_core.Environment, string) error
+	stopAttachment      func(context.Context, *env_core.Environment, string) error
+}
+
+func (f *fakeTunnelController) StartServe(ctx context.Context, env *env_core.Environment, desired env_core.ManagedServe) (*api.Tunnel, *api.TunnelServe, error) {
+	return f.startServe(ctx, env, desired)
+}
+
+func (f *fakeTunnelController) HeartbeatServe(ctx context.Context, env *env_core.Environment, serveID string) error {
+	if f.heartbeatServe == nil {
+		return nil
+	}
+	return f.heartbeatServe(ctx, env, serveID)
+}
+
+func (f *fakeTunnelController) StopServe(ctx context.Context, env *env_core.Environment, serveID string) error {
+	if f.stopServe == nil {
+		return nil
+	}
+	return f.stopServe(ctx, env, serveID)
+}
+
+func (f *fakeTunnelController) StartConnect(ctx context.Context, env *env_core.Environment, desired env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {
+	return f.startConnect(ctx, env, desired)
+}
+
+func (f *fakeTunnelController) HeartbeatAttachment(ctx context.Context, env *env_core.Environment, attachmentID string) error {
+	if f.heartbeatAttachment == nil {
+		return nil
+	}
+	return f.heartbeatAttachment(ctx, env, attachmentID)
+}
+
+func (f *fakeTunnelController) StopAttachment(ctx context.Context, env *env_core.Environment, attachmentID string) error {
+	if f.stopAttachment == nil {
+		return nil
+	}
+	return f.stopAttachment(ctx, env, attachmentID)
+}
+
+type fakeRuntimeHost struct{}
+
+func (fakeRuntimeHost) StartServe(ctx context.Context, _ string, _ *api.Tunnel) (runtimeHandle, error) {
+	return newFakeRuntimeHandle(ctx), nil
+}
+
+func (fakeRuntimeHost) StartConnect(ctx context.Context, _ string, _ *api.Tunnel, _ string) (runtimeHandle, error) {
+	return newFakeRuntimeHandle(ctx), nil
+}
+
+type fakeRuntimeHandle struct {
+	done chan error
+}
+
+func newFakeRuntimeHandle(ctx context.Context) runtimeHandle {
+	done := make(chan error, 1)
+	go func() {
+		defer close(done)
+		<-ctx.Done()
+		done <- nil
+	}()
+	return &fakeRuntimeHandle{done: done}
+}
+
+func (h *fakeRuntimeHandle) Done() <-chan error {
+	return h.done
 }

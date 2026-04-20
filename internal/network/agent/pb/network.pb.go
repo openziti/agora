@@ -808,8 +808,9 @@ func (x *EnsureServeResponse) GetServe() *ManagedServeStatus {
 
 type RemoveServeRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TunnelId      string                 `protobuf:"bytes,1,opt,name=tunnel_id,json=tunnelId,proto3" json:"tunnel_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	ServeId       string                 `protobuf:"bytes,1,opt,name=serve_id,json=serveId,proto3" json:"serve_id,omitempty"`
+	TunnelId      string                 `protobuf:"bytes,2,opt,name=tunnel_id,json=tunnelId,proto3" json:"tunnel_id,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -842,6 +843,13 @@ func (x *RemoveServeRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use RemoveServeRequest.ProtoReflect.Descriptor instead.
 func (*RemoveServeRequest) Descriptor() ([]byte, []int) {
 	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *RemoveServeRequest) GetServeId() string {
+	if x != nil {
+		return x.ServeId
+	}
+	return ""
 }
 
 func (x *RemoveServeRequest) GetTunnelId() string {
@@ -1224,9 +1232,10 @@ func (x *EnsureConnectResponse) GetConnect() *ManagedConnectStatus {
 
 type RemoveConnectRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	TunnelId      string                 `protobuf:"bytes,1,opt,name=tunnel_id,json=tunnelId,proto3" json:"tunnel_id,omitempty"`
-	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	ListenAddress string                 `protobuf:"bytes,3,opt,name=listen_address,json=listenAddress,proto3" json:"listen_address,omitempty"`
+	AttachmentId  string                 `protobuf:"bytes,1,opt,name=attachment_id,json=attachmentId,proto3" json:"attachment_id,omitempty"`
+	TunnelId      string                 `protobuf:"bytes,2,opt,name=tunnel_id,json=tunnelId,proto3" json:"tunnel_id,omitempty"`
+	Name          string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	ListenAddress string                 `protobuf:"bytes,4,opt,name=listen_address,json=listenAddress,proto3" json:"listen_address,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1259,6 +1268,13 @@ func (x *RemoveConnectRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use RemoveConnectRequest.ProtoReflect.Descriptor instead.
 func (*RemoveConnectRequest) Descriptor() ([]byte, []int) {
 	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *RemoveConnectRequest) GetAttachmentId() string {
+	if x != nil {
+		return x.AttachmentId
+	}
+	return ""
 }
 
 func (x *RemoveConnectRequest) GetTunnelId() string {
@@ -1543,10 +1559,11 @@ const file_internal_network_agent_pb_network_proto_rawDesc = "" +
 	"\x0ebackend_target\x18\x04 \x01(\tR\rbackendTarget\x12!\n" +
 	"\fgrant_emails\x18\x05 \x03(\tR\vgrantEmails\"Q\n" +
 	"\x13EnsureServeResponse\x12:\n" +
-	"\x05serve\x18\x01 \x01(\v2$.agora.network.v1.ManagedServeStatusR\x05serve\"E\n" +
-	"\x12RemoveServeRequest\x12\x1b\n" +
-	"\ttunnel_id\x18\x01 \x01(\tR\btunnelId\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\"\x15\n" +
+	"\x05serve\x18\x01 \x01(\v2$.agora.network.v1.ManagedServeStatusR\x05serve\"`\n" +
+	"\x12RemoveServeRequest\x12\x19\n" +
+	"\bserve_id\x18\x01 \x01(\tR\aserveId\x12\x1b\n" +
+	"\ttunnel_id\x18\x02 \x01(\tR\btunnelId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\"\x15\n" +
 	"\x13RemoveServeResponse\"\x13\n" +
 	"\x11ListServesRequest\"R\n" +
 	"\x12ListServesResponse\x12<\n" +
@@ -1568,11 +1585,12 @@ const file_internal_network_agent_pb_network_proto_rawDesc = "" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12%\n" +
 	"\x0elisten_address\x18\x03 \x01(\tR\rlistenAddress\"Y\n" +
 	"\x15EnsureConnectResponse\x12@\n" +
-	"\aconnect\x18\x01 \x01(\v2&.agora.network.v1.ManagedConnectStatusR\aconnect\"n\n" +
-	"\x14RemoveConnectRequest\x12\x1b\n" +
-	"\ttunnel_id\x18\x01 \x01(\tR\btunnelId\x12\x12\n" +
-	"\x04name\x18\x02 \x01(\tR\x04name\x12%\n" +
-	"\x0elisten_address\x18\x03 \x01(\tR\rlistenAddress\"\x17\n" +
+	"\aconnect\x18\x01 \x01(\v2&.agora.network.v1.ManagedConnectStatusR\aconnect\"\x93\x01\n" +
+	"\x14RemoveConnectRequest\x12#\n" +
+	"\rattachment_id\x18\x01 \x01(\tR\fattachmentId\x12\x1b\n" +
+	"\ttunnel_id\x18\x02 \x01(\tR\btunnelId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12%\n" +
+	"\x0elisten_address\x18\x04 \x01(\tR\rlistenAddress\"\x17\n" +
 	"\x15RemoveConnectResponse\"\x15\n" +
 	"\x13ListConnectsRequest\"Z\n" +
 	"\x14ListConnectsResponse\x12B\n" +

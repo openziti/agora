@@ -56,14 +56,21 @@ func newNetworkStatusCommand() *cobra.Command {
 
 			if len(status.Serves) > 0 {
 				t := clioutput.NewTable()
-				t.AppendHeader(table.Row{"Serve", "Mode", "Backend", "State", "Tunnel ID"})
+				t.AppendHeader(table.Row{"Serve", "Mode", "Backend", "State", "Tunnel ID", "Serve ID", "Last Started", "Last Error"})
 				for _, serve := range status.Serves {
+					lastStarted := "-"
+					if serve.LastStartedAt != nil {
+						lastStarted = clioutput.TimeUTC(serve.LastStartedAt.AsTime())
+					}
 					t.AppendRow(table.Row{
 						serve.Desired.Name,
 						serve.Desired.Mode,
 						serve.Desired.BackendTarget,
 						formatRuntimeState(serve.State),
 						clioutput.StringOrDash(serve.TunnelId),
+						clioutput.StringOrDash(serve.ServeId),
+						lastStarted,
+						clioutput.StringOrDash(serve.LastError),
 					})
 				}
 				clioutput.PrintTable(t)
@@ -71,13 +78,20 @@ func newNetworkStatusCommand() *cobra.Command {
 
 			if len(status.Connects) > 0 {
 				t := clioutput.NewTable()
-				t.AppendHeader(table.Row{"Connect", "Listen", "State", "Tunnel ID"})
+				t.AppendHeader(table.Row{"Connect", "Listen", "State", "Tunnel ID", "Attachment ID", "Last Started", "Last Error"})
 				for _, connect := range status.Connects {
+					lastStarted := "-"
+					if connect.LastStartedAt != nil {
+						lastStarted = clioutput.TimeUTC(connect.LastStartedAt.AsTime())
+					}
 					t.AppendRow(table.Row{
 						connect.Desired.Name,
 						connect.Desired.ListenAddress,
 						formatRuntimeState(connect.State),
 						clioutput.StringOrDash(connect.TunnelId),
+						clioutput.StringOrDash(connect.AttachmentId),
+						lastStarted,
+						clioutput.StringOrDash(connect.LastError),
 					})
 				}
 				clioutput.PrintTable(t)

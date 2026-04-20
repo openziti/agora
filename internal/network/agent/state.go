@@ -211,39 +211,7 @@ func networkStatusProto(pid int, startedAt time.Time, socketPath string, env *en
 		status.EnvironmentEnabled = true
 		status.EnvironmentId = env.EnvironmentID
 	}
-	for _, serve := range networkState.Serves {
-		status.Serves = append(status.Serves, serveStatusProto(serve))
-	}
-	for _, connect := range networkState.Connects {
-		status.Connects = append(status.Connects, connectStatusProto(connect))
-	}
 	return status
-}
-
-func serveStatusProto(desired env_core.ManagedServe) *networkpb.ManagedServeStatus {
-	return &networkpb.ManagedServeStatus{
-		Desired: &networkpb.DesiredServe{
-			TunnelId:      desired.TunnelID,
-			Name:          desired.Name,
-			Mode:          string(desired.Mode),
-			BackendTarget: desired.BackendTarget,
-			GrantEmails:   append([]string(nil), desired.GrantEmails...),
-		},
-		State:    networkpb.RuntimeState_RUNTIME_STATE_CONFIGURED,
-		TunnelId: desired.TunnelID,
-	}
-}
-
-func connectStatusProto(desired env_core.ManagedConnect) *networkpb.ManagedConnectStatus {
-	return &networkpb.ManagedConnectStatus{
-		Desired: &networkpb.DesiredConnect{
-			TunnelId:      desired.TunnelID,
-			Name:          desired.Name,
-			ListenAddress: desired.ListenAddress,
-		},
-		State:    networkpb.RuntimeState_RUNTIME_STATE_CONFIGURED,
-		TunnelId: desired.TunnelID,
-	}
 }
 
 func persistNetwork(root env_core.Root, networkState *env_core.Network) error {

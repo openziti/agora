@@ -26,6 +26,8 @@ type Agent struct {
 	root       env_core.Root
 	env        *env_core.Environment
 	network    *env_core.Network
+	serves     map[string]*managedServe
+	connects   map[string]*managedConnect
 	socketPath string
 	startedAt  time.Time
 	pid        int
@@ -36,6 +38,8 @@ type Agent struct {
 	heartbeatRequestTimeout time.Duration
 	heartbeatSender         func(context.Context, *env_core.Environment) (bool, error)
 	heartbeat               environmentHeartbeat
+	controller              tunnelController
+	runtimeHost             tunnelRuntimeHost
 
 	grpcServer *grpc.Server
 	shutdownCh chan struct{}
@@ -55,6 +59,8 @@ func New() (*Agent, error) {
 		root:                    root,
 		env:                     env,
 		network:                 networkState,
+		serves:                  configuredServes(networkState),
+		connects:                configuredConnects(networkState),
 		socketPath:              socketPath,
 		startedAt:               time.Now().UTC(),
 		pid:                     os.Getpid(),
@@ -63,6 +69,8 @@ func New() (*Agent, error) {
 		heartbeatTTL:            defaultEnvironmentHeartbeatTTL,
 		heartbeatRequestTimeout: defaultEnvironmentHeartbeatRequestTimeout,
 		shutdownCh:              make(chan struct{}),
+		controller:              apiTunnelController{},
+		runtimeHost:             defaultRuntimeHost{},
 	}
 	agent.heartbeatSender = agent.sendEnvironmentHeartbeat
 	return agent, nil
@@ -95,6 +103,7 @@ func (a *Agent) Run(ctx context.Context) error {
 
 func (a *Agent) runServer(ctx context.Context, listener net.Listener, cleanup func()) error {
 	defer func() {
+		a.shutdownManagedActors()
 		a.stopEnvironmentHeartbeatLoop()
 		_ = listener.Close()
 		if cleanup != nil {
@@ -157,7 +166,30 @@ func (a *Agent) stop() {
 }
 
 func (a *Agent) snapshotStatusLocked() *networkpb.NetworkStatus {
-	return networkStatusProto(a.pid, a.startedAt, a.socketPath, a.env, a.network, a.environmentHeartbeatStatusLocked(a.now().UTC()))
+	status := networkStatusProto(a.pid, a.startedAt, a.socketPath, a.env, a.network, a.environmentHeartbeatStatusLocked(a.now().UTC()))
+	for _, desired := range a.network.Serves {
+		if _, actor := a.findServeActorLocked(desired.TunnelID, desired.Name); actor != nil {
+			status.Serves = append(status.Serves, serveStatusProto(actor))
+			continue
+		}
+		status.Serves = append(status.Serves, serveStatusProto(&managedServe{
+			desired:  desired,
+			state:    networkpb.RuntimeState_RUNTIME_STATE_CONFIGURED,
+			tunnelID: desired.TunnelID,
+		}))
+	}
+	for _, desired := range a.network.Connects {
+		if _, actor := a.findConnectActorLocked(desired.TunnelID, desired.Name, desired.ListenAddress); actor != nil {
+			status.Connects = append(status.Connects, connectStatusProto(actor))
+			continue
+		}
+		status.Connects = append(status.Connects, connectStatusProto(&managedConnect{
+			desired:  desired,
+			state:    networkpb.RuntimeState_RUNTIME_STATE_CONFIGURED,
+			tunnelID: desired.TunnelID,
+		}))
+	}
+	return status
 }
 
 func (a *Agent) Ping(context.Context, *networkpb.PingRequest) (*networkpb.PingResponse, error) {
@@ -175,6 +207,8 @@ func (a *Agent) Shutdown(context.Context, *networkpb.ShutdownRequest) (*networkp
 }
 
 func (a *Agent) ReloadEnvironment(context.Context, *networkpb.ReloadEnvironmentRequest) (*networkpb.ReloadEnvironmentResponse, error) {
+	a.shutdownManagedActors()
+
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -185,6 +219,8 @@ func (a *Agent) ReloadEnvironment(context.Context, *networkpb.ReloadEnvironmentR
 	a.root = root
 	a.env = env
 	a.network = networkState
+	a.serves = configuredServes(networkState)
+	a.connects = configuredConnects(networkState)
 	a.replaceEnvironmentHeartbeatLoopLocked()
 	return &networkpb.ReloadEnvironmentResponse{Status: a.snapshotStatusLocked()}, nil
 }
@@ -195,31 +231,6 @@ func (a *Agent) GetNetworkStatus(_ context.Context, _ *networkpb.GetNetworkStatu
 	return &networkpb.GetNetworkStatusResponse{Status: a.snapshotStatusLocked()}, nil
 }
 
-func (a *Agent) EnsureServe(_ context.Context, req *networkpb.EnsureServeRequest) (*networkpb.EnsureServeResponse, error) {
-	desired, err := validateDesiredServe(req)
-	if err != nil {
-		return nil, err
-	}
-
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	upsertServe(a.network, desired)
-	if err := persistNetwork(a.root, a.network); err != nil {
-		return nil, err
-	}
-	return &networkpb.EnsureServeResponse{Serve: serveStatusProto(desired)}, nil
-}
-
-func (a *Agent) RemoveServe(_ context.Context, req *networkpb.RemoveServeRequest) (*networkpb.RemoveServeResponse, error) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	removeServe(a.network, req.TunnelId, req.Name)
-	if err := persistNetwork(a.root, a.network); err != nil {
-		return nil, err
-	}
-	return &networkpb.RemoveServeResponse{}, nil
-}
-
 func (a *Agent) ListServes(_ context.Context, _ *networkpb.ListServesRequest) (*networkpb.ListServesResponse, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -227,34 +238,17 @@ func (a *Agent) ListServes(_ context.Context, _ *networkpb.ListServesRequest) (*
 		Serves: make([]*networkpb.ManagedServeStatus, 0, len(a.network.Serves)),
 	}
 	for _, serve := range a.network.Serves {
-		resp.Serves = append(resp.Serves, serveStatusProto(serve))
+		if _, actor := a.findServeActorLocked(serve.TunnelID, serve.Name); actor != nil {
+			resp.Serves = append(resp.Serves, serveStatusProto(actor))
+			continue
+		}
+		resp.Serves = append(resp.Serves, serveStatusProto(&managedServe{
+			desired:  serve,
+			state:    networkpb.RuntimeState_RUNTIME_STATE_CONFIGURED,
+			tunnelID: serve.TunnelID,
+		}))
 	}
 	return resp, nil
-}
-
-func (a *Agent) EnsureConnect(_ context.Context, req *networkpb.EnsureConnectRequest) (*networkpb.EnsureConnectResponse, error) {
-	desired, err := validateDesiredConnect(req)
-	if err != nil {
-		return nil, err
-	}
-
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	upsertConnect(a.network, desired)
-	if err := persistNetwork(a.root, a.network); err != nil {
-		return nil, err
-	}
-	return &networkpb.EnsureConnectResponse{Connect: connectStatusProto(desired)}, nil
-}
-
-func (a *Agent) RemoveConnect(_ context.Context, req *networkpb.RemoveConnectRequest) (*networkpb.RemoveConnectResponse, error) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	removeConnect(a.network, req.TunnelId, req.Name, req.ListenAddress)
-	if err := persistNetwork(a.root, a.network); err != nil {
-		return nil, err
-	}
-	return &networkpb.RemoveConnectResponse{}, nil
 }
 
 func (a *Agent) ListConnects(_ context.Context, _ *networkpb.ListConnectsRequest) (*networkpb.ListConnectsResponse, error) {
@@ -264,7 +258,15 @@ func (a *Agent) ListConnects(_ context.Context, _ *networkpb.ListConnectsRequest
 		Connects: make([]*networkpb.ManagedConnectStatus, 0, len(a.network.Connects)),
 	}
 	for _, connect := range a.network.Connects {
-		resp.Connects = append(resp.Connects, connectStatusProto(connect))
+		if _, actor := a.findConnectActorLocked(connect.TunnelID, connect.Name, connect.ListenAddress); actor != nil {
+			resp.Connects = append(resp.Connects, connectStatusProto(actor))
+			continue
+		}
+		resp.Connects = append(resp.Connects, connectStatusProto(&managedConnect{
+			desired:  connect,
+			state:    networkpb.RuntimeState_RUNTIME_STATE_CONFIGURED,
+			tunnelID: connect.TunnelID,
+		}))
 	}
 	return resp, nil
 }

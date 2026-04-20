@@ -9,19 +9,27 @@ import (
 )
 
 func ServeHTTP(ctx context.Context, factory OverlayFactory, identityPath, serviceName, backendTarget string) error {
-	overlay, err := factory.New(identityPath)
+	handle, err := StartServeHTTP(ctx, factory, identityPath, serviceName, backendTarget)
 	if err != nil {
 		return err
 	}
+	return <-handle.Done()
+}
+
+func StartServeHTTP(ctx context.Context, factory OverlayFactory, identityPath, serviceName, backendTarget string) (*Handle, error) {
+	overlay, err := factory.New(identityPath)
+	if err != nil {
+		return nil, err
+	}
 	listener, err := overlay.Listen(serviceName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	targetURL, err := url.Parse(backendTarget)
 	if err != nil {
 		_ = listener.Close()
-		return err
+		return nil, err
 	}
 
 	server := &http.Server{
@@ -35,18 +43,28 @@ func ServeHTTP(ctx context.Context, factory OverlayFactory, identityPath, servic
 		<-ctx.Done()
 		_ = server.Shutdown(context.Background())
 	}()
-	return ignoreClosedError(ctx, server.Serve(listener))
+	return newHandle(func() error {
+		return ignoreClosedError(ctx, server.Serve(listener))
+	}), nil
 }
 
 func ConnectHTTP(ctx context.Context, factory OverlayFactory, identityPath, serviceName, listenAddress string) error {
-	overlay, err := factory.New(identityPath)
+	handle, err := StartConnectHTTP(ctx, factory, identityPath, serviceName, listenAddress)
 	if err != nil {
 		return err
+	}
+	return <-handle.Done()
+}
+
+func StartConnectHTTP(ctx context.Context, factory OverlayFactory, identityPath, serviceName, listenAddress string) (*Handle, error) {
+	overlay, err := factory.New(identityPath)
+	if err != nil {
+		return nil, err
 	}
 
 	targetURL, err := url.Parse("http://" + serviceName)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	proxy := httputil.NewSingleHostReverseProxy(targetURL)
 	transport := http.DefaultTransport.(*http.Transport).Clone()
@@ -56,12 +74,18 @@ func ConnectHTTP(ctx context.Context, factory OverlayFactory, identityPath, serv
 	proxy.Transport = transport
 
 	server := &http.Server{
-		Addr:    listenAddress,
 		Handler: connectHTTPRequestLogger(serviceName, listenAddress, proxy),
 	}
+	listener, err := net.Listen("tcp", listenAddress)
+	if err != nil {
+		return nil, err
+	}
+	closeOnDone(ctx, listener)
 	go func() {
 		<-ctx.Done()
 		_ = server.Shutdown(context.Background())
 	}()
-	return ignoreClosedError(ctx, server.ListenAndServe())
+	return newHandle(func() error {
+		return ignoreClosedError(ctx, server.Serve(listener))
+	}), nil
 }

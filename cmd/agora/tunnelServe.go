@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/openziti/agora/internal/api"
+	networkpb "github.com/openziti/agora/internal/network/agent/pb"
 	"github.com/spf13/cobra"
 )
 
@@ -15,6 +16,7 @@ func init() {
 type tunnelServeCommand struct {
 	mode        string
 	backend     string
+	foreground  bool
 	grantEmails []string
 	cmd         *cobra.Command
 }
@@ -28,6 +30,7 @@ func newTunnelServeCommand() *tunnelServeCommand {
 	command := &tunnelServeCommand{cmd: cmd}
 	cmd.Flags().StringVar(&command.mode, "mode", "", "Tunnel mode: http, tcp, or udp")
 	cmd.Flags().StringVar(&command.backend, "backend", "", "Backend target for the local provider")
+	cmd.Flags().BoolVar(&command.foreground, "foreground", false, "Run the tunnel runtime directly instead of using the local network agent")
 	cmd.Flags().StringSliceVar(&command.grantEmails, "grant", nil, "Grant access to an account email (repeatable)")
 	panicIfErr(cmd.MarkFlagRequired("mode"))
 	panicIfErr(cmd.MarkFlagRequired("backend"))
@@ -61,6 +64,34 @@ func (cmd *tunnelServeCommand) run(args []string) {
 	mode := api.TunnelMode(cmd.mode)
 	panicIfErr(validateModeAndTarget(mode, cmd.backend))
 
+	if cmd.foreground {
+		cmd.runForeground(args)
+		return
+	}
+
+	root := requireEnabledRoot()
+	client, cleanup := requireRunningNetworkClient(root)
+	defer cleanup()
+
+	res, err := client.EnsureServe(context.Background(), &networkpb.EnsureServeRequest{
+		Name:          args[0],
+		Mode:          cmd.mode,
+		BackendTarget: cmd.backend,
+		GrantEmails:   append([]string(nil), cmd.grantEmails...),
+	})
+	panicIfErr(err)
+
+	fmt.Printf(
+		"serving tunnel '%s' state='%s' tunnel_id='%s' serve_id='%s'\n",
+		res.Serve.Desired.Name,
+		formatRuntimeState(res.Serve.State),
+		res.Serve.TunnelId,
+		res.Serve.ServeId,
+	)
+}
+
+func (cmd *tunnelServeCommand) runForeground(args []string) {
+	mode := api.TunnelMode(cmd.mode)
 	root := requireEnabledRoot()
 	env := root.Environment()
 	client := openEnvironmentAPIClient(root)

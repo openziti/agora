@@ -84,8 +84,9 @@ message EnsureServeResponse {
 }
 
 message RemoveServeRequest {
-  string tunnel_id = 1;
-  string name = 2;
+  string serve_id = 1;
+  string tunnel_id = 2;
+  string name = 3;
 }
 
 message RemoveServeResponse {}
@@ -122,9 +123,10 @@ message EnsureConnectResponse {
 }
 
 message RemoveConnectRequest {
-  string tunnel_id = 1;
-  string name = 2;
-  string listen_address = 3;
+  string attachment_id = 1;
+  string tunnel_id = 2;
+  string name = 3;
+  string listen_address = 4;
 }
 
 message RemoveConnectResponse {}
