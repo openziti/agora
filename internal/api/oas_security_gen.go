@@ -46,6 +46,7 @@ var operationRolesAccountTokenAuth = map[string][]string{
 	EnableEnvironmentOperation:         []string{},
 	GetEnvironmentOperation:            []string{},
 	GetTunnelOperation:                 []string{},
+	GetTunnelServeOperation:            []string{},
 	HeartbeatEnvironmentOperation:      []string{},
 	HeartbeatTunnelAttachmentOperation: []string{},
 	HeartbeatTunnelServeOperation:      []string{},

@@ -61,6 +61,10 @@ type GetTunnelRes interface {
 	getTunnelRes()
 }
 
+type GetTunnelServeRes interface {
+	getTunnelServeRes()
+}
+
 type HeartbeatEnvironmentRes interface {
 	heartbeatEnvironmentRes()
 }

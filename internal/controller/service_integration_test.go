@@ -219,9 +219,32 @@ func TestServiceHTTPFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create tunnel request: %v", err)
 	}
-	_, ok = createTunnelRes.(*api.Tunnel)
+	tunnel, ok := createTunnelRes.(*api.Tunnel)
 	if !ok {
 		t.Fatalf("unexpected create tunnel response: %T", createTunnelRes)
+	}
+
+	startServeRes, err := accountClient.StartTunnelServe(ctx, &api.StartTunnelServeRequest{
+		EnvironmentId: env.ID,
+	}, api.StartTunnelServeParams{TunnelId: tunnel.ID})
+	if err != nil {
+		t.Fatalf("start tunnel serve request: %v", err)
+	}
+	startedServe, ok := startServeRes.(*api.TunnelServe)
+	if !ok {
+		t.Fatalf("unexpected start tunnel serve response: %T", startServeRes)
+	}
+
+	getServeRes, err := accountClient.GetTunnelServe(ctx, api.GetTunnelServeParams{TunnelId: tunnel.ID})
+	if err != nil {
+		t.Fatalf("get tunnel serve request: %v", err)
+	}
+	gotServe, ok := getServeRes.(*api.TunnelServe)
+	if !ok {
+		t.Fatalf("unexpected get tunnel serve response: %T", getServeRes)
+	}
+	if gotServe.ID != startedServe.ID {
+		t.Fatalf("expected serve id %s, got %s", startedServe.ID, gotServe.ID)
 	}
 
 	listTunnelsRes, err := accountClient.ListTunnels(ctx, api.ListTunnelsParams{})

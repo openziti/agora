@@ -21,6 +21,7 @@ const (
 	EnableEnvironmentOperation         OperationName = "EnableEnvironment"
 	GetEnvironmentOperation            OperationName = "GetEnvironment"
 	GetTunnelOperation                 OperationName = "GetTunnel"
+	GetTunnelServeOperation            OperationName = "GetTunnelServe"
 	HeartbeatEnvironmentOperation      OperationName = "HeartbeatEnvironment"
 	HeartbeatTunnelAttachmentOperation OperationName = "HeartbeatTunnelAttachment"
 	HeartbeatTunnelServeOperation      OperationName = "HeartbeatTunnelServe"

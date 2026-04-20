@@ -1059,6 +1059,18 @@ type GetTunnelNotFound Error
 
 func (*GetTunnelNotFound) getTunnelRes() {}
 
+type GetTunnelServeInternalServerError Error
+
+func (*GetTunnelServeInternalServerError) getTunnelServeRes() {}
+
+type GetTunnelServeNotFound Error
+
+func (*GetTunnelServeNotFound) getTunnelServeRes() {}
+
+type GetTunnelServeUnauthorized Error
+
+func (*GetTunnelServeUnauthorized) getTunnelServeRes() {}
+
 type GetTunnelUnauthorized Error
 
 func (*GetTunnelUnauthorized) getTunnelRes() {}
@@ -2307,6 +2319,7 @@ func (s *TunnelServe) SetUpdatedAt(val time.Time) {
 	s.UpdatedAt = val
 }
 
+func (*TunnelServe) getTunnelServeRes()   {}
 func (*TunnelServe) startTunnelServeRes() {}
 
 type TunnelServeState string

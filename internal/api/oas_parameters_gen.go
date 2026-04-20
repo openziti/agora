@@ -893,6 +893,87 @@ func decodeGetTunnelParams(args [1]string, argsEscaped bool, r *http.Request) (p
 	return params, nil
 }
 
+// GetTunnelServeParams is parameters of getTunnelServe operation.
+type GetTunnelServeParams struct {
+	TunnelId string
+}
+
+func unpackGetTunnelServeParams(packed middleware.Parameters) (params GetTunnelServeParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "tunnelId",
+			In:   "path",
+		}
+		params.TunnelId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeGetTunnelServeParams(args [1]string, argsEscaped bool, r *http.Request) (params GetTunnelServeParams, _ error) {
+	// Decode path: tunnelId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "tunnelId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.TunnelId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^tt_[a-z0-9]{12}$"],
+				}).Validate(string(params.TunnelId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "tunnelId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // HeartbeatEnvironmentParams is parameters of heartbeatEnvironment operation.
 type HeartbeatEnvironmentParams struct {
 	EnvironmentId string

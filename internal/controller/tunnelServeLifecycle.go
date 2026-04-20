@@ -93,6 +93,38 @@ func (s *Service) StartTunnelServe(ctx context.Context, req *api.StartTunnelServ
 	return mapTunnelServe(detail), nil
 }
 
+func (s *Service) GetTunnelServe(ctx context.Context, params api.GetTunnelServeParams) (api.GetTunnelServeRes, error) {
+	principal, err := requireAccountPrincipal(ctx)
+	if err != nil {
+		dl.Warnf("unauthorized get tunnel serve request tunnel_id='%s'", params.TunnelId)
+		return &api.GetTunnelServeUnauthorized{Code: "unauthorized", Message: "unauthorized"}, nil
+	}
+	dl.Debugf("getting tunnel serve tunnel_id='%s' %s", params.TunnelId, principalLogFields(principal))
+
+	tunnel, err := s.requireManagedTunnel(ctx, principal, params.TunnelId)
+	if err != nil {
+		if errors.Is(err, persistence.ErrNotFound) {
+			dl.Warnf("get tunnel serve tunnel not found tunnel_id='%s' %s", params.TunnelId, principalLogFields(principal))
+			return &api.GetTunnelServeNotFound{Code: "not_found", Message: "tunnel serve not found"}, nil
+		}
+		dl.Errorf("get tunnel serve tunnel lookup failed tunnel_id='%s' %s: %v", params.TunnelId, principalLogFields(principal), err)
+		return &api.GetTunnelServeInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+	}
+
+	serve, err := s.store.TunnelServes.GetActiveByTunnel(ctx, s.store.DB(), tunnel.ID, tunnel.OrganizationID)
+	if err != nil {
+		if errors.Is(err, persistence.ErrNotFound) {
+			dl.Debugf("get tunnel serve no active serve tunnel_id='%s' %s", tunnel.ID, principalLogFields(principal))
+			return &api.GetTunnelServeNotFound{Code: "not_found", Message: "tunnel serve not found"}, nil
+		}
+		dl.Errorf("get tunnel serve failed tunnel_id='%s' %s: %v", tunnel.ID, principalLogFields(principal), err)
+		return &api.GetTunnelServeInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+	}
+
+	dl.Debugf("got tunnel serve tunnel_id='%s' serve_id='%s' %s", tunnel.ID, serve.ID, principalLogFields(principal))
+	return mapTunnelServe(serve), nil
+}
+
 func (s *Service) HeartbeatTunnelServe(ctx context.Context, params api.HeartbeatTunnelServeParams) (api.HeartbeatTunnelServeRes, error) {
 	principal, err := requireAccountPrincipal(ctx)
 	if err != nil {

@@ -122,6 +122,44 @@
               $ref: "../agora.yml#/components/schemas/error"
 
 /tunnels/{tunnelId}/serve:
+  get:
+    tags:
+      - tunnels
+    operationId: getTunnelServe
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: tunnelId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^tt_[a-z0-9]{12}$'
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/tunnelServe"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
   post:
     tags:
       - tunnels

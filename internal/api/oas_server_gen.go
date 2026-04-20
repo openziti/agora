@@ -68,6 +68,10 @@ type Handler interface {
 	//
 	// GET /tunnels/{tunnelId}
 	GetTunnel(ctx context.Context, params GetTunnelParams) (GetTunnelRes, error)
+	// GetTunnelServe implements getTunnelServe operation.
+	//
+	// GET /tunnels/{tunnelId}/serve
+	GetTunnelServe(ctx context.Context, params GetTunnelServeParams) (GetTunnelServeRes, error)
 	// HeartbeatEnvironment implements heartbeatEnvironment operation.
 	//
 	// POST /environments/{environmentId}/heartbeat
