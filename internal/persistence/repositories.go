@@ -388,7 +388,7 @@ where id = $1 and not deleted`
 		return fmt.Errorf("update environment last seen rows affected: %w", err)
 	}
 	if rows == 0 {
-		return errors.New("update environment last seen: not found")
+		return ErrNotFound
 	}
 	return nil
 }

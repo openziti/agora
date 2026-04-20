@@ -925,6 +925,54 @@ func encodeGetTunnelResponse(response GetTunnelRes, w http.ResponseWriter) error
 	}
 }
 
+func encodeHeartbeatEnvironmentResponse(response HeartbeatEnvironmentRes, w http.ResponseWriter) error {
+	switch response := response.(type) {
+	case *HeartbeatEnvironmentNoContent:
+		w.WriteHeader(204)
+
+		return nil
+
+	case *HeartbeatEnvironmentUnauthorized:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *HeartbeatEnvironmentNotFound:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *HeartbeatEnvironmentInternalServerError:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(500)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
 func encodeHeartbeatTunnelAttachmentResponse(response HeartbeatTunnelAttachmentRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *HeartbeatTunnelAttachmentNoContent:

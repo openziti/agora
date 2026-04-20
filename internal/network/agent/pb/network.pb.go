@@ -80,6 +80,64 @@ func (RuntimeState) EnumDescriptor() ([]byte, []int) {
 	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{0}
 }
 
+type EnvironmentHeartbeatState int32
+
+const (
+	EnvironmentHeartbeatState_ENVIRONMENT_HEARTBEAT_STATE_UNSPECIFIED EnvironmentHeartbeatState = 0
+	EnvironmentHeartbeatState_ENVIRONMENT_HEARTBEAT_STATE_DISABLED    EnvironmentHeartbeatState = 1
+	EnvironmentHeartbeatState_ENVIRONMENT_HEARTBEAT_STATE_STARTING    EnvironmentHeartbeatState = 2
+	EnvironmentHeartbeatState_ENVIRONMENT_HEARTBEAT_STATE_ONLINE      EnvironmentHeartbeatState = 3
+	EnvironmentHeartbeatState_ENVIRONMENT_HEARTBEAT_STATE_STALE       EnvironmentHeartbeatState = 4
+	EnvironmentHeartbeatState_ENVIRONMENT_HEARTBEAT_STATE_ERROR       EnvironmentHeartbeatState = 5
+)
+
+// Enum value maps for EnvironmentHeartbeatState.
+var (
+	EnvironmentHeartbeatState_name = map[int32]string{
+		0: "ENVIRONMENT_HEARTBEAT_STATE_UNSPECIFIED",
+		1: "ENVIRONMENT_HEARTBEAT_STATE_DISABLED",
+		2: "ENVIRONMENT_HEARTBEAT_STATE_STARTING",
+		3: "ENVIRONMENT_HEARTBEAT_STATE_ONLINE",
+		4: "ENVIRONMENT_HEARTBEAT_STATE_STALE",
+		5: "ENVIRONMENT_HEARTBEAT_STATE_ERROR",
+	}
+	EnvironmentHeartbeatState_value = map[string]int32{
+		"ENVIRONMENT_HEARTBEAT_STATE_UNSPECIFIED": 0,
+		"ENVIRONMENT_HEARTBEAT_STATE_DISABLED":    1,
+		"ENVIRONMENT_HEARTBEAT_STATE_STARTING":    2,
+		"ENVIRONMENT_HEARTBEAT_STATE_ONLINE":      3,
+		"ENVIRONMENT_HEARTBEAT_STATE_STALE":       4,
+		"ENVIRONMENT_HEARTBEAT_STATE_ERROR":       5,
+	}
+)
+
+func (x EnvironmentHeartbeatState) Enum() *EnvironmentHeartbeatState {
+	p := new(EnvironmentHeartbeatState)
+	*p = x
+	return p
+}
+
+func (x EnvironmentHeartbeatState) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (EnvironmentHeartbeatState) Descriptor() protoreflect.EnumDescriptor {
+	return file_internal_network_agent_pb_network_proto_enumTypes[1].Descriptor()
+}
+
+func (EnvironmentHeartbeatState) Type() protoreflect.EnumType {
+	return &file_internal_network_agent_pb_network_proto_enumTypes[1]
+}
+
+func (x EnvironmentHeartbeatState) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use EnvironmentHeartbeatState.Descriptor instead.
+func (EnvironmentHeartbeatState) EnumDescriptor() ([]byte, []int) {
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{1}
+}
+
 type PingRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -400,6 +458,74 @@ func (x *GetNetworkStatusResponse) GetStatus() *NetworkStatus {
 	return nil
 }
 
+type EnvironmentHeartbeatStatus struct {
+	state         protoimpl.MessageState    `protogen:"open.v1"`
+	State         EnvironmentHeartbeatState `protobuf:"varint,1,opt,name=state,proto3,enum=agora.network.v1.EnvironmentHeartbeatState" json:"state,omitempty"`
+	LastAttemptAt *timestamppb.Timestamp    `protobuf:"bytes,2,opt,name=last_attempt_at,json=lastAttemptAt,proto3" json:"last_attempt_at,omitempty"`
+	LastSuccessAt *timestamppb.Timestamp    `protobuf:"bytes,3,opt,name=last_success_at,json=lastSuccessAt,proto3" json:"last_success_at,omitempty"`
+	LastError     string                    `protobuf:"bytes,4,opt,name=last_error,json=lastError,proto3" json:"last_error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EnvironmentHeartbeatStatus) Reset() {
+	*x = EnvironmentHeartbeatStatus{}
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EnvironmentHeartbeatStatus) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EnvironmentHeartbeatStatus) ProtoMessage() {}
+
+func (x *EnvironmentHeartbeatStatus) ProtoReflect() protoreflect.Message {
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EnvironmentHeartbeatStatus.ProtoReflect.Descriptor instead.
+func (*EnvironmentHeartbeatStatus) Descriptor() ([]byte, []int) {
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *EnvironmentHeartbeatStatus) GetState() EnvironmentHeartbeatState {
+	if x != nil {
+		return x.State
+	}
+	return EnvironmentHeartbeatState_ENVIRONMENT_HEARTBEAT_STATE_UNSPECIFIED
+}
+
+func (x *EnvironmentHeartbeatStatus) GetLastAttemptAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastAttemptAt
+	}
+	return nil
+}
+
+func (x *EnvironmentHeartbeatStatus) GetLastSuccessAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastSuccessAt
+	}
+	return nil
+}
+
+func (x *EnvironmentHeartbeatStatus) GetLastError() string {
+	if x != nil {
+		return x.LastError
+	}
+	return ""
+}
+
 type DesiredServe struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	TunnelId      string                 `protobuf:"bytes,1,opt,name=tunnel_id,json=tunnelId,proto3" json:"tunnel_id,omitempty"`
@@ -413,7 +539,7 @@ type DesiredServe struct {
 
 func (x *DesiredServe) Reset() {
 	*x = DesiredServe{}
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[8]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -425,7 +551,7 @@ func (x *DesiredServe) String() string {
 func (*DesiredServe) ProtoMessage() {}
 
 func (x *DesiredServe) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[8]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -438,7 +564,7 @@ func (x *DesiredServe) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DesiredServe.ProtoReflect.Descriptor instead.
 func (*DesiredServe) Descriptor() ([]byte, []int) {
-	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{8}
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *DesiredServe) GetTunnelId() string {
@@ -490,7 +616,7 @@ type ManagedServeStatus struct {
 
 func (x *ManagedServeStatus) Reset() {
 	*x = ManagedServeStatus{}
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[9]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -502,7 +628,7 @@ func (x *ManagedServeStatus) String() string {
 func (*ManagedServeStatus) ProtoMessage() {}
 
 func (x *ManagedServeStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[9]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -515,7 +641,7 @@ func (x *ManagedServeStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ManagedServeStatus.ProtoReflect.Descriptor instead.
 func (*ManagedServeStatus) Descriptor() ([]byte, []int) {
-	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{9}
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ManagedServeStatus) GetDesired() *DesiredServe {
@@ -573,7 +699,7 @@ type EnsureServeRequest struct {
 
 func (x *EnsureServeRequest) Reset() {
 	*x = EnsureServeRequest{}
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[10]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -585,7 +711,7 @@ func (x *EnsureServeRequest) String() string {
 func (*EnsureServeRequest) ProtoMessage() {}
 
 func (x *EnsureServeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[10]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -598,7 +724,7 @@ func (x *EnsureServeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnsureServeRequest.ProtoReflect.Descriptor instead.
 func (*EnsureServeRequest) Descriptor() ([]byte, []int) {
-	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{10}
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *EnsureServeRequest) GetTunnelId() string {
@@ -645,7 +771,7 @@ type EnsureServeResponse struct {
 
 func (x *EnsureServeResponse) Reset() {
 	*x = EnsureServeResponse{}
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[11]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -657,7 +783,7 @@ func (x *EnsureServeResponse) String() string {
 func (*EnsureServeResponse) ProtoMessage() {}
 
 func (x *EnsureServeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[11]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -670,7 +796,7 @@ func (x *EnsureServeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnsureServeResponse.ProtoReflect.Descriptor instead.
 func (*EnsureServeResponse) Descriptor() ([]byte, []int) {
-	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{11}
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *EnsureServeResponse) GetServe() *ManagedServeStatus {
@@ -690,7 +816,7 @@ type RemoveServeRequest struct {
 
 func (x *RemoveServeRequest) Reset() {
 	*x = RemoveServeRequest{}
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[12]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -702,7 +828,7 @@ func (x *RemoveServeRequest) String() string {
 func (*RemoveServeRequest) ProtoMessage() {}
 
 func (x *RemoveServeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[12]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -715,7 +841,7 @@ func (x *RemoveServeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveServeRequest.ProtoReflect.Descriptor instead.
 func (*RemoveServeRequest) Descriptor() ([]byte, []int) {
-	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{12}
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *RemoveServeRequest) GetTunnelId() string {
@@ -740,7 +866,7 @@ type RemoveServeResponse struct {
 
 func (x *RemoveServeResponse) Reset() {
 	*x = RemoveServeResponse{}
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[13]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -752,7 +878,7 @@ func (x *RemoveServeResponse) String() string {
 func (*RemoveServeResponse) ProtoMessage() {}
 
 func (x *RemoveServeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[13]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -765,7 +891,7 @@ func (x *RemoveServeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveServeResponse.ProtoReflect.Descriptor instead.
 func (*RemoveServeResponse) Descriptor() ([]byte, []int) {
-	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{13}
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{14}
 }
 
 type ListServesRequest struct {
@@ -776,7 +902,7 @@ type ListServesRequest struct {
 
 func (x *ListServesRequest) Reset() {
 	*x = ListServesRequest{}
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[14]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -788,7 +914,7 @@ func (x *ListServesRequest) String() string {
 func (*ListServesRequest) ProtoMessage() {}
 
 func (x *ListServesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[14]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -801,7 +927,7 @@ func (x *ListServesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListServesRequest.ProtoReflect.Descriptor instead.
 func (*ListServesRequest) Descriptor() ([]byte, []int) {
-	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{14}
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{15}
 }
 
 type ListServesResponse struct {
@@ -813,7 +939,7 @@ type ListServesResponse struct {
 
 func (x *ListServesResponse) Reset() {
 	*x = ListServesResponse{}
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[15]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -825,7 +951,7 @@ func (x *ListServesResponse) String() string {
 func (*ListServesResponse) ProtoMessage() {}
 
 func (x *ListServesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[15]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -838,7 +964,7 @@ func (x *ListServesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListServesResponse.ProtoReflect.Descriptor instead.
 func (*ListServesResponse) Descriptor() ([]byte, []int) {
-	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{15}
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *ListServesResponse) GetServes() []*ManagedServeStatus {
@@ -859,7 +985,7 @@ type DesiredConnect struct {
 
 func (x *DesiredConnect) Reset() {
 	*x = DesiredConnect{}
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[16]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -871,7 +997,7 @@ func (x *DesiredConnect) String() string {
 func (*DesiredConnect) ProtoMessage() {}
 
 func (x *DesiredConnect) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[16]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -884,7 +1010,7 @@ func (x *DesiredConnect) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DesiredConnect.ProtoReflect.Descriptor instead.
 func (*DesiredConnect) Descriptor() ([]byte, []int) {
-	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{16}
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *DesiredConnect) GetTunnelId() string {
@@ -922,7 +1048,7 @@ type ManagedConnectStatus struct {
 
 func (x *ManagedConnectStatus) Reset() {
 	*x = ManagedConnectStatus{}
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[17]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -934,7 +1060,7 @@ func (x *ManagedConnectStatus) String() string {
 func (*ManagedConnectStatus) ProtoMessage() {}
 
 func (x *ManagedConnectStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[17]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -947,7 +1073,7 @@ func (x *ManagedConnectStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ManagedConnectStatus.ProtoReflect.Descriptor instead.
 func (*ManagedConnectStatus) Descriptor() ([]byte, []int) {
-	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{17}
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *ManagedConnectStatus) GetDesired() *DesiredConnect {
@@ -1003,7 +1129,7 @@ type EnsureConnectRequest struct {
 
 func (x *EnsureConnectRequest) Reset() {
 	*x = EnsureConnectRequest{}
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[18]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1015,7 +1141,7 @@ func (x *EnsureConnectRequest) String() string {
 func (*EnsureConnectRequest) ProtoMessage() {}
 
 func (x *EnsureConnectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[18]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1028,7 +1154,7 @@ func (x *EnsureConnectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnsureConnectRequest.ProtoReflect.Descriptor instead.
 func (*EnsureConnectRequest) Descriptor() ([]byte, []int) {
-	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{18}
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *EnsureConnectRequest) GetTunnelId() string {
@@ -1061,7 +1187,7 @@ type EnsureConnectResponse struct {
 
 func (x *EnsureConnectResponse) Reset() {
 	*x = EnsureConnectResponse{}
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[19]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1073,7 +1199,7 @@ func (x *EnsureConnectResponse) String() string {
 func (*EnsureConnectResponse) ProtoMessage() {}
 
 func (x *EnsureConnectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[19]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1086,7 +1212,7 @@ func (x *EnsureConnectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnsureConnectResponse.ProtoReflect.Descriptor instead.
 func (*EnsureConnectResponse) Descriptor() ([]byte, []int) {
-	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{19}
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *EnsureConnectResponse) GetConnect() *ManagedConnectStatus {
@@ -1107,7 +1233,7 @@ type RemoveConnectRequest struct {
 
 func (x *RemoveConnectRequest) Reset() {
 	*x = RemoveConnectRequest{}
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[20]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1119,7 +1245,7 @@ func (x *RemoveConnectRequest) String() string {
 func (*RemoveConnectRequest) ProtoMessage() {}
 
 func (x *RemoveConnectRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[20]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1132,7 +1258,7 @@ func (x *RemoveConnectRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveConnectRequest.ProtoReflect.Descriptor instead.
 func (*RemoveConnectRequest) Descriptor() ([]byte, []int) {
-	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{20}
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *RemoveConnectRequest) GetTunnelId() string {
@@ -1164,7 +1290,7 @@ type RemoveConnectResponse struct {
 
 func (x *RemoveConnectResponse) Reset() {
 	*x = RemoveConnectResponse{}
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[21]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1176,7 +1302,7 @@ func (x *RemoveConnectResponse) String() string {
 func (*RemoveConnectResponse) ProtoMessage() {}
 
 func (x *RemoveConnectResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[21]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1189,7 +1315,7 @@ func (x *RemoveConnectResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveConnectResponse.ProtoReflect.Descriptor instead.
 func (*RemoveConnectResponse) Descriptor() ([]byte, []int) {
-	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{21}
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{22}
 }
 
 type ListConnectsRequest struct {
@@ -1200,7 +1326,7 @@ type ListConnectsRequest struct {
 
 func (x *ListConnectsRequest) Reset() {
 	*x = ListConnectsRequest{}
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[22]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1212,7 +1338,7 @@ func (x *ListConnectsRequest) String() string {
 func (*ListConnectsRequest) ProtoMessage() {}
 
 func (x *ListConnectsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[22]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1225,7 +1351,7 @@ func (x *ListConnectsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListConnectsRequest.ProtoReflect.Descriptor instead.
 func (*ListConnectsRequest) Descriptor() ([]byte, []int) {
-	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{22}
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{23}
 }
 
 type ListConnectsResponse struct {
@@ -1237,7 +1363,7 @@ type ListConnectsResponse struct {
 
 func (x *ListConnectsResponse) Reset() {
 	*x = ListConnectsResponse{}
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[23]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1249,7 +1375,7 @@ func (x *ListConnectsResponse) String() string {
 func (*ListConnectsResponse) ProtoMessage() {}
 
 func (x *ListConnectsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[23]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1262,7 +1388,7 @@ func (x *ListConnectsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListConnectsResponse.ProtoReflect.Descriptor instead.
 func (*ListConnectsResponse) Descriptor() ([]byte, []int) {
-	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{23}
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ListConnectsResponse) GetConnects() []*ManagedConnectStatus {
@@ -1273,21 +1399,22 @@ func (x *ListConnectsResponse) GetConnects() []*ManagedConnectStatus {
 }
 
 type NetworkStatus struct {
-	state              protoimpl.MessageState  `protogen:"open.v1"`
-	Pid                int32                   `protobuf:"varint,1,opt,name=pid,proto3" json:"pid,omitempty"`
-	StartedAt          *timestamppb.Timestamp  `protobuf:"bytes,2,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
-	SocketPath         string                  `protobuf:"bytes,3,opt,name=socket_path,json=socketPath,proto3" json:"socket_path,omitempty"`
-	EnvironmentEnabled bool                    `protobuf:"varint,4,opt,name=environment_enabled,json=environmentEnabled,proto3" json:"environment_enabled,omitempty"`
-	EnvironmentId      string                  `protobuf:"bytes,5,opt,name=environment_id,json=environmentId,proto3" json:"environment_id,omitempty"`
-	Serves             []*ManagedServeStatus   `protobuf:"bytes,6,rep,name=serves,proto3" json:"serves,omitempty"`
-	Connects           []*ManagedConnectStatus `protobuf:"bytes,7,rep,name=connects,proto3" json:"connects,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	state                protoimpl.MessageState      `protogen:"open.v1"`
+	Pid                  int32                       `protobuf:"varint,1,opt,name=pid,proto3" json:"pid,omitempty"`
+	StartedAt            *timestamppb.Timestamp      `protobuf:"bytes,2,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	SocketPath           string                      `protobuf:"bytes,3,opt,name=socket_path,json=socketPath,proto3" json:"socket_path,omitempty"`
+	EnvironmentEnabled   bool                        `protobuf:"varint,4,opt,name=environment_enabled,json=environmentEnabled,proto3" json:"environment_enabled,omitempty"`
+	EnvironmentId        string                      `protobuf:"bytes,5,opt,name=environment_id,json=environmentId,proto3" json:"environment_id,omitempty"`
+	Serves               []*ManagedServeStatus       `protobuf:"bytes,6,rep,name=serves,proto3" json:"serves,omitempty"`
+	Connects             []*ManagedConnectStatus     `protobuf:"bytes,7,rep,name=connects,proto3" json:"connects,omitempty"`
+	EnvironmentHeartbeat *EnvironmentHeartbeatStatus `protobuf:"bytes,8,opt,name=environment_heartbeat,json=environmentHeartbeat,proto3" json:"environment_heartbeat,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
 }
 
 func (x *NetworkStatus) Reset() {
 	*x = NetworkStatus{}
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[24]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1299,7 +1426,7 @@ func (x *NetworkStatus) String() string {
 func (*NetworkStatus) ProtoMessage() {}
 
 func (x *NetworkStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_internal_network_agent_pb_network_proto_msgTypes[24]
+	mi := &file_internal_network_agent_pb_network_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1312,7 +1439,7 @@ func (x *NetworkStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NetworkStatus.ProtoReflect.Descriptor instead.
 func (*NetworkStatus) Descriptor() ([]byte, []int) {
-	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{24}
+	return file_internal_network_agent_pb_network_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *NetworkStatus) GetPid() int32 {
@@ -1364,6 +1491,13 @@ func (x *NetworkStatus) GetConnects() []*ManagedConnectStatus {
 	return nil
 }
 
+func (x *NetworkStatus) GetEnvironmentHeartbeat() *EnvironmentHeartbeatStatus {
+	if x != nil {
+		return x.EnvironmentHeartbeat
+	}
+	return nil
+}
+
 var File_internal_network_agent_pb_network_proto protoreflect.FileDescriptor
 
 const file_internal_network_agent_pb_network_proto_rawDesc = "" +
@@ -1381,7 +1515,13 @@ const file_internal_network_agent_pb_network_proto_rawDesc = "" +
 	"\x06status\x18\x01 \x01(\v2\x1f.agora.network.v1.NetworkStatusR\x06status\"\x19\n" +
 	"\x17GetNetworkStatusRequest\"S\n" +
 	"\x18GetNetworkStatusResponse\x127\n" +
-	"\x06status\x18\x01 \x01(\v2\x1f.agora.network.v1.NetworkStatusR\x06status\"\x9d\x01\n" +
+	"\x06status\x18\x01 \x01(\v2\x1f.agora.network.v1.NetworkStatusR\x06status\"\x86\x02\n" +
+	"\x1aEnvironmentHeartbeatStatus\x12A\n" +
+	"\x05state\x18\x01 \x01(\x0e2+.agora.network.v1.EnvironmentHeartbeatStateR\x05state\x12B\n" +
+	"\x0flast_attempt_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\rlastAttemptAt\x12B\n" +
+	"\x0flast_success_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\rlastSuccessAt\x12\x1d\n" +
+	"\n" +
+	"last_error\x18\x04 \x01(\tR\tlastError\"\x9d\x01\n" +
 	"\fDesiredServe\x12\x1b\n" +
 	"\ttunnel_id\x18\x01 \x01(\tR\btunnelId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -1436,7 +1576,7 @@ const file_internal_network_agent_pb_network_proto_rawDesc = "" +
 	"\x15RemoveConnectResponse\"\x15\n" +
 	"\x13ListConnectsRequest\"Z\n" +
 	"\x14ListConnectsResponse\x12B\n" +
-	"\bconnects\x18\x01 \x03(\v2&.agora.network.v1.ManagedConnectStatusR\bconnects\"\xd7\x02\n" +
+	"\bconnects\x18\x01 \x03(\v2&.agora.network.v1.ManagedConnectStatusR\bconnects\"\xba\x03\n" +
 	"\rNetworkStatus\x12\x10\n" +
 	"\x03pid\x18\x01 \x01(\x05R\x03pid\x129\n" +
 	"\n" +
@@ -1446,14 +1586,22 @@ const file_internal_network_agent_pb_network_proto_rawDesc = "" +
 	"\x13environment_enabled\x18\x04 \x01(\bR\x12environmentEnabled\x12%\n" +
 	"\x0eenvironment_id\x18\x05 \x01(\tR\renvironmentId\x12<\n" +
 	"\x06serves\x18\x06 \x03(\v2$.agora.network.v1.ManagedServeStatusR\x06serves\x12B\n" +
-	"\bconnects\x18\a \x03(\v2&.agora.network.v1.ManagedConnectStatusR\bconnects*\xb6\x01\n" +
+	"\bconnects\x18\a \x03(\v2&.agora.network.v1.ManagedConnectStatusR\bconnects\x12a\n" +
+	"\x15environment_heartbeat\x18\b \x01(\v2,.agora.network.v1.EnvironmentHeartbeatStatusR\x14environmentHeartbeat*\xb6\x01\n" +
 	"\fRuntimeState\x12\x1d\n" +
 	"\x19RUNTIME_STATE_UNSPECIFIED\x10\x00\x12\x1c\n" +
 	"\x18RUNTIME_STATE_CONFIGURED\x10\x01\x12\x1a\n" +
 	"\x16RUNTIME_STATE_STARTING\x10\x02\x12\x19\n" +
 	"\x15RUNTIME_STATE_RUNNING\x10\x03\x12\x17\n" +
 	"\x13RUNTIME_STATE_ERROR\x10\x04\x12\x19\n" +
-	"\x15RUNTIME_STATE_STOPPED\x10\x052\xb7\a\n" +
+	"\x15RUNTIME_STATE_STOPPED\x10\x05*\x92\x02\n" +
+	"\x19EnvironmentHeartbeatState\x12+\n" +
+	"'ENVIRONMENT_HEARTBEAT_STATE_UNSPECIFIED\x10\x00\x12(\n" +
+	"$ENVIRONMENT_HEARTBEAT_STATE_DISABLED\x10\x01\x12(\n" +
+	"$ENVIRONMENT_HEARTBEAT_STATE_STARTING\x10\x02\x12&\n" +
+	"\"ENVIRONMENT_HEARTBEAT_STATE_ONLINE\x10\x03\x12%\n" +
+	"!ENVIRONMENT_HEARTBEAT_STATE_STALE\x10\x04\x12%\n" +
+	"!ENVIRONMENT_HEARTBEAT_STATE_ERROR\x10\x052\xb7\a\n" +
 	"\x0eNetworkService\x12E\n" +
 	"\x04Ping\x12\x1d.agora.network.v1.PingRequest\x1a\x1e.agora.network.v1.PingResponse\x12Q\n" +
 	"\bShutdown\x12!.agora.network.v1.ShutdownRequest\x1a\".agora.network.v1.ShutdownResponse\x12l\n" +
@@ -1479,79 +1627,85 @@ func file_internal_network_agent_pb_network_proto_rawDescGZIP() []byte {
 	return file_internal_network_agent_pb_network_proto_rawDescData
 }
 
-var file_internal_network_agent_pb_network_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_internal_network_agent_pb_network_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_internal_network_agent_pb_network_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
+var file_internal_network_agent_pb_network_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_internal_network_agent_pb_network_proto_goTypes = []any{
-	(RuntimeState)(0),                 // 0: agora.network.v1.RuntimeState
-	(*PingRequest)(nil),               // 1: agora.network.v1.PingRequest
-	(*PingResponse)(nil),              // 2: agora.network.v1.PingResponse
-	(*ShutdownRequest)(nil),           // 3: agora.network.v1.ShutdownRequest
-	(*ShutdownResponse)(nil),          // 4: agora.network.v1.ShutdownResponse
-	(*ReloadEnvironmentRequest)(nil),  // 5: agora.network.v1.ReloadEnvironmentRequest
-	(*ReloadEnvironmentResponse)(nil), // 6: agora.network.v1.ReloadEnvironmentResponse
-	(*GetNetworkStatusRequest)(nil),   // 7: agora.network.v1.GetNetworkStatusRequest
-	(*GetNetworkStatusResponse)(nil),  // 8: agora.network.v1.GetNetworkStatusResponse
-	(*DesiredServe)(nil),              // 9: agora.network.v1.DesiredServe
-	(*ManagedServeStatus)(nil),        // 10: agora.network.v1.ManagedServeStatus
-	(*EnsureServeRequest)(nil),        // 11: agora.network.v1.EnsureServeRequest
-	(*EnsureServeResponse)(nil),       // 12: agora.network.v1.EnsureServeResponse
-	(*RemoveServeRequest)(nil),        // 13: agora.network.v1.RemoveServeRequest
-	(*RemoveServeResponse)(nil),       // 14: agora.network.v1.RemoveServeResponse
-	(*ListServesRequest)(nil),         // 15: agora.network.v1.ListServesRequest
-	(*ListServesResponse)(nil),        // 16: agora.network.v1.ListServesResponse
-	(*DesiredConnect)(nil),            // 17: agora.network.v1.DesiredConnect
-	(*ManagedConnectStatus)(nil),      // 18: agora.network.v1.ManagedConnectStatus
-	(*EnsureConnectRequest)(nil),      // 19: agora.network.v1.EnsureConnectRequest
-	(*EnsureConnectResponse)(nil),     // 20: agora.network.v1.EnsureConnectResponse
-	(*RemoveConnectRequest)(nil),      // 21: agora.network.v1.RemoveConnectRequest
-	(*RemoveConnectResponse)(nil),     // 22: agora.network.v1.RemoveConnectResponse
-	(*ListConnectsRequest)(nil),       // 23: agora.network.v1.ListConnectsRequest
-	(*ListConnectsResponse)(nil),      // 24: agora.network.v1.ListConnectsResponse
-	(*NetworkStatus)(nil),             // 25: agora.network.v1.NetworkStatus
-	(*timestamppb.Timestamp)(nil),     // 26: google.protobuf.Timestamp
+	(RuntimeState)(0),                  // 0: agora.network.v1.RuntimeState
+	(EnvironmentHeartbeatState)(0),     // 1: agora.network.v1.EnvironmentHeartbeatState
+	(*PingRequest)(nil),                // 2: agora.network.v1.PingRequest
+	(*PingResponse)(nil),               // 3: agora.network.v1.PingResponse
+	(*ShutdownRequest)(nil),            // 4: agora.network.v1.ShutdownRequest
+	(*ShutdownResponse)(nil),           // 5: agora.network.v1.ShutdownResponse
+	(*ReloadEnvironmentRequest)(nil),   // 6: agora.network.v1.ReloadEnvironmentRequest
+	(*ReloadEnvironmentResponse)(nil),  // 7: agora.network.v1.ReloadEnvironmentResponse
+	(*GetNetworkStatusRequest)(nil),    // 8: agora.network.v1.GetNetworkStatusRequest
+	(*GetNetworkStatusResponse)(nil),   // 9: agora.network.v1.GetNetworkStatusResponse
+	(*EnvironmentHeartbeatStatus)(nil), // 10: agora.network.v1.EnvironmentHeartbeatStatus
+	(*DesiredServe)(nil),               // 11: agora.network.v1.DesiredServe
+	(*ManagedServeStatus)(nil),         // 12: agora.network.v1.ManagedServeStatus
+	(*EnsureServeRequest)(nil),         // 13: agora.network.v1.EnsureServeRequest
+	(*EnsureServeResponse)(nil),        // 14: agora.network.v1.EnsureServeResponse
+	(*RemoveServeRequest)(nil),         // 15: agora.network.v1.RemoveServeRequest
+	(*RemoveServeResponse)(nil),        // 16: agora.network.v1.RemoveServeResponse
+	(*ListServesRequest)(nil),          // 17: agora.network.v1.ListServesRequest
+	(*ListServesResponse)(nil),         // 18: agora.network.v1.ListServesResponse
+	(*DesiredConnect)(nil),             // 19: agora.network.v1.DesiredConnect
+	(*ManagedConnectStatus)(nil),       // 20: agora.network.v1.ManagedConnectStatus
+	(*EnsureConnectRequest)(nil),       // 21: agora.network.v1.EnsureConnectRequest
+	(*EnsureConnectResponse)(nil),      // 22: agora.network.v1.EnsureConnectResponse
+	(*RemoveConnectRequest)(nil),       // 23: agora.network.v1.RemoveConnectRequest
+	(*RemoveConnectResponse)(nil),      // 24: agora.network.v1.RemoveConnectResponse
+	(*ListConnectsRequest)(nil),        // 25: agora.network.v1.ListConnectsRequest
+	(*ListConnectsResponse)(nil),       // 26: agora.network.v1.ListConnectsResponse
+	(*NetworkStatus)(nil),              // 27: agora.network.v1.NetworkStatus
+	(*timestamppb.Timestamp)(nil),      // 28: google.protobuf.Timestamp
 }
 var file_internal_network_agent_pb_network_proto_depIdxs = []int32{
-	26, // 0: agora.network.v1.PingResponse.started_at:type_name -> google.protobuf.Timestamp
-	25, // 1: agora.network.v1.ReloadEnvironmentResponse.status:type_name -> agora.network.v1.NetworkStatus
-	25, // 2: agora.network.v1.GetNetworkStatusResponse.status:type_name -> agora.network.v1.NetworkStatus
-	9,  // 3: agora.network.v1.ManagedServeStatus.desired:type_name -> agora.network.v1.DesiredServe
-	0,  // 4: agora.network.v1.ManagedServeStatus.state:type_name -> agora.network.v1.RuntimeState
-	26, // 5: agora.network.v1.ManagedServeStatus.last_started_at:type_name -> google.protobuf.Timestamp
-	10, // 6: agora.network.v1.EnsureServeResponse.serve:type_name -> agora.network.v1.ManagedServeStatus
-	10, // 7: agora.network.v1.ListServesResponse.serves:type_name -> agora.network.v1.ManagedServeStatus
-	17, // 8: agora.network.v1.ManagedConnectStatus.desired:type_name -> agora.network.v1.DesiredConnect
-	0,  // 9: agora.network.v1.ManagedConnectStatus.state:type_name -> agora.network.v1.RuntimeState
-	26, // 10: agora.network.v1.ManagedConnectStatus.last_started_at:type_name -> google.protobuf.Timestamp
-	18, // 11: agora.network.v1.EnsureConnectResponse.connect:type_name -> agora.network.v1.ManagedConnectStatus
-	18, // 12: agora.network.v1.ListConnectsResponse.connects:type_name -> agora.network.v1.ManagedConnectStatus
-	26, // 13: agora.network.v1.NetworkStatus.started_at:type_name -> google.protobuf.Timestamp
-	10, // 14: agora.network.v1.NetworkStatus.serves:type_name -> agora.network.v1.ManagedServeStatus
-	18, // 15: agora.network.v1.NetworkStatus.connects:type_name -> agora.network.v1.ManagedConnectStatus
-	1,  // 16: agora.network.v1.NetworkService.Ping:input_type -> agora.network.v1.PingRequest
-	3,  // 17: agora.network.v1.NetworkService.Shutdown:input_type -> agora.network.v1.ShutdownRequest
-	5,  // 18: agora.network.v1.NetworkService.ReloadEnvironment:input_type -> agora.network.v1.ReloadEnvironmentRequest
-	7,  // 19: agora.network.v1.NetworkService.GetNetworkStatus:input_type -> agora.network.v1.GetNetworkStatusRequest
-	11, // 20: agora.network.v1.NetworkService.EnsureServe:input_type -> agora.network.v1.EnsureServeRequest
-	13, // 21: agora.network.v1.NetworkService.RemoveServe:input_type -> agora.network.v1.RemoveServeRequest
-	15, // 22: agora.network.v1.NetworkService.ListServes:input_type -> agora.network.v1.ListServesRequest
-	19, // 23: agora.network.v1.NetworkService.EnsureConnect:input_type -> agora.network.v1.EnsureConnectRequest
-	21, // 24: agora.network.v1.NetworkService.RemoveConnect:input_type -> agora.network.v1.RemoveConnectRequest
-	23, // 25: agora.network.v1.NetworkService.ListConnects:input_type -> agora.network.v1.ListConnectsRequest
-	2,  // 26: agora.network.v1.NetworkService.Ping:output_type -> agora.network.v1.PingResponse
-	4,  // 27: agora.network.v1.NetworkService.Shutdown:output_type -> agora.network.v1.ShutdownResponse
-	6,  // 28: agora.network.v1.NetworkService.ReloadEnvironment:output_type -> agora.network.v1.ReloadEnvironmentResponse
-	8,  // 29: agora.network.v1.NetworkService.GetNetworkStatus:output_type -> agora.network.v1.GetNetworkStatusResponse
-	12, // 30: agora.network.v1.NetworkService.EnsureServe:output_type -> agora.network.v1.EnsureServeResponse
-	14, // 31: agora.network.v1.NetworkService.RemoveServe:output_type -> agora.network.v1.RemoveServeResponse
-	16, // 32: agora.network.v1.NetworkService.ListServes:output_type -> agora.network.v1.ListServesResponse
-	20, // 33: agora.network.v1.NetworkService.EnsureConnect:output_type -> agora.network.v1.EnsureConnectResponse
-	22, // 34: agora.network.v1.NetworkService.RemoveConnect:output_type -> agora.network.v1.RemoveConnectResponse
-	24, // 35: agora.network.v1.NetworkService.ListConnects:output_type -> agora.network.v1.ListConnectsResponse
-	26, // [26:36] is the sub-list for method output_type
-	16, // [16:26] is the sub-list for method input_type
-	16, // [16:16] is the sub-list for extension type_name
-	16, // [16:16] is the sub-list for extension extendee
-	0,  // [0:16] is the sub-list for field type_name
+	28, // 0: agora.network.v1.PingResponse.started_at:type_name -> google.protobuf.Timestamp
+	27, // 1: agora.network.v1.ReloadEnvironmentResponse.status:type_name -> agora.network.v1.NetworkStatus
+	27, // 2: agora.network.v1.GetNetworkStatusResponse.status:type_name -> agora.network.v1.NetworkStatus
+	1,  // 3: agora.network.v1.EnvironmentHeartbeatStatus.state:type_name -> agora.network.v1.EnvironmentHeartbeatState
+	28, // 4: agora.network.v1.EnvironmentHeartbeatStatus.last_attempt_at:type_name -> google.protobuf.Timestamp
+	28, // 5: agora.network.v1.EnvironmentHeartbeatStatus.last_success_at:type_name -> google.protobuf.Timestamp
+	11, // 6: agora.network.v1.ManagedServeStatus.desired:type_name -> agora.network.v1.DesiredServe
+	0,  // 7: agora.network.v1.ManagedServeStatus.state:type_name -> agora.network.v1.RuntimeState
+	28, // 8: agora.network.v1.ManagedServeStatus.last_started_at:type_name -> google.protobuf.Timestamp
+	12, // 9: agora.network.v1.EnsureServeResponse.serve:type_name -> agora.network.v1.ManagedServeStatus
+	12, // 10: agora.network.v1.ListServesResponse.serves:type_name -> agora.network.v1.ManagedServeStatus
+	19, // 11: agora.network.v1.ManagedConnectStatus.desired:type_name -> agora.network.v1.DesiredConnect
+	0,  // 12: agora.network.v1.ManagedConnectStatus.state:type_name -> agora.network.v1.RuntimeState
+	28, // 13: agora.network.v1.ManagedConnectStatus.last_started_at:type_name -> google.protobuf.Timestamp
+	20, // 14: agora.network.v1.EnsureConnectResponse.connect:type_name -> agora.network.v1.ManagedConnectStatus
+	20, // 15: agora.network.v1.ListConnectsResponse.connects:type_name -> agora.network.v1.ManagedConnectStatus
+	28, // 16: agora.network.v1.NetworkStatus.started_at:type_name -> google.protobuf.Timestamp
+	12, // 17: agora.network.v1.NetworkStatus.serves:type_name -> agora.network.v1.ManagedServeStatus
+	20, // 18: agora.network.v1.NetworkStatus.connects:type_name -> agora.network.v1.ManagedConnectStatus
+	10, // 19: agora.network.v1.NetworkStatus.environment_heartbeat:type_name -> agora.network.v1.EnvironmentHeartbeatStatus
+	2,  // 20: agora.network.v1.NetworkService.Ping:input_type -> agora.network.v1.PingRequest
+	4,  // 21: agora.network.v1.NetworkService.Shutdown:input_type -> agora.network.v1.ShutdownRequest
+	6,  // 22: agora.network.v1.NetworkService.ReloadEnvironment:input_type -> agora.network.v1.ReloadEnvironmentRequest
+	8,  // 23: agora.network.v1.NetworkService.GetNetworkStatus:input_type -> agora.network.v1.GetNetworkStatusRequest
+	13, // 24: agora.network.v1.NetworkService.EnsureServe:input_type -> agora.network.v1.EnsureServeRequest
+	15, // 25: agora.network.v1.NetworkService.RemoveServe:input_type -> agora.network.v1.RemoveServeRequest
+	17, // 26: agora.network.v1.NetworkService.ListServes:input_type -> agora.network.v1.ListServesRequest
+	21, // 27: agora.network.v1.NetworkService.EnsureConnect:input_type -> agora.network.v1.EnsureConnectRequest
+	23, // 28: agora.network.v1.NetworkService.RemoveConnect:input_type -> agora.network.v1.RemoveConnectRequest
+	25, // 29: agora.network.v1.NetworkService.ListConnects:input_type -> agora.network.v1.ListConnectsRequest
+	3,  // 30: agora.network.v1.NetworkService.Ping:output_type -> agora.network.v1.PingResponse
+	5,  // 31: agora.network.v1.NetworkService.Shutdown:output_type -> agora.network.v1.ShutdownResponse
+	7,  // 32: agora.network.v1.NetworkService.ReloadEnvironment:output_type -> agora.network.v1.ReloadEnvironmentResponse
+	9,  // 33: agora.network.v1.NetworkService.GetNetworkStatus:output_type -> agora.network.v1.GetNetworkStatusResponse
+	14, // 34: agora.network.v1.NetworkService.EnsureServe:output_type -> agora.network.v1.EnsureServeResponse
+	16, // 35: agora.network.v1.NetworkService.RemoveServe:output_type -> agora.network.v1.RemoveServeResponse
+	18, // 36: agora.network.v1.NetworkService.ListServes:output_type -> agora.network.v1.ListServesResponse
+	22, // 37: agora.network.v1.NetworkService.EnsureConnect:output_type -> agora.network.v1.EnsureConnectResponse
+	24, // 38: agora.network.v1.NetworkService.RemoveConnect:output_type -> agora.network.v1.RemoveConnectResponse
+	26, // 39: agora.network.v1.NetworkService.ListConnects:output_type -> agora.network.v1.ListConnectsResponse
+	30, // [30:40] is the sub-list for method output_type
+	20, // [20:30] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_internal_network_agent_pb_network_proto_init() }
@@ -1564,8 +1718,8 @@ func file_internal_network_agent_pb_network_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_internal_network_agent_pb_network_proto_rawDesc), len(file_internal_network_agent_pb_network_proto_rawDesc)),
-			NumEnums:      1,
-			NumMessages:   25,
+			NumEnums:      2,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

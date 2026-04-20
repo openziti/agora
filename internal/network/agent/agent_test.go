@@ -6,6 +6,8 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -174,12 +176,168 @@ func TestPingAndStatusReturnErrNotRunningWhenSocketMissing(t *testing.T) {
 	}
 }
 
+func TestAgentEnvironmentHeartbeatOnline(t *testing.T) {
+	rootPath := filepath.Join(t.TempDir(), ".agora")
+	environment.SetRootDirName(rootPath)
+
+	const envID = "ev_test00000021"
+	var requests atomic.Int32
+
+	root := loadTestRoot(t)
+	if err := root.SetEnvironment(&env_core.Environment{
+		EnvironmentID: envID,
+		AccountToken:  "account-token",
+		APIEndpoint:   "http://controller.example",
+	}); err != nil {
+		t.Fatalf("set environment: %v", err)
+	}
+
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+		agent.heartbeatInterval = 20 * time.Millisecond
+		agent.heartbeatTTL = 60 * time.Millisecond
+		agent.heartbeatRequestTimeout = 50 * time.Millisecond
+		agent.heartbeatSender = func(context.Context, *env_core.Environment) (bool, error) {
+			requests.Add(1)
+			return false, nil
+		}
+	})
+	defer cleanup()
+
+	status := waitForHeartbeatState(t, client, networkpb.EnvironmentHeartbeatState_ENVIRONMENT_HEARTBEAT_STATE_ONLINE)
+	if status.LastSuccessAt == nil {
+		t.Fatalf("expected last success timestamp in %#v", status)
+	}
+	if requests.Load() == 0 {
+		t.Fatal("expected at least one heartbeat request")
+	}
+}
+
+func TestAgentEnvironmentHeartbeatStaleAfterTransientFailures(t *testing.T) {
+	rootPath := filepath.Join(t.TempDir(), ".agora")
+	environment.SetRootDirName(rootPath)
+
+	const envID = "ev_test00000022"
+
+	root := loadTestRoot(t)
+	if err := root.SetEnvironment(&env_core.Environment{
+		EnvironmentID: envID,
+		AccountToken:  "account-token",
+		APIEndpoint:   "http://controller.example",
+	}); err != nil {
+		t.Fatalf("set environment: %v", err)
+	}
+
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+		agent.heartbeatInterval = 20 * time.Millisecond
+		agent.heartbeatTTL = 60 * time.Millisecond
+		agent.heartbeatRequestTimeout = 50 * time.Millisecond
+		agent.heartbeatSender = func(context.Context, *env_core.Environment) (bool, error) {
+			return false, errors.New("controller unavailable")
+		}
+	})
+	defer cleanup()
+
+	status := waitForHeartbeatState(t, client, networkpb.EnvironmentHeartbeatState_ENVIRONMENT_HEARTBEAT_STATE_STALE)
+	if !strings.Contains(status.LastError, "controller unavailable") {
+		t.Fatalf("expected transient heartbeat error, got %#v", status)
+	}
+}
+
+func TestAgentEnvironmentHeartbeatPermanentError(t *testing.T) {
+	rootPath := filepath.Join(t.TempDir(), ".agora")
+	environment.SetRootDirName(rootPath)
+
+	const envID = "ev_test00000023"
+	var requests atomic.Int32
+
+	root := loadTestRoot(t)
+	if err := root.SetEnvironment(&env_core.Environment{
+		EnvironmentID: envID,
+		AccountToken:  "account-token",
+		APIEndpoint:   "http://controller.example",
+	}); err != nil {
+		t.Fatalf("set environment: %v", err)
+	}
+
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+		agent.heartbeatInterval = 20 * time.Millisecond
+		agent.heartbeatTTL = 60 * time.Millisecond
+		agent.heartbeatRequestTimeout = 50 * time.Millisecond
+		agent.heartbeatSender = func(context.Context, *env_core.Environment) (bool, error) {
+			requests.Add(1)
+			return true, errors.New("environment not found")
+		}
+	})
+	defer cleanup()
+
+	status := waitForHeartbeatState(t, client, networkpb.EnvironmentHeartbeatState_ENVIRONMENT_HEARTBEAT_STATE_ERROR)
+	if !strings.Contains(status.LastError, "not found") {
+		t.Fatalf("expected permanent heartbeat error, got %#v", status)
+	}
+	if requests.Load() != 1 {
+		t.Fatalf("expected one heartbeat request before permanent stop, got %d", requests.Load())
+	}
+}
+
+func TestAgentReloadEnvironmentDisablesHeartbeat(t *testing.T) {
+	rootPath := filepath.Join(t.TempDir(), ".agora")
+	environment.SetRootDirName(rootPath)
+
+	const envID = "ev_test00000024"
+	var requests atomic.Int32
+
+	root := loadTestRoot(t)
+	if err := root.SetEnvironment(&env_core.Environment{
+		EnvironmentID: envID,
+		AccountToken:  "account-token",
+		APIEndpoint:   "http://controller.example",
+	}); err != nil {
+		t.Fatalf("set environment: %v", err)
+	}
+
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+		agent.heartbeatInterval = 20 * time.Millisecond
+		agent.heartbeatTTL = 60 * time.Millisecond
+		agent.heartbeatRequestTimeout = 50 * time.Millisecond
+		agent.heartbeatSender = func(context.Context, *env_core.Environment) (bool, error) {
+			requests.Add(1)
+			return false, nil
+		}
+	})
+	defer cleanup()
+
+	waitForHeartbeatState(t, client, networkpb.EnvironmentHeartbeatState_ENVIRONMENT_HEARTBEAT_STATE_ONLINE)
+
+	if err := root.DeleteEnvironment(); err != nil {
+		t.Fatalf("delete environment: %v", err)
+	}
+	if _, err := client.ReloadEnvironment(context.Background(), &networkpb.ReloadEnvironmentRequest{}); err != nil {
+		t.Fatalf("reload environment: %v", err)
+	}
+
+	waitForHeartbeatState(t, client, networkpb.EnvironmentHeartbeatState_ENVIRONMENT_HEARTBEAT_STATE_DISABLED)
+
+	time.Sleep(50 * time.Millisecond)
+	stable := requests.Load()
+	time.Sleep(80 * time.Millisecond)
+	if got := requests.Load(); got != stable {
+		t.Fatalf("expected heartbeat loop to stop after disable, got %d then %d requests", stable, got)
+	}
+}
+
 func startBufferedTestAgent(t *testing.T) (*Agent, networkpb.NetworkServiceClient, <-chan error, func()) {
+	return startBufferedTestAgentWithOptions(t, nil)
+}
+
+func startBufferedTestAgentWithOptions(t *testing.T, configure func(*Agent)) (*Agent, networkpb.NetworkServiceClient, <-chan error, func()) {
 	t.Helper()
 
 	agent, err := New()
 	if err != nil {
 		t.Fatalf("new agent: %v", err)
+	}
+	if configure != nil {
+		configure(agent)
 	}
 
 	listener := bufconn.Listen(1024 * 1024)
@@ -225,4 +383,27 @@ func loadTestRoot(t *testing.T) env_core.Root {
 		t.Fatalf("load root: %v", err)
 	}
 	return root
+}
+
+func waitForHeartbeatState(t *testing.T, client networkpb.NetworkServiceClient, expected networkpb.EnvironmentHeartbeatState) *networkpb.EnvironmentHeartbeatStatus {
+	t.Helper()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		resp, err := client.GetNetworkStatus(context.Background(), &networkpb.GetNetworkStatusRequest{})
+		if err != nil {
+			t.Fatalf("get network status: %v", err)
+		}
+		if resp.Status.EnvironmentHeartbeat != nil && resp.Status.EnvironmentHeartbeat.State == expected {
+			return resp.Status.EnvironmentHeartbeat
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	resp, err := client.GetNetworkStatus(context.Background(), &networkpb.GetNetworkStatusRequest{})
+	if err != nil {
+		t.Fatalf("get final network status: %v", err)
+	}
+	t.Fatalf("timed out waiting for heartbeat state %s, got %#v", expected.String(), resp.Status.EnvironmentHeartbeat)
+	return nil
 }

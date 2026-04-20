@@ -199,30 +199,53 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					}
 
 					// Param: "environmentId"
-					// Leaf parameter, slashes are prohibited
+					// Match until "/"
 					idx := strings.IndexByte(elem, '/')
-					if idx >= 0 {
-						break
+					if idx < 0 {
+						idx = len(elem)
 					}
-					args[0] = elem
-					elem = ""
+					args[0] = elem[:idx]
+					elem = elem[idx:]
 
 					if len(elem) == 0 {
-						// Leaf node.
 						switch r.Method {
-						case "DELETE":
-							s.handleDisableEnvironmentRequest([1]string{
-								args[0],
-							}, elemIsEscaped, w, r)
 						case "GET":
 							s.handleGetEnvironmentRequest([1]string{
 								args[0],
 							}, elemIsEscaped, w, r)
 						default:
-							s.notAllowed(w, r, "DELETE,GET")
+							s.notAllowed(w, r, "GET")
 						}
 
 						return
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/heartbeat"
+
+						if l := len("/heartbeat"); len(elem) >= l && elem[0:l] == "/heartbeat" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "DELETE":
+								s.handleDisableEnvironmentRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							case "POST":
+								s.handleHeartbeatEnvironmentRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, "DELETE,POST")
+							}
+
+							return
+						}
+
 					}
 
 				}
@@ -937,25 +960,16 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					}
 
 					// Param: "environmentId"
-					// Leaf parameter, slashes are prohibited
+					// Match until "/"
 					idx := strings.IndexByte(elem, '/')
-					if idx >= 0 {
-						break
+					if idx < 0 {
+						idx = len(elem)
 					}
-					args[0] = elem
-					elem = ""
+					args[0] = elem[:idx]
+					elem = elem[idx:]
 
 					if len(elem) == 0 {
-						// Leaf node.
 						switch method {
-						case "DELETE":
-							r.name = DisableEnvironmentOperation
-							r.summary = ""
-							r.operationID = "disableEnvironment"
-							r.pathPattern = "/environments/{environmentId}"
-							r.args = args
-							r.count = 1
-							return r, true
 						case "GET":
 							r.name = GetEnvironmentOperation
 							r.summary = ""
@@ -967,6 +981,40 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						default:
 							return
 						}
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/heartbeat"
+
+						if l := len("/heartbeat"); len(elem) >= l && elem[0:l] == "/heartbeat" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "DELETE":
+								r.name = DisableEnvironmentOperation
+								r.summary = ""
+								r.operationID = "disableEnvironment"
+								r.pathPattern = "/environments/{environmentId}/heartbeat"
+								r.args = args
+								r.count = 1
+								return r, true
+							case "POST":
+								r.name = HeartbeatEnvironmentOperation
+								r.summary = ""
+								r.operationID = "heartbeatEnvironment"
+								r.pathPattern = "/environments/{environmentId}/heartbeat"
+								r.args = args
+								r.count = 1
+								return r, true
+							default:
+								return
+							}
+						}
+
 					}
 
 				}

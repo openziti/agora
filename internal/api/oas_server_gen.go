@@ -54,7 +54,7 @@ type Handler interface {
 	DeleteTunnelServe(ctx context.Context, params DeleteTunnelServeParams) (DeleteTunnelServeRes, error)
 	// DisableEnvironment implements disableEnvironment operation.
 	//
-	// DELETE /environments/{environmentId}
+	// DELETE /environments/{environmentId}/heartbeat
 	DisableEnvironment(ctx context.Context, params DisableEnvironmentParams) (DisableEnvironmentRes, error)
 	// EnableEnvironment implements enableEnvironment operation.
 	//
@@ -68,6 +68,10 @@ type Handler interface {
 	//
 	// GET /tunnels/{tunnelId}
 	GetTunnel(ctx context.Context, params GetTunnelParams) (GetTunnelRes, error)
+	// HeartbeatEnvironment implements heartbeatEnvironment operation.
+	//
+	// POST /environments/{environmentId}/heartbeat
+	HeartbeatEnvironment(ctx context.Context, params HeartbeatEnvironmentParams) (HeartbeatEnvironmentRes, error)
 	// HeartbeatTunnelAttachment implements heartbeatTunnelAttachment operation.
 	//
 	// POST /tunnel-attachments/{attachmentId}/heartbeat

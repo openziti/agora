@@ -15,6 +15,15 @@ enum RuntimeState {
   RUNTIME_STATE_STOPPED = 5;
 }
 
+enum EnvironmentHeartbeatState {
+  ENVIRONMENT_HEARTBEAT_STATE_UNSPECIFIED = 0;
+  ENVIRONMENT_HEARTBEAT_STATE_DISABLED = 1;
+  ENVIRONMENT_HEARTBEAT_STATE_STARTING = 2;
+  ENVIRONMENT_HEARTBEAT_STATE_ONLINE = 3;
+  ENVIRONMENT_HEARTBEAT_STATE_STALE = 4;
+  ENVIRONMENT_HEARTBEAT_STATE_ERROR = 5;
+}
+
 message PingRequest {}
 
 message PingResponse {
@@ -36,6 +45,13 @@ message GetNetworkStatusRequest {}
 
 message GetNetworkStatusResponse {
   NetworkStatus status = 1;
+}
+
+message EnvironmentHeartbeatStatus {
+  EnvironmentHeartbeatState state = 1;
+  google.protobuf.Timestamp last_attempt_at = 2;
+  google.protobuf.Timestamp last_success_at = 3;
+  string last_error = 4;
 }
 
 message DesiredServe {
@@ -127,6 +143,7 @@ message NetworkStatus {
   string environment_id = 5;
   repeated ManagedServeStatus serves = 6;
   repeated ManagedConnectStatus connects = 7;
+  EnvironmentHeartbeatStatus environment_heartbeat = 8;
 }
 
 service NetworkService {

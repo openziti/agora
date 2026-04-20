@@ -67,7 +67,7 @@ type Invoker interface {
 	DeleteTunnelServe(ctx context.Context, params DeleteTunnelServeParams) (DeleteTunnelServeRes, error)
 	// DisableEnvironment invokes disableEnvironment operation.
 	//
-	// DELETE /environments/{environmentId}
+	// DELETE /environments/{environmentId}/heartbeat
 	DisableEnvironment(ctx context.Context, params DisableEnvironmentParams) (DisableEnvironmentRes, error)
 	// EnableEnvironment invokes enableEnvironment operation.
 	//
@@ -81,6 +81,10 @@ type Invoker interface {
 	//
 	// GET /tunnels/{tunnelId}
 	GetTunnel(ctx context.Context, params GetTunnelParams) (GetTunnelRes, error)
+	// HeartbeatEnvironment invokes heartbeatEnvironment operation.
+	//
+	// POST /environments/{environmentId}/heartbeat
+	HeartbeatEnvironment(ctx context.Context, params HeartbeatEnvironmentParams) (HeartbeatEnvironmentRes, error)
 	// HeartbeatTunnelAttachment invokes heartbeatTunnelAttachment operation.
 	//
 	// POST /tunnel-attachments/{attachmentId}/heartbeat
@@ -1138,7 +1142,7 @@ func (c *Client) sendDeleteTunnelServe(ctx context.Context, params DeleteTunnelS
 
 // DisableEnvironment invokes disableEnvironment operation.
 //
-// DELETE /environments/{environmentId}
+// DELETE /environments/{environmentId}/heartbeat
 func (c *Client) DisableEnvironment(ctx context.Context, params DisableEnvironmentParams) (DisableEnvironmentRes, error) {
 	res, err := c.sendDisableEnvironment(ctx, params)
 	return res, err
@@ -1147,7 +1151,7 @@ func (c *Client) DisableEnvironment(ctx context.Context, params DisableEnvironme
 func (c *Client) sendDisableEnvironment(ctx context.Context, params DisableEnvironmentParams) (res DisableEnvironmentRes, err error) {
 
 	u := uri.Clone(c.requestURL(ctx))
-	var pathParts [2]string
+	var pathParts [3]string
 	pathParts[0] = "/environments/"
 	{
 		// Encode "environmentId" parameter.
@@ -1167,6 +1171,7 @@ func (c *Client) sendDisableEnvironment(ctx context.Context, params DisableEnvir
 		}
 		pathParts[1] = encoded
 	}
+	pathParts[2] = "/heartbeat"
 	uri.AddPathParts(u, pathParts[:]...)
 
 	r, err := ht.NewRequest(ctx, "DELETE", u)
@@ -1454,6 +1459,92 @@ func (c *Client) sendGetTunnel(ctx context.Context, params GetTunnelParams) (res
 	defer resp.Body.Close()
 
 	result, err := decodeGetTunnelResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// HeartbeatEnvironment invokes heartbeatEnvironment operation.
+//
+// POST /environments/{environmentId}/heartbeat
+func (c *Client) HeartbeatEnvironment(ctx context.Context, params HeartbeatEnvironmentParams) (HeartbeatEnvironmentRes, error) {
+	res, err := c.sendHeartbeatEnvironment(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendHeartbeatEnvironment(ctx context.Context, params HeartbeatEnvironmentParams) (res HeartbeatEnvironmentRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/environments/"
+	{
+		// Encode "environmentId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "environmentId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.EnvironmentId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/heartbeat"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, HeartbeatEnvironmentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeHeartbeatEnvironmentResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

@@ -186,6 +186,29 @@ func TestServiceHTTPFlow(t *testing.T) {
 	if len(*environments) != 1 {
 		t.Fatalf("expected 1 environment, got %d", len(*environments))
 	}
+	if (*environments)[0].LastSeenAt.Set {
+		t.Fatalf("expected no last seen before heartbeat, got %#v", (*environments)[0].LastSeenAt)
+	}
+
+	heartbeatRes, err := accountClient.HeartbeatEnvironment(ctx, api.HeartbeatEnvironmentParams{EnvironmentId: env.ID})
+	if err != nil {
+		t.Fatalf("heartbeat environment request: %v", err)
+	}
+	if _, ok := heartbeatRes.(*api.HeartbeatEnvironmentNoContent); !ok {
+		t.Fatalf("unexpected heartbeat environment response: %T", heartbeatRes)
+	}
+
+	getEnvRes, err := accountClient.GetEnvironment(ctx, api.GetEnvironmentParams{EnvironmentId: env.ID})
+	if err != nil {
+		t.Fatalf("get environment request: %v", err)
+	}
+	gotEnv, ok := getEnvRes.(*api.Environment)
+	if !ok {
+		t.Fatalf("unexpected get environment response: %T", getEnvRes)
+	}
+	if !gotEnv.LastSeenAt.Set {
+		t.Fatalf("expected last seen after heartbeat")
+	}
 
 	createTunnelRes, err := accountClient.CreateTunnel(ctx, &api.CreateTunnelRequest{
 		EnvironmentId: env.ID,

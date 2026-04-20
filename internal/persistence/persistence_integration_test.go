@@ -118,6 +118,10 @@ func TestRepositoriesCRUDAndConstraints(t *testing.T) {
 		t.Fatalf("expected last seen %v, got %v", lastSeen, updatedEnv.LastSeenAt)
 	}
 
+	if err := store.Environments.UpdateLastSeen(ctx, store.DB(), "ev_missing0000", lastSeen); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound updating missing environment, got %v", err)
+	}
+
 	if _, err := store.Accounts.Create(ctx, store.DB(), Account{
 		OrganizationID: org.ID,
 		Email:          acct.Email,

@@ -40,6 +40,18 @@ func newNetworkStatusCommand() *cobra.Command {
 			} else {
 				fmt.Println("environment: disabled")
 			}
+			if heartbeat := status.EnvironmentHeartbeat; heartbeat != nil {
+				fmt.Printf("heartbeat: %s\n", formatEnvironmentHeartbeatState(heartbeat.State))
+				if heartbeat.LastAttemptAt != nil {
+					fmt.Printf("heartbeat last attempt: %s\n", clioutput.TimeUTC(heartbeat.LastAttemptAt.AsTime()))
+				}
+				if heartbeat.LastSuccessAt != nil {
+					fmt.Printf("heartbeat last success: %s\n", clioutput.TimeUTC(heartbeat.LastSuccessAt.AsTime()))
+				}
+				if heartbeat.LastError != "" {
+					fmt.Printf("heartbeat last error: %s\n", heartbeat.LastError)
+				}
+			}
 			fmt.Println()
 
 			if len(status.Serves) > 0 {
@@ -82,4 +94,8 @@ func newNetworkStatusCommand() *cobra.Command {
 
 func formatRuntimeState(state networkpb.RuntimeState) string {
 	return strings.ToLower(strings.TrimPrefix(state.String(), "RUNTIME_STATE_"))
+}
+
+func formatEnvironmentHeartbeatState(state networkpb.EnvironmentHeartbeatState) string {
+	return strings.ToLower(strings.TrimPrefix(state.String(), "ENVIRONMENT_HEARTBEAT_STATE_"))
 }

@@ -27,7 +27,7 @@ The codebase is still early-stage, but it already includes the main structural p
 - generated server and client bindings using `ogen`
 - a handwritten controller service that implements the generated `ogen` interfaces
 - real OpenZiti-backed environment and tunnel lifecycle flows
-- a phase 1 local `agora network` agent over gRPC+UDS
+- a phase 2 local `agora network` agent over gRPC+UDS with environment heartbeat and local heartbeat status
 
 The current API surface covers the first Layer 1 (Network) slice:
 

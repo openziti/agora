@@ -30,6 +30,8 @@ paths:
     $ref: "environments/paths.yml#/~1environments"
   /environments/{environmentId}:
     $ref: "environments/paths.yml#/~1environments~1{environmentId}"
+  /environments/{environmentId}/heartbeat:
+    $ref: "environments/paths.yml#/~1environments~1{environmentId}~1heartbeat"
 
   /tunnels:
     $ref: "tunnels/paths.yml#/~1tunnels"

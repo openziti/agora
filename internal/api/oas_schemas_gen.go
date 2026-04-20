@@ -1063,6 +1063,23 @@ type GetTunnelUnauthorized Error
 
 func (*GetTunnelUnauthorized) getTunnelRes() {}
 
+type HeartbeatEnvironmentInternalServerError Error
+
+func (*HeartbeatEnvironmentInternalServerError) heartbeatEnvironmentRes() {}
+
+// HeartbeatEnvironmentNoContent is response for HeartbeatEnvironment operation.
+type HeartbeatEnvironmentNoContent struct{}
+
+func (*HeartbeatEnvironmentNoContent) heartbeatEnvironmentRes() {}
+
+type HeartbeatEnvironmentNotFound Error
+
+func (*HeartbeatEnvironmentNotFound) heartbeatEnvironmentRes() {}
+
+type HeartbeatEnvironmentUnauthorized Error
+
+func (*HeartbeatEnvironmentUnauthorized) heartbeatEnvironmentRes() {}
+
 type HeartbeatTunnelAttachmentInternalServerError Error
 
 func (*HeartbeatTunnelAttachmentInternalServerError) heartbeatTunnelAttachmentRes() {}

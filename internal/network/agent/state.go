@@ -198,13 +198,14 @@ func matchesConnect(existing env_core.ManagedConnect, tunnelID, name, listenAddr
 	return name != "" && strings.EqualFold(existing.Name, name) && existing.ListenAddress == listenAddress
 }
 
-func networkStatusProto(pid int, startedAt time.Time, socketPath string, env *env_core.Environment, networkState *env_core.Network) *networkpb.NetworkStatus {
+func networkStatusProto(pid int, startedAt time.Time, socketPath string, env *env_core.Environment, networkState *env_core.Network, heartbeat *networkpb.EnvironmentHeartbeatStatus) *networkpb.NetworkStatus {
 	status := &networkpb.NetworkStatus{
-		Pid:        int32(pid),
-		StartedAt:  timestamppb.New(startedAt.UTC()),
-		SocketPath: socketPath,
-		Serves:     make([]*networkpb.ManagedServeStatus, 0, len(networkState.Serves)),
-		Connects:   make([]*networkpb.ManagedConnectStatus, 0, len(networkState.Connects)),
+		Pid:                  int32(pid),
+		StartedAt:            timestamppb.New(startedAt.UTC()),
+		SocketPath:           socketPath,
+		Serves:               make([]*networkpb.ManagedServeStatus, 0, len(networkState.Serves)),
+		Connects:             make([]*networkpb.ManagedConnectStatus, 0, len(networkState.Connects)),
+		EnvironmentHeartbeat: heartbeat,
 	}
 	if env != nil {
 		status.EnvironmentEnabled = true

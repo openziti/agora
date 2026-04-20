@@ -30,6 +30,13 @@ type Agent struct {
 	startedAt  time.Time
 	pid        int
 
+	now                     func() time.Time
+	heartbeatInterval       time.Duration
+	heartbeatTTL            time.Duration
+	heartbeatRequestTimeout time.Duration
+	heartbeatSender         func(context.Context, *env_core.Environment) (bool, error)
+	heartbeat               environmentHeartbeat
+
 	grpcServer *grpc.Server
 	shutdownCh chan struct{}
 	stopOnce   sync.Once
@@ -44,15 +51,21 @@ func New() (*Agent, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Agent{
-		root:       root,
-		env:        env,
-		network:    networkState,
-		socketPath: socketPath,
-		startedAt:  time.Now().UTC(),
-		pid:        os.Getpid(),
-		shutdownCh: make(chan struct{}),
-	}, nil
+	agent := &Agent{
+		root:                    root,
+		env:                     env,
+		network:                 networkState,
+		socketPath:              socketPath,
+		startedAt:               time.Now().UTC(),
+		pid:                     os.Getpid(),
+		now:                     time.Now,
+		heartbeatInterval:       defaultEnvironmentHeartbeatInterval,
+		heartbeatTTL:            defaultEnvironmentHeartbeatTTL,
+		heartbeatRequestTimeout: defaultEnvironmentHeartbeatRequestTimeout,
+		shutdownCh:              make(chan struct{}),
+	}
+	agent.heartbeatSender = agent.sendEnvironmentHeartbeat
+	return agent, nil
 }
 
 func (a *Agent) Run(ctx context.Context) error {
@@ -82,6 +95,7 @@ func (a *Agent) Run(ctx context.Context) error {
 
 func (a *Agent) runServer(ctx context.Context, listener net.Listener, cleanup func()) error {
 	defer func() {
+		a.stopEnvironmentHeartbeatLoop()
 		_ = listener.Close()
 		if cleanup != nil {
 			cleanup()
@@ -91,6 +105,9 @@ func (a *Agent) runServer(ctx context.Context, listener net.Listener, cleanup fu
 	server := grpc.NewServer()
 	networkpb.RegisterNetworkServiceServer(server, a)
 	a.grpcServer = server
+	a.mu.Lock()
+	a.replaceEnvironmentHeartbeatLoopLocked()
+	a.mu.Unlock()
 
 	serveErrCh := make(chan error, 1)
 	go func() {
@@ -140,7 +157,7 @@ func (a *Agent) stop() {
 }
 
 func (a *Agent) snapshotStatusLocked() *networkpb.NetworkStatus {
-	return networkStatusProto(a.pid, a.startedAt, a.socketPath, a.env, a.network)
+	return networkStatusProto(a.pid, a.startedAt, a.socketPath, a.env, a.network, a.environmentHeartbeatStatusLocked(a.now().UTC()))
 }
 
 func (a *Agent) Ping(context.Context, *networkpb.PingRequest) (*networkpb.PingResponse, error) {
@@ -168,6 +185,7 @@ func (a *Agent) ReloadEnvironment(context.Context, *networkpb.ReloadEnvironmentR
 	a.root = root
 	a.env = env
 	a.network = networkState
+	a.replaceEnvironmentHeartbeatLoopLocked()
 	return &networkpb.ReloadEnvironmentResponse{Status: a.snapshotStatusLocked()}, nil
 }
 

@@ -101,6 +101,42 @@
           application/json:
             schema:
               $ref: "../agora.yml#/components/schemas/error"
+
+/environments/{environmentId}/heartbeat:
+  post:
+    tags:
+      - environments
+    operationId: heartbeatEnvironment
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: environmentId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^ev_[a-z0-9]{12}$'
+    responses:
+      204:
+        description: heartbeat recorded
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
   delete:
     tags:
       - environments
