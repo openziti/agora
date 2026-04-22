@@ -4,7 +4,18 @@
 
 Agora is a native zero-trust overlay network for agent-to-agent communication, built on OpenZiti. It provides secure connectivity primitives at Layer 1 (Network) and governed agent collaboration services at Layer 2 (Collaboration).
 
-This repository is in early-stage development. Favor simple, explicit structure and keep implementation aligned with `CLAUDE-ARCHITECTURE.md`.
+This repository is in early-stage development. Favor simple, explicit structure and keep implementation aligned with `docs/architecture/overview.md` and the relevant layer docs under `docs/`.
+
+## Documentation Structure
+
+- The canonical architecture, status, maintainer, and roadmap materials live under `docs/`.
+- Use `docs/architecture/overview.md` for cross-layer architecture and system-wide design.
+- Use `docs/layer-1/spec.md`, `docs/layer-1/status.md`, and `docs/layer-1/agent.md` for Layer 1 (Network) normative behavior, current state, and local-runtime design.
+- Use `docs/layer-2/spec.md` and `docs/layer-2/status.md` for Layer 2 (Collaboration) design and implementation status.
+- Use `docs/maintainers/current-state.md` for repo-shape, workflow, and maintainer-facing current-state context.
+- Use `docs/roadmap/post-mvp.md` for explicitly deferred work such as metrics and limits.
+- Do not create new root-level planning or handoff docs that duplicate the `docs/` canon.
+- Keep spec docs normative, status docs factual/current-state, and roadmap docs limited to deferred or later-phase work.
 
 ## Development Commands
 

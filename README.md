@@ -4,7 +4,7 @@ Agora is a native zero-trust overlay network for agent-to-agent communication.
 
 It is built on OpenZiti and is intended to provide the identity, discovery, policy, and communication substrate that autonomous agents need to interact safely across organizational boundaries. Agora is A2A-compatible at the protocol layer, but its core value is the governed network underneath: secure connectivity, explicit policy boundaries, and auditable communication primitives.
 
-The architecture is defined in [CLAUDE-ARCHITECTURE.md](./CLAUDE-ARCHITECTURE.md).
+The canonical architecture, status, and roadmap materials now live under [docs/](./docs/README.md).
 
 ## Architecture
 
@@ -46,7 +46,7 @@ The current API surface covers the first Layer 1 (Network) slice:
 - `internal/network/tunnelruntime/`: HTTP/TCP/UDP tunnel runtime implementations used by `serve` and `connect`
 - `internal/persistence/`: store, repositories, models, migration management, and integration tests
 - `internal/collaboration/`: reserved for future Layer 2 (Collaboration) package-owned code
-- `CLAUDE-ARCHITECTURE.md`: high-level architecture and product direction
+- `docs/`: canonical architecture, layer, maintainer, and roadmap documents
 - `AGENTS.md`: contributor rules and project conventions
 
 Layer-owned internal packages follow the conceptual layer names:
@@ -56,6 +56,13 @@ Layer-owned internal packages follow the conceptual layer names:
 - `internal/collaboration/...` for Layer 2 (Collaboration)
 
 Cross-cutting packages such as `internal/controller`, `internal/persistence`, `internal/api`, and `internal/clioutput` intentionally remain top-level.
+
+For deeper design and status material, start with:
+
+- [docs/architecture/overview.md](./docs/architecture/overview.md)
+- [docs/layer-1/status.md](./docs/layer-1/status.md)
+- [docs/layer-2/status.md](./docs/layer-2/status.md)
+- [docs/maintainers/current-state.md](./docs/maintainers/current-state.md)
 
 ## Development
 
