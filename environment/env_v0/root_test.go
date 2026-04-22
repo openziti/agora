@@ -211,3 +211,33 @@ func TestEnvRootJSONFilesUse0600(t *testing.T) {
 		}
 	}
 }
+
+func TestZitiIdentityFileUses0600(t *testing.T) {
+	rootPath := filepath.Join(t.TempDir(), ".agora")
+	SetRootDirName(rootPath)
+
+	root, err := Default()
+	if err != nil {
+		t.Fatalf("default root: %v", err)
+	}
+	if err := root.SaveZitiIdentityNamed("environment", "identity-material"); err != nil {
+		t.Fatalf("save identity: %v", err)
+	}
+
+	identityPath := filepath.Join(rootPath, "identities", "environment.json")
+	info, err := os.Stat(identityPath)
+	if err != nil {
+		t.Fatalf("stat identity file: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("expected identity file to use 0600, got %03o", got)
+	}
+
+	dirInfo, err := os.Stat(filepath.Join(rootPath, "identities"))
+	if err != nil {
+		t.Fatalf("stat identities dir: %v", err)
+	}
+	if got := dirInfo.Mode().Perm(); got != 0o700 {
+		t.Fatalf("expected identities dir to use 0700, got %03o", got)
+	}
+}
