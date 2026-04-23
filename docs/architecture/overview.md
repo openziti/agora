@@ -8,6 +8,8 @@ Detailed layer-specific behavior lives in:
 - [Layer 1 (Network) status](../layer-1/status.md)
 - [Layer 1 (Network) agent](../layer-1/agent.md)
 - [Layer 2 (Collaboration) spec](../layer-2/spec.md)
+- [Layer 2 (Collaboration) foundation](../layer-2/foundation.md)
+- Layer 2 per-concept specs: [workgroups](../layer-2/workgroups.md), [catalog](../layer-2/catalog.md), [advertisements](../layer-2/advertisements.md), [sessions](../layer-2/sessions.md), [contracts](../layer-2/contracts.md), [envelopes](../layer-2/envelopes.md)
 - [Layer 2 (Collaboration) status](../layer-2/status.md)
 - [Post-MVP roadmap](../roadmap/post-mvp.md)
 

@@ -49,18 +49,17 @@ This checklist is complete.
 
 The following work still remains if the goal is to call Layer 1 operationally solid rather than merely minimum-working:
 
-- controller health and readiness endpoints
-- more explicit graceful shutdown behavior for controller background workers
 - a documented and repeatable local development and smoke-test stack
 - clearer end-to-end operational validation for enable, serve, connect, status, and cleanup
-- a final decision on whether the current thin-daemon model is sufficient or whether a more explicitly embeddable runtime package is still required
+
+Controller health and readiness endpoints, graceful shutdown of the controller's reaper goroutines, and the thin-daemon runtime packaging direction are now resolved. See [spec.md](spec.md) for the endpoint surface, the controller source for shutdown behavior, and [agent.md](agent.md) "Packaging Direction" for the runtime decision.
 
 ## Broader Layer 1 Completion Checklist
 
 This checklist is not complete.
 
-- [ ] controller health/readiness and shutdown behavior are solid
-- [ ] the local runtime packaging direction is finalized and reflected in the implementation
+- [x] controller health/readiness and shutdown behavior are solid
+- [x] the local runtime packaging direction is finalized and reflected in the implementation
 - [ ] the project has a documented and repeatable end-to-end operational validation path
 - [ ] metrics are implemented (deferred; see [../roadmap/post-mvp.md](../roadmap/post-mvp.md))
 - [ ] limits are implemented (deferred; see [../roadmap/post-mvp.md](../roadmap/post-mvp.md))

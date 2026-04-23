@@ -47,6 +47,20 @@ The v1 runtime does not need to:
 - solve Layer 2 concerns
 - replace the controller REST API with a second remote control protocol
 
+## Packaging Direction
+
+The Layer 1 runtime is delivered as a thin local daemon, not as an embeddable library. This is the finalized direction.
+
+Rationale:
+
+- the thin-daemon model is fully implemented, tested, and documented, and meets all Layer 1 acceptance criteria
+- the gRPC-over-UDS control surface is a stable, typed interface that external processes (including Layer 2 participants) can drive without linking the runtime as a library
+- Layer 2 resources (workgroups, catalog, advertisements, contracts, envelopes) are controller-owned and do not require in-process access to the Layer 1 runtime
+- Layer 2 sessions are backed by Layer 1 tunnels, and tunnel lifecycle is already expressible through the existing agent control surface
+- extracting an embeddable library form is a larger refactor that has no concrete requirement driving it today
+
+If a future need emerges for embedding the runtime directly into a Layer 2 participant binary, that extraction can be scoped and performed at that point. It is not a prerequisite for Layer 2 work.
+
 ## Process Model
 
 The local runtime is user-managed through:

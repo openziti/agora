@@ -13,6 +13,8 @@ Start with these files:
 - [../layer-1/status.md](../layer-1/status.md)
 - [../layer-1/agent.md](../layer-1/agent.md)
 - [../layer-2/spec.md](../layer-2/spec.md)
+- [../layer-2/foundation.md](../layer-2/foundation.md)
+- [../layer-2/workgroups.md](../layer-2/workgroups.md), [../layer-2/catalog.md](../layer-2/catalog.md), [../layer-2/advertisements.md](../layer-2/advertisements.md), [../layer-2/sessions.md](../layer-2/sessions.md), [../layer-2/contracts.md](../layer-2/contracts.md), [../layer-2/envelopes.md](../layer-2/envelopes.md)
 - [../layer-2/status.md](../layer-2/status.md)
 
 Then inspect:
@@ -97,11 +99,16 @@ Important behavior notes:
 
 ## Likely Next Work
 
-The most likely near-term work is:
+Controller health/readiness endpoints, graceful shutdown, and the thin-daemon runtime packaging decision are now resolved. See [../layer-1/spec.md](../layer-1/spec.md) "Controller Operational Endpoints" and [../layer-1/agent.md](../layer-1/agent.md) "Packaging Direction."
 
-- controller health/readiness and graceful shutdown behavior
+Remaining Layer 1 operational hardening:
+
 - a documented local development and smoke-test stack
-- clarification of the next Layer 2 implementation slice
+- clearer end-to-end operational validation for enable, serve, connect, status, and cleanup
+
+Layer 2 work now has a foundation doc ([../layer-2/foundation.md](../layer-2/foundation.md)), a Tier-A spec for workgroups ([../layer-2/workgroups.md](../layer-2/workgroups.md)), and Tier-B skeletons for the other five concepts. See [../layer-2/status.md](../layer-2/status.md) for Tier tracking and build order.
+
+Alongside the Layer 2 specs, the project also has a primary reference demo under [../../examples/macro-pulse/](../../examples/macro-pulse/) with its own formal doc at [../examples/macro-pulse.md](../examples/macro-pulse.md). The demo is scaffolded but not yet runnable end-to-end — it advances one slice at a time as Layer 2 slices ship. See [../examples/index.md](../examples/index.md) for the example-set overview.
 
 Metrics and limits are intentionally deferred to post-MVP work and tracked in [../roadmap/post-mvp.md](../roadmap/post-mvp.md).
 

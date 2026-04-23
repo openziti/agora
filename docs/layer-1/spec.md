@@ -159,6 +159,17 @@ The composite view exists so operators can reason about:
 
 Controller errors should degrade the controller portion of the output rather than making the whole command unusable.
 
+## Controller Operational Endpoints
+
+In addition to the typed REST API, the controller exposes two handwritten operational endpoints outside the OpenAPI surface:
+
+- `GET /health`: process liveness. Returns `200 OK` as long as the controller process is running.
+- `GET /ready`: readiness. Returns `200 OK` when the persistence store is reachable, `503 Service Unavailable` otherwise.
+
+These endpoints are intended for container orchestration liveness and readiness probes. They are intentionally not part of the OpenAPI contract because they report operational state rather than typed resources.
+
+The controller also performs graceful shutdown on `SIGINT` or `SIGTERM`: in-flight HTTP requests are allowed to drain within a bounded timeout, the background reaper goroutines are cancelled and awaited, and the persistence store is closed before the process exits.
+
 ## Explicit MVP Boundary
 
 Layer 1 MVP intentionally excludes:
