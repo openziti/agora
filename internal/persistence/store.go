@@ -19,14 +19,17 @@ type Queryer interface {
 }
 
 type Store struct {
-	db                *sqlx.DB
-	Organizations     *OrganizationsRepository
-	Accounts          *AccountsRepository
-	Environments      *EnvironmentsRepository
-	Tunnels           *TunnelsRepository
-	TunnelGrants      *TunnelGrantsRepository
-	TunnelAttachments *TunnelAttachmentsRepository
-	TunnelServes      *TunnelServesRepository
+	db                   *sqlx.DB
+	Organizations        *OrganizationsRepository
+	Accounts             *AccountsRepository
+	Environments         *EnvironmentsRepository
+	Tunnels              *TunnelsRepository
+	TunnelGrants         *TunnelGrantsRepository
+	TunnelAttachments    *TunnelAttachmentsRepository
+	TunnelServes         *TunnelServesRepository
+	Workgroups           *WorkgroupsRepository
+	WorkgroupInvitations *WorkgroupInvitationsRepository
+	WorkgroupMemberships *WorkgroupMembershipsRepository
 }
 
 func Open(ctx context.Context, cfg Config) (*Store, error) {
@@ -63,6 +66,9 @@ func Open(ctx context.Context, cfg Config) (*Store, error) {
 	store.TunnelGrants = &TunnelGrantsRepository{}
 	store.TunnelAttachments = &TunnelAttachmentsRepository{}
 	store.TunnelServes = &TunnelServesRepository{}
+	store.Workgroups = &WorkgroupsRepository{}
+	store.WorkgroupInvitations = &WorkgroupInvitationsRepository{}
+	store.WorkgroupMemberships = &WorkgroupMembershipsRepository{}
 
 	return store, nil
 }

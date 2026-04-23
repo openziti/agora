@@ -14,6 +14,156 @@ import (
 	"github.com/ogen-go/ogen/validate"
 )
 
+// AcceptWorkgroupInvitationParams is parameters of acceptWorkgroupInvitation operation.
+type AcceptWorkgroupInvitationParams struct {
+	WorkgroupId    string
+	OrganizationId string
+}
+
+func unpackAcceptWorkgroupInvitationParams(packed middleware.Parameters) (params AcceptWorkgroupInvitationParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "workgroupId",
+			In:   "path",
+		}
+		params.WorkgroupId = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "organizationId",
+			In:   "path",
+		}
+		params.OrganizationId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeAcceptWorkgroupInvitationParams(args [2]string, argsEscaped bool, r *http.Request) (params AcceptWorkgroupInvitationParams, _ error) {
+	// Decode path: workgroupId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "workgroupId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.WorkgroupId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^wg_[a-z0-9]{12}$"],
+				}).Validate(string(params.WorkgroupId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "workgroupId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: organizationId.
+	if err := func() error {
+		param := args[1]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[1])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "organizationId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.OrganizationId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^org_[a-z0-9]{12}$"],
+				}).Validate(string(params.OrganizationId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "organizationId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // AddTunnelGrantParams is parameters of addTunnelGrant operation.
 type AddTunnelGrantParams struct {
 	TunnelId string
@@ -95,6 +245,237 @@ func decodeAddTunnelGrantParams(args [1]string, argsEscaped bool, r *http.Reques
 	return params, nil
 }
 
+// AddWorkgroupMemberParams is parameters of addWorkgroupMember operation.
+type AddWorkgroupMemberParams struct {
+	WorkgroupId string
+}
+
+func unpackAddWorkgroupMemberParams(packed middleware.Parameters) (params AddWorkgroupMemberParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "workgroupId",
+			In:   "path",
+		}
+		params.WorkgroupId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeAddWorkgroupMemberParams(args [1]string, argsEscaped bool, r *http.Request) (params AddWorkgroupMemberParams, _ error) {
+	// Decode path: workgroupId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "workgroupId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.WorkgroupId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^wg_[a-z0-9]{12}$"],
+				}).Validate(string(params.WorkgroupId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "workgroupId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// ChangeWorkgroupMembershipRoleParams is parameters of changeWorkgroupMembershipRole operation.
+type ChangeWorkgroupMembershipRoleParams struct {
+	WorkgroupId  string
+	MembershipId string
+}
+
+func unpackChangeWorkgroupMembershipRoleParams(packed middleware.Parameters) (params ChangeWorkgroupMembershipRoleParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "workgroupId",
+			In:   "path",
+		}
+		params.WorkgroupId = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "membershipId",
+			In:   "path",
+		}
+		params.MembershipId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeChangeWorkgroupMembershipRoleParams(args [2]string, argsEscaped bool, r *http.Request) (params ChangeWorkgroupMembershipRoleParams, _ error) {
+	// Decode path: workgroupId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "workgroupId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.WorkgroupId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^wg_[a-z0-9]{12}$"],
+				}).Validate(string(params.WorkgroupId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "workgroupId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: membershipId.
+	if err := func() error {
+		param := args[1]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[1])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "membershipId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.MembershipId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^wgm_[a-z0-9]{12}$"],
+				}).Validate(string(params.MembershipId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "membershipId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // CreateAccountParams is parameters of createAccount operation.
 type CreateAccountParams struct {
 	OrganizationId string
@@ -117,6 +498,156 @@ func decodeCreateAccountParams(args [1]string, argsEscaped bool, r *http.Request
 		param := args[0]
 		if argsEscaped {
 			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "organizationId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.OrganizationId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^org_[a-z0-9]{12}$"],
+				}).Validate(string(params.OrganizationId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "organizationId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// DeclineWorkgroupInvitationParams is parameters of declineWorkgroupInvitation operation.
+type DeclineWorkgroupInvitationParams struct {
+	WorkgroupId    string
+	OrganizationId string
+}
+
+func unpackDeclineWorkgroupInvitationParams(packed middleware.Parameters) (params DeclineWorkgroupInvitationParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "workgroupId",
+			In:   "path",
+		}
+		params.WorkgroupId = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "organizationId",
+			In:   "path",
+		}
+		params.OrganizationId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeDeclineWorkgroupInvitationParams(args [2]string, argsEscaped bool, r *http.Request) (params DeclineWorkgroupInvitationParams, _ error) {
+	// Decode path: workgroupId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "workgroupId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.WorkgroupId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^wg_[a-z0-9]{12}$"],
+				}).Validate(string(params.WorkgroupId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "workgroupId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: organizationId.
+	if err := func() error {
+		param := args[1]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[1])
 			if err != nil {
 				return errors.Wrap(err, "unescape path")
 			}
@@ -650,6 +1181,87 @@ func decodeDeleteTunnelServeParams(args [1]string, argsEscaped bool, r *http.Req
 	return params, nil
 }
 
+// DeleteWorkgroupParams is parameters of deleteWorkgroup operation.
+type DeleteWorkgroupParams struct {
+	WorkgroupId string
+}
+
+func unpackDeleteWorkgroupParams(packed middleware.Parameters) (params DeleteWorkgroupParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "workgroupId",
+			In:   "path",
+		}
+		params.WorkgroupId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeDeleteWorkgroupParams(args [1]string, argsEscaped bool, r *http.Request) (params DeleteWorkgroupParams, _ error) {
+	// Decode path: workgroupId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "workgroupId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.WorkgroupId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^wg_[a-z0-9]{12}$"],
+				}).Validate(string(params.WorkgroupId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "workgroupId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // DisableEnvironmentParams is parameters of disableEnvironment operation.
 type DisableEnvironmentParams struct {
 	EnvironmentId string
@@ -967,6 +1579,87 @@ func decodeGetTunnelServeParams(args [1]string, argsEscaped bool, r *http.Reques
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "tunnelId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// GetWorkgroupParams is parameters of getWorkgroup operation.
+type GetWorkgroupParams struct {
+	WorkgroupId string
+}
+
+func unpackGetWorkgroupParams(packed middleware.Parameters) (params GetWorkgroupParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "workgroupId",
+			In:   "path",
+		}
+		params.WorkgroupId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeGetWorkgroupParams(args [1]string, argsEscaped bool, r *http.Request) (params GetWorkgroupParams, _ error) {
+	// Decode path: workgroupId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "workgroupId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.WorkgroupId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^wg_[a-z0-9]{12}$"],
+				}).Validate(string(params.WorkgroupId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "workgroupId",
 			In:   "path",
 			Err:  err,
 		}
@@ -1292,6 +1985,233 @@ func decodeListAccountsParams(args [1]string, argsEscaped bool, r *http.Request)
 		return params, &ogenerrors.DecodeParamError{
 			Name: "organizationId",
 			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// ListAdminWorkgroupsParams is parameters of listAdminWorkgroups operation.
+type ListAdminWorkgroupsParams struct {
+	State                 OptListAdminWorkgroupsState
+	OwnerOrganizationId   OptString
+	InvitedOrganizationId OptString
+}
+
+func unpackListAdminWorkgroupsParams(packed middleware.Parameters) (params ListAdminWorkgroupsParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "state",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.State = v.(OptListAdminWorkgroupsState)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "ownerOrganizationId",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.OwnerOrganizationId = v.(OptString)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "invitedOrganizationId",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.InvitedOrganizationId = v.(OptString)
+		}
+	}
+	return params
+}
+
+func decodeListAdminWorkgroupsParams(args [0]string, argsEscaped bool, r *http.Request) (params ListAdminWorkgroupsParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode query: state.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "state",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotStateVal ListAdminWorkgroupsState
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotStateVal = ListAdminWorkgroupsState(c)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.State.SetTo(paramsDotStateVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.State.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "state",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: ownerOrganizationId.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "ownerOrganizationId",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotOwnerOrganizationIdVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotOwnerOrganizationIdVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.OwnerOrganizationId.SetTo(paramsDotOwnerOrganizationIdVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.OwnerOrganizationId.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:    0,
+							MinLengthSet: false,
+							MaxLength:    0,
+							MaxLengthSet: false,
+							Email:        false,
+							Hostname:     false,
+							Regex:        regexMap["^org_[a-z0-9]{12}$"],
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "ownerOrganizationId",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: invitedOrganizationId.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "invitedOrganizationId",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotInvitedOrganizationIdVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotInvitedOrganizationIdVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.InvitedOrganizationId.SetTo(paramsDotInvitedOrganizationIdVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.InvitedOrganizationId.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:    0,
+							MinLengthSet: false,
+							MaxLength:    0,
+							MaxLengthSet: false,
+							Email:        false,
+							Hostname:     false,
+							Regex:        regexMap["^org_[a-z0-9]{12}$"],
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "invitedOrganizationId",
+			In:   "query",
 			Err:  err,
 		}
 	}
@@ -1631,6 +2551,87 @@ func decodeListUsersParams(args [0]string, argsEscaped bool, r *http.Request) (p
 	return params, nil
 }
 
+// ListWorkgroupMembersParams is parameters of listWorkgroupMembers operation.
+type ListWorkgroupMembersParams struct {
+	WorkgroupId string
+}
+
+func unpackListWorkgroupMembersParams(packed middleware.Parameters) (params ListWorkgroupMembersParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "workgroupId",
+			In:   "path",
+		}
+		params.WorkgroupId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeListWorkgroupMembersParams(args [1]string, argsEscaped bool, r *http.Request) (params ListWorkgroupMembersParams, _ error) {
+	// Decode path: workgroupId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "workgroupId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.WorkgroupId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^wg_[a-z0-9]{12}$"],
+				}).Validate(string(params.WorkgroupId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "workgroupId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // RemoveTunnelGrantParams is parameters of removeTunnelGrant operation.
 type RemoveTunnelGrantParams struct {
 	TunnelId  string
@@ -1774,6 +2775,156 @@ func decodeRemoveTunnelGrantParams(args [2]string, argsEscaped bool, r *http.Req
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "accountId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// RemoveWorkgroupMemberParams is parameters of removeWorkgroupMember operation.
+type RemoveWorkgroupMemberParams struct {
+	WorkgroupId  string
+	MembershipId string
+}
+
+func unpackRemoveWorkgroupMemberParams(packed middleware.Parameters) (params RemoveWorkgroupMemberParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "workgroupId",
+			In:   "path",
+		}
+		params.WorkgroupId = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "membershipId",
+			In:   "path",
+		}
+		params.MembershipId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeRemoveWorkgroupMemberParams(args [2]string, argsEscaped bool, r *http.Request) (params RemoveWorkgroupMemberParams, _ error) {
+	// Decode path: workgroupId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "workgroupId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.WorkgroupId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^wg_[a-z0-9]{12}$"],
+				}).Validate(string(params.WorkgroupId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "workgroupId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	// Decode path: membershipId.
+	if err := func() error {
+		param := args[1]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[1])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "membershipId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.MembershipId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^wgm_[a-z0-9]{12}$"],
+				}).Validate(string(params.MembershipId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "membershipId",
 			In:   "path",
 			Err:  err,
 		}

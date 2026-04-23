@@ -1,0 +1,109 @@
+workgroup:
+  type: object
+  required:
+    - id
+    - ownerOrganizationId
+    - name
+    - scope
+    - state
+    - participatingOrganizationIds
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      type: string
+      pattern: '^wg_[a-z0-9]{12}$'
+    ownerOrganizationId:
+      type: string
+      pattern: '^org_[a-z0-9]{12}$'
+    name:
+      type: string
+    description:
+      type: string
+    scope:
+      $ref: "#/workgroupScope"
+    state:
+      $ref: "#/workgroupState"
+    participatingOrganizationIds:
+      type: array
+      items:
+        type: string
+        pattern: '^org_[a-z0-9]{12}$'
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+workgroupScope:
+  type: string
+  enum: [intra-org, inter-org]
+
+workgroupState:
+  type: string
+  enum: [pending, active, declined]
+
+workgroupMembership:
+  type: object
+  required:
+    - id
+    - workgroupId
+    - accountId
+    - organizationId
+    - role
+    - joinedAt
+  properties:
+    id:
+      type: string
+      pattern: '^wgm_[a-z0-9]{12}$'
+    workgroupId:
+      type: string
+      pattern: '^wg_[a-z0-9]{12}$'
+    accountId:
+      type: string
+      pattern: '^ac_[a-z0-9]{12}$'
+    organizationId:
+      type: string
+      pattern: '^org_[a-z0-9]{12}$'
+    email:
+      type: string
+      format: email
+    role:
+      $ref: "#/workgroupMembershipRole"
+    joinedAt:
+      type: string
+      format: date-time
+
+workgroupMembershipRole:
+  type: string
+  enum: [member, admin]
+
+addWorkgroupMemberRequest:
+  type: object
+  required:
+    - accountEmail
+  properties:
+    accountEmail:
+      type: string
+      format: email
+    role:
+      $ref: "#/workgroupMembershipRole"
+
+changeWorkgroupMembershipRoleRequest:
+  type: object
+  required:
+    - role
+  properties:
+    role:
+      $ref: "#/workgroupMembershipRole"
+
+listWorkgroupsResponse:
+  type: array
+  items:
+    $ref: "#/workgroup"
+
+listWorkgroupMembersResponse:
+  type: array
+  items:
+    $ref: "#/workgroupMembership"

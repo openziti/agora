@@ -6,12 +6,15 @@ import "crypto/rand"
 type ResourcePrefix string
 
 const (
-	PrefixOrganization ResourcePrefix = "org_"
-	PrefixAccount      ResourcePrefix = "ac_"
-	PrefixEnvironment  ResourcePrefix = "ev_"
-	PrefixTunnel       ResourcePrefix = "tt_"
-	PrefixAttachment   ResourcePrefix = "ta_"
-	PrefixTunnelServe  ResourcePrefix = "ts_"
+	PrefixOrganization        ResourcePrefix = "org_"
+	PrefixAccount             ResourcePrefix = "ac_"
+	PrefixEnvironment         ResourcePrefix = "ev_"
+	PrefixTunnel              ResourcePrefix = "tt_"
+	PrefixAttachment          ResourcePrefix = "ta_"
+	PrefixTunnelServe         ResourcePrefix = "ts_"
+	PrefixWorkgroup           ResourcePrefix = "wg_"
+	PrefixWorkgroupInvitation ResourcePrefix = "wgi_"
+	PrefixWorkgroupMembership ResourcePrefix = "wgm_"
 )
 
 const (

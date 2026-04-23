@@ -21,14 +21,26 @@ func trimTrailingSlashes(u *url.URL) {
 
 // Invoker invokes operations described by OpenAPI v3 specification.
 type Invoker interface {
+	// AcceptWorkgroupInvitation invokes acceptWorkgroupInvitation operation.
+	//
+	// POST /admin/workgroups/{workgroupId}/invitations/{organizationId}/accept
+	AcceptWorkgroupInvitation(ctx context.Context, request *AcceptWorkgroupInvitationRequest, params AcceptWorkgroupInvitationParams) (AcceptWorkgroupInvitationRes, error)
 	// AddTunnelGrant invokes addTunnelGrant operation.
 	//
 	// POST /tunnels/{tunnelId}/grants
 	AddTunnelGrant(ctx context.Context, request *AddTunnelGrantRequest, params AddTunnelGrantParams) (AddTunnelGrantRes, error)
+	// AddWorkgroupMember invokes addWorkgroupMember operation.
+	//
+	// POST /workgroups/{workgroupId}/members
+	AddWorkgroupMember(ctx context.Context, request *AddWorkgroupMemberRequest, params AddWorkgroupMemberParams) (AddWorkgroupMemberRes, error)
 	// ChangePassword invokes changePassword operation.
 	//
 	// POST /account/change-password
 	ChangePassword(ctx context.Context, request *ChangePasswordRequest) (ChangePasswordRes, error)
+	// ChangeWorkgroupMembershipRole invokes changeWorkgroupMembershipRole operation.
+	//
+	// PATCH /workgroups/{workgroupId}/members/{membershipId}
+	ChangeWorkgroupMembershipRole(ctx context.Context, request *ChangeWorkgroupMembershipRoleRequest, params ChangeWorkgroupMembershipRoleParams) (ChangeWorkgroupMembershipRoleRes, error)
 	// ConnectTunnel invokes connectTunnel operation.
 	//
 	// POST /tunnels/connect
@@ -45,6 +57,14 @@ type Invoker interface {
 	//
 	// POST /tunnels
 	CreateTunnel(ctx context.Context, request *CreateTunnelRequest) (CreateTunnelRes, error)
+	// CreateWorkgroup invokes createWorkgroup operation.
+	//
+	// POST /admin/workgroups
+	CreateWorkgroup(ctx context.Context, request *CreateWorkgroupRequest) (CreateWorkgroupRes, error)
+	// DeclineWorkgroupInvitation invokes declineWorkgroupInvitation operation.
+	//
+	// POST /admin/workgroups/{workgroupId}/invitations/{organizationId}/decline
+	DeclineWorkgroupInvitation(ctx context.Context, request *DeclineWorkgroupInvitationRequest, params DeclineWorkgroupInvitationParams) (DeclineWorkgroupInvitationRes, error)
 	// DeleteAccount invokes deleteAccount operation.
 	//
 	// DELETE /organizations/{organizationId}/accounts/{accountId}
@@ -65,6 +85,10 @@ type Invoker interface {
 	//
 	// DELETE /tunnel-serves/{serveId}
 	DeleteTunnelServe(ctx context.Context, params DeleteTunnelServeParams) (DeleteTunnelServeRes, error)
+	// DeleteWorkgroup invokes deleteWorkgroup operation.
+	//
+	// DELETE /workgroups/{workgroupId}
+	DeleteWorkgroup(ctx context.Context, params DeleteWorkgroupParams) (DeleteWorkgroupRes, error)
 	// DisableEnvironment invokes disableEnvironment operation.
 	//
 	// DELETE /environments/{environmentId}/heartbeat
@@ -85,6 +109,10 @@ type Invoker interface {
 	//
 	// GET /tunnels/{tunnelId}/serve
 	GetTunnelServe(ctx context.Context, params GetTunnelServeParams) (GetTunnelServeRes, error)
+	// GetWorkgroup invokes getWorkgroup operation.
+	//
+	// GET /workgroups/{workgroupId}
+	GetWorkgroup(ctx context.Context, params GetWorkgroupParams) (GetWorkgroupRes, error)
 	// HeartbeatEnvironment invokes heartbeatEnvironment operation.
 	//
 	// POST /environments/{environmentId}/heartbeat
@@ -101,6 +129,10 @@ type Invoker interface {
 	//
 	// GET /organizations/{organizationId}/accounts
 	ListAccounts(ctx context.Context, params ListAccountsParams) (ListAccountsRes, error)
+	// ListAdminWorkgroups invokes listAdminWorkgroups operation.
+	//
+	// GET /admin/workgroups
+	ListAdminWorkgroups(ctx context.Context, params ListAdminWorkgroupsParams) (ListAdminWorkgroupsRes, error)
 	// ListEnvironments invokes listEnvironments operation.
 	//
 	// GET /environments
@@ -125,6 +157,14 @@ type Invoker interface {
 	//
 	// GET /accounts
 	ListUsers(ctx context.Context, params ListUsersParams) (ListUsersRes, error)
+	// ListWorkgroupMembers invokes listWorkgroupMembers operation.
+	//
+	// GET /workgroups/{workgroupId}/members
+	ListWorkgroupMembers(ctx context.Context, params ListWorkgroupMembersParams) (ListWorkgroupMembersRes, error)
+	// ListWorkgroups invokes listWorkgroups operation.
+	//
+	// GET /workgroups
+	ListWorkgroups(ctx context.Context) (ListWorkgroupsRes, error)
 	// Login invokes login operation.
 	//
 	// POST /account/login
@@ -137,6 +177,10 @@ type Invoker interface {
 	//
 	// DELETE /tunnels/{tunnelId}/grants/{accountId}
 	RemoveTunnelGrant(ctx context.Context, params RemoveTunnelGrantParams) (RemoveTunnelGrantRes, error)
+	// RemoveWorkgroupMember invokes removeWorkgroupMember operation.
+	//
+	// DELETE /workgroups/{workgroupId}/members/{membershipId}
+	RemoveWorkgroupMember(ctx context.Context, params RemoveWorkgroupMemberParams) (RemoveWorkgroupMemberRes, error)
 	// StartTunnelServe invokes startTunnelServe operation.
 	//
 	// POST /tunnels/{tunnelId}/serve
@@ -186,6 +230,123 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 		return c.serverURL
 	}
 	return u
+}
+
+// AcceptWorkgroupInvitation invokes acceptWorkgroupInvitation operation.
+//
+// POST /admin/workgroups/{workgroupId}/invitations/{organizationId}/accept
+func (c *Client) AcceptWorkgroupInvitation(ctx context.Context, request *AcceptWorkgroupInvitationRequest, params AcceptWorkgroupInvitationParams) (AcceptWorkgroupInvitationRes, error) {
+	res, err := c.sendAcceptWorkgroupInvitation(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendAcceptWorkgroupInvitation(ctx context.Context, request *AcceptWorkgroupInvitationRequest, params AcceptWorkgroupInvitationParams) (res AcceptWorkgroupInvitationRes, err error) {
+	// Validate request before sending.
+	if err := func() error {
+		if err := request.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return res, errors.Wrap(err, "validate")
+	}
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [5]string
+	pathParts[0] = "/admin/workgroups/"
+	{
+		// Encode "workgroupId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "workgroupId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.WorkgroupId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/invitations/"
+	{
+		// Encode "organizationId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "organizationId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.OrganizationId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	pathParts[4] = "/accept"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeAcceptWorkgroupInvitationRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAdminTokenAuth(ctx, AcceptWorkgroupInvitationOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AdminTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeAcceptWorkgroupInvitationResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
 }
 
 // AddTunnelGrant invokes addTunnelGrant operation.
@@ -286,6 +447,104 @@ func (c *Client) sendAddTunnelGrant(ctx context.Context, request *AddTunnelGrant
 	return result, nil
 }
 
+// AddWorkgroupMember invokes addWorkgroupMember operation.
+//
+// POST /workgroups/{workgroupId}/members
+func (c *Client) AddWorkgroupMember(ctx context.Context, request *AddWorkgroupMemberRequest, params AddWorkgroupMemberParams) (AddWorkgroupMemberRes, error) {
+	res, err := c.sendAddWorkgroupMember(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendAddWorkgroupMember(ctx context.Context, request *AddWorkgroupMemberRequest, params AddWorkgroupMemberParams) (res AddWorkgroupMemberRes, err error) {
+	// Validate request before sending.
+	if err := func() error {
+		if err := request.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return res, errors.Wrap(err, "validate")
+	}
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/workgroups/"
+	{
+		// Encode "workgroupId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "workgroupId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.WorkgroupId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/members"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeAddWorkgroupMemberRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, AddWorkgroupMemberOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeAddWorkgroupMemberResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // ChangePassword invokes changePassword operation.
 //
 // POST /account/change-password
@@ -358,6 +617,122 @@ func (c *Client) sendChangePassword(ctx context.Context, request *ChangePassword
 	defer resp.Body.Close()
 
 	result, err := decodeChangePasswordResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ChangeWorkgroupMembershipRole invokes changeWorkgroupMembershipRole operation.
+//
+// PATCH /workgroups/{workgroupId}/members/{membershipId}
+func (c *Client) ChangeWorkgroupMembershipRole(ctx context.Context, request *ChangeWorkgroupMembershipRoleRequest, params ChangeWorkgroupMembershipRoleParams) (ChangeWorkgroupMembershipRoleRes, error) {
+	res, err := c.sendChangeWorkgroupMembershipRole(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendChangeWorkgroupMembershipRole(ctx context.Context, request *ChangeWorkgroupMembershipRoleRequest, params ChangeWorkgroupMembershipRoleParams) (res ChangeWorkgroupMembershipRoleRes, err error) {
+	// Validate request before sending.
+	if err := func() error {
+		if err := request.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return res, errors.Wrap(err, "validate")
+	}
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [4]string
+	pathParts[0] = "/workgroups/"
+	{
+		// Encode "workgroupId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "workgroupId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.WorkgroupId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/members/"
+	{
+		// Encode "membershipId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "membershipId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.MembershipId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "PATCH", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeChangeWorkgroupMembershipRoleRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, ChangeWorkgroupMembershipRoleOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeChangeWorkgroupMembershipRoleResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -693,6 +1068,202 @@ func (c *Client) sendCreateTunnel(ctx context.Context, request *CreateTunnelRequ
 	defer resp.Body.Close()
 
 	result, err := decodeCreateTunnelResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// CreateWorkgroup invokes createWorkgroup operation.
+//
+// POST /admin/workgroups
+func (c *Client) CreateWorkgroup(ctx context.Context, request *CreateWorkgroupRequest) (CreateWorkgroupRes, error) {
+	res, err := c.sendCreateWorkgroup(ctx, request)
+	return res, err
+}
+
+func (c *Client) sendCreateWorkgroup(ctx context.Context, request *CreateWorkgroupRequest) (res CreateWorkgroupRes, err error) {
+	// Validate request before sending.
+	if err := func() error {
+		if err := request.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return res, errors.Wrap(err, "validate")
+	}
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/admin/workgroups"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeCreateWorkgroupRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAdminTokenAuth(ctx, CreateWorkgroupOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AdminTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeCreateWorkgroupResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// DeclineWorkgroupInvitation invokes declineWorkgroupInvitation operation.
+//
+// POST /admin/workgroups/{workgroupId}/invitations/{organizationId}/decline
+func (c *Client) DeclineWorkgroupInvitation(ctx context.Context, request *DeclineWorkgroupInvitationRequest, params DeclineWorkgroupInvitationParams) (DeclineWorkgroupInvitationRes, error) {
+	res, err := c.sendDeclineWorkgroupInvitation(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendDeclineWorkgroupInvitation(ctx context.Context, request *DeclineWorkgroupInvitationRequest, params DeclineWorkgroupInvitationParams) (res DeclineWorkgroupInvitationRes, err error) {
+	// Validate request before sending.
+	if err := func() error {
+		if err := request.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return res, errors.Wrap(err, "validate")
+	}
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [5]string
+	pathParts[0] = "/admin/workgroups/"
+	{
+		// Encode "workgroupId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "workgroupId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.WorkgroupId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/invitations/"
+	{
+		// Encode "organizationId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "organizationId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.OrganizationId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	pathParts[4] = "/decline"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeDeclineWorkgroupInvitationRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAdminTokenAuth(ctx, DeclineWorkgroupInvitationOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AdminTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeDeclineWorkgroupInvitationResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -1144,6 +1715,91 @@ func (c *Client) sendDeleteTunnelServe(ctx context.Context, params DeleteTunnelS
 	return result, nil
 }
 
+// DeleteWorkgroup invokes deleteWorkgroup operation.
+//
+// DELETE /workgroups/{workgroupId}
+func (c *Client) DeleteWorkgroup(ctx context.Context, params DeleteWorkgroupParams) (DeleteWorkgroupRes, error) {
+	res, err := c.sendDeleteWorkgroup(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendDeleteWorkgroup(ctx context.Context, params DeleteWorkgroupParams) (res DeleteWorkgroupRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/workgroups/"
+	{
+		// Encode "workgroupId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "workgroupId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.WorkgroupId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, DeleteWorkgroupOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeDeleteWorkgroupResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // DisableEnvironment invokes disableEnvironment operation.
 //
 // DELETE /environments/{environmentId}/heartbeat
@@ -1556,6 +2212,91 @@ func (c *Client) sendGetTunnelServe(ctx context.Context, params GetTunnelServePa
 	return result, nil
 }
 
+// GetWorkgroup invokes getWorkgroup operation.
+//
+// GET /workgroups/{workgroupId}
+func (c *Client) GetWorkgroup(ctx context.Context, params GetWorkgroupParams) (GetWorkgroupRes, error) {
+	res, err := c.sendGetWorkgroup(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetWorkgroup(ctx context.Context, params GetWorkgroupParams) (res GetWorkgroupRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/workgroups/"
+	{
+		// Encode "workgroupId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "workgroupId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.WorkgroupId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, GetWorkgroupOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeGetWorkgroupResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // HeartbeatEnvironment invokes heartbeatEnvironment operation.
 //
 // POST /environments/{environmentId}/heartbeat
@@ -1893,6 +2634,127 @@ func (c *Client) sendListAccounts(ctx context.Context, params ListAccountsParams
 	defer resp.Body.Close()
 
 	result, err := decodeListAccountsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ListAdminWorkgroups invokes listAdminWorkgroups operation.
+//
+// GET /admin/workgroups
+func (c *Client) ListAdminWorkgroups(ctx context.Context, params ListAdminWorkgroupsParams) (ListAdminWorkgroupsRes, error) {
+	res, err := c.sendListAdminWorkgroups(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListAdminWorkgroups(ctx context.Context, params ListAdminWorkgroupsParams) (res ListAdminWorkgroupsRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/admin/workgroups"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "state" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "state",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.State.Get(); ok {
+				return e.EncodeValue(conv.StringToString(string(val)))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "ownerOrganizationId" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "ownerOrganizationId",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.OwnerOrganizationId.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "invitedOrganizationId" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "invitedOrganizationId",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.InvitedOrganizationId.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAdminTokenAuth(ctx, ListAdminWorkgroupsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AdminTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeListAdminWorkgroupsResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -2380,6 +3242,159 @@ func (c *Client) sendListUsers(ctx context.Context, params ListUsersParams) (res
 	return result, nil
 }
 
+// ListWorkgroupMembers invokes listWorkgroupMembers operation.
+//
+// GET /workgroups/{workgroupId}/members
+func (c *Client) ListWorkgroupMembers(ctx context.Context, params ListWorkgroupMembersParams) (ListWorkgroupMembersRes, error) {
+	res, err := c.sendListWorkgroupMembers(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListWorkgroupMembers(ctx context.Context, params ListWorkgroupMembersParams) (res ListWorkgroupMembersRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/workgroups/"
+	{
+		// Encode "workgroupId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "workgroupId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.WorkgroupId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/members"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, ListWorkgroupMembersOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeListWorkgroupMembersResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ListWorkgroups invokes listWorkgroups operation.
+//
+// GET /workgroups
+func (c *Client) ListWorkgroups(ctx context.Context) (ListWorkgroupsRes, error) {
+	res, err := c.sendListWorkgroups(ctx)
+	return res, err
+}
+
+func (c *Client) sendListWorkgroups(ctx context.Context) (res ListWorkgroupsRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/workgroups"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, ListWorkgroupsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeListWorkgroupsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // Login invokes login operation.
 //
 // POST /account/login
@@ -2602,6 +3617,110 @@ func (c *Client) sendRemoveTunnelGrant(ctx context.Context, params RemoveTunnelG
 	defer resp.Body.Close()
 
 	result, err := decodeRemoveTunnelGrantResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// RemoveWorkgroupMember invokes removeWorkgroupMember operation.
+//
+// DELETE /workgroups/{workgroupId}/members/{membershipId}
+func (c *Client) RemoveWorkgroupMember(ctx context.Context, params RemoveWorkgroupMemberParams) (RemoveWorkgroupMemberRes, error) {
+	res, err := c.sendRemoveWorkgroupMember(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendRemoveWorkgroupMember(ctx context.Context, params RemoveWorkgroupMemberParams) (res RemoveWorkgroupMemberRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [4]string
+	pathParts[0] = "/workgroups/"
+	{
+		// Encode "workgroupId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "workgroupId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.WorkgroupId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/members/"
+	{
+		// Encode "membershipId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "membershipId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.MembershipId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[3] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, RemoveWorkgroupMemberOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeRemoveWorkgroupMemberResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

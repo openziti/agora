@@ -61,9 +61,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				break
 			}
 			switch elem[0] {
-			case 'a': // Prefix: "account"
+			case 'a': // Prefix: "a"
 
-				if l := len("account"); len(elem) >= l && elem[0:l] == "account" {
+				if l := len("a"); len(elem) >= l && elem[0:l] == "a" {
 					elem = elem[l:]
 				} else {
 					break
@@ -73,9 +73,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				switch elem[0] {
-				case '/': // Prefix: "/"
+				case 'c': // Prefix: "ccount"
 
-					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+					if l := len("ccount"); len(elem) >= l && elem[0:l] == "ccount" {
 						elem = elem[l:]
 					} else {
 						break
@@ -85,49 +85,83 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						break
 					}
 					switch elem[0] {
-					case 'c': // Prefix: "change-password"
+					case '/': // Prefix: "/"
 
-						if l := len("change-password"); len(elem) >= l && elem[0:l] == "change-password" {
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
 						if len(elem) == 0 {
-							// Leaf node.
-							switch r.Method {
-							case "POST":
-								s.handleChangePasswordRequest([0]string{}, elemIsEscaped, w, r)
-							default:
-								s.notAllowed(w, r, "POST")
+							break
+						}
+						switch elem[0] {
+						case 'c': // Prefix: "change-password"
+
+							if l := len("change-password"); len(elem) >= l && elem[0:l] == "change-password" {
+								elem = elem[l:]
+							} else {
+								break
 							}
 
-							return
-						}
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleChangePasswordRequest([0]string{}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, "POST")
+								}
 
-					case 'l': // Prefix: "login"
-
-						if l := len("login"); len(elem) >= l && elem[0:l] == "login" {
-							elem = elem[l:]
-						} else {
-							break
-						}
-
-						if len(elem) == 0 {
-							// Leaf node.
-							switch r.Method {
-							case "POST":
-								s.handleLoginRequest([0]string{}, elemIsEscaped, w, r)
-							default:
-								s.notAllowed(w, r, "POST")
+								return
 							}
 
-							return
+						case 'l': // Prefix: "login"
+
+							if l := len("login"); len(elem) >= l && elem[0:l] == "login" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleLoginRequest([0]string{}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, "POST")
+								}
+
+								return
+							}
+
+						case 'r': // Prefix: "regenerate-token"
+
+							if l := len("regenerate-token"); len(elem) >= l && elem[0:l] == "regenerate-token" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleRegenerateAccountTokenRequest([0]string{}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, "POST")
+								}
+
+								return
+							}
+
 						}
 
-					case 'r': // Prefix: "regenerate-token"
+					case 's': // Prefix: "s"
 
-						if l := len("regenerate-token"); len(elem) >= l && elem[0:l] == "regenerate-token" {
+						if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
 							elem = elem[l:]
 						} else {
 							break
@@ -136,10 +170,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						if len(elem) == 0 {
 							// Leaf node.
 							switch r.Method {
-							case "POST":
-								s.handleRegenerateAccountTokenRequest([0]string{}, elemIsEscaped, w, r)
+							case "GET":
+								s.handleListUsersRequest([0]string{}, elemIsEscaped, w, r)
 							default:
-								s.notAllowed(w, r, "POST")
+								s.notAllowed(w, r, "GET")
 							}
 
 							return
@@ -147,24 +181,133 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 					}
 
-				case 's': // Prefix: "s"
+				case 'd': // Prefix: "dmin/workgroups"
 
-					if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
+					if l := len("dmin/workgroups"); len(elem) >= l && elem[0:l] == "dmin/workgroups" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
 					if len(elem) == 0 {
-						// Leaf node.
 						switch r.Method {
 						case "GET":
-							s.handleListUsersRequest([0]string{}, elemIsEscaped, w, r)
+							s.handleListAdminWorkgroupsRequest([0]string{}, elemIsEscaped, w, r)
+						case "POST":
+							s.handleCreateWorkgroupRequest([0]string{}, elemIsEscaped, w, r)
 						default:
-							s.notAllowed(w, r, "GET")
+							s.notAllowed(w, r, "GET,POST")
 						}
 
 						return
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "workgroupId"
+						// Match until "/"
+						idx := strings.IndexByte(elem, '/')
+						if idx < 0 {
+							idx = len(elem)
+						}
+						args[0] = elem[:idx]
+						elem = elem[idx:]
+
+						if len(elem) == 0 {
+							break
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/invitations/"
+
+							if l := len("/invitations/"); len(elem) >= l && elem[0:l] == "/invitations/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							// Param: "organizationId"
+							// Match until "/"
+							idx := strings.IndexByte(elem, '/')
+							if idx < 0 {
+								idx = len(elem)
+							}
+							args[1] = elem[:idx]
+							elem = elem[idx:]
+
+							if len(elem) == 0 {
+								break
+							}
+							switch elem[0] {
+							case '/': // Prefix: "/"
+
+								if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									break
+								}
+								switch elem[0] {
+								case 'a': // Prefix: "accept"
+
+									if l := len("accept"); len(elem) >= l && elem[0:l] == "accept" {
+										elem = elem[l:]
+									} else {
+										break
+									}
+
+									if len(elem) == 0 {
+										// Leaf node.
+										switch r.Method {
+										case "POST":
+											s.handleAcceptWorkgroupInvitationRequest([2]string{
+												args[0],
+												args[1],
+											}, elemIsEscaped, w, r)
+										default:
+											s.notAllowed(w, r, "POST")
+										}
+
+										return
+									}
+
+								case 'd': // Prefix: "decline"
+
+									if l := len("decline"); len(elem) >= l && elem[0:l] == "decline" {
+										elem = elem[l:]
+									} else {
+										break
+									}
+
+									if len(elem) == 0 {
+										// Leaf node.
+										switch r.Method {
+										case "POST":
+											s.handleDeclineWorkgroupInvitationRequest([2]string{
+												args[0],
+												args[1],
+											}, elemIsEscaped, w, r)
+										default:
+											s.notAllowed(w, r, "POST")
+										}
+
+										return
+									}
+
+								}
+
+							}
+
+						}
+
 					}
 
 				}
@@ -706,6 +849,127 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 				}
 
+			case 'w': // Prefix: "workgroups"
+
+				if l := len("workgroups"); len(elem) >= l && elem[0:l] == "workgroups" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					switch r.Method {
+					case "GET":
+						s.handleListWorkgroupsRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, "GET")
+					}
+
+					return
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/"
+
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "workgroupId"
+					// Match until "/"
+					idx := strings.IndexByte(elem, '/')
+					if idx < 0 {
+						idx = len(elem)
+					}
+					args[0] = elem[:idx]
+					elem = elem[idx:]
+
+					if len(elem) == 0 {
+						switch r.Method {
+						case "DELETE":
+							s.handleDeleteWorkgroupRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						case "GET":
+							s.handleGetWorkgroupRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, "DELETE,GET")
+						}
+
+						return
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/members"
+
+						if l := len("/members"); len(elem) >= l && elem[0:l] == "/members" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							switch r.Method {
+							case "GET":
+								s.handleListWorkgroupMembersRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							case "POST":
+								s.handleAddWorkgroupMemberRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, "GET,POST")
+							}
+
+							return
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
+
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							// Param: "membershipId"
+							// Leaf parameter, slashes are prohibited
+							idx := strings.IndexByte(elem, '/')
+							if idx >= 0 {
+								break
+							}
+							args[1] = elem
+							elem = ""
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "DELETE":
+									s.handleRemoveWorkgroupMemberRequest([2]string{
+										args[0],
+										args[1],
+									}, elemIsEscaped, w, r)
+								case "PATCH":
+									s.handleChangeWorkgroupMembershipRoleRequest([2]string{
+										args[0],
+										args[1],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, "DELETE,PATCH")
+								}
+
+								return
+							}
+
+						}
+
+					}
+
+				}
+
 			}
 
 		}
@@ -800,9 +1064,9 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 				break
 			}
 			switch elem[0] {
-			case 'a': // Prefix: "account"
+			case 'a': // Prefix: "a"
 
-				if l := len("account"); len(elem) >= l && elem[0:l] == "account" {
+				if l := len("a"); len(elem) >= l && elem[0:l] == "a" {
 					elem = elem[l:]
 				} else {
 					break
@@ -812,9 +1076,9 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					break
 				}
 				switch elem[0] {
-				case '/': // Prefix: "/"
+				case 'c': // Prefix: "ccount"
 
-					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+					if l := len("ccount"); len(elem) >= l && elem[0:l] == "ccount" {
 						elem = elem[l:]
 					} else {
 						break
@@ -824,57 +1088,95 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						break
 					}
 					switch elem[0] {
-					case 'c': // Prefix: "change-password"
+					case '/': // Prefix: "/"
 
-						if l := len("change-password"); len(elem) >= l && elem[0:l] == "change-password" {
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
 						if len(elem) == 0 {
-							// Leaf node.
-							switch method {
-							case "POST":
-								r.name = ChangePasswordOperation
-								r.summary = ""
-								r.operationID = "changePassword"
-								r.pathPattern = "/account/change-password"
-								r.args = args
-								r.count = 0
-								return r, true
-							default:
-								return
+							break
+						}
+						switch elem[0] {
+						case 'c': // Prefix: "change-password"
+
+							if l := len("change-password"); len(elem) >= l && elem[0:l] == "change-password" {
+								elem = elem[l:]
+							} else {
+								break
 							}
-						}
 
-					case 'l': // Prefix: "login"
-
-						if l := len("login"); len(elem) >= l && elem[0:l] == "login" {
-							elem = elem[l:]
-						} else {
-							break
-						}
-
-						if len(elem) == 0 {
-							// Leaf node.
-							switch method {
-							case "POST":
-								r.name = LoginOperation
-								r.summary = ""
-								r.operationID = "login"
-								r.pathPattern = "/account/login"
-								r.args = args
-								r.count = 0
-								return r, true
-							default:
-								return
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = ChangePasswordOperation
+									r.summary = ""
+									r.operationID = "changePassword"
+									r.pathPattern = "/account/change-password"
+									r.args = args
+									r.count = 0
+									return r, true
+								default:
+									return
+								}
 							}
+
+						case 'l': // Prefix: "login"
+
+							if l := len("login"); len(elem) >= l && elem[0:l] == "login" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = LoginOperation
+									r.summary = ""
+									r.operationID = "login"
+									r.pathPattern = "/account/login"
+									r.args = args
+									r.count = 0
+									return r, true
+								default:
+									return
+								}
+							}
+
+						case 'r': // Prefix: "regenerate-token"
+
+							if l := len("regenerate-token"); len(elem) >= l && elem[0:l] == "regenerate-token" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = RegenerateAccountTokenOperation
+									r.summary = ""
+									r.operationID = "regenerateAccountToken"
+									r.pathPattern = "/account/regenerate-token"
+									r.args = args
+									r.count = 0
+									return r, true
+								default:
+									return
+								}
+							}
+
 						}
 
-					case 'r': // Prefix: "regenerate-token"
+					case 's': // Prefix: "s"
 
-						if l := len("regenerate-token"); len(elem) >= l && elem[0:l] == "regenerate-token" {
+						if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
 							elem = elem[l:]
 						} else {
 							break
@@ -883,11 +1185,11 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						if len(elem) == 0 {
 							// Leaf node.
 							switch method {
-							case "POST":
-								r.name = RegenerateAccountTokenOperation
+							case "GET":
+								r.name = ListUsersOperation
 								r.summary = ""
-								r.operationID = "regenerateAccountToken"
-								r.pathPattern = "/account/regenerate-token"
+								r.operationID = "listUsers"
+								r.pathPattern = "/accounts"
 								r.args = args
 								r.count = 0
 								return r, true
@@ -898,28 +1200,145 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 
 					}
 
-				case 's': // Prefix: "s"
+				case 'd': // Prefix: "dmin/workgroups"
 
-					if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
+					if l := len("dmin/workgroups"); len(elem) >= l && elem[0:l] == "dmin/workgroups" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
 					if len(elem) == 0 {
-						// Leaf node.
 						switch method {
 						case "GET":
-							r.name = ListUsersOperation
+							r.name = ListAdminWorkgroupsOperation
 							r.summary = ""
-							r.operationID = "listUsers"
-							r.pathPattern = "/accounts"
+							r.operationID = "listAdminWorkgroups"
+							r.pathPattern = "/admin/workgroups"
+							r.args = args
+							r.count = 0
+							return r, true
+						case "POST":
+							r.name = CreateWorkgroupOperation
+							r.summary = ""
+							r.operationID = "createWorkgroup"
+							r.pathPattern = "/admin/workgroups"
 							r.args = args
 							r.count = 0
 							return r, true
 						default:
 							return
 						}
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "workgroupId"
+						// Match until "/"
+						idx := strings.IndexByte(elem, '/')
+						if idx < 0 {
+							idx = len(elem)
+						}
+						args[0] = elem[:idx]
+						elem = elem[idx:]
+
+						if len(elem) == 0 {
+							break
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/invitations/"
+
+							if l := len("/invitations/"); len(elem) >= l && elem[0:l] == "/invitations/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							// Param: "organizationId"
+							// Match until "/"
+							idx := strings.IndexByte(elem, '/')
+							if idx < 0 {
+								idx = len(elem)
+							}
+							args[1] = elem[:idx]
+							elem = elem[idx:]
+
+							if len(elem) == 0 {
+								break
+							}
+							switch elem[0] {
+							case '/': // Prefix: "/"
+
+								if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									break
+								}
+								switch elem[0] {
+								case 'a': // Prefix: "accept"
+
+									if l := len("accept"); len(elem) >= l && elem[0:l] == "accept" {
+										elem = elem[l:]
+									} else {
+										break
+									}
+
+									if len(elem) == 0 {
+										// Leaf node.
+										switch method {
+										case "POST":
+											r.name = AcceptWorkgroupInvitationOperation
+											r.summary = ""
+											r.operationID = "acceptWorkgroupInvitation"
+											r.pathPattern = "/admin/workgroups/{workgroupId}/invitations/{organizationId}/accept"
+											r.args = args
+											r.count = 2
+											return r, true
+										default:
+											return
+										}
+									}
+
+								case 'd': // Prefix: "decline"
+
+									if l := len("decline"); len(elem) >= l && elem[0:l] == "decline" {
+										elem = elem[l:]
+									} else {
+										break
+									}
+
+									if len(elem) == 0 {
+										// Leaf node.
+										switch method {
+										case "POST":
+											r.name = DeclineWorkgroupInvitationOperation
+											r.summary = ""
+											r.operationID = "declineWorkgroupInvitation"
+											r.pathPattern = "/admin/workgroups/{workgroupId}/invitations/{organizationId}/decline"
+											r.args = args
+											r.count = 2
+											return r, true
+										default:
+											return
+										}
+									}
+
+								}
+
+							}
+
+						}
+
 					}
 
 				}
@@ -1533,6 +1952,147 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 									}
 								}
 
+							}
+
+						}
+
+					}
+
+				}
+
+			case 'w': // Prefix: "workgroups"
+
+				if l := len("workgroups"); len(elem) >= l && elem[0:l] == "workgroups" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					switch method {
+					case "GET":
+						r.name = ListWorkgroupsOperation
+						r.summary = ""
+						r.operationID = "listWorkgroups"
+						r.pathPattern = "/workgroups"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/"
+
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "workgroupId"
+					// Match until "/"
+					idx := strings.IndexByte(elem, '/')
+					if idx < 0 {
+						idx = len(elem)
+					}
+					args[0] = elem[:idx]
+					elem = elem[idx:]
+
+					if len(elem) == 0 {
+						switch method {
+						case "DELETE":
+							r.name = DeleteWorkgroupOperation
+							r.summary = ""
+							r.operationID = "deleteWorkgroup"
+							r.pathPattern = "/workgroups/{workgroupId}"
+							r.args = args
+							r.count = 1
+							return r, true
+						case "GET":
+							r.name = GetWorkgroupOperation
+							r.summary = ""
+							r.operationID = "getWorkgroup"
+							r.pathPattern = "/workgroups/{workgroupId}"
+							r.args = args
+							r.count = 1
+							return r, true
+						default:
+							return
+						}
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/members"
+
+						if l := len("/members"); len(elem) >= l && elem[0:l] == "/members" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							switch method {
+							case "GET":
+								r.name = ListWorkgroupMembersOperation
+								r.summary = ""
+								r.operationID = "listWorkgroupMembers"
+								r.pathPattern = "/workgroups/{workgroupId}/members"
+								r.args = args
+								r.count = 1
+								return r, true
+							case "POST":
+								r.name = AddWorkgroupMemberOperation
+								r.summary = ""
+								r.operationID = "addWorkgroupMember"
+								r.pathPattern = "/workgroups/{workgroupId}/members"
+								r.args = args
+								r.count = 1
+								return r, true
+							default:
+								return
+							}
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
+
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							// Param: "membershipId"
+							// Leaf parameter, slashes are prohibited
+							idx := strings.IndexByte(elem, '/')
+							if idx >= 0 {
+								break
+							}
+							args[1] = elem
+							elem = ""
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "DELETE":
+									r.name = RemoveWorkgroupMemberOperation
+									r.summary = ""
+									r.operationID = "removeWorkgroupMember"
+									r.pathPattern = "/workgroups/{workgroupId}/members/{membershipId}"
+									r.args = args
+									r.count = 2
+									return r, true
+								case "PATCH":
+									r.name = ChangeWorkgroupMembershipRoleOperation
+									r.summary = ""
+									r.operationID = "changeWorkgroupMembershipRole"
+									r.pathPattern = "/workgroups/{workgroupId}/members/{membershipId}"
+									r.args = args
+									r.count = 2
+									return r, true
+								default:
+									return
+								}
 							}
 
 						}

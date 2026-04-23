@@ -66,9 +66,9 @@ Every capability exposes exactly three message types: request, response, and err
 
 Each Layer 2 slice advances the example. This matrix is the authoritative statement of what ships in which PR:
 
-| Slice | What lands in Macro Pulse |
-| --- | --- |
-| **Workgroups** | `bootstrap/` Go program that creates the five orgs, nine accounts, seven workgroups, and performs all inter-org invitation handshakes. Demo at this stage: `agora admin workgroup list` shows the full demo topology. |
+| Slice | What lands in Macro Pulse | Status |
+| --- | --- | --- |
+| **Workgroups** | `bootstrap/` Go program that creates the five orgs, nine accounts, seven workgroups, and performs all inter-org invitation handshakes. Demo at this stage: `agora admin workgroup list` shows the full demo topology. | **shipped** |
 | **Catalog + advertisements** | Each provider/tool agent runs as a daemon, publishes its advertisement on startup, re-publishes on reconnect. Demo: `agora catalog search capability=markets.*` returns exactly three advertisements from `markets-co` and nothing else; visibility boundary is demonstrable. |
 | **Sessions** | Each agent implements session accept/close. `pulse-agent` implements session propose/close. Initial session implementations exchange a minimal "ping" envelope — no structured payload yet. Demo: `pulse-agent` runs, opens sessions with every provider and tool, closes them, and `agora status` / audit shows the session graph. |
 | **Contracts** | Sessions carry contracts. `pulse-agent` supplies contract constraints on every proposal. Providers honor `max_envelope_count`, `max_duration`, `allowed_message_types`. Demo: an intentional contract-violation test produces a clean close with `close_reason = contract_violation` and an audit entry. |

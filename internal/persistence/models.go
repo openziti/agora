@@ -166,3 +166,68 @@ type TunnelServeDetail struct {
 	TunnelName      string  `db:"tunnel_name"`
 	TunnelMode      string  `db:"tunnel_mode"`
 }
+
+type WorkgroupScope string
+
+const (
+	WorkgroupScopeIntraOrg WorkgroupScope = "intra-org"
+	WorkgroupScopeInterOrg WorkgroupScope = "inter-org"
+)
+
+type WorkgroupState string
+
+const (
+	WorkgroupStatePending  WorkgroupState = "pending"
+	WorkgroupStateActive   WorkgroupState = "active"
+	WorkgroupStateDeclined WorkgroupState = "declined"
+)
+
+type Workgroup struct {
+	ID                  string         `db:"id"`
+	OwnerOrganizationID string         `db:"owner_organization_id"`
+	Name                string         `db:"name"`
+	Description         *string        `db:"description"`
+	Scope               WorkgroupScope `db:"scope"`
+	State               WorkgroupState `db:"state"`
+	Deleted             bool           `db:"deleted"`
+	CreatedAt           time.Time      `db:"created_at"`
+	UpdatedAt           time.Time      `db:"updated_at"`
+}
+
+type WorkgroupInvitationState string
+
+const (
+	WorkgroupInvitationStatePending  WorkgroupInvitationState = "pending"
+	WorkgroupInvitationStateAccepted WorkgroupInvitationState = "accepted"
+	WorkgroupInvitationStateDeclined WorkgroupInvitationState = "declined"
+)
+
+type WorkgroupInvitation struct {
+	ID                      string                   `db:"id"`
+	WorkgroupID             string                   `db:"workgroup_id"`
+	OrganizationID          string                   `db:"organization_id"`
+	State                   WorkgroupInvitationState `db:"state"`
+	AcknowledgedByAccountID *string                  `db:"acknowledged_by_account_id"`
+	AcknowledgedAt          *time.Time               `db:"acknowledged_at"`
+	CreatedAt               time.Time                `db:"created_at"`
+	UpdatedAt               time.Time                `db:"updated_at"`
+}
+
+type WorkgroupMembershipRole string
+
+const (
+	WorkgroupMembershipRoleMember WorkgroupMembershipRole = "member"
+	WorkgroupMembershipRoleAdmin  WorkgroupMembershipRole = "admin"
+)
+
+type WorkgroupMembership struct {
+	ID             string                  `db:"id"`
+	WorkgroupID    string                  `db:"workgroup_id"`
+	OrganizationID string                  `db:"organization_id"`
+	AccountID      string                  `db:"account_id"`
+	Role           WorkgroupMembershipRole `db:"role"`
+	JoinedAt       time.Time               `db:"joined_at"`
+	Deleted        bool                    `db:"deleted"`
+	CreatedAt      time.Time               `db:"created_at"`
+	UpdatedAt      time.Time               `db:"updated_at"`
+}

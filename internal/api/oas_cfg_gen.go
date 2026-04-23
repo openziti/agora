@@ -18,6 +18,9 @@ var regexMap = map[string]ogenregex.Regexp{
 	"^ta_[a-z0-9]{12}$":  ogenregex.MustCompile("^ta_[a-z0-9]{12}$"),
 	"^ts_[a-z0-9]{12}$":  ogenregex.MustCompile("^ts_[a-z0-9]{12}$"),
 	"^tt_[a-z0-9]{12}$":  ogenregex.MustCompile("^tt_[a-z0-9]{12}$"),
+	"^wg_[a-z0-9]{12}$":  ogenregex.MustCompile("^wg_[a-z0-9]{12}$"),
+	"^wgi_[a-z0-9]{12}$": ogenregex.MustCompile("^wgi_[a-z0-9]{12}$"),
+	"^wgm_[a-z0-9]{12}$": ogenregex.MustCompile("^wgm_[a-z0-9]{12}$"),
 }
 
 type (

@@ -10,6 +10,20 @@ import (
 	ht "github.com/ogen-go/ogen/http"
 )
 
+func encodeAcceptWorkgroupInvitationRequest(
+	req *AcceptWorkgroupInvitationRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodeAddTunnelGrantRequest(
 	req *AddTunnelGrantRequest,
 	r *http.Request,
@@ -24,8 +38,36 @@ func encodeAddTunnelGrantRequest(
 	return nil
 }
 
+func encodeAddWorkgroupMemberRequest(
+	req *AddWorkgroupMemberRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodeChangePasswordRequest(
 	req *ChangePasswordRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeChangeWorkgroupMembershipRoleRequest(
+	req *ChangeWorkgroupMembershipRoleRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"
@@ -82,6 +124,34 @@ func encodeCreateOrganizationRequest(
 
 func encodeCreateTunnelRequest(
 	req *CreateTunnelRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeCreateWorkgroupRequest(
+	req *CreateWorkgroupRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeDeclineWorkgroupInvitationRequest(
+	req *DeclineWorkgroupInvitationRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"

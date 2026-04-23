@@ -92,3 +92,126 @@ listAccountsResponse:
   type: array
   items:
     $ref: "#/account"
+
+workgroupInvitation:
+  type: object
+  required:
+    - id
+    - workgroupId
+    - organizationId
+    - state
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      type: string
+      pattern: '^wgi_[a-z0-9]{12}$'
+    workgroupId:
+      type: string
+      pattern: '^wg_[a-z0-9]{12}$'
+    organizationId:
+      type: string
+      pattern: '^org_[a-z0-9]{12}$'
+    state:
+      type: string
+      enum: [pending, accepted, declined]
+    acknowledgedByAccountId:
+      type: string
+    acknowledgedAt:
+      type: string
+      format: date-time
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+createWorkgroupRequest:
+  type: object
+  required:
+    - name
+    - scope
+    - ownerOrganizationId
+    - initialAdminAccountId
+  properties:
+    name:
+      type: string
+      minLength: 1
+    description:
+      type: string
+    scope:
+      type: string
+      enum: [intra-org, inter-org]
+    ownerOrganizationId:
+      type: string
+      pattern: '^org_[a-z0-9]{12}$'
+    initialAdminAccountId:
+      type: string
+      pattern: '^ac_[a-z0-9]{12}$'
+    participatingOrganizationIds:
+      type: array
+      items:
+        type: string
+        pattern: '^org_[a-z0-9]{12}$'
+
+createWorkgroupResponse:
+  type: object
+  required:
+    - workgroup
+    - invitations
+  properties:
+    workgroup:
+      $ref: "../agora.yml#/components/schemas/workgroup"
+    invitations:
+      type: array
+      items:
+        $ref: "#/workgroupInvitation"
+
+acceptWorkgroupInvitationRequest:
+  type: object
+  required:
+    - initialAdminAccountId
+  properties:
+    initialAdminAccountId:
+      type: string
+      pattern: '^ac_[a-z0-9]{12}$'
+    acknowledgingAdminAccountId:
+      type: string
+      pattern: '^ac_[a-z0-9]{12}$'
+
+declineWorkgroupInvitationRequest:
+  type: object
+  properties:
+    acknowledgingAdminAccountId:
+      type: string
+      pattern: '^ac_[a-z0-9]{12}$'
+
+acknowledgeWorkgroupInvitationResponse:
+  type: object
+  required:
+    - invitation
+    - workgroup
+  properties:
+    invitation:
+      $ref: "#/workgroupInvitation"
+    workgroup:
+      $ref: "../agora.yml#/components/schemas/workgroup"
+
+adminWorkgroupEntry:
+  type: object
+  required:
+    - workgroup
+    - invitations
+  properties:
+    workgroup:
+      $ref: "../agora.yml#/components/schemas/workgroup"
+    invitations:
+      type: array
+      items:
+        $ref: "#/workgroupInvitation"
+
+listAdminWorkgroupsResponse:
+  type: array
+  items:
+    $ref: "#/adminWorkgroupEntry"

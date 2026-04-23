@@ -281,3 +281,226 @@
           application/json:
             schema:
               $ref: "../agora.yml#/components/schemas/error"
+
+/admin/workgroups:
+  post:
+    tags:
+      - admin
+    operationId: createWorkgroup
+    security:
+      - adminTokenAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/createWorkgroupRequest"
+    responses:
+      201:
+        description: created
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/createWorkgroupResponse"
+      400:
+        description: bad request
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+  get:
+    tags:
+      - admin
+    operationId: listAdminWorkgroups
+    security:
+      - adminTokenAuth: []
+    parameters:
+      - name: state
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [pending, active, declined]
+      - name: ownerOrganizationId
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: '^org_[a-z0-9]{12}$'
+      - name: invitedOrganizationId
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: '^org_[a-z0-9]{12}$'
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/listAdminWorkgroupsResponse"
+      400:
+        description: bad request
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/admin/workgroups/{workgroupId}/invitations/{organizationId}/accept:
+  post:
+    tags:
+      - admin
+    operationId: acceptWorkgroupInvitation
+    security:
+      - adminTokenAuth: []
+    parameters:
+      - name: workgroupId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^wg_[a-z0-9]{12}$'
+      - name: organizationId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^org_[a-z0-9]{12}$'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/acceptWorkgroupInvitationRequest"
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/acknowledgeWorkgroupInvitationResponse"
+      400:
+        description: bad request
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/admin/workgroups/{workgroupId}/invitations/{organizationId}/decline:
+  post:
+    tags:
+      - admin
+    operationId: declineWorkgroupInvitation
+    security:
+      - adminTokenAuth: []
+    parameters:
+      - name: workgroupId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^wg_[a-z0-9]{12}$'
+      - name: organizationId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^org_[a-z0-9]{12}$'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/declineWorkgroupInvitationRequest"
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/acknowledgeWorkgroupInvitationResponse"
+      400:
+        description: bad request
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"

@@ -8,6 +8,52 @@ import (
 	"github.com/go-faster/errors"
 )
 
+type AcceptWorkgroupInvitationBadRequest Error
+
+func (*AcceptWorkgroupInvitationBadRequest) acceptWorkgroupInvitationRes() {}
+
+type AcceptWorkgroupInvitationConflict Error
+
+func (*AcceptWorkgroupInvitationConflict) acceptWorkgroupInvitationRes() {}
+
+type AcceptWorkgroupInvitationInternalServerError Error
+
+func (*AcceptWorkgroupInvitationInternalServerError) acceptWorkgroupInvitationRes() {}
+
+type AcceptWorkgroupInvitationNotFound Error
+
+func (*AcceptWorkgroupInvitationNotFound) acceptWorkgroupInvitationRes() {}
+
+// Ref: #/acceptWorkgroupInvitationRequest
+type AcceptWorkgroupInvitationRequest struct {
+	InitialAdminAccountId       string    `json:"initialAdminAccountId"`
+	AcknowledgingAdminAccountId OptString `json:"acknowledgingAdminAccountId"`
+}
+
+// GetInitialAdminAccountId returns the value of InitialAdminAccountId.
+func (s *AcceptWorkgroupInvitationRequest) GetInitialAdminAccountId() string {
+	return s.InitialAdminAccountId
+}
+
+// GetAcknowledgingAdminAccountId returns the value of AcknowledgingAdminAccountId.
+func (s *AcceptWorkgroupInvitationRequest) GetAcknowledgingAdminAccountId() OptString {
+	return s.AcknowledgingAdminAccountId
+}
+
+// SetInitialAdminAccountId sets the value of InitialAdminAccountId.
+func (s *AcceptWorkgroupInvitationRequest) SetInitialAdminAccountId(val string) {
+	s.InitialAdminAccountId = val
+}
+
+// SetAcknowledgingAdminAccountId sets the value of AcknowledgingAdminAccountId.
+func (s *AcceptWorkgroupInvitationRequest) SetAcknowledgingAdminAccountId(val OptString) {
+	s.AcknowledgingAdminAccountId = val
+}
+
+type AcceptWorkgroupInvitationUnauthorized Error
+
+func (*AcceptWorkgroupInvitationUnauthorized) acceptWorkgroupInvitationRes() {}
+
 // Ref: #/account
 type Account struct {
 	ID             string        `json:"id"`
@@ -226,6 +272,35 @@ func (*AccountTokenResponse) createAccountRes()          {}
 func (*AccountTokenResponse) loginRes()                  {}
 func (*AccountTokenResponse) regenerateAccountTokenRes() {}
 
+// Ref: #/acknowledgeWorkgroupInvitationResponse
+type AcknowledgeWorkgroupInvitationResponse struct {
+	Invitation WorkgroupInvitation `json:"invitation"`
+	Workgroup  Workgroup           `json:"workgroup"`
+}
+
+// GetInvitation returns the value of Invitation.
+func (s *AcknowledgeWorkgroupInvitationResponse) GetInvitation() WorkgroupInvitation {
+	return s.Invitation
+}
+
+// GetWorkgroup returns the value of Workgroup.
+func (s *AcknowledgeWorkgroupInvitationResponse) GetWorkgroup() Workgroup {
+	return s.Workgroup
+}
+
+// SetInvitation sets the value of Invitation.
+func (s *AcknowledgeWorkgroupInvitationResponse) SetInvitation(val WorkgroupInvitation) {
+	s.Invitation = val
+}
+
+// SetWorkgroup sets the value of Workgroup.
+func (s *AcknowledgeWorkgroupInvitationResponse) SetWorkgroup(val Workgroup) {
+	s.Workgroup = val
+}
+
+func (*AcknowledgeWorkgroupInvitationResponse) acceptWorkgroupInvitationRes()  {}
+func (*AcknowledgeWorkgroupInvitationResponse) declineWorkgroupInvitationRes() {}
+
 type AddTunnelGrantConflict Error
 
 func (*AddTunnelGrantConflict) addTunnelGrantRes() {}
@@ -257,6 +332,56 @@ type AddTunnelGrantUnauthorized Error
 
 func (*AddTunnelGrantUnauthorized) addTunnelGrantRes() {}
 
+type AddWorkgroupMemberBadRequest Error
+
+func (*AddWorkgroupMemberBadRequest) addWorkgroupMemberRes() {}
+
+type AddWorkgroupMemberConflict Error
+
+func (*AddWorkgroupMemberConflict) addWorkgroupMemberRes() {}
+
+type AddWorkgroupMemberForbidden Error
+
+func (*AddWorkgroupMemberForbidden) addWorkgroupMemberRes() {}
+
+type AddWorkgroupMemberInternalServerError Error
+
+func (*AddWorkgroupMemberInternalServerError) addWorkgroupMemberRes() {}
+
+type AddWorkgroupMemberNotFound Error
+
+func (*AddWorkgroupMemberNotFound) addWorkgroupMemberRes() {}
+
+// Ref: #/addWorkgroupMemberRequest
+type AddWorkgroupMemberRequest struct {
+	AccountEmail string                     `json:"accountEmail"`
+	Role         OptWorkgroupMembershipRole `json:"role"`
+}
+
+// GetAccountEmail returns the value of AccountEmail.
+func (s *AddWorkgroupMemberRequest) GetAccountEmail() string {
+	return s.AccountEmail
+}
+
+// GetRole returns the value of Role.
+func (s *AddWorkgroupMemberRequest) GetRole() OptWorkgroupMembershipRole {
+	return s.Role
+}
+
+// SetAccountEmail sets the value of AccountEmail.
+func (s *AddWorkgroupMemberRequest) SetAccountEmail(val string) {
+	s.AccountEmail = val
+}
+
+// SetRole sets the value of Role.
+func (s *AddWorkgroupMemberRequest) SetRole(val OptWorkgroupMembershipRole) {
+	s.Role = val
+}
+
+type AddWorkgroupMemberUnauthorized Error
+
+func (*AddWorkgroupMemberUnauthorized) addWorkgroupMemberRes() {}
+
 type AdminTokenAuth struct {
 	APIKey string
 	Roles  []string
@@ -280,6 +405,32 @@ func (s *AdminTokenAuth) SetAPIKey(val string) {
 // SetRoles sets the value of Roles.
 func (s *AdminTokenAuth) SetRoles(val []string) {
 	s.Roles = val
+}
+
+// Ref: #/adminWorkgroupEntry
+type AdminWorkgroupEntry struct {
+	Workgroup   Workgroup             `json:"workgroup"`
+	Invitations []WorkgroupInvitation `json:"invitations"`
+}
+
+// GetWorkgroup returns the value of Workgroup.
+func (s *AdminWorkgroupEntry) GetWorkgroup() Workgroup {
+	return s.Workgroup
+}
+
+// GetInvitations returns the value of Invitations.
+func (s *AdminWorkgroupEntry) GetInvitations() []WorkgroupInvitation {
+	return s.Invitations
+}
+
+// SetWorkgroup sets the value of Workgroup.
+func (s *AdminWorkgroupEntry) SetWorkgroup(val Workgroup) {
+	s.Workgroup = val
+}
+
+// SetInvitations sets the value of Invitations.
+func (s *AdminWorkgroupEntry) SetInvitations(val []WorkgroupInvitation) {
+	s.Invitations = val
 }
 
 type ChangePasswordInternalServerError Error
@@ -339,6 +490,45 @@ func (*ChangePasswordUnauthorized) changePasswordRes() {}
 type ChangePasswordUnprocessableEntity Error
 
 func (*ChangePasswordUnprocessableEntity) changePasswordRes() {}
+
+type ChangeWorkgroupMembershipRoleBadRequest Error
+
+func (*ChangeWorkgroupMembershipRoleBadRequest) changeWorkgroupMembershipRoleRes() {}
+
+type ChangeWorkgroupMembershipRoleConflict Error
+
+func (*ChangeWorkgroupMembershipRoleConflict) changeWorkgroupMembershipRoleRes() {}
+
+type ChangeWorkgroupMembershipRoleForbidden Error
+
+func (*ChangeWorkgroupMembershipRoleForbidden) changeWorkgroupMembershipRoleRes() {}
+
+type ChangeWorkgroupMembershipRoleInternalServerError Error
+
+func (*ChangeWorkgroupMembershipRoleInternalServerError) changeWorkgroupMembershipRoleRes() {}
+
+type ChangeWorkgroupMembershipRoleNotFound Error
+
+func (*ChangeWorkgroupMembershipRoleNotFound) changeWorkgroupMembershipRoleRes() {}
+
+// Ref: #/changeWorkgroupMembershipRoleRequest
+type ChangeWorkgroupMembershipRoleRequest struct {
+	Role WorkgroupMembershipRole `json:"role"`
+}
+
+// GetRole returns the value of Role.
+func (s *ChangeWorkgroupMembershipRoleRequest) GetRole() WorkgroupMembershipRole {
+	return s.Role
+}
+
+// SetRole sets the value of Role.
+func (s *ChangeWorkgroupMembershipRoleRequest) SetRole(val WorkgroupMembershipRole) {
+	s.Role = val
+}
+
+type ChangeWorkgroupMembershipRoleUnauthorized Error
+
+func (*ChangeWorkgroupMembershipRoleUnauthorized) changeWorkgroupMembershipRoleRes() {}
 
 type ConnectTunnelConflict Error
 
@@ -680,6 +870,196 @@ type CreateTunnelUnauthorized Error
 
 func (*CreateTunnelUnauthorized) createTunnelRes() {}
 
+type CreateWorkgroupBadRequest Error
+
+func (*CreateWorkgroupBadRequest) createWorkgroupRes() {}
+
+type CreateWorkgroupConflict Error
+
+func (*CreateWorkgroupConflict) createWorkgroupRes() {}
+
+type CreateWorkgroupInternalServerError Error
+
+func (*CreateWorkgroupInternalServerError) createWorkgroupRes() {}
+
+// Ref: #/createWorkgroupRequest
+type CreateWorkgroupRequest struct {
+	Name                         string                      `json:"name"`
+	Description                  OptString                   `json:"description"`
+	Scope                        CreateWorkgroupRequestScope `json:"scope"`
+	OwnerOrganizationId          string                      `json:"ownerOrganizationId"`
+	InitialAdminAccountId        string                      `json:"initialAdminAccountId"`
+	ParticipatingOrganizationIds []string                    `json:"participatingOrganizationIds"`
+}
+
+// GetName returns the value of Name.
+func (s *CreateWorkgroupRequest) GetName() string {
+	return s.Name
+}
+
+// GetDescription returns the value of Description.
+func (s *CreateWorkgroupRequest) GetDescription() OptString {
+	return s.Description
+}
+
+// GetScope returns the value of Scope.
+func (s *CreateWorkgroupRequest) GetScope() CreateWorkgroupRequestScope {
+	return s.Scope
+}
+
+// GetOwnerOrganizationId returns the value of OwnerOrganizationId.
+func (s *CreateWorkgroupRequest) GetOwnerOrganizationId() string {
+	return s.OwnerOrganizationId
+}
+
+// GetInitialAdminAccountId returns the value of InitialAdminAccountId.
+func (s *CreateWorkgroupRequest) GetInitialAdminAccountId() string {
+	return s.InitialAdminAccountId
+}
+
+// GetParticipatingOrganizationIds returns the value of ParticipatingOrganizationIds.
+func (s *CreateWorkgroupRequest) GetParticipatingOrganizationIds() []string {
+	return s.ParticipatingOrganizationIds
+}
+
+// SetName sets the value of Name.
+func (s *CreateWorkgroupRequest) SetName(val string) {
+	s.Name = val
+}
+
+// SetDescription sets the value of Description.
+func (s *CreateWorkgroupRequest) SetDescription(val OptString) {
+	s.Description = val
+}
+
+// SetScope sets the value of Scope.
+func (s *CreateWorkgroupRequest) SetScope(val CreateWorkgroupRequestScope) {
+	s.Scope = val
+}
+
+// SetOwnerOrganizationId sets the value of OwnerOrganizationId.
+func (s *CreateWorkgroupRequest) SetOwnerOrganizationId(val string) {
+	s.OwnerOrganizationId = val
+}
+
+// SetInitialAdminAccountId sets the value of InitialAdminAccountId.
+func (s *CreateWorkgroupRequest) SetInitialAdminAccountId(val string) {
+	s.InitialAdminAccountId = val
+}
+
+// SetParticipatingOrganizationIds sets the value of ParticipatingOrganizationIds.
+func (s *CreateWorkgroupRequest) SetParticipatingOrganizationIds(val []string) {
+	s.ParticipatingOrganizationIds = val
+}
+
+type CreateWorkgroupRequestScope string
+
+const (
+	CreateWorkgroupRequestScopeIntraOrg CreateWorkgroupRequestScope = "intra-org"
+	CreateWorkgroupRequestScopeInterOrg CreateWorkgroupRequestScope = "inter-org"
+)
+
+// AllValues returns all CreateWorkgroupRequestScope values.
+func (CreateWorkgroupRequestScope) AllValues() []CreateWorkgroupRequestScope {
+	return []CreateWorkgroupRequestScope{
+		CreateWorkgroupRequestScopeIntraOrg,
+		CreateWorkgroupRequestScopeInterOrg,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s CreateWorkgroupRequestScope) MarshalText() ([]byte, error) {
+	switch s {
+	case CreateWorkgroupRequestScopeIntraOrg:
+		return []byte(s), nil
+	case CreateWorkgroupRequestScopeInterOrg:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *CreateWorkgroupRequestScope) UnmarshalText(data []byte) error {
+	switch CreateWorkgroupRequestScope(data) {
+	case CreateWorkgroupRequestScopeIntraOrg:
+		*s = CreateWorkgroupRequestScopeIntraOrg
+		return nil
+	case CreateWorkgroupRequestScopeInterOrg:
+		*s = CreateWorkgroupRequestScopeInterOrg
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/createWorkgroupResponse
+type CreateWorkgroupResponse struct {
+	Workgroup   Workgroup             `json:"workgroup"`
+	Invitations []WorkgroupInvitation `json:"invitations"`
+}
+
+// GetWorkgroup returns the value of Workgroup.
+func (s *CreateWorkgroupResponse) GetWorkgroup() Workgroup {
+	return s.Workgroup
+}
+
+// GetInvitations returns the value of Invitations.
+func (s *CreateWorkgroupResponse) GetInvitations() []WorkgroupInvitation {
+	return s.Invitations
+}
+
+// SetWorkgroup sets the value of Workgroup.
+func (s *CreateWorkgroupResponse) SetWorkgroup(val Workgroup) {
+	s.Workgroup = val
+}
+
+// SetInvitations sets the value of Invitations.
+func (s *CreateWorkgroupResponse) SetInvitations(val []WorkgroupInvitation) {
+	s.Invitations = val
+}
+
+func (*CreateWorkgroupResponse) createWorkgroupRes() {}
+
+type CreateWorkgroupUnauthorized Error
+
+func (*CreateWorkgroupUnauthorized) createWorkgroupRes() {}
+
+type DeclineWorkgroupInvitationBadRequest Error
+
+func (*DeclineWorkgroupInvitationBadRequest) declineWorkgroupInvitationRes() {}
+
+type DeclineWorkgroupInvitationConflict Error
+
+func (*DeclineWorkgroupInvitationConflict) declineWorkgroupInvitationRes() {}
+
+type DeclineWorkgroupInvitationInternalServerError Error
+
+func (*DeclineWorkgroupInvitationInternalServerError) declineWorkgroupInvitationRes() {}
+
+type DeclineWorkgroupInvitationNotFound Error
+
+func (*DeclineWorkgroupInvitationNotFound) declineWorkgroupInvitationRes() {}
+
+// Ref: #/declineWorkgroupInvitationRequest
+type DeclineWorkgroupInvitationRequest struct {
+	AcknowledgingAdminAccountId OptString `json:"acknowledgingAdminAccountId"`
+}
+
+// GetAcknowledgingAdminAccountId returns the value of AcknowledgingAdminAccountId.
+func (s *DeclineWorkgroupInvitationRequest) GetAcknowledgingAdminAccountId() OptString {
+	return s.AcknowledgingAdminAccountId
+}
+
+// SetAcknowledgingAdminAccountId sets the value of AcknowledgingAdminAccountId.
+func (s *DeclineWorkgroupInvitationRequest) SetAcknowledgingAdminAccountId(val OptString) {
+	s.AcknowledgingAdminAccountId = val
+}
+
+type DeclineWorkgroupInvitationUnauthorized Error
+
+func (*DeclineWorkgroupInvitationUnauthorized) declineWorkgroupInvitationRes() {}
+
 type DeleteAccountConflict Error
 
 func (*DeleteAccountConflict) deleteAccountRes() {}
@@ -772,6 +1152,27 @@ func (*DeleteTunnelServeUnauthorized) deleteTunnelServeRes() {}
 type DeleteTunnelUnauthorized Error
 
 func (*DeleteTunnelUnauthorized) deleteTunnelRes() {}
+
+type DeleteWorkgroupForbidden Error
+
+func (*DeleteWorkgroupForbidden) deleteWorkgroupRes() {}
+
+type DeleteWorkgroupInternalServerError Error
+
+func (*DeleteWorkgroupInternalServerError) deleteWorkgroupRes() {}
+
+// DeleteWorkgroupNoContent is response for DeleteWorkgroup operation.
+type DeleteWorkgroupNoContent struct{}
+
+func (*DeleteWorkgroupNoContent) deleteWorkgroupRes() {}
+
+type DeleteWorkgroupNotFound Error
+
+func (*DeleteWorkgroupNotFound) deleteWorkgroupRes() {}
+
+type DeleteWorkgroupUnauthorized Error
+
+func (*DeleteWorkgroupUnauthorized) deleteWorkgroupRes() {}
 
 type DisableEnvironmentInternalServerError Error
 
@@ -1075,6 +1476,18 @@ type GetTunnelUnauthorized Error
 
 func (*GetTunnelUnauthorized) getTunnelRes() {}
 
+type GetWorkgroupInternalServerError Error
+
+func (*GetWorkgroupInternalServerError) getWorkgroupRes() {}
+
+type GetWorkgroupNotFound Error
+
+func (*GetWorkgroupNotFound) getWorkgroupRes() {}
+
+type GetWorkgroupUnauthorized Error
+
+func (*GetWorkgroupUnauthorized) getWorkgroupRes() {}
+
 type HeartbeatEnvironmentInternalServerError Error
 
 func (*HeartbeatEnvironmentInternalServerError) heartbeatEnvironmentRes() {}
@@ -1142,6 +1555,70 @@ func (*ListAccountsResponse) listUsersRes()    {}
 type ListAccountsUnauthorized Error
 
 func (*ListAccountsUnauthorized) listAccountsRes() {}
+
+type ListAdminWorkgroupsBadRequest Error
+
+func (*ListAdminWorkgroupsBadRequest) listAdminWorkgroupsRes() {}
+
+type ListAdminWorkgroupsInternalServerError Error
+
+func (*ListAdminWorkgroupsInternalServerError) listAdminWorkgroupsRes() {}
+
+type ListAdminWorkgroupsResponse []AdminWorkgroupEntry
+
+func (*ListAdminWorkgroupsResponse) listAdminWorkgroupsRes() {}
+
+type ListAdminWorkgroupsState string
+
+const (
+	ListAdminWorkgroupsStatePending  ListAdminWorkgroupsState = "pending"
+	ListAdminWorkgroupsStateActive   ListAdminWorkgroupsState = "active"
+	ListAdminWorkgroupsStateDeclined ListAdminWorkgroupsState = "declined"
+)
+
+// AllValues returns all ListAdminWorkgroupsState values.
+func (ListAdminWorkgroupsState) AllValues() []ListAdminWorkgroupsState {
+	return []ListAdminWorkgroupsState{
+		ListAdminWorkgroupsStatePending,
+		ListAdminWorkgroupsStateActive,
+		ListAdminWorkgroupsStateDeclined,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ListAdminWorkgroupsState) MarshalText() ([]byte, error) {
+	switch s {
+	case ListAdminWorkgroupsStatePending:
+		return []byte(s), nil
+	case ListAdminWorkgroupsStateActive:
+		return []byte(s), nil
+	case ListAdminWorkgroupsStateDeclined:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ListAdminWorkgroupsState) UnmarshalText(data []byte) error {
+	switch ListAdminWorkgroupsState(data) {
+	case ListAdminWorkgroupsStatePending:
+		*s = ListAdminWorkgroupsStatePending
+		return nil
+	case ListAdminWorkgroupsStateActive:
+		*s = ListAdminWorkgroupsStateActive
+		return nil
+	case ListAdminWorkgroupsStateDeclined:
+		*s = ListAdminWorkgroupsStateDeclined
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type ListAdminWorkgroupsUnauthorized Error
+
+func (*ListAdminWorkgroupsUnauthorized) listAdminWorkgroupsRes() {}
 
 type ListEnvironmentsInternalServerError Error
 
@@ -1270,6 +1747,34 @@ func (*ListUsersNotFound) listUsersRes() {}
 type ListUsersUnauthorized Error
 
 func (*ListUsersUnauthorized) listUsersRes() {}
+
+type ListWorkgroupMembersInternalServerError Error
+
+func (*ListWorkgroupMembersInternalServerError) listWorkgroupMembersRes() {}
+
+type ListWorkgroupMembersNotFound Error
+
+func (*ListWorkgroupMembersNotFound) listWorkgroupMembersRes() {}
+
+type ListWorkgroupMembersResponse []WorkgroupMembership
+
+func (*ListWorkgroupMembersResponse) listWorkgroupMembersRes() {}
+
+type ListWorkgroupMembersUnauthorized Error
+
+func (*ListWorkgroupMembersUnauthorized) listWorkgroupMembersRes() {}
+
+type ListWorkgroupsInternalServerError Error
+
+func (*ListWorkgroupsInternalServerError) listWorkgroupsRes() {}
+
+type ListWorkgroupsResponse []Workgroup
+
+func (*ListWorkgroupsResponse) listWorkgroupsRes() {}
+
+type ListWorkgroupsUnauthorized Error
+
+func (*ListWorkgroupsUnauthorized) listWorkgroupsRes() {}
 
 type LoginInternalServerError Error
 
@@ -1443,6 +1948,52 @@ func (o OptDateTime) Or(d time.Time) time.Time {
 	return d
 }
 
+// NewOptListAdminWorkgroupsState returns new OptListAdminWorkgroupsState with value set to v.
+func NewOptListAdminWorkgroupsState(v ListAdminWorkgroupsState) OptListAdminWorkgroupsState {
+	return OptListAdminWorkgroupsState{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptListAdminWorkgroupsState is optional ListAdminWorkgroupsState.
+type OptListAdminWorkgroupsState struct {
+	Value ListAdminWorkgroupsState
+	Set   bool
+}
+
+// IsSet returns true if OptListAdminWorkgroupsState was set.
+func (o OptListAdminWorkgroupsState) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptListAdminWorkgroupsState) Reset() {
+	var v ListAdminWorkgroupsState
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptListAdminWorkgroupsState) SetTo(v ListAdminWorkgroupsState) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptListAdminWorkgroupsState) Get() (v ListAdminWorkgroupsState, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptListAdminWorkgroupsState) Or(d ListAdminWorkgroupsState) ListAdminWorkgroupsState {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptListTunnelsScope returns new OptListTunnelsScope with value set to v.
 func NewOptListTunnelsScope(v ListTunnelsScope) OptListTunnelsScope {
 	return OptListTunnelsScope{
@@ -1581,6 +2132,52 @@ func (o OptTunnelMode) Or(d TunnelMode) TunnelMode {
 	return d
 }
 
+// NewOptWorkgroupMembershipRole returns new OptWorkgroupMembershipRole with value set to v.
+func NewOptWorkgroupMembershipRole(v WorkgroupMembershipRole) OptWorkgroupMembershipRole {
+	return OptWorkgroupMembershipRole{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptWorkgroupMembershipRole is optional WorkgroupMembershipRole.
+type OptWorkgroupMembershipRole struct {
+	Value WorkgroupMembershipRole
+	Set   bool
+}
+
+// IsSet returns true if OptWorkgroupMembershipRole was set.
+func (o OptWorkgroupMembershipRole) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptWorkgroupMembershipRole) Reset() {
+	var v WorkgroupMembershipRole
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptWorkgroupMembershipRole) SetTo(v WorkgroupMembershipRole) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptWorkgroupMembershipRole) Get() (v WorkgroupMembershipRole, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptWorkgroupMembershipRole) Or(d WorkgroupMembershipRole) WorkgroupMembershipRole {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // Ref: #/organization
 type Organization struct {
 	ID        string    `json:"id"`
@@ -1674,6 +2271,31 @@ func (*RemoveTunnelGrantNotFound) removeTunnelGrantRes() {}
 type RemoveTunnelGrantUnauthorized Error
 
 func (*RemoveTunnelGrantUnauthorized) removeTunnelGrantRes() {}
+
+type RemoveWorkgroupMemberConflict Error
+
+func (*RemoveWorkgroupMemberConflict) removeWorkgroupMemberRes() {}
+
+type RemoveWorkgroupMemberForbidden Error
+
+func (*RemoveWorkgroupMemberForbidden) removeWorkgroupMemberRes() {}
+
+type RemoveWorkgroupMemberInternalServerError Error
+
+func (*RemoveWorkgroupMemberInternalServerError) removeWorkgroupMemberRes() {}
+
+// RemoveWorkgroupMemberNoContent is response for RemoveWorkgroupMember operation.
+type RemoveWorkgroupMemberNoContent struct{}
+
+func (*RemoveWorkgroupMemberNoContent) removeWorkgroupMemberRes() {}
+
+type RemoveWorkgroupMemberNotFound Error
+
+func (*RemoveWorkgroupMemberNotFound) removeWorkgroupMemberRes() {}
+
+type RemoveWorkgroupMemberUnauthorized Error
+
+func (*RemoveWorkgroupMemberUnauthorized) removeWorkgroupMemberRes() {}
 
 type StartTunnelServeConflict Error
 
@@ -2405,6 +3027,468 @@ func (s *TunnelState) UnmarshalText(data []byte) error {
 		return nil
 	case TunnelStateDisabled:
 		*s = TunnelStateDisabled
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/workgroup
+type Workgroup struct {
+	ID                           string         `json:"id"`
+	OwnerOrganizationId          string         `json:"ownerOrganizationId"`
+	Name                         string         `json:"name"`
+	Description                  OptString      `json:"description"`
+	Scope                        WorkgroupScope `json:"scope"`
+	State                        WorkgroupState `json:"state"`
+	ParticipatingOrganizationIds []string       `json:"participatingOrganizationIds"`
+	CreatedAt                    time.Time      `json:"createdAt"`
+	UpdatedAt                    time.Time      `json:"updatedAt"`
+}
+
+// GetID returns the value of ID.
+func (s *Workgroup) GetID() string {
+	return s.ID
+}
+
+// GetOwnerOrganizationId returns the value of OwnerOrganizationId.
+func (s *Workgroup) GetOwnerOrganizationId() string {
+	return s.OwnerOrganizationId
+}
+
+// GetName returns the value of Name.
+func (s *Workgroup) GetName() string {
+	return s.Name
+}
+
+// GetDescription returns the value of Description.
+func (s *Workgroup) GetDescription() OptString {
+	return s.Description
+}
+
+// GetScope returns the value of Scope.
+func (s *Workgroup) GetScope() WorkgroupScope {
+	return s.Scope
+}
+
+// GetState returns the value of State.
+func (s *Workgroup) GetState() WorkgroupState {
+	return s.State
+}
+
+// GetParticipatingOrganizationIds returns the value of ParticipatingOrganizationIds.
+func (s *Workgroup) GetParticipatingOrganizationIds() []string {
+	return s.ParticipatingOrganizationIds
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *Workgroup) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *Workgroup) GetUpdatedAt() time.Time {
+	return s.UpdatedAt
+}
+
+// SetID sets the value of ID.
+func (s *Workgroup) SetID(val string) {
+	s.ID = val
+}
+
+// SetOwnerOrganizationId sets the value of OwnerOrganizationId.
+func (s *Workgroup) SetOwnerOrganizationId(val string) {
+	s.OwnerOrganizationId = val
+}
+
+// SetName sets the value of Name.
+func (s *Workgroup) SetName(val string) {
+	s.Name = val
+}
+
+// SetDescription sets the value of Description.
+func (s *Workgroup) SetDescription(val OptString) {
+	s.Description = val
+}
+
+// SetScope sets the value of Scope.
+func (s *Workgroup) SetScope(val WorkgroupScope) {
+	s.Scope = val
+}
+
+// SetState sets the value of State.
+func (s *Workgroup) SetState(val WorkgroupState) {
+	s.State = val
+}
+
+// SetParticipatingOrganizationIds sets the value of ParticipatingOrganizationIds.
+func (s *Workgroup) SetParticipatingOrganizationIds(val []string) {
+	s.ParticipatingOrganizationIds = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *Workgroup) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *Workgroup) SetUpdatedAt(val time.Time) {
+	s.UpdatedAt = val
+}
+
+func (*Workgroup) getWorkgroupRes() {}
+
+// Ref: #/workgroupInvitation
+type WorkgroupInvitation struct {
+	ID                      string                   `json:"id"`
+	WorkgroupId             string                   `json:"workgroupId"`
+	OrganizationId          string                   `json:"organizationId"`
+	State                   WorkgroupInvitationState `json:"state"`
+	AcknowledgedByAccountId OptString                `json:"acknowledgedByAccountId"`
+	AcknowledgedAt          OptDateTime              `json:"acknowledgedAt"`
+	CreatedAt               time.Time                `json:"createdAt"`
+	UpdatedAt               time.Time                `json:"updatedAt"`
+}
+
+// GetID returns the value of ID.
+func (s *WorkgroupInvitation) GetID() string {
+	return s.ID
+}
+
+// GetWorkgroupId returns the value of WorkgroupId.
+func (s *WorkgroupInvitation) GetWorkgroupId() string {
+	return s.WorkgroupId
+}
+
+// GetOrganizationId returns the value of OrganizationId.
+func (s *WorkgroupInvitation) GetOrganizationId() string {
+	return s.OrganizationId
+}
+
+// GetState returns the value of State.
+func (s *WorkgroupInvitation) GetState() WorkgroupInvitationState {
+	return s.State
+}
+
+// GetAcknowledgedByAccountId returns the value of AcknowledgedByAccountId.
+func (s *WorkgroupInvitation) GetAcknowledgedByAccountId() OptString {
+	return s.AcknowledgedByAccountId
+}
+
+// GetAcknowledgedAt returns the value of AcknowledgedAt.
+func (s *WorkgroupInvitation) GetAcknowledgedAt() OptDateTime {
+	return s.AcknowledgedAt
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *WorkgroupInvitation) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *WorkgroupInvitation) GetUpdatedAt() time.Time {
+	return s.UpdatedAt
+}
+
+// SetID sets the value of ID.
+func (s *WorkgroupInvitation) SetID(val string) {
+	s.ID = val
+}
+
+// SetWorkgroupId sets the value of WorkgroupId.
+func (s *WorkgroupInvitation) SetWorkgroupId(val string) {
+	s.WorkgroupId = val
+}
+
+// SetOrganizationId sets the value of OrganizationId.
+func (s *WorkgroupInvitation) SetOrganizationId(val string) {
+	s.OrganizationId = val
+}
+
+// SetState sets the value of State.
+func (s *WorkgroupInvitation) SetState(val WorkgroupInvitationState) {
+	s.State = val
+}
+
+// SetAcknowledgedByAccountId sets the value of AcknowledgedByAccountId.
+func (s *WorkgroupInvitation) SetAcknowledgedByAccountId(val OptString) {
+	s.AcknowledgedByAccountId = val
+}
+
+// SetAcknowledgedAt sets the value of AcknowledgedAt.
+func (s *WorkgroupInvitation) SetAcknowledgedAt(val OptDateTime) {
+	s.AcknowledgedAt = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *WorkgroupInvitation) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *WorkgroupInvitation) SetUpdatedAt(val time.Time) {
+	s.UpdatedAt = val
+}
+
+type WorkgroupInvitationState string
+
+const (
+	WorkgroupInvitationStatePending  WorkgroupInvitationState = "pending"
+	WorkgroupInvitationStateAccepted WorkgroupInvitationState = "accepted"
+	WorkgroupInvitationStateDeclined WorkgroupInvitationState = "declined"
+)
+
+// AllValues returns all WorkgroupInvitationState values.
+func (WorkgroupInvitationState) AllValues() []WorkgroupInvitationState {
+	return []WorkgroupInvitationState{
+		WorkgroupInvitationStatePending,
+		WorkgroupInvitationStateAccepted,
+		WorkgroupInvitationStateDeclined,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s WorkgroupInvitationState) MarshalText() ([]byte, error) {
+	switch s {
+	case WorkgroupInvitationStatePending:
+		return []byte(s), nil
+	case WorkgroupInvitationStateAccepted:
+		return []byte(s), nil
+	case WorkgroupInvitationStateDeclined:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *WorkgroupInvitationState) UnmarshalText(data []byte) error {
+	switch WorkgroupInvitationState(data) {
+	case WorkgroupInvitationStatePending:
+		*s = WorkgroupInvitationStatePending
+		return nil
+	case WorkgroupInvitationStateAccepted:
+		*s = WorkgroupInvitationStateAccepted
+		return nil
+	case WorkgroupInvitationStateDeclined:
+		*s = WorkgroupInvitationStateDeclined
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/workgroupMembership
+type WorkgroupMembership struct {
+	ID             string                  `json:"id"`
+	WorkgroupId    string                  `json:"workgroupId"`
+	AccountId      string                  `json:"accountId"`
+	OrganizationId string                  `json:"organizationId"`
+	Email          OptString               `json:"email"`
+	Role           WorkgroupMembershipRole `json:"role"`
+	JoinedAt       time.Time               `json:"joinedAt"`
+}
+
+// GetID returns the value of ID.
+func (s *WorkgroupMembership) GetID() string {
+	return s.ID
+}
+
+// GetWorkgroupId returns the value of WorkgroupId.
+func (s *WorkgroupMembership) GetWorkgroupId() string {
+	return s.WorkgroupId
+}
+
+// GetAccountId returns the value of AccountId.
+func (s *WorkgroupMembership) GetAccountId() string {
+	return s.AccountId
+}
+
+// GetOrganizationId returns the value of OrganizationId.
+func (s *WorkgroupMembership) GetOrganizationId() string {
+	return s.OrganizationId
+}
+
+// GetEmail returns the value of Email.
+func (s *WorkgroupMembership) GetEmail() OptString {
+	return s.Email
+}
+
+// GetRole returns the value of Role.
+func (s *WorkgroupMembership) GetRole() WorkgroupMembershipRole {
+	return s.Role
+}
+
+// GetJoinedAt returns the value of JoinedAt.
+func (s *WorkgroupMembership) GetJoinedAt() time.Time {
+	return s.JoinedAt
+}
+
+// SetID sets the value of ID.
+func (s *WorkgroupMembership) SetID(val string) {
+	s.ID = val
+}
+
+// SetWorkgroupId sets the value of WorkgroupId.
+func (s *WorkgroupMembership) SetWorkgroupId(val string) {
+	s.WorkgroupId = val
+}
+
+// SetAccountId sets the value of AccountId.
+func (s *WorkgroupMembership) SetAccountId(val string) {
+	s.AccountId = val
+}
+
+// SetOrganizationId sets the value of OrganizationId.
+func (s *WorkgroupMembership) SetOrganizationId(val string) {
+	s.OrganizationId = val
+}
+
+// SetEmail sets the value of Email.
+func (s *WorkgroupMembership) SetEmail(val OptString) {
+	s.Email = val
+}
+
+// SetRole sets the value of Role.
+func (s *WorkgroupMembership) SetRole(val WorkgroupMembershipRole) {
+	s.Role = val
+}
+
+// SetJoinedAt sets the value of JoinedAt.
+func (s *WorkgroupMembership) SetJoinedAt(val time.Time) {
+	s.JoinedAt = val
+}
+
+func (*WorkgroupMembership) addWorkgroupMemberRes()            {}
+func (*WorkgroupMembership) changeWorkgroupMembershipRoleRes() {}
+
+// Ref: #/workgroupMembershipRole
+type WorkgroupMembershipRole string
+
+const (
+	WorkgroupMembershipRoleMember WorkgroupMembershipRole = "member"
+	WorkgroupMembershipRoleAdmin  WorkgroupMembershipRole = "admin"
+)
+
+// AllValues returns all WorkgroupMembershipRole values.
+func (WorkgroupMembershipRole) AllValues() []WorkgroupMembershipRole {
+	return []WorkgroupMembershipRole{
+		WorkgroupMembershipRoleMember,
+		WorkgroupMembershipRoleAdmin,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s WorkgroupMembershipRole) MarshalText() ([]byte, error) {
+	switch s {
+	case WorkgroupMembershipRoleMember:
+		return []byte(s), nil
+	case WorkgroupMembershipRoleAdmin:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *WorkgroupMembershipRole) UnmarshalText(data []byte) error {
+	switch WorkgroupMembershipRole(data) {
+	case WorkgroupMembershipRoleMember:
+		*s = WorkgroupMembershipRoleMember
+		return nil
+	case WorkgroupMembershipRoleAdmin:
+		*s = WorkgroupMembershipRoleAdmin
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/workgroupScope
+type WorkgroupScope string
+
+const (
+	WorkgroupScopeIntraOrg WorkgroupScope = "intra-org"
+	WorkgroupScopeInterOrg WorkgroupScope = "inter-org"
+)
+
+// AllValues returns all WorkgroupScope values.
+func (WorkgroupScope) AllValues() []WorkgroupScope {
+	return []WorkgroupScope{
+		WorkgroupScopeIntraOrg,
+		WorkgroupScopeInterOrg,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s WorkgroupScope) MarshalText() ([]byte, error) {
+	switch s {
+	case WorkgroupScopeIntraOrg:
+		return []byte(s), nil
+	case WorkgroupScopeInterOrg:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *WorkgroupScope) UnmarshalText(data []byte) error {
+	switch WorkgroupScope(data) {
+	case WorkgroupScopeIntraOrg:
+		*s = WorkgroupScopeIntraOrg
+		return nil
+	case WorkgroupScopeInterOrg:
+		*s = WorkgroupScopeInterOrg
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/workgroupState
+type WorkgroupState string
+
+const (
+	WorkgroupStatePending  WorkgroupState = "pending"
+	WorkgroupStateActive   WorkgroupState = "active"
+	WorkgroupStateDeclined WorkgroupState = "declined"
+)
+
+// AllValues returns all WorkgroupState values.
+func (WorkgroupState) AllValues() []WorkgroupState {
+	return []WorkgroupState{
+		WorkgroupStatePending,
+		WorkgroupStateActive,
+		WorkgroupStateDeclined,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s WorkgroupState) MarshalText() ([]byte, error) {
+	switch s {
+	case WorkgroupStatePending:
+		return []byte(s), nil
+	case WorkgroupStateActive:
+		return []byte(s), nil
+	case WorkgroupStateDeclined:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *WorkgroupState) UnmarshalText(data []byte) error {
+	switch WorkgroupState(data) {
+	case WorkgroupStatePending:
+		*s = WorkgroupStatePending
+		return nil
+	case WorkgroupStateActive:
+		*s = WorkgroupStateActive
+		return nil
+	case WorkgroupStateDeclined:
+		*s = WorkgroupStateDeclined
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)

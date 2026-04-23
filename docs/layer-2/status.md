@@ -4,20 +4,24 @@ This document records the current implementation state of Layer 2 (Collaboration
 
 ## Current Position
 
-Layer 2 is currently **documented but not implemented**.
+Layer 2 is **partially implemented**: the workgroup slice has shipped (slice 1 of 5). The remaining slices are still documented at Tier B awaiting their open-question walks and Tier A promotion.
 
-Documentation has moved beyond the initial architectural sketch. The cross-cutting design decisions are captured in [foundation.md](foundation.md), and each of the six concepts has its own dedicated spec. The next milestone is per-concept Tier A promotion and implementation in build order.
+Documentation has moved beyond the initial architectural sketch. The cross-cutting design decisions are captured in [foundation.md](foundation.md), and each of the six concepts has its own dedicated spec. The next milestone is per-concept Tier A promotion and implementation for the next slice in the build order (catalog + advertisements).
+
+What ships today:
+
+- workgroup persistence (3 tables), API (11 endpoints across account-token and admin-token surfaces), CLI (`agora workgroup ...` and `agora admin workgroup ...`)
+- the Macro Pulse `bootstrap` binary that uses the new admin endpoints to provision the demo topology
 
 The repository does not yet have:
 
-- workgroup persistence and API surface
 - catalog APIs or controller logic
 - advertisement lifecycle
 - session lifecycle
 - contract evaluation
 - envelope handling infrastructure
-- Layer 2 CLI commands
-- Layer 2 SDK surfaces
+- Layer 2 CLI commands beyond workgroups
+- Layer 2 SDK surfaces beyond the existing `sdk/agent` Controller() client
 
 ## Documentation Tier Tracking
 
@@ -28,15 +32,15 @@ Per-concept specs use two tiers:
 
 Current state:
 
-| Concept | File | Tier |
-| --- | --- | --- |
-| Foundation (cross-cutting) | [foundation.md](foundation.md) | A |
-| Workgroups | [workgroups.md](workgroups.md) | A |
-| Catalog | [catalog.md](catalog.md) | B |
-| Advertisements | [advertisements.md](advertisements.md) | B |
-| Sessions | [sessions.md](sessions.md) | B |
-| Contracts | [contracts.md](contracts.md) | B |
-| Envelopes | [envelopes.md](envelopes.md) | B |
+| Concept | File | Tier | Implementation |
+| --- | --- | --- | --- |
+| Foundation (cross-cutting) | [foundation.md](foundation.md) | A | n/a |
+| Workgroups | [workgroups.md](workgroups.md) | A | shipped (slice 1) |
+| Catalog | [catalog.md](catalog.md) | B | not started |
+| Advertisements | [advertisements.md](advertisements.md) | B | not started |
+| Sessions | [sessions.md](sessions.md) | B | not started |
+| Contracts | [contracts.md](contracts.md) | B | not started |
+| Envelopes | [envelopes.md](envelopes.md) | B | not started |
 
 Concepts are promoted to Tier A one slice at a time, just before implementation of that slice begins. Premature Tier A promotion of later concepts is avoided so that decisions made during earlier slices can flow forward without documentation thrash.
 
@@ -59,8 +63,8 @@ This means the next Layer 2 work can focus on collaboration semantics rather tha
 
 The cleanest order for initial Layer 2 work is:
 
-1. workgroup model and membership semantics
-2. catalog and advertisement persistence plus visibility rules
+1. ~~workgroup model and membership semantics~~ — **shipped**
+2. catalog and advertisement persistence plus visibility rules — next
 3. session model and engagement lifecycle
 4. declarative contract model and controller-side evaluation
 5. envelope model and session-governed message semantics

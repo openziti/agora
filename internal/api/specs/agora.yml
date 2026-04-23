@@ -56,6 +56,22 @@ paths:
   /tunnel-serves/{serveId}:
     $ref: "tunnels/paths.yml#/~1tunnel-serves~1{serveId}"
 
+  /workgroups:
+    $ref: "workgroups/paths.yml#/~1workgroups"
+  /workgroups/{workgroupId}:
+    $ref: "workgroups/paths.yml#/~1workgroups~1{workgroupId}"
+  /workgroups/{workgroupId}/members:
+    $ref: "workgroups/paths.yml#/~1workgroups~1{workgroupId}~1members"
+  /workgroups/{workgroupId}/members/{membershipId}:
+    $ref: "workgroups/paths.yml#/~1workgroups~1{workgroupId}~1members~1{membershipId}"
+
+  /admin/workgroups:
+    $ref: "admin/paths.yml#/~1admin~1workgroups"
+  /admin/workgroups/{workgroupId}/invitations/{organizationId}/accept:
+    $ref: "admin/paths.yml#/~1admin~1workgroups~1{workgroupId}~1invitations~1{organizationId}~1accept"
+  /admin/workgroups/{workgroupId}/invitations/{organizationId}/decline:
+    $ref: "admin/paths.yml#/~1admin~1workgroups~1{workgroupId}~1invitations~1{organizationId}~1decline"
+
 components:
   securitySchemes:
     accountTokenAuth:
@@ -122,3 +138,29 @@ components:
       $ref: "tunnels/schemas.yml#/listTunnelAttachmentsResponse"
     tunnelServe:
       $ref: "tunnels/schemas.yml#/tunnelServe"
+    workgroup:
+      $ref: "workgroups/schemas.yml#/workgroup"
+    workgroupMembership:
+      $ref: "workgroups/schemas.yml#/workgroupMembership"
+    addWorkgroupMemberRequest:
+      $ref: "workgroups/schemas.yml#/addWorkgroupMemberRequest"
+    changeWorkgroupMembershipRoleRequest:
+      $ref: "workgroups/schemas.yml#/changeWorkgroupMembershipRoleRequest"
+    listWorkgroupsResponse:
+      $ref: "workgroups/schemas.yml#/listWorkgroupsResponse"
+    listWorkgroupMembersResponse:
+      $ref: "workgroups/schemas.yml#/listWorkgroupMembersResponse"
+    workgroupInvitation:
+      $ref: "admin/schemas.yml#/workgroupInvitation"
+    createWorkgroupRequest:
+      $ref: "admin/schemas.yml#/createWorkgroupRequest"
+    createWorkgroupResponse:
+      $ref: "admin/schemas.yml#/createWorkgroupResponse"
+    acceptWorkgroupInvitationRequest:
+      $ref: "admin/schemas.yml#/acceptWorkgroupInvitationRequest"
+    declineWorkgroupInvitationRequest:
+      $ref: "admin/schemas.yml#/declineWorkgroupInvitationRequest"
+    acknowledgeWorkgroupInvitationResponse:
+      $ref: "admin/schemas.yml#/acknowledgeWorkgroupInvitationResponse"
+    listAdminWorkgroupsResponse:
+      $ref: "admin/schemas.yml#/listAdminWorkgroupsResponse"

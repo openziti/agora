@@ -22,8 +22,8 @@ func TestMigrateUpAndCompatibilityCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}
-	if applied != 2 {
-		t.Fatalf("expected 2 migrations applied, got %d", applied)
+	if applied != 3 {
+		t.Fatalf("expected 3 migrations applied, got %d", applied)
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); err != nil {
@@ -49,8 +49,8 @@ func TestCheckSchemaCompatibilityBehindBinary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migration status: %v", err)
 	}
-	if len(statuses) != 2 {
-		t.Fatalf("expected 2 migration statuses, got %d", len(statuses))
+	if len(statuses) != 3 {
+		t.Fatalf("expected 3 migration statuses, got %d", len(statuses))
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); !errors.Is(err, ErrSchemaBehindBinary) {
@@ -413,4 +413,259 @@ func isUniqueViolation(err error) bool {
 func isForeignKeyViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23503"
+}
+
+func TestWorkgroupNameUniquenessWithinOrg(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, _, _ := createOrgAccountEnvironment(t, ctx, store)
+
+	first, err := store.Workgroups.Create(ctx, store.DB(), Workgroup{
+		OwnerOrganizationID: org.ID,
+		Name:                "Research-Team",
+		Scope:               WorkgroupScopeIntraOrg,
+		State:               WorkgroupStateActive,
+	})
+	if err != nil {
+		t.Fatalf("create first workgroup: %v", err)
+	}
+
+	if _, err := store.Workgroups.Create(ctx, store.DB(), Workgroup{
+		OwnerOrganizationID: org.ID,
+		Name:                "research-team",
+		Scope:               WorkgroupScopeIntraOrg,
+		State:               WorkgroupStateActive,
+	}); !isUniqueViolation(err) {
+		t.Fatalf("expected unique violation on case-insensitive name reuse, got %v", err)
+	}
+
+	if first.State != WorkgroupStateActive {
+		t.Fatalf("expected created workgroup to be active, got %v", first.State)
+	}
+}
+
+func TestWorkgroupNameReuseAfterDeclined(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, _, _ := createOrgAccountEnvironment(t, ctx, store)
+
+	first, err := store.Workgroups.Create(ctx, store.DB(), Workgroup{
+		OwnerOrganizationID: org.ID,
+		Name:                "Pilot",
+		Scope:               WorkgroupScopeInterOrg,
+		State:               WorkgroupStatePending,
+	})
+	if err != nil {
+		t.Fatalf("create first workgroup: %v", err)
+	}
+	if err := store.Workgroups.UpdateState(ctx, store.DB(), first.ID, WorkgroupStateDeclined); err != nil {
+		t.Fatalf("transition to declined: %v", err)
+	}
+
+	if _, err := store.Workgroups.Create(ctx, store.DB(), Workgroup{
+		OwnerOrganizationID: org.ID,
+		Name:                "Pilot",
+		Scope:               WorkgroupScopeInterOrg,
+		State:               WorkgroupStatePending,
+	}); err != nil {
+		t.Fatalf("expected name reuse after declined to succeed, got %v", err)
+	}
+}
+
+func TestWorkgroupInvitationUniquenessAndStateTransitions(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	orgA, _, _ := createOrgAccountEnvironment(t, ctx, store)
+
+	orgB, err := store.Organizations.Create(ctx, store.DB(), Organization{Name: "org-b"})
+	if err != nil {
+		t.Fatalf("create org-b: %v", err)
+	}
+
+	wg, err := store.Workgroups.Create(ctx, store.DB(), Workgroup{
+		OwnerOrganizationID: orgA.ID,
+		Name:                "shared-channel",
+		Scope:               WorkgroupScopeInterOrg,
+		State:               WorkgroupStatePending,
+	})
+	if err != nil {
+		t.Fatalf("create workgroup: %v", err)
+	}
+
+	if _, err := store.WorkgroupInvitations.Create(ctx, store.DB(), WorkgroupInvitation{
+		WorkgroupID:    wg.ID,
+		OrganizationID: orgB.ID,
+		State:          WorkgroupInvitationStatePending,
+	}); err != nil {
+		t.Fatalf("create invitation: %v", err)
+	}
+
+	if _, err := store.WorkgroupInvitations.Create(ctx, store.DB(), WorkgroupInvitation{
+		WorkgroupID:    wg.ID,
+		OrganizationID: orgB.ID,
+		State:          WorkgroupInvitationStatePending,
+	}); !isUniqueViolation(err) {
+		t.Fatalf("expected unique violation on duplicate invitation, got %v", err)
+	}
+
+	invitation, err := store.WorkgroupInvitations.GetByWorkgroupAndOrg(ctx, store.DB(), wg.ID, orgB.ID)
+	if err != nil {
+		t.Fatalf("get invitation: %v", err)
+	}
+	acknowledgedBy := "admin"
+	acknowledgedAt := time.Now().UTC()
+	if err := store.WorkgroupInvitations.UpdateState(ctx, store.DB(), invitation.ID, WorkgroupInvitationStateAccepted, acknowledgedBy, acknowledgedAt); err != nil {
+		t.Fatalf("update invitation state: %v", err)
+	}
+
+	updated, err := store.WorkgroupInvitations.GetByID(ctx, store.DB(), invitation.ID)
+	if err != nil {
+		t.Fatalf("get updated invitation: %v", err)
+	}
+	if updated.State != WorkgroupInvitationStateAccepted {
+		t.Fatalf("expected accepted state, got %v", updated.State)
+	}
+	if updated.AcknowledgedByAccountID == nil || *updated.AcknowledgedByAccountID != acknowledgedBy {
+		t.Fatalf("expected acknowledged_by_account_id to be %q, got %v", acknowledgedBy, updated.AcknowledgedByAccountID)
+	}
+	if updated.AcknowledgedAt == nil {
+		t.Fatalf("expected acknowledged_at to be set")
+	}
+}
+
+func TestWorkgroupMembershipUniquenessAndCountAdmins(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, acct, _ := createOrgAccountEnvironment(t, ctx, store)
+
+	wg, err := store.Workgroups.Create(ctx, store.DB(), Workgroup{
+		OwnerOrganizationID: org.ID,
+		Name:                "team",
+		Scope:               WorkgroupScopeIntraOrg,
+		State:               WorkgroupStateActive,
+	})
+	if err != nil {
+		t.Fatalf("create workgroup: %v", err)
+	}
+
+	first, err := store.WorkgroupMemberships.Create(ctx, store.DB(), WorkgroupMembership{
+		WorkgroupID:    wg.ID,
+		OrganizationID: org.ID,
+		AccountID:      acct.ID,
+		Role:           WorkgroupMembershipRoleAdmin,
+	})
+	if err != nil {
+		t.Fatalf("create first membership: %v", err)
+	}
+
+	if _, err := store.WorkgroupMemberships.Create(ctx, store.DB(), WorkgroupMembership{
+		WorkgroupID:    wg.ID,
+		OrganizationID: org.ID,
+		AccountID:      acct.ID,
+		Role:           WorkgroupMembershipRoleMember,
+	}); !isUniqueViolation(err) {
+		t.Fatalf("expected unique violation on duplicate membership, got %v", err)
+	}
+
+	count, err := store.WorkgroupMemberships.CountAdmins(ctx, store.DB(), wg.ID)
+	if err != nil {
+		t.Fatalf("count admins: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 admin, got %d", count)
+	}
+
+	if err := store.WorkgroupMemberships.MarkDeleted(ctx, store.DB(), first.ID); err != nil {
+		t.Fatalf("mark deleted: %v", err)
+	}
+
+	if _, err := store.WorkgroupMemberships.Create(ctx, store.DB(), WorkgroupMembership{
+		WorkgroupID:    wg.ID,
+		OrganizationID: org.ID,
+		AccountID:      acct.ID,
+		Role:           WorkgroupMembershipRoleMember,
+	}); err != nil {
+		t.Fatalf("expected re-create of soft-deleted membership to succeed, got %v", err)
+	}
+
+	count, err = store.WorkgroupMemberships.CountAdmins(ctx, store.DB(), wg.ID)
+	if err != nil {
+		t.Fatalf("count admins after re-create: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected 0 admins after deletion + member-only re-create, got %d", count)
+	}
+}
+
+func TestWorkgroupListAccessibleByAccountFiltersByMembership(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, acct, _ := createOrgAccountEnvironment(t, ctx, store)
+
+	wgIn, err := store.Workgroups.Create(ctx, store.DB(), Workgroup{
+		OwnerOrganizationID: org.ID,
+		Name:                "joined",
+		Scope:               WorkgroupScopeIntraOrg,
+		State:               WorkgroupStateActive,
+	})
+	if err != nil {
+		t.Fatalf("create joined workgroup: %v", err)
+	}
+	if _, err := store.Workgroups.Create(ctx, store.DB(), Workgroup{
+		OwnerOrganizationID: org.ID,
+		Name:                "other",
+		Scope:               WorkgroupScopeIntraOrg,
+		State:               WorkgroupStateActive,
+	}); err != nil {
+		t.Fatalf("create other workgroup: %v", err)
+	}
+
+	if _, err := store.WorkgroupMemberships.Create(ctx, store.DB(), WorkgroupMembership{
+		WorkgroupID:    wgIn.ID,
+		OrganizationID: org.ID,
+		AccountID:      acct.ID,
+		Role:           WorkgroupMembershipRoleMember,
+	}); err != nil {
+		t.Fatalf("create membership: %v", err)
+	}
+
+	visible, err := store.Workgroups.ListAccessibleByAccount(ctx, store.DB(), acct.ID)
+	if err != nil {
+		t.Fatalf("list accessible: %v", err)
+	}
+	if len(visible) != 1 || visible[0].ID != wgIn.ID {
+		ids := make([]string, len(visible))
+		for i, w := range visible {
+			ids[i] = w.ID
+		}
+		t.Fatalf("expected only joined workgroup, got %v", strings.Join(ids, ", "))
+	}
+}
+
+func TestWorkgroupIDFormatConstraint(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, _, _ := createOrgAccountEnvironment(t, ctx, store)
+
+	if _, err := store.Workgroups.Create(ctx, store.DB(), Workgroup{
+		ID:                  "wg_INVALID",
+		OwnerOrganizationID: org.ID,
+		Name:                "bad-id",
+		Scope:               WorkgroupScopeIntraOrg,
+		State:               WorkgroupStateActive,
+	}); err == nil {
+		t.Fatalf("expected error on invalid wg id, got nil")
+	}
 }

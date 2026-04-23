@@ -108,7 +108,15 @@ Remaining Layer 1 operational hardening:
 - a documented local development and smoke-test stack
 - clearer end-to-end operational validation for enable, serve, connect, status, and cleanup
 
-Layer 2 work now has a foundation doc ([../layer-2/foundation.md](../layer-2/foundation.md)), a Tier-A spec for workgroups ([../layer-2/workgroups.md](../layer-2/workgroups.md)), and Tier-B skeletons for the other five concepts. See [../layer-2/status.md](../layer-2/status.md) for Tier tracking and build order.
+Layer 2 work has a foundation doc ([../layer-2/foundation.md](../layer-2/foundation.md)), a Tier-A spec for workgroups ([../layer-2/workgroups.md](../layer-2/workgroups.md)) **with implementation shipped** (slice 1 of 5), and Tier-B skeletons for the other five concepts. See [../layer-2/status.md](../layer-2/status.md) for Tier tracking and build order.
+
+Workgroup implementation surfaces:
+
+- persistence: `internal/persistence/workgroups.go`, `workgroup_invitations.go`, `workgroup_memberships.go` + migration `0003_layer2_workgroups.sql`
+- API: `internal/api/specs/workgroups/` (account-token) plus admin endpoints under `internal/api/specs/admin/`
+- controller: per-handler files (`createWorkgroup.go`, `acceptWorkgroupInvitation.go`, etc.) + `workgroup_helpers.go` for auth and state aggregation
+- CLI: `cmd/agora/workgroup*.go` and `cmd/agora/adminWorkgroup*.go`
+- demo bootstrap: `examples/macro-pulse/bootstrap/main.go` provisions the full Macro Pulse topology against the workgroup admin endpoints
 
 Alongside the Layer 2 specs, the project also has a primary reference demo under [../../examples/macro-pulse/](../../examples/macro-pulse/) with its own formal doc at [../examples/macro-pulse.md](../examples/macro-pulse.md). The demo is scaffolded but not yet runnable end-to-end — it advances one slice at a time as Layer 2 slices ship. See [../examples/index.md](../examples/index.md) for the example-set overview.
 

@@ -441,3 +441,399 @@ func (f *fakeTunnelLifecycle) Deprovision(_ context.Context, spec automation.Dep
 	f.deprovisionCalls = append(f.deprovisionCalls, spec)
 	return nil
 }
+
+func newWorkgroupTestEnv(t *testing.T) (*workgroupTestEnv, func()) {
+	t.Helper()
+	ctx := context.Background()
+
+	store, err := persistence.Open(ctx, persistence.Config{
+		DSN:             testutil.StartPostgres(t),
+		MaxOpenConns:    4,
+		MaxIdleConns:    4,
+		ConnMaxLifetime: time.Hour,
+	})
+	if err != nil {
+		t.Fatalf("open store: %v", err)
+	}
+	if _, err := persistence.MigrateUp(ctx, store); err != nil {
+		_ = store.Close()
+		t.Fatalf("migrate up: %v", err)
+	}
+
+	cfg := ctrlcfg.DefaultConfig()
+	cfg.AdminTokens = []string{"admin-token"}
+
+	service := NewService(cfg, store)
+	envLifecycle := &fakeEnvironmentLifecycle{enableResult: &automation.ProvisionedEnvironment{IdentityID: "ziti-env-1", EnrollmentJSON: []byte(`{}`), PolicyID: "erp-1"}}
+	tunnelLC := &fakeTunnelLifecycle{}
+	service.lifecycleFactory = func(context.Context) (environmentLifecycle, tunnelLifecycle, error) {
+		return envLifecycle, tunnelLC, nil
+	}
+	handler, err := NewHandler(service)
+	if err != nil {
+		_ = store.Close()
+		t.Fatalf("new handler: %v", err)
+	}
+	ts := httptest.NewServer(handler)
+
+	cleanup := func() {
+		ts.Close()
+		_ = store.Close()
+	}
+
+	return &workgroupTestEnv{
+		ctx:     ctx,
+		store:   store,
+		service: service,
+		ts:      ts,
+		baseURL: ts.URL + "/v1",
+	}, cleanup
+}
+
+type workgroupTestEnv struct {
+	ctx     context.Context
+	store   *persistence.Store
+	service *Service
+	ts      *httptest.Server
+	baseURL string
+}
+
+func (e *workgroupTestEnv) adminClient(t *testing.T) *api.Client {
+	t.Helper()
+	c, err := api.NewClient(e.baseURL, staticSecuritySource{adminToken: "admin-token"}, api.WithClient(e.ts.Client()))
+	if err != nil {
+		t.Fatalf("new admin client: %v", err)
+	}
+	return c
+}
+
+func (e *workgroupTestEnv) accountClient(t *testing.T, token string) *api.Client {
+	t.Helper()
+	c, err := api.NewClient(e.baseURL, staticSecuritySource{accountToken: token}, api.WithClient(e.ts.Client()))
+	if err != nil {
+		t.Fatalf("new account client: %v", err)
+	}
+	return c
+}
+
+func (e *workgroupTestEnv) createOrgWithAccount(t *testing.T, orgName, email string) (orgID, accountID, accountToken string) {
+	t.Helper()
+	admin := e.adminClient(t)
+	orgRes, err := admin.CreateOrganization(e.ctx, &api.CreateOrganizationRequest{Name: orgName})
+	if err != nil {
+		t.Fatalf("create org %q: %v", orgName, err)
+	}
+	org, ok := orgRes.(*api.Organization)
+	if !ok {
+		t.Fatalf("create org %q unexpected response: %T", orgName, orgRes)
+	}
+	id, token := e.addAccountToOrg(t, org.ID, email)
+	return org.ID, id, token
+}
+
+func (e *workgroupTestEnv) addAccountToOrg(t *testing.T, orgID, email string) (accountID, accountToken string) {
+	t.Helper()
+	admin := e.adminClient(t)
+	acctRes, err := admin.CreateAccount(e.ctx, &api.CreateAccountRequest{Email: email, Password: "test-password-1"}, api.CreateAccountParams{OrganizationId: orgID})
+	if err != nil {
+		t.Fatalf("create account %q: %v", email, err)
+	}
+	tokenResp, ok := acctRes.(*api.AccountTokenResponse)
+	if !ok {
+		t.Fatalf("create account %q unexpected response: %T", email, acctRes)
+	}
+	accounts, err := e.store.Accounts.ListByOrganization(e.ctx, e.store.DB(), orgID)
+	if err != nil {
+		t.Fatalf("list accounts: %v", err)
+	}
+	for _, a := range accounts {
+		if a.Email == email {
+			return a.ID, tokenResp.AccountToken
+		}
+	}
+	t.Fatalf("account %q not found after creation", email)
+	return "", ""
+}
+
+func TestWorkgroupIntraOrgCreateAndMembershipFlow(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	bobID, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	_ = bobID
+
+	admin := env.adminClient(t)
+	createRes, err := admin.CreateWorkgroup(env.ctx, &api.CreateWorkgroupRequest{
+		Name:                  "research",
+		Scope:                 api.CreateWorkgroupRequestScopeIntraOrg,
+		OwnerOrganizationId:   orgA,
+		InitialAdminAccountId: aliceID,
+	})
+	if err != nil {
+		t.Fatalf("create workgroup: %v", err)
+	}
+	created, ok := createRes.(*api.CreateWorkgroupResponse)
+	if !ok {
+		t.Fatalf("create workgroup unexpected response: %T", createRes)
+	}
+	if created.Workgroup.State != api.WorkgroupStateActive {
+		t.Fatalf("expected intra-org workgroup to be active, got %s", created.Workgroup.State)
+	}
+	if len(created.Invitations) != 0 {
+		t.Fatalf("expected no invitations for intra-org, got %d", len(created.Invitations))
+	}
+
+	wgID := created.Workgroup.ID
+	aliceClient := env.accountClient(t, aliceToken)
+	bobClient := env.accountClient(t, bobToken)
+
+	getRes, err := aliceClient.GetWorkgroup(env.ctx, api.GetWorkgroupParams{WorkgroupId: wgID})
+	if err != nil {
+		t.Fatalf("alice get workgroup: %v", err)
+	}
+	if _, ok := getRes.(*api.Workgroup); !ok {
+		t.Fatalf("alice get workgroup unexpected response: %T", getRes)
+	}
+
+	bobGet, err := bobClient.GetWorkgroup(env.ctx, api.GetWorkgroupParams{WorkgroupId: wgID})
+	if err != nil {
+		t.Fatalf("bob get workgroup: %v", err)
+	}
+	if _, ok := bobGet.(*api.GetWorkgroupNotFound); !ok {
+		t.Fatalf("expected bob to receive 404, got %T", bobGet)
+	}
+
+	addRes, err := aliceClient.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID})
+	if err != nil {
+		t.Fatalf("add bob: %v", err)
+	}
+	bobMembership, ok := addRes.(*api.WorkgroupMembership)
+	if !ok {
+		t.Fatalf("add bob unexpected response: %T", addRes)
+	}
+
+	dupRes, err := aliceClient.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID})
+	if err != nil {
+		t.Fatalf("add bob duplicate: %v", err)
+	}
+	if _, ok := dupRes.(*api.AddWorkgroupMemberConflict); !ok {
+		t.Fatalf("expected conflict on duplicate add, got %T", dupRes)
+	}
+
+	roleRes, err := aliceClient.ChangeWorkgroupMembershipRole(env.ctx, &api.ChangeWorkgroupMembershipRoleRequest{Role: api.WorkgroupMembershipRoleAdmin}, api.ChangeWorkgroupMembershipRoleParams{WorkgroupId: wgID, MembershipId: bobMembership.ID})
+	if err != nil {
+		t.Fatalf("promote bob: %v", err)
+	}
+	if _, ok := roleRes.(*api.WorkgroupMembership); !ok {
+		t.Fatalf("promote bob unexpected response: %T", roleRes)
+	}
+
+	aliceMemberships, err := env.store.WorkgroupMemberships.ListByWorkgroup(env.ctx, env.store.DB(), wgID)
+	if err != nil {
+		t.Fatalf("list memberships: %v", err)
+	}
+	var aliceMID string
+	for _, m := range aliceMemberships {
+		if m.AccountID == aliceID {
+			aliceMID = m.ID
+		}
+	}
+	if aliceMID == "" {
+		t.Fatalf("alice membership missing")
+	}
+
+	demoteAlice, err := aliceClient.ChangeWorkgroupMembershipRole(env.ctx, &api.ChangeWorkgroupMembershipRoleRequest{Role: api.WorkgroupMembershipRoleMember}, api.ChangeWorkgroupMembershipRoleParams{WorkgroupId: wgID, MembershipId: aliceMID})
+	if err != nil {
+		t.Fatalf("demote alice: %v", err)
+	}
+	if _, ok := demoteAlice.(*api.WorkgroupMembership); !ok {
+		t.Fatalf("demote alice unexpected response: %T", demoteAlice)
+	}
+
+	demoteBob, err := bobClient.ChangeWorkgroupMembershipRole(env.ctx, &api.ChangeWorkgroupMembershipRoleRequest{Role: api.WorkgroupMembershipRoleMember}, api.ChangeWorkgroupMembershipRoleParams{WorkgroupId: wgID, MembershipId: bobMembership.ID})
+	if err != nil {
+		t.Fatalf("demote bob attempt: %v", err)
+	}
+	if _, ok := demoteBob.(*api.ChangeWorkgroupMembershipRoleConflict); !ok {
+		t.Fatalf("expected last_admin conflict, got %T", demoteBob)
+	}
+
+	delRes, err := bobClient.DeleteWorkgroup(env.ctx, api.DeleteWorkgroupParams{WorkgroupId: wgID})
+	if err != nil {
+		t.Fatalf("bob delete workgroup: %v", err)
+	}
+	if _, ok := delRes.(*api.DeleteWorkgroupNoContent); !ok {
+		t.Fatalf("delete unexpected response: %T", delRes)
+	}
+
+	getAfterDel, err := bobClient.GetWorkgroup(env.ctx, api.GetWorkgroupParams{WorkgroupId: wgID})
+	if err != nil {
+		t.Fatalf("get after delete: %v", err)
+	}
+	if _, ok := getAfterDel.(*api.GetWorkgroupNotFound); !ok {
+		t.Fatalf("expected 404 after delete, got %T", getAfterDel)
+	}
+}
+
+func TestWorkgroupAddMemberCrossOrgRejected(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, _, _ = env.createOrgWithAccount(t, "org-b", "bob@example.com")
+
+	admin := env.adminClient(t)
+	createRes, err := admin.CreateWorkgroup(env.ctx, &api.CreateWorkgroupRequest{
+		Name:                  "internal",
+		Scope:                 api.CreateWorkgroupRequestScopeIntraOrg,
+		OwnerOrganizationId:   orgA,
+		InitialAdminAccountId: aliceID,
+	})
+	if err != nil {
+		t.Fatalf("create workgroup: %v", err)
+	}
+	wgID := createRes.(*api.CreateWorkgroupResponse).Workgroup.ID
+
+	aliceClient := env.accountClient(t, aliceToken)
+	res, err := aliceClient.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID})
+	if err != nil {
+		t.Fatalf("add cross-org member: %v", err)
+	}
+	if _, ok := res.(*api.AddWorkgroupMemberForbidden); !ok {
+		t.Fatalf("expected 403 cross_org_membership, got %T", res)
+	}
+}
+
+func TestWorkgroupInterOrgInvitationFlow(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	orgB, bobID, bobToken := env.createOrgWithAccount(t, "org-b", "bob@example.com")
+	orgC, carolID, _ := env.createOrgWithAccount(t, "org-c", "carol@example.com")
+
+	admin := env.adminClient(t)
+	createRes, err := admin.CreateWorkgroup(env.ctx, &api.CreateWorkgroupRequest{
+		Name:                         "shared",
+		Scope:                        api.CreateWorkgroupRequestScopeInterOrg,
+		OwnerOrganizationId:          orgA,
+		InitialAdminAccountId:        aliceID,
+		ParticipatingOrganizationIds: []string{orgB, orgC},
+	})
+	if err != nil {
+		t.Fatalf("create inter-org workgroup: %v", err)
+	}
+	created, ok := createRes.(*api.CreateWorkgroupResponse)
+	if !ok {
+		t.Fatalf("create inter-org workgroup unexpected response: %T", createRes)
+	}
+	if created.Workgroup.State != api.WorkgroupStatePending {
+		t.Fatalf("expected pending state, got %s", created.Workgroup.State)
+	}
+	if len(created.Invitations) != 2 {
+		t.Fatalf("expected 2 invitations, got %d", len(created.Invitations))
+	}
+
+	wgID := created.Workgroup.ID
+
+	bobClient := env.accountClient(t, bobToken)
+	bobGet, err := bobClient.GetWorkgroup(env.ctx, api.GetWorkgroupParams{WorkgroupId: wgID})
+	if err != nil {
+		t.Fatalf("bob get pending workgroup: %v", err)
+	}
+	if _, ok := bobGet.(*api.GetWorkgroupNotFound); !ok {
+		t.Fatalf("expected bob to receive 404 for pending workgroup, got %T", bobGet)
+	}
+
+	acceptRes, err := admin.AcceptWorkgroupInvitation(env.ctx, &api.AcceptWorkgroupInvitationRequest{InitialAdminAccountId: bobID}, api.AcceptWorkgroupInvitationParams{WorkgroupId: wgID, OrganizationId: orgB})
+	if err != nil {
+		t.Fatalf("accept org-b invitation: %v", err)
+	}
+	ack, ok := acceptRes.(*api.AcknowledgeWorkgroupInvitationResponse)
+	if !ok {
+		t.Fatalf("accept unexpected response: %T", acceptRes)
+	}
+	if ack.Invitation.State != api.WorkgroupInvitationStateAccepted {
+		t.Fatalf("expected accepted invitation, got %s", ack.Invitation.State)
+	}
+	if ack.Workgroup.State != api.WorkgroupStatePending {
+		t.Fatalf("expected workgroup still pending after first accept, got %s", ack.Workgroup.State)
+	}
+
+	acceptC, err := admin.AcceptWorkgroupInvitation(env.ctx, &api.AcceptWorkgroupInvitationRequest{InitialAdminAccountId: carolID}, api.AcceptWorkgroupInvitationParams{WorkgroupId: wgID, OrganizationId: orgC})
+	if err != nil {
+		t.Fatalf("accept org-c invitation: %v", err)
+	}
+	ackC, ok := acceptC.(*api.AcknowledgeWorkgroupInvitationResponse)
+	if !ok {
+		t.Fatalf("accept org-c unexpected response: %T", acceptC)
+	}
+	if ackC.Workgroup.State != api.WorkgroupStateActive {
+		t.Fatalf("expected workgroup active after both accepts, got %s", ackC.Workgroup.State)
+	}
+
+	bobAfterAccept, err := bobClient.GetWorkgroup(env.ctx, api.GetWorkgroupParams{WorkgroupId: wgID})
+	if err != nil {
+		t.Fatalf("bob get after accept: %v", err)
+	}
+	if _, ok := bobAfterAccept.(*api.Workgroup); !ok {
+		t.Fatalf("expected bob to see workgroup after accept, got %T", bobAfterAccept)
+	}
+
+	dupAccept, err := admin.AcceptWorkgroupInvitation(env.ctx, &api.AcceptWorkgroupInvitationRequest{InitialAdminAccountId: bobID}, api.AcceptWorkgroupInvitationParams{WorkgroupId: wgID, OrganizationId: orgB})
+	if err != nil {
+		t.Fatalf("dup accept: %v", err)
+	}
+	if _, ok := dupAccept.(*api.AcceptWorkgroupInvitationConflict); !ok {
+		t.Fatalf("expected conflict on duplicate accept, got %T", dupAccept)
+	}
+
+	_ = aliceToken
+}
+
+func TestWorkgroupInterOrgDeclineLocksWorkgroup(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgA, aliceID, _ := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	orgB, _, _ := env.createOrgWithAccount(t, "org-b", "bob@example.com")
+	orgC, carolID, _ := env.createOrgWithAccount(t, "org-c", "carol@example.com")
+
+	admin := env.adminClient(t)
+	createRes, err := admin.CreateWorkgroup(env.ctx, &api.CreateWorkgroupRequest{
+		Name:                         "shared",
+		Scope:                        api.CreateWorkgroupRequestScopeInterOrg,
+		OwnerOrganizationId:          orgA,
+		InitialAdminAccountId:        aliceID,
+		ParticipatingOrganizationIds: []string{orgB, orgC},
+	})
+	if err != nil {
+		t.Fatalf("create inter-org workgroup: %v", err)
+	}
+	wgID := createRes.(*api.CreateWorkgroupResponse).Workgroup.ID
+
+	declineRes, err := admin.DeclineWorkgroupInvitation(env.ctx, &api.DeclineWorkgroupInvitationRequest{}, api.DeclineWorkgroupInvitationParams{WorkgroupId: wgID, OrganizationId: orgB})
+	if err != nil {
+		t.Fatalf("decline org-b invitation: %v", err)
+	}
+	ack, ok := declineRes.(*api.AcknowledgeWorkgroupInvitationResponse)
+	if !ok {
+		t.Fatalf("decline unexpected response: %T", declineRes)
+	}
+	if ack.Workgroup.State != api.WorkgroupStateDeclined {
+		t.Fatalf("expected declined workgroup, got %s", ack.Workgroup.State)
+	}
+
+	subsequent, err := admin.AcceptWorkgroupInvitation(env.ctx, &api.AcceptWorkgroupInvitationRequest{InitialAdminAccountId: carolID}, api.AcceptWorkgroupInvitationParams{WorkgroupId: wgID, OrganizationId: orgC})
+	if err != nil {
+		t.Fatalf("subsequent accept after decline: %v", err)
+	}
+	if _, ok := subsequent.(*api.AcceptWorkgroupInvitationConflict); !ok {
+		t.Fatalf("expected workgroup_declined conflict, got %T", subsequent)
+	}
+}

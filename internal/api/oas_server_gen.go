@@ -8,14 +8,26 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
+	// AcceptWorkgroupInvitation implements acceptWorkgroupInvitation operation.
+	//
+	// POST /admin/workgroups/{workgroupId}/invitations/{organizationId}/accept
+	AcceptWorkgroupInvitation(ctx context.Context, req *AcceptWorkgroupInvitationRequest, params AcceptWorkgroupInvitationParams) (AcceptWorkgroupInvitationRes, error)
 	// AddTunnelGrant implements addTunnelGrant operation.
 	//
 	// POST /tunnels/{tunnelId}/grants
 	AddTunnelGrant(ctx context.Context, req *AddTunnelGrantRequest, params AddTunnelGrantParams) (AddTunnelGrantRes, error)
+	// AddWorkgroupMember implements addWorkgroupMember operation.
+	//
+	// POST /workgroups/{workgroupId}/members
+	AddWorkgroupMember(ctx context.Context, req *AddWorkgroupMemberRequest, params AddWorkgroupMemberParams) (AddWorkgroupMemberRes, error)
 	// ChangePassword implements changePassword operation.
 	//
 	// POST /account/change-password
 	ChangePassword(ctx context.Context, req *ChangePasswordRequest) (ChangePasswordRes, error)
+	// ChangeWorkgroupMembershipRole implements changeWorkgroupMembershipRole operation.
+	//
+	// PATCH /workgroups/{workgroupId}/members/{membershipId}
+	ChangeWorkgroupMembershipRole(ctx context.Context, req *ChangeWorkgroupMembershipRoleRequest, params ChangeWorkgroupMembershipRoleParams) (ChangeWorkgroupMembershipRoleRes, error)
 	// ConnectTunnel implements connectTunnel operation.
 	//
 	// POST /tunnels/connect
@@ -32,6 +44,14 @@ type Handler interface {
 	//
 	// POST /tunnels
 	CreateTunnel(ctx context.Context, req *CreateTunnelRequest) (CreateTunnelRes, error)
+	// CreateWorkgroup implements createWorkgroup operation.
+	//
+	// POST /admin/workgroups
+	CreateWorkgroup(ctx context.Context, req *CreateWorkgroupRequest) (CreateWorkgroupRes, error)
+	// DeclineWorkgroupInvitation implements declineWorkgroupInvitation operation.
+	//
+	// POST /admin/workgroups/{workgroupId}/invitations/{organizationId}/decline
+	DeclineWorkgroupInvitation(ctx context.Context, req *DeclineWorkgroupInvitationRequest, params DeclineWorkgroupInvitationParams) (DeclineWorkgroupInvitationRes, error)
 	// DeleteAccount implements deleteAccount operation.
 	//
 	// DELETE /organizations/{organizationId}/accounts/{accountId}
@@ -52,6 +72,10 @@ type Handler interface {
 	//
 	// DELETE /tunnel-serves/{serveId}
 	DeleteTunnelServe(ctx context.Context, params DeleteTunnelServeParams) (DeleteTunnelServeRes, error)
+	// DeleteWorkgroup implements deleteWorkgroup operation.
+	//
+	// DELETE /workgroups/{workgroupId}
+	DeleteWorkgroup(ctx context.Context, params DeleteWorkgroupParams) (DeleteWorkgroupRes, error)
 	// DisableEnvironment implements disableEnvironment operation.
 	//
 	// DELETE /environments/{environmentId}/heartbeat
@@ -72,6 +96,10 @@ type Handler interface {
 	//
 	// GET /tunnels/{tunnelId}/serve
 	GetTunnelServe(ctx context.Context, params GetTunnelServeParams) (GetTunnelServeRes, error)
+	// GetWorkgroup implements getWorkgroup operation.
+	//
+	// GET /workgroups/{workgroupId}
+	GetWorkgroup(ctx context.Context, params GetWorkgroupParams) (GetWorkgroupRes, error)
 	// HeartbeatEnvironment implements heartbeatEnvironment operation.
 	//
 	// POST /environments/{environmentId}/heartbeat
@@ -88,6 +116,10 @@ type Handler interface {
 	//
 	// GET /organizations/{organizationId}/accounts
 	ListAccounts(ctx context.Context, params ListAccountsParams) (ListAccountsRes, error)
+	// ListAdminWorkgroups implements listAdminWorkgroups operation.
+	//
+	// GET /admin/workgroups
+	ListAdminWorkgroups(ctx context.Context, params ListAdminWorkgroupsParams) (ListAdminWorkgroupsRes, error)
 	// ListEnvironments implements listEnvironments operation.
 	//
 	// GET /environments
@@ -112,6 +144,14 @@ type Handler interface {
 	//
 	// GET /accounts
 	ListUsers(ctx context.Context, params ListUsersParams) (ListUsersRes, error)
+	// ListWorkgroupMembers implements listWorkgroupMembers operation.
+	//
+	// GET /workgroups/{workgroupId}/members
+	ListWorkgroupMembers(ctx context.Context, params ListWorkgroupMembersParams) (ListWorkgroupMembersRes, error)
+	// ListWorkgroups implements listWorkgroups operation.
+	//
+	// GET /workgroups
+	ListWorkgroups(ctx context.Context) (ListWorkgroupsRes, error)
 	// Login implements login operation.
 	//
 	// POST /account/login
@@ -124,6 +164,10 @@ type Handler interface {
 	//
 	// DELETE /tunnels/{tunnelId}/grants/{accountId}
 	RemoveTunnelGrant(ctx context.Context, params RemoveTunnelGrantParams) (RemoveTunnelGrantRes, error)
+	// RemoveWorkgroupMember implements removeWorkgroupMember operation.
+	//
+	// DELETE /workgroups/{workgroupId}/members/{membershipId}
+	RemoveWorkgroupMember(ctx context.Context, params RemoveWorkgroupMemberParams) (RemoveWorkgroupMemberRes, error)
 	// StartTunnelServe implements startTunnelServe operation.
 	//
 	// POST /tunnels/{tunnelId}/serve
