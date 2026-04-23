@@ -11,14 +11,16 @@ Without `agentbase`, each demo agent's `main.go` has to:
 1. Locate and load the local `~/.agora`-style environment root
 2. Verify the environment is enabled
 3. Build a controller API client with the enrolled account's token
-4. Dial the local `agora network` daemon over gRPC+UDS (for agents that host serves or open connects)
+4. Construct and start an embedded Layer 1 runtime (for agents that host serves or open connects)
 5. Parse CLI flags and environment variables
 6. Set up structured logging via `df/dl`
 7. Install signal handlers for clean shutdown
 8. Wire in the agent-specific business logic
-9. Tear down cleanly on exit
+9. Tear down cleanly on exit (including a clean runtime shutdown that deprovisions active serves and attachments)
 
 That is genuinely ~100 lines per agent. Nine agents × 100 lines = 900 lines of nearly-identical boilerplate, with bug fixes needing to happen in nine places. `agentbase` collapses steps 1-7 and 9 to a handful of calls; each agent's `main.go` becomes mostly its own business logic.
+
+**Embedded runtime, not daemon client.** The runtime referenced in step 4 is the embeddable library form of the Layer 1 runtime, not a gRPC client to a separate daemon process. Each agent owns its own in-process runtime instance; there is no shared daemon. See [../../../docs/layer-1/agent.md](../../../docs/layer-1/agent.md) "Packaging Direction" and "Isolation between the daemon and embedded runtimes."
 
 `agentbase` is not an SDK. It is deliberately demo-internal. See [foundation.md](../../../../docs/layer-2/foundation.md) "SDK Surface" for why no public SDK is committed in the first Layer 2 slice. `agentbase` is a reference pattern for what such an SDK could eventually look like, but it ships under `examples/macro-pulse/internal/` to make its non-public status visible.
 
@@ -63,17 +65,27 @@ func WithFlagSet(fs *flag.FlagSet) Option
 // separate enrolled environments.
 func WithEnvRoot(path string) Option
 
-// WithBusinessLogic registers the OnStart callback — the agent's main
-// loop. Receives a cancellable context that is cancelled on shutdown
-// and a fully-initialized *Agent.
-func WithBusinessLogic(fn func(context.Context, *Agent) error) Option
+// WithRuntime causes agentbase to construct and start an embedded
+// Layer 1 runtime. Required for any agent that accepts sessions
+// (providers, tools) or opens sessions (consumers). Omit for pure
+// controller-API consumers (e.g. the bootstrap program, admin
+// utilities) that don't need tunnels.
+//
+// The embedded runtime does NOT touch ~/.agora/network.json and does
+// NOT bind ~/.agora/network.sock. It is isolated from any standalone
+// `agora network` daemon running on the same host.
+func WithRuntime() Option
 
-// Run parses flags, initializes the agent, invokes business logic,
-// and blocks until the business logic returns or a signal arrives.
-// Returns a non-zero-intent error if initialization fails or business
-// logic returns an error. Intended to be called from main as the last
-// line: agentbase.New(...).Run().
-func (a *App) Run() error
+// Run parses flags, initializes the agent (including embedded runtime
+// if WithRuntime() was set), invokes fn with a cancellable context
+// that is cancelled on SIGINT/SIGTERM, and blocks until fn returns or
+// a signal arrives. On signal, Run cancels the context and waits for
+// fn to return before tearing down.
+//
+// Intended to be called from main as the last line:
+//
+//   app.Run(func(ctx context.Context, a *agentbase.Agent) error { ... })
+func (a *App) Run(fn func(context.Context, *Agent) error) error
 ```
 
 The `*Agent` handle exposes:
@@ -90,15 +102,10 @@ func (a *Agent) Env() env_core.Root
 // and (post-slice) any Layer 2 endpoint the account can access.
 func (a *Agent) Controller() *api.Client
 
-// Runtime returns a gRPC client to the local `agora network` daemon.
-// Nil until the network-runtime connection is successfully established;
-// check via RuntimeAvailable() before use.
-func (a *Agent) Runtime() networkpb.NetworkServiceClient
-
-// RuntimeAvailable returns true if the local agora network daemon is
-// reachable. Some agents (e.g. analytics tools) may not need it; the
-// agent logs a warning but continues if the daemon is down.
-func (a *Agent) RuntimeAvailable() bool
+// Runtime returns the embedded Layer 1 runtime instance. Nil if the
+// agent was constructed without WithRuntime(). Callers invoke runtime
+// methods directly as Go calls; there is no gRPC dial.
+func (a *Agent) Runtime() *agent.Embedded
 
 // Logger returns a df/dl logger scoped with agent_name and account_id
 // fields pre-populated.
@@ -133,6 +140,7 @@ package main
 import (
     "context"
     "flag"
+    "os"
 
     "github.com/openziti/agora/examples/macro-pulse/internal/agentbase"
 )
@@ -144,14 +152,14 @@ func main() {
     app := agentbase.New("news-pulse",
         agentbase.WithDescription("News volume and sentiment feed"),
         agentbase.WithFlagSet(fs),
-        agentbase.WithBusinessLogic(func(ctx context.Context, a *agentbase.Agent) error {
-            a.Logger().Infof("news-pulse alive, default_topic='%s'", *topic)
-            <-ctx.Done()
-            return nil
-        }),
+        agentbase.WithRuntime(),   // news-pulse accepts sessions; needs the embedded runtime
     )
-    if err := app.Run(); err != nil {
-        panic(err)
+    if err := app.Run(func(ctx context.Context, a *agentbase.Agent) error {
+        a.Log().Infof("alive; default_topic='%s'", *topic)
+        <-ctx.Done()
+        return nil
+    }); err != nil {
+        os.Exit(1)
     }
 }
 ```
@@ -181,9 +189,9 @@ Each slice's PR advances `agentbase` alongside the slice itself.
 
 These need resolution before the Go code is written. They are deliberately narrow; the API surface above is otherwise considered ready.
 
-- **Logger return type.** Is `Logger() *dl.Logger` right, or should `agentbase` expose a narrower interface to avoid locking every agent to `df/dl`? Proposed: return the concrete `*dl.Logger` — `df/dl` is already a project convention and there is no reason to abstract over it here. Confirm.
-- **Runtime availability semantics.** Some agents (analytics tools: `correlator`, `narrator`) don't need the local `agora network` daemon. Should `agentbase` fail if the daemon is unreachable, or warn and continue with `RuntimeAvailable() = false`? Proposed: warn and continue. Analytics tools never call `Runtime()`. Data providers and `pulse-agent` consult `RuntimeAvailable()` before attempting runtime operations. Confirm.
-- **OnStart signature.** Currently `func(context.Context, *Agent) error`. Considered alternative: pass the agent's individual flags via the callback signature (`func(context.Context, *Agent, *MyAgentFlags) error`) to avoid each agent keeping a top-level pointer. Proposed: keep the current signature — flags are scoped to the caller's package anyway. Confirm.
+- **Logger return type.** Resolved: `Log() *dl.Builder` returning `dl.Log().With("agent", a.Name()).With("account_id", a.AccountID())`. This matches what df/dl actually exposes (package-level log functions plus a chainable `*Builder` from `dl.Log()`) and ensures every log line from an agent carries agent-identifying structured fields automatically.
+- **Runtime opt-in semantics.** Resolved: runtime is an embedded library, not a remote daemon. Agents opt in via `WithRuntime()`. Agents that need sessions (all providers, all tools, `pulse-agent`) declare it; `bootstrap` and any future pure-admin-CLI agents omit it. `a.Runtime()` returns nil when not declared; there is no "runtime unreachable" middle state. See [../../../docs/layer-1/agent.md](../../../docs/layer-1/agent.md) "Packaging Direction" for the isolation model.
+- **Business logic entry point.** Resolved: business logic is passed as an argument to `app.Run(fn)` rather than via a `WithBusinessLogic(...)` option. Signature is `func(ctx context.Context, a *Agent) error`; flags are captured by closure from the surrounding scope. Construction options describe the agent's shape; `Run` invokes its behavior.
 
 ## Implementation sequence
 

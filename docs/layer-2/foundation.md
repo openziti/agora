@@ -70,7 +70,7 @@ Layer 2 follows the existing repo-wide convention: controller handlers stay in `
   - `internal/collaboration/envelope/`
 - `internal/persistence/` — new repositories for Layer 2 resources (e.g. `WorkgroupsRepository`, `AdvertisementsRepository`) alongside the existing Layer 1 repositories. New migrations added under `internal/persistence/migrations/` following the existing ordered-filename convention.
 
-Agent-side (local runtime) Layer 2 code, where it exists, lives under `internal/collaboration/`, not under `internal/network/agent/`. The Layer 1 runtime remains a thin daemon with a stable gRPC+UDS surface (see [../layer-1/agent.md](../layer-1/agent.md) "Packaging Direction"); Layer 2 runtime logic that needs local process involvement drives it through that surface.
+Agent-side (local runtime) Layer 2 code, where it exists, lives under `internal/collaboration/`, not under `internal/network/agent/`. The Layer 1 runtime is delivered in two forms (see [../layer-1/agent.md](../layer-1/agent.md) "Packaging Direction"): a standalone daemon (`agora network start`) for CLI-driven operator workflows, and an embeddable library that Layer 2 agents import directly in-process. Layer 2 agents use the embedded form; Layer 2 runtime logic does not cross the process boundary of the agent it serves.
 
 ## CLI Command Shape
 

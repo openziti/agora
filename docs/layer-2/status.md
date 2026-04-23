@@ -51,7 +51,7 @@ Layer 2 is not starting from zero. It already has the Layer 1 substrate it depen
 - controller-visible liveness, serve, and attachment state
 - PostgreSQL-backed controller state
 - OpenAPI-driven API workflow
-- a settled runtime packaging direction (thin daemon; see [../layer-1/agent.md](../layer-1/agent.md) "Packaging Direction")
+- a settled runtime packaging direction (dual delivery: standalone daemon + embeddable library; see [../layer-1/agent.md](../layer-1/agent.md) "Packaging Direction")
 
 This means the next Layer 2 work can focus on collaboration semantics rather than first building transport and identity.
 

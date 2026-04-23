@@ -49,17 +49,34 @@ The v1 runtime does not need to:
 
 ## Packaging Direction
 
-The Layer 1 runtime is delivered as a thin local daemon, not as an embeddable library. This is the finalized direction.
+The Layer 1 runtime is delivered in two forms:
 
-Rationale:
+- a **standalone daemon** entrypoint via `agora network start`, unchanged from the current implementation. Owns `~/.agora/network.json` desired-state persistence, binds `~/.agora/network.sock` for its gRPC control surface, hosts the CLI-initiated serves and connects that `agora tunnel serve` and `agora tunnel connect` delegate to.
+- an **embeddable library** form that Layer 2 agents import directly in-process. The agent constructs its own runtime instance, wires it against its own desired serve/connect configuration (supplied programmatically, not from disk), and drives it through Go method calls rather than gRPC.
 
-- the thin-daemon model is fully implemented, tested, and documented, and meets all Layer 1 acceptance criteria
-- the gRPC-over-UDS control surface is a stable, typed interface that external processes (including Layer 2 participants) can drive without linking the runtime as a library
-- Layer 2 resources (workgroups, catalog, advertisements, contracts, envelopes) are controller-owned and do not require in-process access to the Layer 1 runtime
-- Layer 2 sessions are backed by Layer 1 tunnels, and tunnel lifecycle is already expressible through the existing agent control surface
-- extracting an embeddable library form is a larger refactor that has no concrete requirement driving it today
+The two delivery modes use the same runtime code but expose different surfaces around it. The standalone daemon is a thin wrapper that adds desired-state persistence and the UDS+gRPC control plane; the embedded form skips both.
 
-If a future need emerges for embedding the runtime directly into a Layer 2 participant binary, that extraction can be scoped and performed at that point. It is not a prerequisite for Layer 2 work.
+### Isolation between the daemon and embedded runtimes
+
+An embedded runtime and the standalone daemon may run concurrently on the same host against the same enrolled environment. They are isolated from each other in the following senses:
+
+- **No shared desired-state file.** The embedded runtime does not read or write `~/.agora/network.json`. That file is exclusively the daemon's. The embedded runtime's desired state is held in memory for the lifetime of the embedding process.
+- **No shared UDS.** The embedded runtime does not bind `~/.agora/network.sock` and does not connect to it. Only the daemon binds it; only CLI commands like `agora tunnel serve` connect to it.
+- **Independent serve and attachment records.** Each runtime instance, daemon or embedded, creates its own serves and attachments against the controller. These are distinct records with distinct `ts_...` and `ta_...` IDs. Neither instance can see or modify the other's.
+
+The two modes do **share** the enrolled environment:
+
+- the same `~/.agora/environment.json` (account token and environment ID)
+- the same `~/.agora/identities/environment.json` (enrolled fabric identity material)
+- the same environment heartbeat — both instances may independently heartbeat; the controller treats these as the same environment being heartbeat from different runtime processes and simply refreshes `last_seen_at`
+
+This separation keeps the daemon's CLI-driven workflow and the embedded agents' in-process workflow independent while letting both ride the same enrollment and identity.
+
+### Why both
+
+- **CLI users and operators** continue to use the standalone daemon. The `agora network start` / `agora tunnel serve` / `agora tunnel connect` flow is unchanged. Desired-state persistence under `network.json` is still what lets serves survive operator-initiated daemon restart.
+- **Layer 2 agents** embed the library. An agent process owns its runtime; the runtime does not outlive the process. An agent does not need desired-state persistence because the agent itself IS the source of desired state (the agent knows what serves and connects it wants because it is running them for its own business logic).
+- **Isolation** means an operator's `agora network start` daemon does not collide with an embedded agent running on the same host, and vice versa. Either or both can be running.
 
 ## Process Model
 
