@@ -13,25 +13,26 @@ import (
 
 	"github.com/michaelquigley/df/dl"
 	"github.com/openziti/agora/environment/env_core"
-	networkpb "github.com/openziti/agora/internal/network/agent/pb"
+	"github.com/openziti/agora/sdk/agent/networkpb"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var ErrAlreadyRunning = errors.New("agora network is already running")
 
-type Agent struct {
+type Runtime struct {
 	networkpb.UnimplementedNetworkServiceServer
 
-	mu         sync.Mutex
-	root       env_core.Root
-	env        *env_core.Environment
-	network    *env_core.Network
-	serves     map[string]*managedServe
-	connects   map[string]*managedConnect
-	socketPath string
-	startedAt  time.Time
-	pid        int
+	mu           sync.Mutex
+	root         env_core.Root
+	env          *env_core.Environment
+	network      *env_core.Network
+	identityPath string
+	serves       map[string]*managedServe
+	connects     map[string]*managedConnect
+	socketPath   string
+	startedAt    time.Time
+	pid          int
 
 	now                      func() time.Time
 	heartbeatInterval        time.Duration
@@ -54,7 +55,12 @@ type Agent struct {
 	stopOnce   sync.Once
 }
 
-func New() (*Agent, error) {
+// NewDaemon constructs a Runtime configured for the standalone
+// `agora network start` daemon: it loads the environment root from
+// disk (including network.json desired state), resolves the
+// environment's UDS socket path, and derives the enrolled identity
+// path. Embedded callers use NewEmbedded instead.
+func NewDaemon() (*Runtime, error) {
 	root, env, networkState, err := loadRootState()
 	if err != nil {
 		return nil, err
@@ -63,10 +69,15 @@ func New() (*Agent, error) {
 	if err != nil {
 		return nil, err
 	}
-	agent := &Agent{
+	identityPath, err := root.ZitiIdentityNamed(environmentIdentityName)
+	if err != nil {
+		return nil, err
+	}
+	agent := &Runtime{
 		root:                     root,
 		env:                      env,
 		network:                  networkState,
+		identityPath:             identityPath,
 		serves:                   configuredServes(networkState),
 		connects:                 configuredConnects(networkState),
 		socketPath:               socketPath,
@@ -91,7 +102,7 @@ func New() (*Agent, error) {
 	return agent, nil
 }
 
-func (a *Agent) Run(ctx context.Context) error {
+func (a *Runtime) Run(ctx context.Context) error {
 	if err := os.MkdirAll(filepath.Dir(a.socketPath), 0o700); err != nil {
 		return fmt.Errorf("create network socket directory: %w", err)
 	}
@@ -116,7 +127,7 @@ func (a *Agent) Run(ctx context.Context) error {
 	})
 }
 
-func (a *Agent) runServer(ctx context.Context, listener net.Listener, cleanup func()) error {
+func (a *Runtime) runServer(ctx context.Context, listener net.Listener, cleanup func()) error {
 	defer func() {
 		a.shutdownManagedActors()
 		a.stopEnvironmentHeartbeatLoop()
@@ -159,10 +170,10 @@ func (a *Agent) runServer(ctx context.Context, listener net.Listener, cleanup fu
 	}
 }
 
-func (a *Agent) prepareSocket(ctx context.Context) error {
+func (a *Runtime) prepareSocket(ctx context.Context) error {
 	pingCtx, cancel := context.WithTimeout(ctx, defaultDialTimeout)
 	defer cancel()
-	if _, err := Ping(pingCtx, a.socketPath); err == nil {
+	if _, err := ping(pingCtx, a.socketPath); err == nil {
 		return ErrAlreadyRunning
 	}
 
@@ -175,13 +186,13 @@ func (a *Agent) prepareSocket(ctx context.Context) error {
 	return nil
 }
 
-func (a *Agent) stop() {
+func (a *Runtime) stop() {
 	a.stopOnce.Do(func() {
 		close(a.shutdownCh)
 	})
 }
 
-func (a *Agent) snapshotStatusLocked() *networkpb.NetworkStatus {
+func (a *Runtime) snapshotStatusLocked() *networkpb.NetworkStatus {
 	status := networkStatusProto(a.pid, a.startedAt, a.socketPath, a.env, a.network, a.environmentHeartbeatStatusLocked(a.now().UTC()))
 	for _, desired := range a.network.Serves {
 		if _, actor := a.findServeActorLocked(desired.TunnelID, desired.Name); actor != nil {
@@ -208,7 +219,7 @@ func (a *Agent) snapshotStatusLocked() *networkpb.NetworkStatus {
 	return status
 }
 
-func (a *Agent) Ping(context.Context, *networkpb.PingRequest) (*networkpb.PingResponse, error) {
+func (a *Runtime) Ping(context.Context, *networkpb.PingRequest) (*networkpb.PingResponse, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return &networkpb.PingResponse{
@@ -217,12 +228,12 @@ func (a *Agent) Ping(context.Context, *networkpb.PingRequest) (*networkpb.PingRe
 	}, nil
 }
 
-func (a *Agent) Shutdown(context.Context, *networkpb.ShutdownRequest) (*networkpb.ShutdownResponse, error) {
+func (a *Runtime) Shutdown(context.Context, *networkpb.ShutdownRequest) (*networkpb.ShutdownResponse, error) {
 	a.stop()
 	return &networkpb.ShutdownResponse{}, nil
 }
 
-func (a *Agent) ReloadEnvironment(context.Context, *networkpb.ReloadEnvironmentRequest) (*networkpb.ReloadEnvironmentResponse, error) {
+func (a *Runtime) ReloadEnvironment(context.Context, *networkpb.ReloadEnvironmentRequest) (*networkpb.ReloadEnvironmentResponse, error) {
 	a.shutdownManagedActors()
 
 	a.mu.Lock()
@@ -242,13 +253,13 @@ func (a *Agent) ReloadEnvironment(context.Context, *networkpb.ReloadEnvironmentR
 	return &networkpb.ReloadEnvironmentResponse{Status: a.snapshotStatusLocked()}, nil
 }
 
-func (a *Agent) GetNetworkStatus(_ context.Context, _ *networkpb.GetNetworkStatusRequest) (*networkpb.GetNetworkStatusResponse, error) {
+func (a *Runtime) GetNetworkStatus(_ context.Context, _ *networkpb.GetNetworkStatusRequest) (*networkpb.GetNetworkStatusResponse, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return &networkpb.GetNetworkStatusResponse{Status: a.snapshotStatusLocked()}, nil
 }
 
-func (a *Agent) ListServes(_ context.Context, _ *networkpb.ListServesRequest) (*networkpb.ListServesResponse, error) {
+func (a *Runtime) ListServes(_ context.Context, _ *networkpb.ListServesRequest) (*networkpb.ListServesResponse, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	resp := &networkpb.ListServesResponse{
@@ -268,7 +279,7 @@ func (a *Agent) ListServes(_ context.Context, _ *networkpb.ListServesRequest) (*
 	return resp, nil
 }
 
-func (a *Agent) ListConnects(_ context.Context, _ *networkpb.ListConnectsRequest) (*networkpb.ListConnectsResponse, error) {
+func (a *Runtime) ListConnects(_ context.Context, _ *networkpb.ListConnectsRequest) (*networkpb.ListConnectsResponse, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	resp := &networkpb.ListConnectsResponse{

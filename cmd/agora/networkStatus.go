@@ -6,7 +6,7 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/openziti/agora/internal/clioutput"
-	networkpb "github.com/openziti/agora/internal/network/agent/pb"
+	"github.com/openziti/agora/sdk/agent/networkpb"
 	"github.com/spf13/cobra"
 )
 

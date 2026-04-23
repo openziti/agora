@@ -61,10 +61,11 @@ This repository is in early-stage development. Favor simple, explicit structure 
 - Store local CLI metadata such as API endpoint config and enrolled identities there, not in controller config files
 - Prefer extending the environment package over scattering ad hoc dotfiles or one-off env var parsing across commands
 
-**Internal Package Naming**:
-- Layer-owned internal packages should follow the conceptual layer names:
+**Package Naming**:
+- The public SDK lives at `sdk/agent` (top-level, outside `internal/`). It exposes the embeddable Layer 1 runtime plus App/Agent scaffolding. Both Agora's own `agora network start` daemon and every agent built on Agora import from here. See [docs/sdk/overview.md](./docs/sdk/overview.md).
+- Layer-owned internal packages follow the conceptual layer names:
 - `internal/fabric/...` for Layer 0 (Fabric) implementation code
-- `internal/network/...` for Layer 1 (Network) implementation code
+- `internal/network/...` for Layer 1 (Network) implementation code that is NOT part of the SDK (e.g., `internal/network/daemon` for daemon-client helpers, `internal/network/tunnelruntime` for the HTTP/TCP/UDP engine)
 - `internal/collaboration/...` for Layer 2 (Collaboration) implementation code when that code exists
 - Keep cross-cutting packages such as `internal/controller`, `internal/persistence`, `internal/api`, and `internal/clioutput` at the top level rather than forcing them into a layer namespace
 

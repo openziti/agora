@@ -15,7 +15,7 @@ The Layer 1 agent plan is complete through its original phase 5 scope.
 
 Implemented outcomes:
 
-- local runtime package under `internal/network/agent`
+- local runtime package at `sdk/agent` (consumed by both the standalone daemon and embedded agents)
 - local gRPC-over-UDS control API
 - `~/.agora/network.json` desired-state persistence
 - `agora network start|stop|status`

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/openziti/agora/internal/api"
-	networkpb "github.com/openziti/agora/internal/network/agent/pb"
+	"github.com/openziti/agora/sdk/agent/networkpb"
 	"github.com/spf13/cobra"
 )
 

@@ -48,7 +48,7 @@ After bootstrap, all non-admin agents (e.g. `fx-feed`, `news-pulse`) can be adde
 
 ## What it produces
 
-On success, emits one line per created resource, then prints the account tokens for each of the nine agent accounts. The tokens need to be distributed to the machines (or environment roots) where each agent will run; `bootstrap` itself does not enroll environments — that is done by each agent at startup via its own `agora enable` equivalent through `agentbase`.
+On success, emits one line per created resource, then prints the account tokens for each of the nine agent accounts. The tokens need to be distributed to the machines (or environment roots) where each agent will run; `bootstrap` itself does not enroll environments — that is done separately via `agora enable` per agent (or per environment root when running multiple agents on one host).
 
 A future enhancement can have `bootstrap` also perform `agora enable` for each agent against locally-rooted `~/.agora-<agent>` directories so the whole demo can run on a single machine. That is a post-MVP convenience, not required for the demo to work.
 

@@ -180,9 +180,9 @@ examples/macro-pulse/
 │   └── narrator/
 ├── client/
 │   └── pulse-agent/
-├── snapshots/                          canned external-API data for offline runs
-└── internal/
-    └── agentbase/                      shared agent scaffolding
+└── snapshots/                          canned external-API data for offline runs
 ```
 
 Each agent subdirectory has its own `README.md` describing that agent's capability, expected envelope shapes, workgroup participation, and behavior in each run mode.
+
+Shared agent scaffolding lives in [`sdk/agent`](../../sdk/agent) at the repo root — the Agora SDK — and is imported by every Macro Pulse agent.

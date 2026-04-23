@@ -8,8 +8,8 @@ import (
 
 	"github.com/openziti/agora/environment"
 	"github.com/openziti/agora/environment/env_core"
-	networkagent "github.com/openziti/agora/internal/network/agent"
-	networkpb "github.com/openziti/agora/internal/network/agent/pb"
+	"github.com/openziti/agora/internal/network/daemon"
+	"github.com/openziti/agora/sdk/agent/networkpb"
 	"github.com/spf13/cobra"
 )
 
@@ -43,26 +43,26 @@ func networkSocketPath(root env_core.Root) string {
 func networkStatusOrNil(root env_core.Root) (status *networkpb.NetworkStatus, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), networkDialTimeout)
 	defer cancel()
-	status, err = networkagent.Status(ctx, networkSocketPath(root))
-	if errors.Is(err, networkagent.ErrNotRunning) {
+	status, err = daemon.Status(ctx, networkSocketPath(root))
+	if errors.Is(err, daemon.ErrNotRunning) {
 		return nil, nil
 	}
 	return status, err
 }
 
 func reloadNetworkAgentIfRunning(root env_core.Root) error {
-	return networkagent.ReloadEnvironmentIfRunning(root)
+	return daemon.ReloadEnvironmentIfRunning(root)
 }
 
 func openNetworkClient(root env_core.Root) (networkpb.NetworkServiceClient, func(), error) {
 	ctx, cancel := context.WithTimeout(context.Background(), networkDialTimeout)
 	defer cancel()
 
-	if _, err := networkagent.Ping(ctx, networkSocketPath(root)); err != nil {
+	if _, err := daemon.Ping(ctx, networkSocketPath(root)); err != nil {
 		return nil, nil, err
 	}
 
-	conn, err := networkagent.Dial(ctx, networkSocketPath(root))
+	conn, err := daemon.Dial(ctx, networkSocketPath(root))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -73,7 +73,7 @@ func openNetworkClient(root env_core.Root) (networkpb.NetworkServiceClient, func
 func requireRunningNetworkClient(root env_core.Root) (networkpb.NetworkServiceClient, func()) {
 	client, cleanup, err := openNetworkClient(root)
 	if err != nil {
-		if errors.Is(err, networkagent.ErrNotRunning) {
+		if errors.Is(err, daemon.ErrNotRunning) {
 			panic("agora network is not running; run 'agora network start'")
 		}
 		panic(err)
@@ -84,7 +84,7 @@ func requireRunningNetworkClient(root env_core.Root) (networkpb.NetworkServiceCl
 func requireRunningNetworkClientError(root env_core.Root) (networkpb.NetworkServiceClient, func(), error) {
 	client, cleanup, err := openNetworkClient(root)
 	if err != nil {
-		if errors.Is(err, networkagent.ErrNotRunning) {
+		if errors.Is(err, daemon.ErrNotRunning) {
 			return nil, nil, fmt.Errorf("agora network is not running; run 'agora network start'")
 		}
 		return nil, nil, err

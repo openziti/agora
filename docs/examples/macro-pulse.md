@@ -74,7 +74,7 @@ Each Layer 2 slice advances the example. This matrix is the authoritative statem
 | **Contracts** | Sessions carry contracts. `pulse-agent` supplies contract constraints on every proposal. Providers honor `max_envelope_count`, `max_duration`, `allowed_message_types`. Demo: an intentional contract-violation test produces a clean close with `close_reason = contract_violation` and an audit entry. |
 | **Envelopes** | Full structured envelope format; agents exchange the request/response payloads documented in their READMEs. `pulse-agent` produces the full brief. Demo: the canonical Macro Pulse output shown in the example's top-level README. |
 
-Pre-slice (i.e. now), each agent ships a `main.go` skeleton that uses `agentbase` to load the local environment root, open a controller API client, and log "<agent-name> alive" on a heartbeat. This exercises the Layer-1 side of agent boot and validates that `agentbase` works.
+Pre-slice (i.e. now), each agent ships a `main.go` skeleton that uses the [`sdk/agent`](../sdk/overview.md) SDK to load the local environment root, open a controller API client, and log "alive" on startup; it idles until SIGTERM. This exercises the Layer-1 side of agent boot and validates that the SDK construction path works end-to-end.
 
 ## Constraints and non-goals
 

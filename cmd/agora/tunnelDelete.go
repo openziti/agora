@@ -8,8 +8,8 @@ import (
 
 	"github.com/openziti/agora/environment/env_core"
 	"github.com/openziti/agora/internal/api"
-	networkagent "github.com/openziti/agora/internal/network/agent"
-	networkpb "github.com/openziti/agora/internal/network/agent/pb"
+	"github.com/openziti/agora/internal/network/daemon"
+	"github.com/openziti/agora/sdk/agent/networkpb"
 	"github.com/spf13/cobra"
 )
 
@@ -210,5 +210,5 @@ func drainManagedTunnelState(root env_core.Root, tunnelID, name string) {
 }
 
 func isErrNotRunning(err error) bool {
-	return errors.Is(err, networkagent.ErrNotRunning)
+	return errors.Is(err, daemon.ErrNotRunning)
 }

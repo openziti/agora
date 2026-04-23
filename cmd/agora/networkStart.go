@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/michaelquigley/df/dl"
-	networkagent "github.com/openziti/agora/internal/network/agent"
+	"github.com/openziti/agora/sdk/agent"
 	"github.com/spf13/cobra"
 )
 
@@ -19,7 +19,7 @@ func newNetworkStartCommand() *cobra.Command {
 		Short: "Run the local Layer 1 network runtime in the foreground",
 		Args:  cobra.NoArgs,
 		RunE: func(_ *cobra.Command, _ []string) error {
-			agent, err := networkagent.New()
+			runtime, err := agent.NewDaemon()
 			if err != nil {
 				return err
 			}
@@ -27,8 +27,8 @@ func newNetworkStartCommand() *cobra.Command {
 			ctx, cancel := signalContext()
 			defer cancel()
 
-			if err := agent.Run(ctx); err != nil {
-				if errors.Is(err, networkagent.ErrAlreadyRunning) {
+			if err := runtime.Run(ctx); err != nil {
+				if errors.Is(err, agent.ErrAlreadyRunning) {
 					fmt.Printf("agora network is already running socket='%s'\n", networkSocketPath(loadRoot()))
 					return nil
 				}

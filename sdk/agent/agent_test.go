@@ -15,7 +15,7 @@ import (
 	"github.com/openziti/agora/environment"
 	"github.com/openziti/agora/environment/env_core"
 	"github.com/openziti/agora/internal/api"
-	networkpb "github.com/openziti/agora/internal/network/agent/pb"
+	"github.com/openziti/agora/sdk/agent/networkpb"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
@@ -91,7 +91,7 @@ func TestAgentEnsureServeAndConnectPersistDesiredState(t *testing.T) {
 		},
 	}
 
-	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Runtime) {
 		agent.controller = controller
 		agent.runtimeHost = fakeRuntimeHost{}
 	})
@@ -190,7 +190,7 @@ func TestAgentPrepareSocketRemovesStaleSocket(t *testing.T) {
 	}
 	_ = listener.Close()
 
-	agent, err := New()
+	agent, err := NewDaemon()
 	if err != nil {
 		t.Fatalf("new agent: %v", err)
 	}
@@ -201,20 +201,6 @@ func TestAgentPrepareSocketRemovesStaleSocket(t *testing.T) {
 	}
 	if socketExists(socketPath) {
 		t.Fatalf("expected stale socket to be removed: %s", socketPath)
-	}
-}
-
-func TestPingAndStatusReturnErrNotRunningWhenSocketMissing(t *testing.T) {
-	socketPath := filepath.Join(t.TempDir(), "missing.sock")
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
-	if _, err := Ping(ctx, socketPath); !errors.Is(err, ErrNotRunning) {
-		t.Fatalf("expected ErrNotRunning from Ping, got %v", err)
-	}
-	if _, err := Status(ctx, socketPath); !errors.Is(err, ErrNotRunning) {
-		t.Fatalf("expected ErrNotRunning from Status, got %v", err)
 	}
 }
 
@@ -234,7 +220,7 @@ func TestAgentEnvironmentHeartbeatOnline(t *testing.T) {
 		t.Fatalf("set environment: %v", err)
 	}
 
-	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Runtime) {
 		agent.heartbeatInterval = 20 * time.Millisecond
 		agent.heartbeatTTL = 60 * time.Millisecond
 		agent.heartbeatRequestTimeout = 50 * time.Millisecond
@@ -269,7 +255,7 @@ func TestAgentEnvironmentHeartbeatStaleAfterTransientFailures(t *testing.T) {
 		t.Fatalf("set environment: %v", err)
 	}
 
-	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Runtime) {
 		agent.heartbeatInterval = 20 * time.Millisecond
 		agent.heartbeatTTL = 60 * time.Millisecond
 		agent.heartbeatRequestTimeout = 50 * time.Millisecond
@@ -301,7 +287,7 @@ func TestAgentEnvironmentHeartbeatPermanentError(t *testing.T) {
 		t.Fatalf("set environment: %v", err)
 	}
 
-	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Runtime) {
 		agent.heartbeatInterval = 20 * time.Millisecond
 		agent.heartbeatTTL = 60 * time.Millisecond
 		agent.heartbeatRequestTimeout = 50 * time.Millisecond
@@ -337,7 +323,7 @@ func TestAgentReloadEnvironmentDisablesHeartbeat(t *testing.T) {
 		t.Fatalf("set environment: %v", err)
 	}
 
-	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Runtime) {
 		agent.heartbeatInterval = 20 * time.Millisecond
 		agent.heartbeatTTL = 60 * time.Millisecond
 		agent.heartbeatRequestTimeout = 50 * time.Millisecond
@@ -421,7 +407,7 @@ func TestAgentRestoresDesiredServeAndConnectOnStart(t *testing.T) {
 		},
 	}
 
-	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Runtime) {
 		agent.controller = controller
 		agent.runtimeHost = fakeRuntimeHost{}
 	})
@@ -478,7 +464,7 @@ func TestAgentEnsureServeRetriesAfterInitialFailure(t *testing.T) {
 		},
 	}
 
-	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Runtime) {
 		agent.controller = controller
 		agent.runtimeHost = fakeRuntimeHost{}
 		agent.retryInitialDelay = 40 * time.Millisecond
@@ -555,7 +541,7 @@ func TestAgentRetriesAfterUnexpectedRuntimeExit(t *testing.T) {
 		},
 	}
 
-	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Runtime) {
 		agent.controller = controller
 		agent.runtimeHost = runtimeHost
 		agent.retryInitialDelay = 20 * time.Millisecond
@@ -620,7 +606,7 @@ func TestAgentServeHeartbeatCurrentResourceFailureReconcilesImmediately(t *testi
 		},
 	}
 
-	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Runtime) {
 		agent.controller = controller
 		agent.runtimeHost = fakeRuntimeHost{}
 		agent.serveHeartbeatInterval = 15 * time.Millisecond
@@ -679,7 +665,7 @@ func TestAgentReloadEnvironmentRecoversMissingPrerequisites(t *testing.T) {
 		},
 	}
 
-	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Runtime) {
 		agent.controller = controller
 		agent.runtimeHost = fakeRuntimeHost{}
 		agent.retryInitialDelay = 20 * time.Millisecond
@@ -747,7 +733,7 @@ func TestAgentRemoveServeCancelsPendingRetry(t *testing.T) {
 		},
 	}
 
-	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Agent) {
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Runtime) {
 		agent.controller = controller
 		agent.runtimeHost = fakeRuntimeHost{}
 		agent.retryInitialDelay = 40 * time.Millisecond
@@ -784,14 +770,14 @@ func TestAgentRemoveServeCancelsPendingRetry(t *testing.T) {
 	}
 }
 
-func startBufferedTestAgent(t *testing.T) (*Agent, networkpb.NetworkServiceClient, <-chan error, func()) {
+func startBufferedTestAgent(t *testing.T) (*Runtime, networkpb.NetworkServiceClient, <-chan error, func()) {
 	return startBufferedTestAgentWithOptions(t, nil)
 }
 
-func startBufferedTestAgentWithOptions(t *testing.T, configure func(*Agent)) (*Agent, networkpb.NetworkServiceClient, <-chan error, func()) {
+func startBufferedTestAgentWithOptions(t *testing.T, configure func(*Runtime)) (*Runtime, networkpb.NetworkServiceClient, <-chan error, func()) {
 	t.Helper()
 
-	agent, err := New()
+	agent, err := NewDaemon()
 	if err != nil {
 		t.Fatalf("new agent: %v", err)
 	}

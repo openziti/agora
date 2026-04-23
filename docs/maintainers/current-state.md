@@ -21,7 +21,8 @@ Then inspect:
 
 - `cmd/agora`
 - `internal/controller`
-- `internal/network/agent`
+- `sdk/agent`
+- `internal/network/daemon`
 - `internal/network/tunnelruntime`
 - `internal/persistence`
 - `internal/fabric/openziti/automation`
@@ -47,10 +48,11 @@ Major repo areas:
 
 - `cmd/agora`: CLI command wiring and command implementations
 - `environment`: local `~/.agora` environment root model
+- `sdk/agent`: public SDK. Embeddable Layer 1 runtime, App/Agent scaffolding, and three construction paths (NewDaemon, NewEmbedded, SDK-app via New+Run). Consumed by `agora network start` and by every Macro Pulse example agent.
 - `internal/api`: generated `ogen` code and modular OpenAPI specs
 - `internal/controller`: handwritten controller logic
 - `internal/fabric/openziti/automation`: Layer 0 automation helpers
-- `internal/network/agent`: local Layer 1 runtime
+- `internal/network/daemon`: daemon-client helpers (Dial, Ping, Stop) for CLI → daemon communication
 - `internal/network/tunnelruntime`: HTTP/TCP/UDP runtime engine
 - `internal/persistence`: PostgreSQL store, repositories, migrations, and integration tests
 

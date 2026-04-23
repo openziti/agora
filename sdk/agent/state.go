@@ -11,7 +11,7 @@ import (
 	"github.com/openziti/agora/environment"
 	"github.com/openziti/agora/environment/env_core"
 	"github.com/openziti/agora/internal/api"
-	networkpb "github.com/openziti/agora/internal/network/agent/pb"
+	"github.com/openziti/agora/sdk/agent/networkpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -214,11 +214,17 @@ func networkStatusProto(pid int, startedAt time.Time, socketPath string, env *en
 	return status
 }
 
-func persistNetwork(root env_core.Root, networkState *env_core.Network) error {
-	if networkState == nil || (len(networkState.Serves) == 0 && len(networkState.Connects) == 0) {
-		return root.DeleteNetwork()
+// persistNetwork writes the Runtime's desired runtime state to its
+// environment root. Embedded runtimes have no root (a.root is nil)
+// and are pure in-memory — persistNetwork is a no-op for them.
+func (a *Runtime) persistNetwork() error {
+	if a.root == nil {
+		return nil
 	}
-	return root.SetNetwork(cloneNetwork(networkState))
+	if a.network == nil || (len(a.network.Serves) == 0 && len(a.network.Connects) == 0) {
+		return a.root.DeleteNetwork()
+	}
+	return a.root.SetNetwork(cloneNetwork(a.network))
 }
 
 func socketExists(socketPath string) bool {

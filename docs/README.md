@@ -12,6 +12,7 @@ Use the docs in this order:
 - [layer-2/foundation.md](./layer-2/foundation.md): cross-cutting Layer 2 design decisions
 - [layer-2/workgroups.md](./layer-2/workgroups.md), [catalog.md](./layer-2/catalog.md), [advertisements.md](./layer-2/advertisements.md), [sessions.md](./layer-2/sessions.md), [contracts.md](./layer-2/contracts.md), [envelopes.md](./layer-2/envelopes.md): per-concept Layer 2 specs
 - [layer-2/status.md](./layer-2/status.md): current Layer 2 status, per-concept Tier tracking, and recommended build order
+- [sdk/overview.md](./sdk/overview.md): Agora SDK (sdk/agent) — supported integration path for building agent processes
 - [examples/index.md](./examples/index.md): reference/demo agent implementations and the example set catalog
 - [examples/macro-pulse.md](./examples/macro-pulse.md): Macro Pulse — primary cross-domain reference demo
 - [maintainers/current-state.md](./maintainers/current-state.md): maintainer-facing repo state, workflows, and conventions

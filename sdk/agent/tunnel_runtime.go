@@ -10,7 +10,7 @@ import (
 
 	"github.com/michaelquigley/df/dl"
 	"github.com/openziti/agora/environment/env_core"
-	networkpb "github.com/openziti/agora/internal/network/agent/pb"
+	"github.com/openziti/agora/sdk/agent/networkpb"
 )
 
 const (
@@ -41,7 +41,7 @@ type connectAttempt struct {
 	identityPath string
 }
 
-func (a *Agent) EnsureServe(ctx context.Context, req *networkpb.EnsureServeRequest) (*networkpb.EnsureServeResponse, error) {
+func (a *Runtime) EnsureServe(ctx context.Context, req *networkpb.EnsureServeRequest) (*networkpb.EnsureServeResponse, error) {
 	desired, err := validateDesiredServe(req)
 	if err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (a *Agent) EnsureServe(ctx context.Context, req *networkpb.EnsureServeReque
 	return &networkpb.EnsureServeResponse{Serve: a.snapshotServeStatus(actor)}, nil
 }
 
-func (a *Agent) RemoveServe(_ context.Context, req *networkpb.RemoveServeRequest) (*networkpb.RemoveServeResponse, error) {
+func (a *Runtime) RemoveServe(_ context.Context, req *networkpb.RemoveServeRequest) (*networkpb.RemoveServeResponse, error) {
 	actor, err := a.removeServeActor(req.ServeId, req.TunnelId, req.Name)
 	if err != nil {
 		return nil, err
@@ -70,7 +70,7 @@ func (a *Agent) RemoveServe(_ context.Context, req *networkpb.RemoveServeRequest
 	return &networkpb.RemoveServeResponse{}, nil
 }
 
-func (a *Agent) EnsureConnect(ctx context.Context, req *networkpb.EnsureConnectRequest) (*networkpb.EnsureConnectResponse, error) {
+func (a *Runtime) EnsureConnect(ctx context.Context, req *networkpb.EnsureConnectRequest) (*networkpb.EnsureConnectResponse, error) {
 	desired, err := validateDesiredConnect(req)
 	if err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ func (a *Agent) EnsureConnect(ctx context.Context, req *networkpb.EnsureConnectR
 	return &networkpb.EnsureConnectResponse{Connect: a.snapshotConnectStatus(actor)}, nil
 }
 
-func (a *Agent) RemoveConnect(_ context.Context, req *networkpb.RemoveConnectRequest) (*networkpb.RemoveConnectResponse, error) {
+func (a *Runtime) RemoveConnect(_ context.Context, req *networkpb.RemoveConnectRequest) (*networkpb.RemoveConnectResponse, error) {
 	actor, err := a.removeConnectActor(req.AttachmentId, req.TunnelId, req.Name, req.ListenAddress)
 	if err != nil {
 		return nil, err
@@ -99,7 +99,7 @@ func (a *Agent) RemoveConnect(_ context.Context, req *networkpb.RemoveConnectReq
 	return &networkpb.RemoveConnectResponse{}, nil
 }
 
-func (a *Agent) startConfiguredActorsLocked() {
+func (a *Runtime) startConfiguredActorsLocked() {
 	serves := make([]*managedServe, 0, len(a.serves))
 	connects := make([]*managedConnect, 0, len(a.connects))
 	for _, actor := range a.serves {
@@ -121,19 +121,19 @@ func (a *Agent) startConfiguredActorsLocked() {
 	}
 }
 
-func (a *Agent) prepareServeEnsure(desired env_core.ManagedServe) (*managedServe, *managedServe, error) {
+func (a *Runtime) prepareServeEnsure(desired env_core.ManagedServe) (*managedServe, *managedServe, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
 	if a.env == nil {
 		return nil, nil, fmt.Errorf("no environment is enabled")
 	}
-	if _, err := a.root.ZitiIdentityNamed(environmentIdentityName); err != nil {
-		return nil, nil, err
+	if a.identityPath == "" {
+		return nil, nil, fmt.Errorf("no identity path configured")
 	}
 
 	upsertServe(a.network, desired)
-	if err := persistNetwork(a.root, a.network); err != nil {
+	if err := a.persistNetwork(); err != nil {
 		return nil, nil, err
 	}
 
@@ -151,19 +151,19 @@ func (a *Agent) prepareServeEnsure(desired env_core.ManagedServe) (*managedServe
 	return actor, old, nil
 }
 
-func (a *Agent) prepareConnectEnsure(desired env_core.ManagedConnect) (*managedConnect, *managedConnect, error) {
+func (a *Runtime) prepareConnectEnsure(desired env_core.ManagedConnect) (*managedConnect, *managedConnect, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
 	if a.env == nil {
 		return nil, nil, fmt.Errorf("no environment is enabled")
 	}
-	if _, err := a.root.ZitiIdentityNamed(environmentIdentityName); err != nil {
-		return nil, nil, err
+	if a.identityPath == "" {
+		return nil, nil, fmt.Errorf("no identity path configured")
 	}
 
 	upsertConnect(a.network, desired)
-	if err := persistNetwork(a.root, a.network); err != nil {
+	if err := a.persistNetwork(); err != nil {
 		return nil, nil, err
 	}
 
@@ -181,7 +181,7 @@ func (a *Agent) prepareConnectEnsure(desired env_core.ManagedConnect) (*managedC
 	return actor, old, nil
 }
 
-func (a *Agent) runServeAttempt(ctx context.Context, actor *managedServe, expectedGeneration uint64, scheduleRetry bool) error {
+func (a *Runtime) runServeAttempt(ctx context.Context, actor *managedServe, expectedGeneration uint64, scheduleRetry bool) error {
 	attempt, err := a.prepareServeAttempt(actor, expectedGeneration)
 	if err != nil {
 		if errors.Is(err, errStaleManagedAttempt) {
@@ -225,7 +225,7 @@ func (a *Agent) runServeAttempt(ctx context.Context, actor *managedServe, expect
 	return nil
 }
 
-func (a *Agent) runConnectAttempt(ctx context.Context, actor *managedConnect, expectedGeneration uint64, scheduleRetry bool) error {
+func (a *Runtime) runConnectAttempt(ctx context.Context, actor *managedConnect, expectedGeneration uint64, scheduleRetry bool) error {
 	attempt, err := a.prepareConnectAttempt(actor, expectedGeneration)
 	if err != nil {
 		if errors.Is(err, errStaleManagedAttempt) {
@@ -269,7 +269,7 @@ func (a *Agent) runConnectAttempt(ctx context.Context, actor *managedConnect, ex
 	return nil
 }
 
-func (a *Agent) prepareServeAttempt(actor *managedServe, expectedGeneration uint64) (*serveAttempt, error) {
+func (a *Runtime) prepareServeAttempt(actor *managedServe, expectedGeneration uint64) (*serveAttempt, error) {
 	a.mu.Lock()
 	if !a.hasServeActorLocked(actor) {
 		a.mu.Unlock()
@@ -298,7 +298,7 @@ func (a *Agent) prepareServeAttempt(actor *managedServe, expectedGeneration uint
 	actor.transientHeartbeatFailures = 0
 	env := cloneEnvironment(a.env)
 	desired := actor.desired
-	root := a.root
+	identityPath := a.identityPath
 	a.mu.Unlock()
 
 	if oldCancel != nil {
@@ -316,8 +316,8 @@ func (a *Agent) prepareServeAttempt(actor *managedServe, expectedGeneration uint
 		return nil, err
 	}
 
-	identityPath, err := root.ZitiIdentityNamed(environmentIdentityName)
-	if err != nil {
+	if identityPath == "" {
+		err := fmt.Errorf("no identity path configured")
 		a.recordServePrerequisiteFailure(actor, generation, err)
 		return nil, err
 	}
@@ -330,7 +330,7 @@ func (a *Agent) prepareServeAttempt(actor *managedServe, expectedGeneration uint
 	}, nil
 }
 
-func (a *Agent) prepareConnectAttempt(actor *managedConnect, expectedGeneration uint64) (*connectAttempt, error) {
+func (a *Runtime) prepareConnectAttempt(actor *managedConnect, expectedGeneration uint64) (*connectAttempt, error) {
 	a.mu.Lock()
 	if !a.hasConnectActorLocked(actor) {
 		a.mu.Unlock()
@@ -359,7 +359,7 @@ func (a *Agent) prepareConnectAttempt(actor *managedConnect, expectedGeneration 
 	actor.transientHeartbeatFailures = 0
 	env := cloneEnvironment(a.env)
 	desired := actor.desired
-	root := a.root
+	identityPath := a.identityPath
 	a.mu.Unlock()
 
 	if oldCancel != nil {
@@ -377,8 +377,8 @@ func (a *Agent) prepareConnectAttempt(actor *managedConnect, expectedGeneration 
 		return nil, err
 	}
 
-	identityPath, err := root.ZitiIdentityNamed(environmentIdentityName)
-	if err != nil {
+	if identityPath == "" {
+		err := fmt.Errorf("no identity path configured")
 		a.recordConnectPrerequisiteFailure(actor, generation, err)
 		return nil, err
 	}
@@ -391,7 +391,7 @@ func (a *Agent) prepareConnectAttempt(actor *managedConnect, expectedGeneration 
 	}, nil
 }
 
-func (a *Agent) updateServeDesired(actor *managedServe, generation uint64, desired env_core.ManagedServe) error {
+func (a *Runtime) updateServeDesired(actor *managedServe, generation uint64, desired env_core.ManagedServe) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -401,14 +401,14 @@ func (a *Agent) updateServeDesired(actor *managedServe, generation uint64, desir
 	actor.desired = desired
 	actor.tunnelID = desired.TunnelID
 	upsertServe(a.network, desired)
-	if err := persistNetwork(a.root, a.network); err != nil {
+	if err := a.persistNetwork(); err != nil {
 		return err
 	}
 	a.rekeyServeActorLocked(actor)
 	return nil
 }
 
-func (a *Agent) updateConnectDesired(actor *managedConnect, generation uint64, desired env_core.ManagedConnect) error {
+func (a *Runtime) updateConnectDesired(actor *managedConnect, generation uint64, desired env_core.ManagedConnect) error {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -418,14 +418,14 @@ func (a *Agent) updateConnectDesired(actor *managedConnect, generation uint64, d
 	actor.desired = desired
 	actor.tunnelID = desired.TunnelID
 	upsertConnect(a.network, desired)
-	if err := persistNetwork(a.root, a.network); err != nil {
+	if err := a.persistNetwork(); err != nil {
 		return err
 	}
 	a.rekeyConnectActorLocked(actor)
 	return nil
 }
 
-func (a *Agent) recordServePrerequisiteFailure(actor *managedServe, generation uint64, err error) {
+func (a *Runtime) recordServePrerequisiteFailure(actor *managedServe, generation uint64, err error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -438,7 +438,7 @@ func (a *Agent) recordServePrerequisiteFailure(actor *managedServe, generation u
 	actor.nextRetryAt = nil
 }
 
-func (a *Agent) recordConnectPrerequisiteFailure(actor *managedConnect, generation uint64, err error) {
+func (a *Runtime) recordConnectPrerequisiteFailure(actor *managedConnect, generation uint64, err error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -451,7 +451,7 @@ func (a *Agent) recordConnectPrerequisiteFailure(actor *managedConnect, generati
 	actor.nextRetryAt = nil
 }
 
-func (a *Agent) recordServeAttemptFailure(actor *managedServe, generation uint64, err error, scheduleRetry bool) {
+func (a *Runtime) recordServeAttemptFailure(actor *managedServe, generation uint64, err error, scheduleRetry bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -471,7 +471,7 @@ func (a *Agent) recordServeAttemptFailure(actor *managedServe, generation uint64
 	a.scheduleServeRetryLocked(actor)
 }
 
-func (a *Agent) recordConnectAttemptFailure(actor *managedConnect, generation uint64, err error, scheduleRetry bool) {
+func (a *Runtime) recordConnectAttemptFailure(actor *managedConnect, generation uint64, err error, scheduleRetry bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -491,7 +491,7 @@ func (a *Agent) recordConnectAttemptFailure(actor *managedConnect, generation ui
 	a.scheduleConnectRetryLocked(actor)
 }
 
-func (a *Agent) markServeRunning(actor *managedServe, generation uint64, env *env_core.Environment, tunnelID, serveID string, startedAt time.Time, cancel context.CancelFunc) bool {
+func (a *Runtime) markServeRunning(actor *managedServe, generation uint64, env *env_core.Environment, tunnelID, serveID string, startedAt time.Time, cancel context.CancelFunc) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -511,7 +511,7 @@ func (a *Agent) markServeRunning(actor *managedServe, generation uint64, env *en
 	return true
 }
 
-func (a *Agent) markConnectRunning(actor *managedConnect, generation uint64, env *env_core.Environment, tunnelID, attachmentID string, startedAt time.Time, cancel context.CancelFunc) bool {
+func (a *Runtime) markConnectRunning(actor *managedConnect, generation uint64, env *env_core.Environment, tunnelID, attachmentID string, startedAt time.Time, cancel context.CancelFunc) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -531,7 +531,7 @@ func (a *Agent) markConnectRunning(actor *managedConnect, generation uint64, env
 	return true
 }
 
-func (a *Agent) watchServeActor(actor *managedServe, done <-chan error, generation uint64) {
+func (a *Runtime) watchServeActor(actor *managedServe, done <-chan error, generation uint64) {
 	err := <-done
 
 	a.mu.Lock()
@@ -565,7 +565,7 @@ func (a *Agent) watchServeActor(actor *managedServe, done <-chan error, generati
 	}
 }
 
-func (a *Agent) watchConnectActor(actor *managedConnect, done <-chan error, generation uint64) {
+func (a *Runtime) watchConnectActor(actor *managedConnect, done <-chan error, generation uint64) {
 	err := <-done
 
 	a.mu.Lock()
@@ -599,7 +599,7 @@ func (a *Agent) watchConnectActor(actor *managedConnect, done <-chan error, gene
 	}
 }
 
-func (a *Agent) stopServeActor(actor *managedServe) {
+func (a *Runtime) stopServeActor(actor *managedServe) {
 	if actor == nil {
 		return
 	}
@@ -629,7 +629,7 @@ func (a *Agent) stopServeActor(actor *managedServe) {
 	}
 }
 
-func (a *Agent) stopConnectActor(actor *managedConnect) {
+func (a *Runtime) stopConnectActor(actor *managedConnect) {
 	if actor == nil {
 		return
 	}
@@ -659,7 +659,7 @@ func (a *Agent) stopConnectActor(actor *managedConnect) {
 	}
 }
 
-func (a *Agent) runServeHeartbeatLoop(ctx context.Context, actor *managedServe, serveID string, generation uint64) {
+func (a *Runtime) runServeHeartbeatLoop(ctx context.Context, actor *managedServe, serveID string, generation uint64) {
 	ticker := time.NewTicker(a.serveHeartbeatInterval)
 	defer ticker.Stop()
 
@@ -691,7 +691,7 @@ func (a *Agent) runServeHeartbeatLoop(ctx context.Context, actor *managedServe, 
 	}
 }
 
-func (a *Agent) runConnectHeartbeatLoop(ctx context.Context, actor *managedConnect, attachmentID string, generation uint64) {
+func (a *Runtime) runConnectHeartbeatLoop(ctx context.Context, actor *managedConnect, attachmentID string, generation uint64) {
 	ticker := time.NewTicker(a.connectHeartbeatInterval)
 	defer ticker.Stop()
 
@@ -723,7 +723,7 @@ func (a *Agent) runConnectHeartbeatLoop(ctx context.Context, actor *managedConne
 	}
 }
 
-func (a *Agent) incrementServeHeartbeatFailures(actor *managedServe, generation uint64) bool {
+func (a *Runtime) incrementServeHeartbeatFailures(actor *managedServe, generation uint64) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -734,7 +734,7 @@ func (a *Agent) incrementServeHeartbeatFailures(actor *managedServe, generation 
 	return actor.transientHeartbeatFailures >= tunnelHeartbeatFailureThreshold
 }
 
-func (a *Agent) incrementConnectHeartbeatFailures(actor *managedConnect, generation uint64) bool {
+func (a *Runtime) incrementConnectHeartbeatFailures(actor *managedConnect, generation uint64) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -745,7 +745,7 @@ func (a *Agent) incrementConnectHeartbeatFailures(actor *managedConnect, generat
 	return actor.transientHeartbeatFailures >= tunnelHeartbeatFailureThreshold
 }
 
-func (a *Agent) resetServeHeartbeatFailures(actor *managedServe, generation uint64) {
+func (a *Runtime) resetServeHeartbeatFailures(actor *managedServe, generation uint64) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -755,7 +755,7 @@ func (a *Agent) resetServeHeartbeatFailures(actor *managedServe, generation uint
 	actor.transientHeartbeatFailures = 0
 }
 
-func (a *Agent) resetConnectHeartbeatFailures(actor *managedConnect, generation uint64) {
+func (a *Runtime) resetConnectHeartbeatFailures(actor *managedConnect, generation uint64) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -765,7 +765,7 @@ func (a *Agent) resetConnectHeartbeatFailures(actor *managedConnect, generation 
 	actor.transientHeartbeatFailures = 0
 }
 
-func (a *Agent) scheduleServeRetryLocked(actor *managedServe) {
+func (a *Runtime) scheduleServeRetryLocked(actor *managedServe) {
 	actor.retryAttempt++
 	delay := a.retryDelay(actor.retryAttempt)
 	nextRetryAt := a.now().UTC().Add(delay)
@@ -776,7 +776,7 @@ func (a *Agent) scheduleServeRetryLocked(actor *managedServe) {
 	})
 }
 
-func (a *Agent) scheduleConnectRetryLocked(actor *managedConnect) {
+func (a *Runtime) scheduleConnectRetryLocked(actor *managedConnect) {
 	actor.retryAttempt++
 	delay := a.retryDelay(actor.retryAttempt)
 	nextRetryAt := a.now().UTC().Add(delay)
@@ -787,7 +787,7 @@ func (a *Agent) scheduleConnectRetryLocked(actor *managedConnect) {
 	})
 }
 
-func (a *Agent) retryDelay(attempt uint32) time.Duration {
+func (a *Runtime) retryDelay(attempt uint32) time.Duration {
 	if attempt == 0 {
 		return 0
 	}
@@ -809,7 +809,7 @@ func (a *Agent) retryDelay(attempt uint32) time.Duration {
 	return time.Duration(delay)
 }
 
-func (a *Agent) removeServeActor(serveID, tunnelID, name string) (*managedServe, error) {
+func (a *Runtime) removeServeActor(serveID, tunnelID, name string) (*managedServe, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -825,14 +825,14 @@ func (a *Agent) removeServeActor(serveID, tunnelID, name string) (*managedServe,
 	}
 	delete(a.serves, key)
 	removeServe(a.network, actor.desired.TunnelID, actor.desired.Name)
-	if err := persistNetwork(a.root, a.network); err != nil {
+	if err := a.persistNetwork(); err != nil {
 		a.serves[key] = actor
 		return nil, err
 	}
 	return actor, nil
 }
 
-func (a *Agent) removeConnectActor(attachmentID, tunnelID, name, listenAddress string) (*managedConnect, error) {
+func (a *Runtime) removeConnectActor(attachmentID, tunnelID, name, listenAddress string) (*managedConnect, error) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -848,14 +848,14 @@ func (a *Agent) removeConnectActor(attachmentID, tunnelID, name, listenAddress s
 	}
 	delete(a.connects, key)
 	removeConnect(a.network, actor.desired.TunnelID, actor.desired.Name, actor.desired.ListenAddress)
-	if err := persistNetwork(a.root, a.network); err != nil {
+	if err := a.persistNetwork(); err != nil {
 		a.connects[key] = actor
 		return nil, err
 	}
 	return actor, nil
 }
 
-func (a *Agent) shutdownManagedActors() {
+func (a *Runtime) shutdownManagedActors() {
 	a.mu.Lock()
 	serves := make([]*managedServe, 0, len(a.serves))
 	connects := make([]*managedConnect, 0, len(a.connects))
@@ -877,19 +877,19 @@ func (a *Agent) shutdownManagedActors() {
 	}
 }
 
-func (a *Agent) snapshotServeStatus(actor *managedServe) *networkpb.ManagedServeStatus {
+func (a *Runtime) snapshotServeStatus(actor *managedServe) *networkpb.ManagedServeStatus {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return serveStatusProto(actor)
 }
 
-func (a *Agent) snapshotConnectStatus(actor *managedConnect) *networkpb.ManagedConnectStatus {
+func (a *Runtime) snapshotConnectStatus(actor *managedConnect) *networkpb.ManagedConnectStatus {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return connectStatusProto(actor)
 }
 
-func (a *Agent) hasServeActorLocked(actor *managedServe) bool {
+func (a *Runtime) hasServeActorLocked(actor *managedServe) bool {
 	for _, current := range a.serves {
 		if current == actor {
 			return true
@@ -898,7 +898,7 @@ func (a *Agent) hasServeActorLocked(actor *managedServe) bool {
 	return false
 }
 
-func (a *Agent) hasConnectActorLocked(actor *managedConnect) bool {
+func (a *Runtime) hasConnectActorLocked(actor *managedConnect) bool {
 	for _, current := range a.connects {
 		if current == actor {
 			return true
@@ -907,7 +907,7 @@ func (a *Agent) hasConnectActorLocked(actor *managedConnect) bool {
 	return false
 }
 
-func (a *Agent) findServeActorLocked(tunnelID, name string) (string, *managedServe) {
+func (a *Runtime) findServeActorLocked(tunnelID, name string) (string, *managedServe) {
 	for key, actor := range a.serves {
 		if matchesServe(actor.desired, tunnelID, name) {
 			return key, actor
@@ -916,7 +916,7 @@ func (a *Agent) findServeActorLocked(tunnelID, name string) (string, *managedSer
 	return "", nil
 }
 
-func (a *Agent) findConnectActorLocked(tunnelID, name, listenAddress string) (string, *managedConnect) {
+func (a *Runtime) findConnectActorLocked(tunnelID, name, listenAddress string) (string, *managedConnect) {
 	for key, actor := range a.connects {
 		if matchesConnect(actor.desired, tunnelID, name, listenAddress) {
 			return key, actor
@@ -925,7 +925,7 @@ func (a *Agent) findConnectActorLocked(tunnelID, name, listenAddress string) (st
 	return "", nil
 }
 
-func (a *Agent) findServeByServeIDLocked(serveID string) (string, *managedServe) {
+func (a *Runtime) findServeByServeIDLocked(serveID string) (string, *managedServe) {
 	for key, actor := range a.serves {
 		if actor.serveID == serveID {
 			return key, actor
@@ -934,7 +934,7 @@ func (a *Agent) findServeByServeIDLocked(serveID string) (string, *managedServe)
 	return "", nil
 }
 
-func (a *Agent) findConnectByAttachmentIDLocked(attachmentID string) (string, *managedConnect) {
+func (a *Runtime) findConnectByAttachmentIDLocked(attachmentID string) (string, *managedConnect) {
 	for key, actor := range a.connects {
 		if actor.attachmentID == attachmentID {
 			return key, actor
@@ -943,7 +943,7 @@ func (a *Agent) findConnectByAttachmentIDLocked(attachmentID string) (string, *m
 	return "", nil
 }
 
-func (a *Agent) rekeyServeActorLocked(actor *managedServe) {
+func (a *Runtime) rekeyServeActorLocked(actor *managedServe) {
 	for key, current := range a.serves {
 		if current != actor {
 			continue
@@ -958,7 +958,7 @@ func (a *Agent) rekeyServeActorLocked(actor *managedServe) {
 	}
 }
 
-func (a *Agent) rekeyConnectActorLocked(actor *managedConnect) {
+func (a *Runtime) rekeyConnectActorLocked(actor *managedConnect) {
 	for key, current := range a.connects {
 		if current != actor {
 			continue

@@ -66,4 +66,4 @@ The agent honors these bounds on its side — a malformed request with an out-of
 ## Implementation status
 
 - Slice-gated: advertisement slice (publish), session slice (handle sessions), envelope slice (full request/response)
-- Pre-slice: `main.go` logs "equity-feed alive" via `agentbase`; exits on SIGTERM.
+- Pre-slice: `main.go` logs "equity-feed alive" via the `sdk/agent` SDK; exits on SIGTERM.

@@ -11,7 +11,7 @@ import (
 	"github.com/openziti/agora/environment/env_core"
 	"github.com/openziti/agora/internal/api"
 	"github.com/openziti/agora/internal/clioutput"
-	networkpb "github.com/openziti/agora/internal/network/agent/pb"
+	"github.com/openziti/agora/sdk/agent/networkpb"
 	"github.com/spf13/cobra"
 )
 

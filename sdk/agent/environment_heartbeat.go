@@ -8,7 +8,7 @@ import (
 	"github.com/michaelquigley/df/dl"
 	"github.com/openziti/agora/environment/env_core"
 	"github.com/openziti/agora/internal/api"
-	networkpb "github.com/openziti/agora/internal/network/agent/pb"
+	"github.com/openziti/agora/sdk/agent/networkpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -29,7 +29,7 @@ type environmentHeartbeat struct {
 	done          chan struct{}
 }
 
-func (a *Agent) replaceEnvironmentHeartbeatLoopLocked() {
+func (a *Runtime) replaceEnvironmentHeartbeatLoopLocked() {
 	a.heartbeat.generation++
 	generation := a.heartbeat.generation
 
@@ -60,7 +60,7 @@ func (a *Agent) replaceEnvironmentHeartbeatLoopLocked() {
 	go a.runEnvironmentHeartbeatLoop(ctx, done, env, generation)
 }
 
-func (a *Agent) stopEnvironmentHeartbeatLoop() {
+func (a *Runtime) stopEnvironmentHeartbeatLoop() {
 	a.mu.Lock()
 	a.heartbeat.generation++
 	cancel := a.heartbeat.cancel
@@ -77,7 +77,7 @@ func (a *Agent) stopEnvironmentHeartbeatLoop() {
 	}
 }
 
-func (a *Agent) resetEnvironmentHeartbeatLocked() {
+func (a *Runtime) resetEnvironmentHeartbeatLocked() {
 	a.heartbeat.loopStartedAt = nil
 	a.heartbeat.lastAttemptAt = nil
 	a.heartbeat.lastSuccessAt = nil
@@ -85,7 +85,7 @@ func (a *Agent) resetEnvironmentHeartbeatLocked() {
 	a.heartbeat.permanent = false
 }
 
-func (a *Agent) runEnvironmentHeartbeatLoop(ctx context.Context, done chan struct{}, env *env_core.Environment, generation uint64) {
+func (a *Runtime) runEnvironmentHeartbeatLoop(ctx context.Context, done chan struct{}, env *env_core.Environment, generation uint64) {
 	defer close(done)
 
 	dl.Infof("agora network environment heartbeat started environment_id='%s'", env.EnvironmentID)
@@ -110,7 +110,7 @@ func (a *Agent) runEnvironmentHeartbeatLoop(ctx context.Context, done chan struc
 	}
 }
 
-func (a *Agent) performEnvironmentHeartbeat(ctx context.Context, env *env_core.Environment, generation uint64) bool {
+func (a *Runtime) performEnvironmentHeartbeat(ctx context.Context, env *env_core.Environment, generation uint64) bool {
 	attemptAt := a.now().UTC()
 	permanent, err := a.heartbeatSender(ctx, env)
 	if err != nil {
@@ -133,7 +133,7 @@ func (a *Agent) performEnvironmentHeartbeat(ctx context.Context, env *env_core.E
 	return false
 }
 
-func (a *Agent) sendEnvironmentHeartbeat(parent context.Context, env *env_core.Environment) (bool, error) {
+func (a *Runtime) sendEnvironmentHeartbeat(parent context.Context, env *env_core.Environment) (bool, error) {
 	if env.EnvironmentID == "" {
 		return true, fmt.Errorf("enabled environment is missing environment id")
 	}
@@ -171,7 +171,7 @@ func (a *Agent) sendEnvironmentHeartbeat(parent context.Context, env *env_core.E
 	}
 }
 
-func (a *Agent) recordEnvironmentHeartbeatSuccess(attemptAt time.Time, generation uint64) bool {
+func (a *Runtime) recordEnvironmentHeartbeatSuccess(attemptAt time.Time, generation uint64) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -186,7 +186,7 @@ func (a *Agent) recordEnvironmentHeartbeatSuccess(attemptAt time.Time, generatio
 	return transition
 }
 
-func (a *Agent) recordEnvironmentHeartbeatFailure(attemptAt time.Time, lastError string, permanent bool, generation uint64) bool {
+func (a *Runtime) recordEnvironmentHeartbeatFailure(attemptAt time.Time, lastError string, permanent bool, generation uint64) bool {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
@@ -201,7 +201,7 @@ func (a *Agent) recordEnvironmentHeartbeatFailure(attemptAt time.Time, lastError
 	return a.environmentHeartbeatStateLocked(attemptAt) != prev || prevError != lastError
 }
 
-func (a *Agent) environmentHeartbeatStatusLocked(now time.Time) *networkpb.EnvironmentHeartbeatStatus {
+func (a *Runtime) environmentHeartbeatStatusLocked(now time.Time) *networkpb.EnvironmentHeartbeatStatus {
 	status := &networkpb.EnvironmentHeartbeatStatus{
 		State: a.environmentHeartbeatStateLocked(now),
 	}
@@ -217,7 +217,7 @@ func (a *Agent) environmentHeartbeatStatusLocked(now time.Time) *networkpb.Envir
 	return status
 }
 
-func (a *Agent) environmentHeartbeatStateLocked(now time.Time) networkpb.EnvironmentHeartbeatState {
+func (a *Runtime) environmentHeartbeatStateLocked(now time.Time) networkpb.EnvironmentHeartbeatState {
 	if a.env == nil {
 		return networkpb.EnvironmentHeartbeatState_ENVIRONMENT_HEARTBEAT_STATE_DISABLED
 	}

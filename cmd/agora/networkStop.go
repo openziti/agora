@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	networkagent "github.com/openziti/agora/internal/network/agent"
+	"github.com/openziti/agora/internal/network/daemon"
 	"github.com/spf13/cobra"
 )
 
@@ -23,8 +23,8 @@ func newNetworkStopCommand() *cobra.Command {
 			ctx, cancel := context.WithTimeout(context.Background(), networkDialTimeout)
 			defer cancel()
 
-			if err := networkagent.Stop(ctx, networkSocketPath(root)); err != nil {
-				if errors.Is(err, networkagent.ErrNotRunning) {
+			if err := daemon.Stop(ctx, networkSocketPath(root)); err != nil {
+				if errors.Is(err, daemon.ErrNotRunning) {
 					fmt.Println("agora network is not running")
 					return nil
 				}
