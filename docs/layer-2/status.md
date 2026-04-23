@@ -36,8 +36,8 @@ Current state:
 | --- | --- | --- | --- |
 | Foundation (cross-cutting) | [foundation.md](foundation.md) | A | n/a |
 | Workgroups | [workgroups.md](workgroups.md) | A | shipped (slice 1) |
-| Catalog | [catalog.md](catalog.md) | B | not started |
-| Advertisements | [advertisements.md](advertisements.md) | B | not started |
+| Catalog | [catalog.md](catalog.md) | A | not started |
+| Advertisements | [advertisements.md](advertisements.md) | A | not started |
 | Sessions | [sessions.md](sessions.md) | B | not started |
 | Contracts | [contracts.md](contracts.md) | B | not started |
 | Envelopes | [envelopes.md](envelopes.md) | B | not started |
