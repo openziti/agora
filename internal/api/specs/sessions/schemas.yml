@@ -1,0 +1,107 @@
+session:
+  type: object
+  required:
+    - id
+    - advertisementId
+    - workgroupId
+    - providerAccountId
+    - providerOrganizationId
+    - consumerAccountId
+    - consumerOrganizationId
+    - tunnelMode
+    - state
+    - proposedAt
+  properties:
+    id:
+      type: string
+      pattern: '^ses_[a-z0-9]{12}$'
+    advertisementId:
+      type: string
+      pattern: '^adv_[a-z0-9]{12}$'
+    workgroupId:
+      type: string
+      pattern: '^wg_[a-z0-9]{12}$'
+    providerAccountId:
+      type: string
+      pattern: '^ac_[a-z0-9]{12}$'
+    providerOrganizationId:
+      type: string
+      pattern: '^org_[a-z0-9]{12}$'
+    consumerAccountId:
+      type: string
+      pattern: '^ac_[a-z0-9]{12}$'
+    consumerOrganizationId:
+      type: string
+      pattern: '^org_[a-z0-9]{12}$'
+    tunnelMode:
+      $ref: "../agora.yml#/components/schemas/advertisementTunnelMode"
+    tunnelId:
+      type: string
+    state:
+      $ref: "#/sessionState"
+    closeReason:
+      $ref: "#/sessionCloseReason"
+    closeDetail:
+      type: string
+    proposerMessage:
+      type: string
+    proposedAt:
+      type: string
+      format: date-time
+    acceptedAt:
+      type: string
+      format: date-time
+    closedAt:
+      type: string
+      format: date-time
+
+sessionState:
+  type: string
+  enum: [proposed, accepting, active, closing, closed]
+
+sessionCloseReason:
+  type: string
+  enum:
+    - rejected
+    - consumer_close
+    - provider_close
+    - contract_violation
+    - tunnel_failed
+    - admin_close
+    - workgroup_deleted
+    - environment_disabled
+
+proposeSessionRequest:
+  type: object
+  required:
+    - advertisementId
+    - workgroupId
+  properties:
+    advertisementId:
+      type: string
+      pattern: '^adv_[a-z0-9]{12}$'
+    workgroupId:
+      type: string
+      pattern: '^wg_[a-z0-9]{12}$'
+    proposerMessage:
+      type: string
+
+acceptSessionRequest:
+  type: object
+  required:
+    - environmentId
+  properties:
+    environmentId:
+      type: string
+      pattern: '^ev_[a-z0-9]{12}$'
+
+closeSessionRequest:
+  type: object
+  properties:
+    reason:
+      type: string
+
+listSessionsResponse:
+  type: array
+  items:
+    $ref: "#/session"

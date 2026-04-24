@@ -195,7 +195,13 @@ Module: `internal/api/specs/sessions/`. All account-token endpoints use `account
 
 **`POST /v1/sessions/{sessionId}/accept`** — provider accepts a proposed session. *Account-token, provider only.*
 
-- request body: empty object or omitted.
+- request body:
+  ```
+  {
+    "environmentId": "env_..."                // required; which provider environment hosts the tunnel
+  }
+  ```
+  The environment must be enrolled to the provider's account. Layer 1 tunnels are environment-scoped, so the session must commit to a specific environment at accept time. The SDK/CLI passes the caller runtime's own environment.
 - response `200`: the `Session` with `state=active` (and populated `tunnelId`, `acceptedAt`). Blocks for the duration of tunnel provisioning; if provisioning fails the controller transitions the session to `closed` with `close_reason=tunnel_failed` and returns `500`.
 - errors:
   - `403 not_provider` — caller is not the advertisement-owning account
@@ -263,21 +269,16 @@ The tunnel resource's ID is recorded on the session as `tunnel_id`. The controll
 
 ### Runtime-side reconciliation
 
-Both the `agora network start` daemon and the embedded `sdk/agent` runtime reconcile local session work by polling:
+The sessions slice's SDK coordinates sessions at the controller level through polling:
 
-- **Provider reconciliation**: for each advertisement the agent owns and has registered a session handler for, the runtime polls `GET /v1/sessions?advertisementId=<adv>&role=provider&state=proposed` at 1 Hz. Each newly observed `proposed` session is routed to the registered handler. The handler's return value determines whether the runtime calls `/accept` or `/reject`.
+- **Provider reconciliation**: for each advertisement the agent owns and has registered a session handler for, the SDK polls `GET /v1/sessions?advertisementId=<adv>&role=provider&state=proposed` at 1 Hz. Each newly observed `proposed` session is routed to the registered handler. The handler's return value determines whether the SDK calls `/accept` or `/reject`.
 - **Consumer reconciliation**: when the SDK's `Propose` is called, the SDK polls `GET /v1/sessions/{id}` at 1 Hz until the session reaches `active` or a terminal state. `Propose` returns a `Session` handle on `active`; on any terminal state other than `active`, it returns an error carrying the `close_reason`.
-- **Active-session liveness**: for each session where the local runtime is provider or consumer, it monitors the backing tunnel. On tunnel failure, the runtime reports the failure to the controller (existing Layer 1 tunnel-failure path) and closes the local end.
 
 Polling is simple and sufficient for MVP. Push notifications and long-lived streams are post-MVP.
 
-### Daemon-client surface
+The sessions slice does **not** attach the backing tunnel at the local runtime. Controller-side `accept` provisions the ziti tunnel resource and a grant row for the consumer; the `EnsureServe` / `EnsureConnect` runtime calls that would wire actual byte transport belong to the envelopes slice. This means a session reaches `active` and both sides hold a real `tunnel_id` reference, but the local Layer 1 runtime does not yet bind a serve or connect attachment until the envelopes slice lands.
 
-The existing `internal/network/daemon` client gains one new helper:
-
-- `OpenSession(ctx, sessionID, mode) (localEndpoint, error)` — instructs the local daemon to attach as provider or consumer to the Layer 1 tunnel backing the session. Internally it delegates to the existing `tunnel serve` / `tunnel connect` RPCs on the daemon, keyed by the session's `tunnel_id`. For `agora network start` daemon mode, this is how CLI `agora session accept` / `agora session propose` plumb session traffic. For embedded `sdk/agent` mode, the SDK session helper calls this directly in-process.
-
-No new gRPC service is introduced. Session handling rides on top of the existing tunnel serve/connect machinery.
+Tunnel-failure close semantics still apply: the existing Layer 1 tunnel liveness machinery (heartbeat + reaper) continues to monitor the provisioned tunnel, and the envelopes slice will add the runtime-to-controller path that turns a tunnel-failure into `close_reason=tunnel_failed` on the session row.
 
 ## CLI Surface
 
@@ -325,13 +326,7 @@ Per [foundation.md](foundation.md): `agora session ...`. Output via `clioutput.N
   - `-y`, `--yes` — skip interactive confirmation on `active` sessions
 - default output: one-line confirmation.
 
-`agora session send <ses_...>`
-
-- flags:
-  - `--payload <string>` — inline payload
-  - `--payload-file <path>` — file payload
-  - `-j`, `--json` — structured send result
-- default output: minimal confirmation. In the sessions slice this sends a single byte buffer through the backing tunnel and prints the reply byte count; the envelopes slice gives this command a real envelope-shaped payload.
+`agora session send` — **not provided by the sessions slice CLI.** Sending payloads through a session is driven by the SDK (`session.Session.Send`) in the sessions slice; a CLI-level `send` is deferred to the envelopes slice, which gives the command a real envelope-shaped payload and a matching decoder for the reply side.
 
 Admin:
 
@@ -346,19 +341,21 @@ The sessions slice introduces the first meaningful Layer 2 SDK surface, in a new
 
 - `sdk/agent/session` — sessions helper.
 
-Proposed API:
+MVP API:
 
 ```go
 package session
 
 // Session is the local handle returned once a session reaches `active`.
-type Session interface {
-    ID() string
-    TunnelID() string
-    Send(ctx context.Context, payload []byte) error
-    Receive(ctx context.Context) ([]byte, error)
-    Close(ctx context.Context, reason string) error
+type Session struct {
+    ID        string
+    TunnelID  string
+    TunnelMode string
+    // ... provider/consumer account ids, workgroup id
 }
+
+// Close closes the session with an optional reason.
+func (s *Session) Close(ctx context.Context, reason string) error
 
 // ProposeOptions configures a consumer-side propose call.
 type ProposeOptions struct {
@@ -368,10 +365,10 @@ type ProposeOptions struct {
 }
 
 // Propose drives the consumer-side propose flow. It creates the session,
-// polls for transitions, opens the local end of the backing tunnel once
-// active, and returns a Session handle. The returned error carries the
-// close_reason if the session terminates before reaching active.
-func Propose(ctx context.Context, a *agent.Agent, advertisementID string, opts ProposeOptions) (Session, error)
+// polls for transitions, and returns a Session handle once the controller
+// reports state=active (with tunnel_id populated). On any terminal state
+// other than active, Propose returns an error carrying the close_reason.
+func Propose(ctx context.Context, a *agent.Agent, advertisementID string, opts ProposeOptions) (*Session, error)
 
 // Handler is invoked once per proposed session the provider decides to
 // accept or reject.
@@ -379,10 +376,12 @@ type Handler interface {
     // Accept is called when a proposal is observed. Returning nil accepts;
     // returning an error rejects with the error's message as the reason.
     Accept(ctx context.Context, proposal Proposal) error
-    // Serve runs for the lifetime of an accepted session. Returning causes
-    // the provider side to close the session with provider_close and the
-    // returned error's message as the close_detail.
-    Serve(ctx context.Context, sess Session) error
+    // Serve is called once the session is active. Returning causes the
+    // provider side to close the session with provider_close and the
+    // returned error's message as the close_detail. In the sessions slice
+    // Serve is primarily a lifecycle-ownership hook; byte I/O over the
+    // backing tunnel is added in the envelopes slice.
+    Serve(ctx context.Context, sess *Session) error
 }
 
 type Proposal struct {
@@ -392,17 +391,17 @@ type Proposal struct {
     Message         string
 }
 
-// RegisterHandler starts a provider-side reconciliation loop for the given
-// advertisement. It polls for proposed sessions, routes each through the
-// handler, and runs until ctx is cancelled.
+// RegisterHandler starts a provider-side reconciliation loop for the
+// given advertisement. It polls for proposed sessions, routes each
+// through the handler, and runs until ctx is cancelled.
 func RegisterHandler(ctx context.Context, a *agent.Agent, advertisementID string, handler Handler) error
 ```
 
 Implementation notes:
 
-- `session.Propose` and `session.RegisterHandler` are thin wrappers over the existing `a.Controller()` REST client and the embedded Layer 1 runtime's tunnel attach primitives. They do not introduce new gRPC methods.
-- The interface intentionally elides `accepting` and `closing` — users see `active` or a terminal error.
-- The envelopes slice replaces `Send([]byte)` / `Receive() []byte` with envelope-shaped signatures. The wire stays stable: the sessions slice sends raw bytes framed by the Layer 1 tunnel; the envelopes slice adds the envelope header/payload discipline on top.
+- `session.Propose` and `session.RegisterHandler` are thin wrappers over the existing `a.Controller()` REST client. They do not introduce new gRPC methods. Runtime-level tunnel attach is deferred to the envelopes slice.
+- The handle hides `accepting` and `closing` — users see `active` or a terminal error.
+- The envelopes slice extends `*Session` with `Send(envelope)` / `Receive()` signatures and performs the `EnsureServe` / `EnsureConnect` bindings on the embedded Layer 1 runtime before returning the handle.
 - Self-session works through the same API with no special case.
 
 ## Failure Modes
@@ -441,11 +440,11 @@ The sessions slice is implemented when all of the following are true. Each is ve
 - **Describe by non-participant.** Returns `404`.
 - **List.** `agora session list` returns only the caller's sessions, filterable by `--state` and `--role`.
 - **Tunnel mode honored.** An advertisement published with `--tunnel-mode http` produces sessions whose backing tunnels are `http`-mode; same for `tcp` and `udp`.
+- **Accept requires environment.** Accept without an `environmentId` returns `400 invalid_request`. Accept with an `environmentId` not enrolled to the provider's account returns `400 unknown_environment`.
 - **Tunnel failure closes session.** Forcibly killing the backing tunnel transitions the session to `closed(tunnel_failed)` within the reaping window.
 - **Admin close.** `agora admin session close ses_... --reason <text>` with `AGORA_ADMIN_TOKEN` transitions the session to `closed(admin_close)`.
 - **Self-session.** An account can propose against its own advertisement; the session establishes as `active` and closes cleanly.
-- **Minimal ping payload.** `agora session send ses_... --payload hello` sends a raw byte buffer through the backing tunnel and reports the byte count on both sides. (Structured envelope payloads are the envelopes slice.)
-- **SDK-driven propose/accept.** The Macro Pulse `pulse-agent` can `session.Propose(...)` against each provider's advertisement in the four demo channels; each provider agent serves the session via `session.RegisterHandler(...)`.
+- **SDK-driven propose/accept.** The Macro Pulse `pulse-agent` can `session.Propose(...)` against each provider's advertisement in the four demo channels; each provider agent routes proposals through `session.RegisterHandler(...)`. Session state reaches `active`, providers and consumers log the session_id + tunnel_id, then close cleanly.
 - **Persistence schema.** New persistence integration tests cover session state transitions, the `tunnel_mode` inheritance from the advertisement, idempotent close, and the `closed(tunnel_failed)` path.
 - **Tests.** `go test ./...` passes including new persistence and controller HTTP integration tests.
 
@@ -459,7 +458,7 @@ The sessions slice is implemented when all of the following are true. Each is ve
 - **Session handoff between environments** — post-MVP.
 - **Semantic or policy-driven auto-engagement** — post-MVP.
 - **Contract snapshot content** — the sessions slice writes `NULL`; the contracts slice populates and evaluates.
-- **Structured envelope payloads** — the sessions slice sends raw byte buffers through the backing tunnel; the envelopes slice defines the envelope format.
+- **Structured envelope payloads, byte-level session I/O, and the session-serve/session-connect local runtime attach.** The sessions slice's SDK establishes sessions up to `active` state with the backing tunnel provisioned on the controller; it does not perform Layer-1 `EnsureServe`/`EnsureConnect` against that tunnel yet. The envelopes slice wires the runtime attach, defines the envelope format, and adds a CLI-level `agora session send`.
 
 ## Open Questions
 

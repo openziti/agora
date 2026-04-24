@@ -17,6 +17,7 @@ type advertisePublishCommand struct {
 	capabilities []string
 	interactions []string
 	workgroups   []string
+	tunnelMode   string
 	cmd          *cobra.Command
 }
 
@@ -31,6 +32,7 @@ func newAdvertisePublishCommand() *advertisePublishCommand {
 	cmd.Flags().StringSliceVar(&command.capabilities, "capability", nil, "Capability spec: name[=description][:k1=v1,k2=v2]; repeatable; required")
 	cmd.Flags().StringSliceVar(&command.interactions, "interaction", nil, "Interaction pattern: request-response | stream | broadcast | custom:<pattern>; repeatable; required")
 	cmd.Flags().StringSliceVar(&command.workgroups, "workgroup", nil, "Workgroup name or wg_... id; repeatable; required")
+	cmd.Flags().StringVar(&command.tunnelMode, "tunnel-mode", "", "Tunnel mode for sessions backed by this advertisement: http|tcp|udp (default tcp)")
 	panicIfErr(cmd.MarkFlagRequired("capability"))
 	panicIfErr(cmd.MarkFlagRequired("interaction"))
 	panicIfErr(cmd.MarkFlagRequired("workgroup"))
@@ -63,6 +65,9 @@ func (cmd *advertisePublishCommand) run(_ *cobra.Command, args []string) {
 	}
 	if cmd.description != "" {
 		req.Description.SetTo(cmd.description)
+	}
+	if cmd.tunnelMode != "" {
+		req.TunnelMode.SetTo(api.AdvertisementTunnelMode(cmd.tunnelMode))
 	}
 
 	res, err := client.PublishAdvertisement(context.Background(), req)

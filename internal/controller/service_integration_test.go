@@ -1160,3 +1160,441 @@ func TestCatalogSearchPagination(t *testing.T) {
 		t.Fatalf("expected 1 item + no cursor, got items=%d cursor.Set=%v", len(page2.Items), page2.NextCursor.Set)
 	}
 }
+
+// --- session tests ---
+
+func seedSharedWorkgroupAd(t *testing.T, env *workgroupTestEnv, orgA string, aliceID string, wgName, adName string) (wgID string, advertisementID string) {
+	t.Helper()
+	wgID = env.seedIntraOrgWorkgroup(t, orgA, wgName, aliceID)
+	aliceClient := env.accountClient(t, env.mustTokenForAccount(t, aliceID))
+	pubRes, err := aliceClient.PublishAdvertisement(env.ctx, &api.PublishAdvertisementRequest{
+		Name:                adName,
+		Capabilities:        []api.AdvertisementCapability{{Name: "quote"}},
+		InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{wgID},
+		TunnelMode:          api.NewOptAdvertisementTunnelMode(api.AdvertisementTunnelModeTCP),
+	})
+	if err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	ad, ok := pubRes.(*api.Advertisement)
+	if !ok {
+		t.Fatalf("publish unexpected response: %T", pubRes)
+	}
+	return wgID, ad.ID
+}
+
+func (e *workgroupTestEnv) mustTokenForAccount(t *testing.T, accountID string) string {
+	t.Helper()
+	acct, err := e.store.Accounts.GetByID(e.ctx, e.store.DB(), accountID)
+	if err != nil {
+		t.Fatalf("get account by id: %v", err)
+	}
+	return acct.AccountToken
+}
+
+func (e *workgroupTestEnv) enableEnvironment(t *testing.T, token string) string {
+	t.Helper()
+	c := e.accountClient(t, token)
+	res, err := c.EnableEnvironment(e.ctx, &api.EnableEnvironmentRequest{})
+	if err != nil {
+		t.Fatalf("enable env: %v", err)
+	}
+	resp, ok := res.(*api.EnableEnvironmentResponse)
+	if !ok {
+		t.Fatalf("enable env unexpected: %T", res)
+	}
+	return resp.Environment.ID
+}
+
+func TestSessionProposeVisibility(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, _ := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	wgID, adID := seedSharedWorkgroupAd(t, env, orgA, aliceID, "shared", "alice-feed")
+
+	bob := env.accountClient(t, bobToken)
+	res, err := bob.ProposeSession(env.ctx, &api.ProposeSessionRequest{
+		AdvertisementId: adID, WorkgroupId: wgID,
+	})
+	if err != nil {
+		t.Fatalf("propose (no membership): %v", err)
+	}
+	if _, ok := res.(*api.ProposeSessionNotFound); !ok {
+		t.Fatalf("expected 404 for non-visible ad, got %T", res)
+	}
+
+	aliceToken := env.mustTokenForAccount(t, aliceID)
+	alice := env.accountClient(t, aliceToken)
+	if _, err := alice.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID}); err != nil {
+		t.Fatalf("add bob: %v", err)
+	}
+
+	res2, err := bob.ProposeSession(env.ctx, &api.ProposeSessionRequest{
+		AdvertisementId: adID, WorkgroupId: wgID,
+	})
+	if err != nil {
+		t.Fatalf("propose (after join): %v", err)
+	}
+	sess, ok := res2.(*api.Session)
+	if !ok {
+		t.Fatalf("expected Session, got %T", res2)
+	}
+	if sess.State != api.SessionStateProposed {
+		t.Fatalf("expected proposed, got %s", sess.State)
+	}
+	if sess.TunnelMode != api.AdvertisementTunnelModeTCP {
+		t.Fatalf("expected tcp, got %s", sess.TunnelMode)
+	}
+}
+
+func TestSessionProposeWorkgroupNotInScope(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	wgID, adID := seedSharedWorkgroupAd(t, env, orgA, aliceID, "shared", "ad")
+	otherWG := env.seedIntraOrgWorkgroup(t, orgA, "other", aliceID)
+	_ = wgID
+
+	alice := env.accountClient(t, aliceToken)
+	res, err := alice.ProposeSession(env.ctx, &api.ProposeSessionRequest{
+		AdvertisementId: adID, WorkgroupId: otherWG,
+	})
+	if err != nil {
+		t.Fatalf("propose: %v", err)
+	}
+	if _, ok := res.(*api.ProposeSessionBadRequest); !ok {
+		t.Fatalf("expected 400 workgroup_not_in_scope, got %T", res)
+	}
+}
+
+func TestSessionAcceptRequiresProvider(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	wgID, adID := seedSharedWorkgroupAd(t, env, orgA, aliceID, "shared", "ad")
+
+	alice := env.accountClient(t, aliceToken)
+	if _, err := alice.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID}); err != nil {
+		t.Fatalf("add bob: %v", err)
+	}
+	bob := env.accountClient(t, bobToken)
+
+	proposeRes, err := bob.ProposeSession(env.ctx, &api.ProposeSessionRequest{
+		AdvertisementId: adID, WorkgroupId: wgID,
+	})
+	if err != nil {
+		t.Fatalf("propose: %v", err)
+	}
+	sess := proposeRes.(*api.Session)
+
+	// bob (consumer) tries to accept — should be 403 not_provider
+	bobEnvID := env.enableEnvironment(t, bobToken)
+	acceptBad, err := bob.AcceptSession(env.ctx, &api.AcceptSessionRequest{EnvironmentId: bobEnvID}, api.AcceptSessionParams{SessionId: sess.ID})
+	if err != nil {
+		t.Fatalf("accept (consumer): %v", err)
+	}
+	if _, ok := acceptBad.(*api.AcceptSessionForbidden); !ok {
+		t.Fatalf("expected 403 not_provider, got %T", acceptBad)
+	}
+}
+
+func TestSessionAcceptHappyPath(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	wgID, adID := seedSharedWorkgroupAd(t, env, orgA, aliceID, "shared", "ad")
+
+	alice := env.accountClient(t, aliceToken)
+	if _, err := alice.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID}); err != nil {
+		t.Fatalf("add bob: %v", err)
+	}
+	bob := env.accountClient(t, bobToken)
+
+	proposeRes, _ := bob.ProposeSession(env.ctx, &api.ProposeSessionRequest{AdvertisementId: adID, WorkgroupId: wgID})
+	sess := proposeRes.(*api.Session)
+
+	aliceEnvID := env.enableEnvironment(t, aliceToken)
+	acceptRes, err := alice.AcceptSession(env.ctx, &api.AcceptSessionRequest{EnvironmentId: aliceEnvID}, api.AcceptSessionParams{SessionId: sess.ID})
+	if err != nil {
+		t.Fatalf("accept: %v", err)
+	}
+	active, ok := acceptRes.(*api.Session)
+	if !ok {
+		t.Fatalf("expected Session, got %T", acceptRes)
+	}
+	if active.State != api.SessionStateActive {
+		t.Fatalf("expected active, got %s", active.State)
+	}
+	if !active.TunnelId.Set {
+		t.Fatalf("expected tunnel id populated")
+	}
+	if !active.AcceptedAt.Set {
+		t.Fatalf("expected acceptedAt populated")
+	}
+
+	// second accept fails: already active
+	acceptAgain, _ := alice.AcceptSession(env.ctx, &api.AcceptSessionRequest{EnvironmentId: aliceEnvID}, api.AcceptSessionParams{SessionId: sess.ID})
+	if _, ok := acceptAgain.(*api.AcceptSessionConflict); !ok {
+		t.Fatalf("expected 409 invalid_state on re-accept, got %T", acceptAgain)
+	}
+}
+
+func TestSessionRejectFlow(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	wgID, adID := seedSharedWorkgroupAd(t, env, orgA, aliceID, "shared", "ad")
+
+	alice := env.accountClient(t, aliceToken)
+	if _, err := alice.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID}); err != nil {
+		t.Fatalf("add bob: %v", err)
+	}
+	bob := env.accountClient(t, bobToken)
+	proposeRes, _ := bob.ProposeSession(env.ctx, &api.ProposeSessionRequest{AdvertisementId: adID, WorkgroupId: wgID})
+	sess := proposeRes.(*api.Session)
+
+	rejectRes, err := alice.RejectSession(env.ctx, api.NewOptCloseSessionRequest(api.CloseSessionRequest{Reason: api.NewOptString("not taking new")}), api.RejectSessionParams{SessionId: sess.ID})
+	if err != nil {
+		t.Fatalf("reject: %v", err)
+	}
+	if _, ok := rejectRes.(*api.RejectSessionNoContent); !ok {
+		t.Fatalf("expected 204, got %T", rejectRes)
+	}
+
+	// describe session, expect closed + rejected
+	descRes, err := bob.GetSession(env.ctx, api.GetSessionParams{SessionId: sess.ID})
+	if err != nil {
+		t.Fatalf("describe: %v", err)
+	}
+	describe, ok := descRes.(*api.Session)
+	if !ok {
+		t.Fatalf("expected Session, got %T", descRes)
+	}
+	if describe.State != api.SessionStateClosed {
+		t.Fatalf("expected closed, got %s", describe.State)
+	}
+	if !describe.CloseReason.Set || describe.CloseReason.Value != api.SessionCloseReasonRejected {
+		t.Fatalf("expected rejected, got %v", describe.CloseReason)
+	}
+	if !describe.CloseDetail.Set || describe.CloseDetail.Value != "not taking new" {
+		t.Fatalf("expected close detail, got %v", describe.CloseDetail)
+	}
+}
+
+func TestSessionCloseByConsumer(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	wgID, adID := seedSharedWorkgroupAd(t, env, orgA, aliceID, "shared", "ad")
+
+	alice := env.accountClient(t, aliceToken)
+	if _, err := alice.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID}); err != nil {
+		t.Fatalf("add bob: %v", err)
+	}
+	bob := env.accountClient(t, bobToken)
+
+	proposeRes, _ := bob.ProposeSession(env.ctx, &api.ProposeSessionRequest{AdvertisementId: adID, WorkgroupId: wgID})
+	sess := proposeRes.(*api.Session)
+	aliceEnvID := env.enableEnvironment(t, aliceToken)
+	if _, err := alice.AcceptSession(env.ctx, &api.AcceptSessionRequest{EnvironmentId: aliceEnvID}, api.AcceptSessionParams{SessionId: sess.ID}); err != nil {
+		t.Fatalf("accept: %v", err)
+	}
+
+	closeRes, err := bob.CloseSession(env.ctx, api.OptCloseSessionRequest{}, api.CloseSessionParams{SessionId: sess.ID})
+	if err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if _, ok := closeRes.(*api.CloseSessionNoContent); !ok {
+		t.Fatalf("expected 204, got %T", closeRes)
+	}
+
+	// idempotent
+	closeAgain, err := bob.CloseSession(env.ctx, api.OptCloseSessionRequest{}, api.CloseSessionParams{SessionId: sess.ID})
+	if err != nil {
+		t.Fatalf("close again: %v", err)
+	}
+	if _, ok := closeAgain.(*api.CloseSessionNoContent); !ok {
+		t.Fatalf("expected 204 idempotent, got %T", closeAgain)
+	}
+
+	descRes, _ := bob.GetSession(env.ctx, api.GetSessionParams{SessionId: sess.ID})
+	d := descRes.(*api.Session)
+	if d.State != api.SessionStateClosed {
+		t.Fatalf("expected closed, got %s", d.State)
+	}
+	if !d.CloseReason.Set || d.CloseReason.Value != api.SessionCloseReasonConsumerClose {
+		t.Fatalf("expected consumer_close, got %v", d.CloseReason)
+	}
+}
+
+func TestSessionCloseByNonParticipant(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	_, eveToken := env.addAccountToOrg(t, orgA, "eve@example.com")
+	wgID, adID := seedSharedWorkgroupAd(t, env, orgA, aliceID, "shared", "ad")
+
+	alice := env.accountClient(t, aliceToken)
+	if _, err := alice.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID}); err != nil {
+		t.Fatalf("add bob: %v", err)
+	}
+	bob := env.accountClient(t, bobToken)
+	proposeRes, _ := bob.ProposeSession(env.ctx, &api.ProposeSessionRequest{AdvertisementId: adID, WorkgroupId: wgID})
+	sess := proposeRes.(*api.Session)
+
+	eve := env.accountClient(t, eveToken)
+	closeRes, err := eve.CloseSession(env.ctx, api.OptCloseSessionRequest{}, api.CloseSessionParams{SessionId: sess.ID})
+	if err != nil {
+		t.Fatalf("close: %v", err)
+	}
+	if _, ok := closeRes.(*api.CloseSessionNotFound); !ok {
+		t.Fatalf("expected 404 for non-participant, got %T", closeRes)
+	}
+}
+
+func TestSessionListFiltersAndRoles(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	wgID, adID := seedSharedWorkgroupAd(t, env, orgA, aliceID, "shared", "ad")
+
+	alice := env.accountClient(t, aliceToken)
+	if _, err := alice.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID}); err != nil {
+		t.Fatalf("add bob: %v", err)
+	}
+	bob := env.accountClient(t, bobToken)
+
+	for i := 0; i < 3; i++ {
+		if _, err := bob.ProposeSession(env.ctx, &api.ProposeSessionRequest{AdvertisementId: adID, WorkgroupId: wgID}); err != nil {
+			t.Fatalf("propose %d: %v", i, err)
+		}
+	}
+
+	// bob sees as consumer
+	asConsumer, err := bob.ListSessions(env.ctx, api.ListSessionsParams{Role: api.NewOptListSessionsRole(api.ListSessionsRoleConsumer)})
+	if err != nil {
+		t.Fatalf("list consumer: %v", err)
+	}
+	cResp := asConsumer.(*api.ListSessionsResponse)
+	if len(*cResp) != 3 {
+		t.Fatalf("expected 3 consumer sessions, got %d", len(*cResp))
+	}
+
+	// alice sees as provider
+	asProvider, err := alice.ListSessions(env.ctx, api.ListSessionsParams{Role: api.NewOptListSessionsRole(api.ListSessionsRoleProvider)})
+	if err != nil {
+		t.Fatalf("list provider: %v", err)
+	}
+	pResp := asProvider.(*api.ListSessionsResponse)
+	if len(*pResp) != 3 {
+		t.Fatalf("expected 3 provider sessions, got %d", len(*pResp))
+	}
+}
+
+func TestSessionDescribeByNonParticipant(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	_, eveToken := env.addAccountToOrg(t, orgA, "eve@example.com")
+	wgID, adID := seedSharedWorkgroupAd(t, env, orgA, aliceID, "shared", "ad")
+
+	alice := env.accountClient(t, aliceToken)
+	if _, err := alice.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID}); err != nil {
+		t.Fatalf("add bob: %v", err)
+	}
+	bob := env.accountClient(t, bobToken)
+	proposeRes, _ := bob.ProposeSession(env.ctx, &api.ProposeSessionRequest{AdvertisementId: adID, WorkgroupId: wgID})
+	sess := proposeRes.(*api.Session)
+
+	eve := env.accountClient(t, eveToken)
+	res, err := eve.GetSession(env.ctx, api.GetSessionParams{SessionId: sess.ID})
+	if err != nil {
+		t.Fatalf("describe: %v", err)
+	}
+	if _, ok := res.(*api.GetSessionNotFound); !ok {
+		t.Fatalf("expected 404 for non-participant describe, got %T", res)
+	}
+}
+
+func TestSessionAdminClose(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	wgID, adID := seedSharedWorkgroupAd(t, env, orgA, aliceID, "shared", "ad")
+
+	alice := env.accountClient(t, aliceToken)
+	if _, err := alice.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID}); err != nil {
+		t.Fatalf("add bob: %v", err)
+	}
+	bob := env.accountClient(t, bobToken)
+	proposeRes, _ := bob.ProposeSession(env.ctx, &api.ProposeSessionRequest{AdvertisementId: adID, WorkgroupId: wgID})
+	sess := proposeRes.(*api.Session)
+
+	admin := env.adminClient(t)
+	res, err := admin.AdminCloseSession(env.ctx, api.NewOptCloseSessionRequest(api.CloseSessionRequest{Reason: api.NewOptString("violation")}), api.AdminCloseSessionParams{SessionId: sess.ID})
+	if err != nil {
+		t.Fatalf("admin close: %v", err)
+	}
+	if _, ok := res.(*api.AdminCloseSessionNoContent); !ok {
+		t.Fatalf("expected 204 admin close, got %T", res)
+	}
+
+	descRes, _ := bob.GetSession(env.ctx, api.GetSessionParams{SessionId: sess.ID})
+	d := descRes.(*api.Session)
+	if d.State != api.SessionStateClosed || !d.CloseReason.Set || d.CloseReason.Value != api.SessionCloseReasonAdminClose {
+		t.Fatalf("unexpected close: state=%s reason=%v", d.State, d.CloseReason)
+	}
+}
+
+func TestSessionSelfSessionAllowed(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	wgID, adID := seedSharedWorkgroupAd(t, env, orgA, aliceID, "shared", "ad")
+
+	alice := env.accountClient(t, aliceToken)
+	proposeRes, err := alice.ProposeSession(env.ctx, &api.ProposeSessionRequest{AdvertisementId: adID, WorkgroupId: wgID})
+	if err != nil {
+		t.Fatalf("propose self: %v", err)
+	}
+	sess, ok := proposeRes.(*api.Session)
+	if !ok {
+		t.Fatalf("expected Session, got %T", proposeRes)
+	}
+	if sess.ProviderAccountId != sess.ConsumerAccountId {
+		t.Fatalf("expected self session, provider=%s consumer=%s", sess.ProviderAccountId, sess.ConsumerAccountId)
+	}
+	envID := env.enableEnvironment(t, aliceToken)
+	acceptRes, err := alice.AcceptSession(env.ctx, &api.AcceptSessionRequest{EnvironmentId: envID}, api.AcceptSessionParams{SessionId: sess.ID})
+	if err != nil {
+		t.Fatalf("accept self: %v", err)
+	}
+	active, ok := acceptRes.(*api.Session)
+	if !ok {
+		t.Fatalf("expected active Session, got %T", acceptRes)
+	}
+	if active.State != api.SessionStateActive {
+		t.Fatalf("expected active, got %s", active.State)
+	}
+}

@@ -15,6 +15,87 @@ import (
 	"github.com/ogen-go/ogen/validate"
 )
 
+// AcceptSessionParams is parameters of acceptSession operation.
+type AcceptSessionParams struct {
+	SessionId string
+}
+
+func unpackAcceptSessionParams(packed middleware.Parameters) (params AcceptSessionParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "sessionId",
+			In:   "path",
+		}
+		params.SessionId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeAcceptSessionParams(args [1]string, argsEscaped bool, r *http.Request) (params AcceptSessionParams, _ error) {
+	// Decode path: sessionId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "sessionId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.SessionId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^ses_[a-z0-9]{12}$"],
+				}).Validate(string(params.SessionId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "sessionId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // AcceptWorkgroupInvitationParams is parameters of acceptWorkgroupInvitation operation.
 type AcceptWorkgroupInvitationParams struct {
 	WorkgroupId    string
@@ -327,6 +408,87 @@ func decodeAddWorkgroupMemberParams(args [1]string, argsEscaped bool, r *http.Re
 	return params, nil
 }
 
+// AdminCloseSessionParams is parameters of adminCloseSession operation.
+type AdminCloseSessionParams struct {
+	SessionId string
+}
+
+func unpackAdminCloseSessionParams(packed middleware.Parameters) (params AdminCloseSessionParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "sessionId",
+			In:   "path",
+		}
+		params.SessionId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeAdminCloseSessionParams(args [1]string, argsEscaped bool, r *http.Request) (params AdminCloseSessionParams, _ error) {
+	// Decode path: sessionId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "sessionId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.SessionId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^ses_[a-z0-9]{12}$"],
+				}).Validate(string(params.SessionId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "sessionId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // ChangeWorkgroupMembershipRoleParams is parameters of changeWorkgroupMembershipRole operation.
 type ChangeWorkgroupMembershipRoleParams struct {
 	WorkgroupId  string
@@ -470,6 +632,87 @@ func decodeChangeWorkgroupMembershipRoleParams(args [2]string, argsEscaped bool,
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "membershipId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// CloseSessionParams is parameters of closeSession operation.
+type CloseSessionParams struct {
+	SessionId string
+}
+
+func unpackCloseSessionParams(packed middleware.Parameters) (params CloseSessionParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "sessionId",
+			In:   "path",
+		}
+		params.SessionId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeCloseSessionParams(args [1]string, argsEscaped bool, r *http.Request) (params CloseSessionParams, _ error) {
+	// Decode path: sessionId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "sessionId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.SessionId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^ses_[a-z0-9]{12}$"],
+				}).Validate(string(params.SessionId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "sessionId",
 			In:   "path",
 			Err:  err,
 		}
@@ -1506,6 +1749,87 @@ func decodeGetEnvironmentParams(args [1]string, argsEscaped bool, r *http.Reques
 	return params, nil
 }
 
+// GetSessionParams is parameters of getSession operation.
+type GetSessionParams struct {
+	SessionId string
+}
+
+func unpackGetSessionParams(packed middleware.Parameters) (params GetSessionParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "sessionId",
+			In:   "path",
+		}
+		params.SessionId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeGetSessionParams(args [1]string, argsEscaped bool, r *http.Request) (params GetSessionParams, _ error) {
+	// Decode path: sessionId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "sessionId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.SessionId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^ses_[a-z0-9]{12}$"],
+				}).Validate(string(params.SessionId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "sessionId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // GetTunnelParams is parameters of getTunnel operation.
 type GetTunnelParams struct {
 	TunnelId string
@@ -2379,6 +2703,234 @@ func decodeListAdvertisementsParams(args [0]string, argsEscaped bool, r *http.Re
 	return params, nil
 }
 
+// ListSessionsParams is parameters of listSessions operation.
+type ListSessionsParams struct {
+	State           []SessionState
+	Role            OptListSessionsRole
+	AdvertisementId OptString
+}
+
+func unpackListSessionsParams(packed middleware.Parameters) (params ListSessionsParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "state",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.State = v.([]SessionState)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "role",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Role = v.(OptListSessionsRole)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "advertisementId",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.AdvertisementId = v.(OptString)
+		}
+	}
+	return params
+}
+
+func decodeListSessionsParams(args [0]string, argsEscaped bool, r *http.Request) (params ListSessionsParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode query: state.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "state",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				return d.DecodeArray(func(d uri.Decoder) error {
+					var paramsDotStateVal SessionState
+					if err := func() error {
+						val, err := d.DecodeValue()
+						if err != nil {
+							return err
+						}
+
+						c, err := conv.ToString(val)
+						if err != nil {
+							return err
+						}
+
+						paramsDotStateVal = SessionState(c)
+						return nil
+					}(); err != nil {
+						return err
+					}
+					params.State = append(params.State, paramsDotStateVal)
+					return nil
+				})
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				var failures []validate.FieldError
+				for i, elem := range params.State {
+					if err := func() error {
+						if err := elem.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						failures = append(failures, validate.FieldError{
+							Name:  fmt.Sprintf("[%d]", i),
+							Error: err,
+						})
+					}
+				}
+				if len(failures) > 0 {
+					return &validate.Error{Fields: failures}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "state",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: role.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "role",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotRoleVal ListSessionsRole
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotRoleVal = ListSessionsRole(c)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Role.SetTo(paramsDotRoleVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Role.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "role",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: advertisementId.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "advertisementId",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotAdvertisementIdVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotAdvertisementIdVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.AdvertisementId.SetTo(paramsDotAdvertisementIdVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.AdvertisementId.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:    0,
+							MinLengthSet: false,
+							MaxLength:    0,
+							MaxLengthSet: false,
+							Email:        false,
+							Hostname:     false,
+							Regex:        regexMap["^adv_[a-z0-9]{12}$"],
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "advertisementId",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // ListTunnelAttachmentsParams is parameters of listTunnelAttachments operation.
 type ListTunnelAttachmentsParams struct {
 	TunnelId string
@@ -2786,6 +3338,87 @@ func decodeListWorkgroupMembersParams(args [1]string, argsEscaped bool, r *http.
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "workgroupId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// RejectSessionParams is parameters of rejectSession operation.
+type RejectSessionParams struct {
+	SessionId string
+}
+
+func unpackRejectSessionParams(packed middleware.Parameters) (params RejectSessionParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "sessionId",
+			In:   "path",
+		}
+		params.SessionId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeRejectSessionParams(args [1]string, argsEscaped bool, r *http.Request) (params RejectSessionParams, _ error) {
+	// Decode path: sessionId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "sessionId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.SessionId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^ses_[a-z0-9]{12}$"],
+				}).Validate(string(params.SessionId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "sessionId",
 			In:   "path",
 			Err:  err,
 		}

@@ -4,24 +4,24 @@ This document records the current implementation state of Layer 2 (Collaboration
 
 ## Current Position
 
-Layer 2 is **partially implemented**: the workgroup slice has shipped (slice 1 of 5). The remaining slices are still documented at Tier B awaiting their open-question walks and Tier A promotion.
+Layer 2 is **partially implemented**: slices 1, 2, and 3 (workgroups, catalog+advertisements, sessions) have shipped. The remaining slices (contracts, envelopes) are still at Tier B awaiting their open-question walks and Tier A promotion.
 
-Documentation has moved beyond the initial architectural sketch. The cross-cutting design decisions are captured in [foundation.md](foundation.md), and each of the six concepts has its own dedicated spec. The next milestone is per-concept Tier A promotion and implementation for the next slice in the build order (catalog + advertisements).
+Documentation has moved beyond the initial architectural sketch. The cross-cutting design decisions are captured in [foundation.md](foundation.md), and each of the six concepts has its own dedicated spec. The next milestone is the contracts slice: Tier A promotion of contracts.md and implementation.
 
 What ships today:
 
 - workgroup persistence (3 tables), API (11 endpoints across account-token and admin-token surfaces), CLI (`agora workgroup ...` and `agora admin workgroup ...`)
-- the Macro Pulse `bootstrap` binary that uses the new admin endpoints to provision the demo topology
+- advertisement + catalog persistence, API, and CLI (`agora advertise ...`, `agora catalog ...`)
+- session persistence (1 table), API (6 account-token + 1 admin-token endpoints), CLI (`agora session ...`, `agora admin session close`)
+- `sdk/agent/session` helper package (Propose, RegisterHandler, Session.Close) that drives session lifecycle through the controller
+- the Macro Pulse demo advanced through the sessions slice: all 8 provider/tool agents register session handlers; `pulse-agent` discovers the catalog and proposes+closes a session per advertisement
 
 The repository does not yet have:
 
-- catalog APIs or controller logic
-- advertisement lifecycle
-- session lifecycle
 - contract evaluation
 - envelope handling infrastructure
-- Layer 2 CLI commands beyond workgroups
-- Layer 2 SDK surfaces beyond the existing `sdk/agent` Controller() client
+- byte-level session I/O over the backing tunnel (the sessions slice establishes sessions up to `active` with the tunnel resource provisioned; runtime attach is the envelopes slice)
+- CLI `agora session send` (deferred to envelopes slice)
 
 ## Documentation Tier Tracking
 
@@ -38,7 +38,7 @@ Current state:
 | Workgroups | [workgroups.md](workgroups.md) | A | shipped (slice 1) |
 | Catalog | [catalog.md](catalog.md) | A | shipped (slice 2) |
 | Advertisements | [advertisements.md](advertisements.md) | A | shipped (slice 2) |
-| Sessions | [sessions.md](sessions.md) | A | not started |
+| Sessions | [sessions.md](sessions.md) | A | shipped (slice 3) |
 | Contracts | [contracts.md](contracts.md) | B | not started |
 | Envelopes | [envelopes.md](envelopes.md) | B | not started |
 
@@ -65,9 +65,9 @@ The cleanest order for initial Layer 2 work is:
 
 1. ~~workgroup model and membership semantics~~ — **shipped**
 2. ~~catalog and advertisement persistence plus visibility rules~~ — **shipped**
-3. session model and engagement lifecycle — next
-4. declarative contract model and controller-side evaluation
-5. envelope model and session-governed message semantics
+3. ~~session model and engagement lifecycle~~ — **shipped**
+4. declarative contract model and controller-side evaluation — next
+5. envelope model and session-governed message semantics (also wires runtime-level tunnel attach and byte-level session I/O)
 
 Each step promotes its concept spec from Tier B to Tier A before implementation starts. The ordering keeps visibility and policy boundaries in place before sessions and contracts depend on them. The session↔tunnel 1:1 relationship (fixed in [foundation.md](foundation.md)) lets sessions, contracts, and envelopes all reference a known transport model.
 

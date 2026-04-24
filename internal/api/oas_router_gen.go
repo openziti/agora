@@ -193,36 +193,27 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						break
 					}
 					switch elem[0] {
-					case 'm': // Prefix: "min/workgroups"
+					case 'm': // Prefix: "min/"
 
-						if l := len("min/workgroups"); len(elem) >= l && elem[0:l] == "min/workgroups" {
+						if l := len("min/"); len(elem) >= l && elem[0:l] == "min/" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
 						if len(elem) == 0 {
-							switch r.Method {
-							case "GET":
-								s.handleListAdminWorkgroupsRequest([0]string{}, elemIsEscaped, w, r)
-							case "POST":
-								s.handleCreateWorkgroupRequest([0]string{}, elemIsEscaped, w, r)
-							default:
-								s.notAllowed(w, r, "GET,POST")
-							}
-
-							return
+							break
 						}
 						switch elem[0] {
-						case '/': // Prefix: "/"
+						case 's': // Prefix: "sessions/"
 
-							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							if l := len("sessions/"); len(elem) >= l && elem[0:l] == "sessions/" {
 								elem = elem[l:]
 							} else {
 								break
 							}
 
-							// Param: "workgroupId"
+							// Param: "sessionId"
 							// Match until "/"
 							idx := strings.IndexByte(elem, '/')
 							if idx < 0 {
@@ -235,83 +226,151 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								break
 							}
 							switch elem[0] {
-							case '/': // Prefix: "/invitations/"
+							case '/': // Prefix: "/close"
 
-								if l := len("/invitations/"); len(elem) >= l && elem[0:l] == "/invitations/" {
+								if l := len("/close"); len(elem) >= l && elem[0:l] == "/close" {
 									elem = elem[l:]
 								} else {
 									break
 								}
 
-								// Param: "organizationId"
+								if len(elem) == 0 {
+									// Leaf node.
+									switch r.Method {
+									case "POST":
+										s.handleAdminCloseSessionRequest([1]string{
+											args[0],
+										}, elemIsEscaped, w, r)
+									default:
+										s.notAllowed(w, r, "POST")
+									}
+
+									return
+								}
+
+							}
+
+						case 'w': // Prefix: "workgroups"
+
+							if l := len("workgroups"); len(elem) >= l && elem[0:l] == "workgroups" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								switch r.Method {
+								case "GET":
+									s.handleListAdminWorkgroupsRequest([0]string{}, elemIsEscaped, w, r)
+								case "POST":
+									s.handleCreateWorkgroupRequest([0]string{}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, "GET,POST")
+								}
+
+								return
+							}
+							switch elem[0] {
+							case '/': // Prefix: "/"
+
+								if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								// Param: "workgroupId"
 								// Match until "/"
 								idx := strings.IndexByte(elem, '/')
 								if idx < 0 {
 									idx = len(elem)
 								}
-								args[1] = elem[:idx]
+								args[0] = elem[:idx]
 								elem = elem[idx:]
 
 								if len(elem) == 0 {
 									break
 								}
 								switch elem[0] {
-								case '/': // Prefix: "/"
+								case '/': // Prefix: "/invitations/"
 
-									if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+									if l := len("/invitations/"); len(elem) >= l && elem[0:l] == "/invitations/" {
 										elem = elem[l:]
 									} else {
 										break
 									}
 
+									// Param: "organizationId"
+									// Match until "/"
+									idx := strings.IndexByte(elem, '/')
+									if idx < 0 {
+										idx = len(elem)
+									}
+									args[1] = elem[:idx]
+									elem = elem[idx:]
+
 									if len(elem) == 0 {
 										break
 									}
 									switch elem[0] {
-									case 'a': // Prefix: "accept"
+									case '/': // Prefix: "/"
 
-										if l := len("accept"); len(elem) >= l && elem[0:l] == "accept" {
+										if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 											elem = elem[l:]
 										} else {
 											break
 										}
 
 										if len(elem) == 0 {
-											// Leaf node.
-											switch r.Method {
-											case "POST":
-												s.handleAcceptWorkgroupInvitationRequest([2]string{
-													args[0],
-													args[1],
-												}, elemIsEscaped, w, r)
-											default:
-												s.notAllowed(w, r, "POST")
-											}
-
-											return
-										}
-
-									case 'd': // Prefix: "decline"
-
-										if l := len("decline"); len(elem) >= l && elem[0:l] == "decline" {
-											elem = elem[l:]
-										} else {
 											break
 										}
+										switch elem[0] {
+										case 'a': // Prefix: "accept"
 
-										if len(elem) == 0 {
-											// Leaf node.
-											switch r.Method {
-											case "POST":
-												s.handleDeclineWorkgroupInvitationRequest([2]string{
-													args[0],
-													args[1],
-												}, elemIsEscaped, w, r)
-											default:
-												s.notAllowed(w, r, "POST")
+											if l := len("accept"); len(elem) >= l && elem[0:l] == "accept" {
+												elem = elem[l:]
+											} else {
+												break
 											}
 
-											return
+											if len(elem) == 0 {
+												// Leaf node.
+												switch r.Method {
+												case "POST":
+													s.handleAcceptWorkgroupInvitationRequest([2]string{
+														args[0],
+														args[1],
+													}, elemIsEscaped, w, r)
+												default:
+													s.notAllowed(w, r, "POST")
+												}
+
+												return
+											}
+
+										case 'd': // Prefix: "decline"
+
+											if l := len("decline"); len(elem) >= l && elem[0:l] == "decline" {
+												elem = elem[l:]
+											} else {
+												break
+											}
+
+											if len(elem) == 0 {
+												// Leaf node.
+												switch r.Method {
+												case "POST":
+													s.handleDeclineWorkgroupInvitationRequest([2]string{
+														args[0],
+														args[1],
+													}, elemIsEscaped, w, r)
+												default:
+													s.notAllowed(w, r, "POST")
+												}
+
+												return
+											}
+
 										}
 
 									}
@@ -592,6 +651,141 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 									}, elemIsEscaped, w, r)
 								default:
 									s.notAllowed(w, r, "DELETE")
+								}
+
+								return
+							}
+
+						}
+
+					}
+
+				}
+
+			case 's': // Prefix: "sessions"
+
+				if l := len("sessions"); len(elem) >= l && elem[0:l] == "sessions" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					switch r.Method {
+					case "GET":
+						s.handleListSessionsRequest([0]string{}, elemIsEscaped, w, r)
+					case "POST":
+						s.handleProposeSessionRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, "GET,POST")
+					}
+
+					return
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/"
+
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "sessionId"
+					// Match until "/"
+					idx := strings.IndexByte(elem, '/')
+					if idx < 0 {
+						idx = len(elem)
+					}
+					args[0] = elem[:idx]
+					elem = elem[idx:]
+
+					if len(elem) == 0 {
+						switch r.Method {
+						case "GET":
+							s.handleGetSessionRequest([1]string{
+								args[0],
+							}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, "GET")
+						}
+
+						return
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							break
+						}
+						switch elem[0] {
+						case 'a': // Prefix: "accept"
+
+							if l := len("accept"); len(elem) >= l && elem[0:l] == "accept" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleAcceptSessionRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, "POST")
+								}
+
+								return
+							}
+
+						case 'c': // Prefix: "close"
+
+							if l := len("close"); len(elem) >= l && elem[0:l] == "close" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleCloseSessionRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, "POST")
+								}
+
+								return
+							}
+
+						case 'r': // Prefix: "reject"
+
+							if l := len("reject"); len(elem) >= l && elem[0:l] == "reject" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleRejectSessionRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, "POST")
 								}
 
 								return
@@ -1308,46 +1502,27 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						break
 					}
 					switch elem[0] {
-					case 'm': // Prefix: "min/workgroups"
+					case 'm': // Prefix: "min/"
 
-						if l := len("min/workgroups"); len(elem) >= l && elem[0:l] == "min/workgroups" {
+						if l := len("min/"); len(elem) >= l && elem[0:l] == "min/" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
 						if len(elem) == 0 {
-							switch method {
-							case "GET":
-								r.name = ListAdminWorkgroupsOperation
-								r.summary = ""
-								r.operationID = "listAdminWorkgroups"
-								r.pathPattern = "/admin/workgroups"
-								r.args = args
-								r.count = 0
-								return r, true
-							case "POST":
-								r.name = CreateWorkgroupOperation
-								r.summary = ""
-								r.operationID = "createWorkgroup"
-								r.pathPattern = "/admin/workgroups"
-								r.args = args
-								r.count = 0
-								return r, true
-							default:
-								return
-							}
+							break
 						}
 						switch elem[0] {
-						case '/': // Prefix: "/"
+						case 's': // Prefix: "sessions/"
 
-							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							if l := len("sessions/"); len(elem) >= l && elem[0:l] == "sessions/" {
 								elem = elem[l:]
 							} else {
 								break
 							}
 
-							// Param: "workgroupId"
+							// Param: "sessionId"
 							// Match until "/"
 							idx := strings.IndexByte(elem, '/')
 							if idx < 0 {
@@ -1360,85 +1535,165 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								break
 							}
 							switch elem[0] {
-							case '/': // Prefix: "/invitations/"
+							case '/': // Prefix: "/close"
 
-								if l := len("/invitations/"); len(elem) >= l && elem[0:l] == "/invitations/" {
+								if l := len("/close"); len(elem) >= l && elem[0:l] == "/close" {
 									elem = elem[l:]
 								} else {
 									break
 								}
 
-								// Param: "organizationId"
+								if len(elem) == 0 {
+									// Leaf node.
+									switch method {
+									case "POST":
+										r.name = AdminCloseSessionOperation
+										r.summary = ""
+										r.operationID = "adminCloseSession"
+										r.pathPattern = "/admin/sessions/{sessionId}/close"
+										r.args = args
+										r.count = 1
+										return r, true
+									default:
+										return
+									}
+								}
+
+							}
+
+						case 'w': // Prefix: "workgroups"
+
+							if l := len("workgroups"); len(elem) >= l && elem[0:l] == "workgroups" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								switch method {
+								case "GET":
+									r.name = ListAdminWorkgroupsOperation
+									r.summary = ""
+									r.operationID = "listAdminWorkgroups"
+									r.pathPattern = "/admin/workgroups"
+									r.args = args
+									r.count = 0
+									return r, true
+								case "POST":
+									r.name = CreateWorkgroupOperation
+									r.summary = ""
+									r.operationID = "createWorkgroup"
+									r.pathPattern = "/admin/workgroups"
+									r.args = args
+									r.count = 0
+									return r, true
+								default:
+									return
+								}
+							}
+							switch elem[0] {
+							case '/': // Prefix: "/"
+
+								if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								// Param: "workgroupId"
 								// Match until "/"
 								idx := strings.IndexByte(elem, '/')
 								if idx < 0 {
 									idx = len(elem)
 								}
-								args[1] = elem[:idx]
+								args[0] = elem[:idx]
 								elem = elem[idx:]
 
 								if len(elem) == 0 {
 									break
 								}
 								switch elem[0] {
-								case '/': // Prefix: "/"
+								case '/': // Prefix: "/invitations/"
 
-									if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+									if l := len("/invitations/"); len(elem) >= l && elem[0:l] == "/invitations/" {
 										elem = elem[l:]
 									} else {
 										break
 									}
 
+									// Param: "organizationId"
+									// Match until "/"
+									idx := strings.IndexByte(elem, '/')
+									if idx < 0 {
+										idx = len(elem)
+									}
+									args[1] = elem[:idx]
+									elem = elem[idx:]
+
 									if len(elem) == 0 {
 										break
 									}
 									switch elem[0] {
-									case 'a': // Prefix: "accept"
+									case '/': // Prefix: "/"
 
-										if l := len("accept"); len(elem) >= l && elem[0:l] == "accept" {
+										if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 											elem = elem[l:]
 										} else {
 											break
 										}
 
 										if len(elem) == 0 {
-											// Leaf node.
-											switch method {
-											case "POST":
-												r.name = AcceptWorkgroupInvitationOperation
-												r.summary = ""
-												r.operationID = "acceptWorkgroupInvitation"
-												r.pathPattern = "/admin/workgroups/{workgroupId}/invitations/{organizationId}/accept"
-												r.args = args
-												r.count = 2
-												return r, true
-											default:
-												return
-											}
-										}
-
-									case 'd': // Prefix: "decline"
-
-										if l := len("decline"); len(elem) >= l && elem[0:l] == "decline" {
-											elem = elem[l:]
-										} else {
 											break
 										}
+										switch elem[0] {
+										case 'a': // Prefix: "accept"
 
-										if len(elem) == 0 {
-											// Leaf node.
-											switch method {
-											case "POST":
-												r.name = DeclineWorkgroupInvitationOperation
-												r.summary = ""
-												r.operationID = "declineWorkgroupInvitation"
-												r.pathPattern = "/admin/workgroups/{workgroupId}/invitations/{organizationId}/decline"
-												r.args = args
-												r.count = 2
-												return r, true
-											default:
-												return
+											if l := len("accept"); len(elem) >= l && elem[0:l] == "accept" {
+												elem = elem[l:]
+											} else {
+												break
 											}
+
+											if len(elem) == 0 {
+												// Leaf node.
+												switch method {
+												case "POST":
+													r.name = AcceptWorkgroupInvitationOperation
+													r.summary = ""
+													r.operationID = "acceptWorkgroupInvitation"
+													r.pathPattern = "/admin/workgroups/{workgroupId}/invitations/{organizationId}/accept"
+													r.args = args
+													r.count = 2
+													return r, true
+												default:
+													return
+												}
+											}
+
+										case 'd': // Prefix: "decline"
+
+											if l := len("decline"); len(elem) >= l && elem[0:l] == "decline" {
+												elem = elem[l:]
+											} else {
+												break
+											}
+
+											if len(elem) == 0 {
+												// Leaf node.
+												switch method {
+												case "POST":
+													r.name = DeclineWorkgroupInvitationOperation
+													r.summary = ""
+													r.operationID = "declineWorkgroupInvitation"
+													r.pathPattern = "/admin/workgroups/{workgroupId}/invitations/{organizationId}/decline"
+													r.args = args
+													r.count = 2
+													return r, true
+												default:
+													return
+												}
+											}
+
 										}
 
 									}
@@ -1779,6 +2034,159 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 									r.pathPattern = "/organizations/{organizationId}/accounts/{accountId}"
 									r.args = args
 									r.count = 2
+									return r, true
+								default:
+									return
+								}
+							}
+
+						}
+
+					}
+
+				}
+
+			case 's': // Prefix: "sessions"
+
+				if l := len("sessions"); len(elem) >= l && elem[0:l] == "sessions" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					switch method {
+					case "GET":
+						r.name = ListSessionsOperation
+						r.summary = ""
+						r.operationID = "listSessions"
+						r.pathPattern = "/sessions"
+						r.args = args
+						r.count = 0
+						return r, true
+					case "POST":
+						r.name = ProposeSessionOperation
+						r.summary = ""
+						r.operationID = "proposeSession"
+						r.pathPattern = "/sessions"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
+				}
+				switch elem[0] {
+				case '/': // Prefix: "/"
+
+					if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					// Param: "sessionId"
+					// Match until "/"
+					idx := strings.IndexByte(elem, '/')
+					if idx < 0 {
+						idx = len(elem)
+					}
+					args[0] = elem[:idx]
+					elem = elem[idx:]
+
+					if len(elem) == 0 {
+						switch method {
+						case "GET":
+							r.name = GetSessionOperation
+							r.summary = ""
+							r.operationID = "getSession"
+							r.pathPattern = "/sessions/{sessionId}"
+							r.args = args
+							r.count = 1
+							return r, true
+						default:
+							return
+						}
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							break
+						}
+						switch elem[0] {
+						case 'a': // Prefix: "accept"
+
+							if l := len("accept"); len(elem) >= l && elem[0:l] == "accept" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = AcceptSessionOperation
+									r.summary = ""
+									r.operationID = "acceptSession"
+									r.pathPattern = "/sessions/{sessionId}/accept"
+									r.args = args
+									r.count = 1
+									return r, true
+								default:
+									return
+								}
+							}
+
+						case 'c': // Prefix: "close"
+
+							if l := len("close"); len(elem) >= l && elem[0:l] == "close" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = CloseSessionOperation
+									r.summary = ""
+									r.operationID = "closeSession"
+									r.pathPattern = "/sessions/{sessionId}/close"
+									r.args = args
+									r.count = 1
+									return r, true
+								default:
+									return
+								}
+							}
+
+						case 'r': // Prefix: "reject"
+
+							if l := len("reject"); len(elem) >= l && elem[0:l] == "reject" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = RejectSessionOperation
+									r.summary = ""
+									r.operationID = "rejectSession"
+									r.pathPattern = "/sessions/{sessionId}/reject"
+									r.args = args
+									r.count = 1
 									return r, true
 								default:
 									return

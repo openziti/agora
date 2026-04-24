@@ -35,10 +35,12 @@ func findAuthorization(h http.Header, prefix string) (string, bool) {
 }
 
 var operationRolesAccountTokenAuth = map[string][]string{
+	AcceptSessionOperation:                 []string{},
 	AddTunnelGrantOperation:                []string{},
 	AddWorkgroupMemberOperation:            []string{},
 	ChangePasswordOperation:                []string{},
 	ChangeWorkgroupMembershipRoleOperation: []string{},
+	CloseSessionOperation:                  []string{},
 	ConnectTunnelOperation:                 []string{},
 	CreateTunnelOperation:                  []string{},
 	DeleteTunnelOperation:                  []string{},
@@ -49,6 +51,7 @@ var operationRolesAccountTokenAuth = map[string][]string{
 	EnableEnvironmentOperation:             []string{},
 	GetAdvertisementOperation:              []string{},
 	GetEnvironmentOperation:                []string{},
+	GetSessionOperation:                    []string{},
 	GetTunnelOperation:                     []string{},
 	GetTunnelServeOperation:                []string{},
 	GetWorkgroupOperation:                  []string{},
@@ -57,13 +60,16 @@ var operationRolesAccountTokenAuth = map[string][]string{
 	HeartbeatTunnelServeOperation:          []string{},
 	ListAdvertisementsOperation:            []string{},
 	ListEnvironmentsOperation:              []string{},
+	ListSessionsOperation:                  []string{},
 	ListTunnelAttachmentsOperation:         []string{},
 	ListTunnelGrantsOperation:              []string{},
 	ListTunnelsOperation:                   []string{},
 	ListWorkgroupMembersOperation:          []string{},
 	ListWorkgroupsOperation:                []string{},
+	ProposeSessionOperation:                []string{},
 	PublishAdvertisementOperation:          []string{},
 	RegenerateAccountTokenOperation:        []string{},
+	RejectSessionOperation:                 []string{},
 	RemoveTunnelGrantOperation:             []string{},
 	RemoveWorkgroupMemberOperation:         []string{},
 	RetractAdvertisementOperation:          []string{},
@@ -92,6 +98,7 @@ func (s *Server) securityAccountTokenAuth(ctx context.Context, operationName Ope
 
 var operationRolesAdminTokenAuth = map[string][]string{
 	AcceptWorkgroupInvitationOperation:  []string{},
+	AdminCloseSessionOperation:          []string{},
 	CreateAccountOperation:              []string{},
 	CreateOrganizationOperation:         []string{},
 	CreateWorkgroupOperation:            []string{},

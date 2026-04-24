@@ -8,6 +8,7 @@ import (
 	"github.com/openziti/agora/examples/macro-pulse/internal/agentutil"
 	"github.com/openziti/agora/internal/api"
 	"github.com/openziti/agora/sdk/agent"
+	"github.com/openziti/agora/sdk/agent/session"
 )
 
 func main() {
@@ -33,6 +34,12 @@ func main() {
 			return err
 		}
 		a.Log().With("advertisement_id", ad.ID).Infof("alive; advertisement published")
+		handler := &agentutil.LoggingSessionHandler{Agent: a}
+		go func() {
+			if err := session.RegisterHandler(ctx, a, ad.ID, handler); err != nil {
+				a.Log().With("advertisement_id", ad.ID).Warnf("session handler exited: %v", err)
+			}
+		}()
 		<-ctx.Done()
 		return nil
 	}); err != nil {

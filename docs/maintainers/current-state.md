@@ -108,7 +108,7 @@ Remaining Layer 1 operational hardening:
 - a documented local development and smoke-test stack
 - clearer end-to-end operational validation for enable, serve, connect, status, and cleanup
 
-Layer 2 work has a foundation doc ([../layer-2/foundation.md](../layer-2/foundation.md)), a Tier-A spec for workgroups ([../layer-2/workgroups.md](../layer-2/workgroups.md)) **with implementation shipped** (slice 1 of 5), and Tier-B skeletons for the other five concepts. See [../layer-2/status.md](../layer-2/status.md) for Tier tracking and build order.
+Layer 2 work has a foundation doc ([../layer-2/foundation.md](../layer-2/foundation.md)), Tier-A specs for workgroups, catalog, advertisements, and sessions — all with implementation shipped (slices 1–3 of 5) — and Tier-B skeletons for contracts and envelopes. See [../layer-2/status.md](../layer-2/status.md) for Tier tracking and build order.
 
 Workgroup implementation surfaces:
 
@@ -125,6 +125,16 @@ Catalog + advertisements implementation surfaces (slice 2):
 - controller: `publishAdvertisement.go`, `listAdvertisements.go`, `getAdvertisement.go`, `updateAdvertisement.go`, `retractAdvertisement.go`, `searchCatalog.go` + `advertisement_helpers.go` (visibility + scope validation)
 - CLI: `cmd/agora/advertise*.go` and `cmd/agora/catalog*.go`
 - Macro Pulse advancement: each provider/tool agent calls `agentutil.EnsureAdvertisement` on startup; `pulse-agent` calls `client.SearchCatalog` for discovery
+
+Sessions implementation surfaces (slice 3):
+
+- persistence: `internal/persistence/sessions.go` + migrations `0005_advertisement_tunnel_mode.sql` (adds `tunnel_mode` column to advertisements) and `0006_layer2_sessions.sql` (sessions table with state machine and audit fields)
+- API: `internal/api/specs/sessions/` (6 account-token endpoints: propose/list/get/accept/reject/close) plus admin close
+- controller: `proposeSession.go`, `listSessions.go`, `getSession.go`, `acceptSession.go` (wires into `TunnelsRepository.Create` + `TunnelGrants.Create` for provisioning), `rejectSession.go`, `closeSession.go` (with shared `teardownSession` that also deprovisions the backing tunnel), `adminCloseSession.go`, `session_helpers.go`
+- CLI: `cmd/agora/session*.go` and `cmd/agora/adminSession*.go`
+- SDK: `sdk/agent/session/` exposes `Propose`, `RegisterHandler`, and `Session.Close`; thin wrappers over `a.Controller()` REST calls with 1 Hz polling for state transitions
+- Macro Pulse advancement: all 8 provider/tool agents use `agentutil.LoggingSessionHandler` via `session.RegisterHandler`; `pulse-agent` iterates the catalog and calls `session.Propose` + `Session.Close` per advertisement
+- Scope note: sessions reach `active` with the backing tunnel resource provisioned on the controller; local runtime `EnsureServe`/`EnsureConnect` attach and byte-level session I/O are deferred to the envelopes slice (slice 5)
 
 Alongside the Layer 2 specs, the project also has a primary reference demo under [../../examples/macro-pulse/](../../examples/macro-pulse/) with its own formal doc at [../examples/macro-pulse.md](../examples/macro-pulse.md). The demo is scaffolded but not yet runnable end-to-end — it advances one slice at a time as Layer 2 slices ship. See [../examples/index.md](../examples/index.md) for the example-set overview.
 

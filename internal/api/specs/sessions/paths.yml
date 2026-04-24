@@ -1,0 +1,351 @@
+/sessions:
+  post:
+    tags:
+      - sessions
+    operationId: proposeSession
+    security:
+      - accountTokenAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/proposeSessionRequest"
+    responses:
+      201:
+        description: proposed
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/session"
+      400:
+        description: bad request
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+  get:
+    tags:
+      - sessions
+    operationId: listSessions
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: state
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            $ref: "../agora.yml#/components/schemas/sessionState"
+        style: form
+        explode: true
+      - name: role
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [provider, consumer, both]
+      - name: advertisementId
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: '^adv_[a-z0-9]{12}$'
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/listSessionsResponse"
+      400:
+        description: bad request
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/sessions/{sessionId}:
+  get:
+    tags:
+      - sessions
+    operationId: getSession
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^ses_[a-z0-9]{12}$'
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/session"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/sessions/{sessionId}/accept:
+  post:
+    tags:
+      - sessions
+    operationId: acceptSession
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^ses_[a-z0-9]{12}$'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/acceptSessionRequest"
+    responses:
+      200:
+        description: active
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/session"
+      400:
+        description: bad request
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      403:
+        description: forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/sessions/{sessionId}/reject:
+  post:
+    tags:
+      - sessions
+    operationId: rejectSession
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^ses_[a-z0-9]{12}$'
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/closeSessionRequest"
+    responses:
+      204:
+        description: rejected
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      403:
+        description: forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/sessions/{sessionId}/close:
+  post:
+    tags:
+      - sessions
+    operationId: closeSession
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^ses_[a-z0-9]{12}$'
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/closeSessionRequest"
+    responses:
+      204:
+        description: closed
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      403:
+        description: forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/admin/sessions/{sessionId}/close:
+  post:
+    tags:
+      - admin
+    operationId: adminCloseSession
+    security:
+      - adminTokenAuth: []
+    parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^ses_[a-z0-9]{12}$'
+    requestBody:
+      required: false
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/closeSessionRequest"
+    responses:
+      204:
+        description: closed
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"

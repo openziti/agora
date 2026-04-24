@@ -8,6 +8,10 @@ import (
 
 // Handler handles operations described by OpenAPI v3 specification.
 type Handler interface {
+	// AcceptSession implements acceptSession operation.
+	//
+	// POST /sessions/{sessionId}/accept
+	AcceptSession(ctx context.Context, req *AcceptSessionRequest, params AcceptSessionParams) (AcceptSessionRes, error)
 	// AcceptWorkgroupInvitation implements acceptWorkgroupInvitation operation.
 	//
 	// POST /admin/workgroups/{workgroupId}/invitations/{organizationId}/accept
@@ -20,6 +24,10 @@ type Handler interface {
 	//
 	// POST /workgroups/{workgroupId}/members
 	AddWorkgroupMember(ctx context.Context, req *AddWorkgroupMemberRequest, params AddWorkgroupMemberParams) (AddWorkgroupMemberRes, error)
+	// AdminCloseSession implements adminCloseSession operation.
+	//
+	// POST /admin/sessions/{sessionId}/close
+	AdminCloseSession(ctx context.Context, req OptCloseSessionRequest, params AdminCloseSessionParams) (AdminCloseSessionRes, error)
 	// ChangePassword implements changePassword operation.
 	//
 	// POST /account/change-password
@@ -28,6 +36,10 @@ type Handler interface {
 	//
 	// PATCH /workgroups/{workgroupId}/members/{membershipId}
 	ChangeWorkgroupMembershipRole(ctx context.Context, req *ChangeWorkgroupMembershipRoleRequest, params ChangeWorkgroupMembershipRoleParams) (ChangeWorkgroupMembershipRoleRes, error)
+	// CloseSession implements closeSession operation.
+	//
+	// POST /sessions/{sessionId}/close
+	CloseSession(ctx context.Context, req OptCloseSessionRequest, params CloseSessionParams) (CloseSessionRes, error)
 	// ConnectTunnel implements connectTunnel operation.
 	//
 	// POST /tunnels/connect
@@ -92,6 +104,10 @@ type Handler interface {
 	//
 	// GET /environments/{environmentId}
 	GetEnvironment(ctx context.Context, params GetEnvironmentParams) (GetEnvironmentRes, error)
+	// GetSession implements getSession operation.
+	//
+	// GET /sessions/{sessionId}
+	GetSession(ctx context.Context, params GetSessionParams) (GetSessionRes, error)
 	// GetTunnel implements getTunnel operation.
 	//
 	// GET /tunnels/{tunnelId}
@@ -136,6 +152,10 @@ type Handler interface {
 	//
 	// GET /organizations
 	ListOrganizations(ctx context.Context) (ListOrganizationsRes, error)
+	// ListSessions implements listSessions operation.
+	//
+	// GET /sessions
+	ListSessions(ctx context.Context, params ListSessionsParams) (ListSessionsRes, error)
 	// ListTunnelAttachments implements listTunnelAttachments operation.
 	//
 	// GET /tunnels/{tunnelId}/attachments
@@ -164,6 +184,10 @@ type Handler interface {
 	//
 	// POST /account/login
 	Login(ctx context.Context, req *LoginRequest) (LoginRes, error)
+	// ProposeSession implements proposeSession operation.
+	//
+	// POST /sessions
+	ProposeSession(ctx context.Context, req *ProposeSessionRequest) (ProposeSessionRes, error)
 	// PublishAdvertisement implements publishAdvertisement operation.
 	//
 	// POST /advertisements
@@ -172,6 +196,10 @@ type Handler interface {
 	//
 	// POST /account/regenerate-token
 	RegenerateAccountToken(ctx context.Context, req *RegenerateTokenRequest) (RegenerateAccountTokenRes, error)
+	// RejectSession implements rejectSession operation.
+	//
+	// POST /sessions/{sessionId}/reject
+	RejectSession(ctx context.Context, req OptCloseSessionRequest, params RejectSessionParams) (RejectSessionRes, error)
 	// RemoveTunnelGrant implements removeTunnelGrant operation.
 	//
 	// DELETE /tunnels/{tunnelId}/grants/{accountId}

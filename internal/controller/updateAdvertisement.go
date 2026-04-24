@@ -71,6 +71,9 @@ func (s *Service) UpdateAdvertisement(ctx context.Context, req *api.UpdateAdvert
 		}
 		updated.WorkgroupScopes = req.WorkgroupScopes
 	}
+	if req.TunnelMode.Set {
+		updated.TunnelMode = persistence.TunnelMode(req.TunnelMode.Value)
+	}
 
 	saved, err := s.store.Advertisements.Update(ctx, s.store.DB(), updated)
 	if err != nil {

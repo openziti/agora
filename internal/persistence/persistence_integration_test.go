@@ -23,8 +23,8 @@ func TestMigrateUpAndCompatibilityCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}
-	if applied != 4 {
-		t.Fatalf("expected 4 migrations applied, got %d", applied)
+	if applied != 6 {
+		t.Fatalf("expected 6 migrations applied, got %d", applied)
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); err != nil {
@@ -50,8 +50,8 @@ func TestCheckSchemaCompatibilityBehindBinary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migration status: %v", err)
 	}
-	if len(statuses) != 4 {
-		t.Fatalf("expected 4 migration statuses, got %d", len(statuses))
+	if len(statuses) != 6 {
+		t.Fatalf("expected 6 migration statuses, got %d", len(statuses))
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); !errors.Is(err, ErrSchemaBehindBinary) {
@@ -781,6 +781,61 @@ func TestAdvertisementJSONBRoundtrip(t *testing.T) {
 	}
 }
 
+func TestAdvertisementTunnelMode(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, acct, wg := newAdvertisementTestFixture(t, ctx, store)
+
+	defaulted, err := store.Advertisements.Create(ctx, store.DB(), Advertisement{
+		OrganizationID:      org.ID,
+		AccountID:           acct.ID,
+		Name:                "defaulted",
+		Capabilities:        CapabilitiesJSON{{Name: "x"}},
+		InteractionPatterns: InteractionPatternsJSON{{Kind: InteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{wg.ID},
+	})
+	if err != nil {
+		t.Fatalf("create defaulted: %v", err)
+	}
+	if defaulted.TunnelMode != TunnelModeTCP {
+		t.Fatalf("expected default tunnel mode tcp, got %q", defaulted.TunnelMode)
+	}
+
+	explicit, err := store.Advertisements.Create(ctx, store.DB(), Advertisement{
+		OrganizationID:      org.ID,
+		AccountID:           acct.ID,
+		Name:                "explicit-http",
+		Capabilities:        CapabilitiesJSON{{Name: "x"}},
+		InteractionPatterns: InteractionPatternsJSON{{Kind: InteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{wg.ID},
+		TunnelMode:          TunnelModeHTTP,
+	})
+	if err != nil {
+		t.Fatalf("create explicit: %v", err)
+	}
+	if explicit.TunnelMode != TunnelModeHTTP {
+		t.Fatalf("expected explicit tunnel mode http, got %q", explicit.TunnelMode)
+	}
+
+	reloaded, err := store.Advertisements.GetByID(ctx, store.DB(), explicit.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if reloaded.TunnelMode != TunnelModeHTTP {
+		t.Fatalf("reloaded tunnel mode mismatch: %q", reloaded.TunnelMode)
+	}
+
+	reloaded.TunnelMode = TunnelModeUDP
+	updated, err := store.Advertisements.Update(ctx, store.DB(), *reloaded)
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if updated.TunnelMode != TunnelModeUDP {
+		t.Fatalf("updated tunnel mode mismatch: %q", updated.TunnelMode)
+	}
+}
+
 func TestAdvertisementWorkgroupScopesArray(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -1052,4 +1107,283 @@ func TestAdvertisementSearchFilters(t *testing.T) {
 	if len(results) != 3 {
 		t.Fatalf("expected 3 ads from this org, got %d", len(results))
 	}
+}
+
+// --- session tests ---
+
+// newSessionTestFixture provisions two accounts (provider and consumer) in
+// separate organizations sharing an inter-org workgroup, an advertisement
+// owned by the provider, and a provider environment (for the Tunnel FK).
+func newSessionTestFixture(t *testing.T, ctx context.Context, store *Store) (providerOrg, consumerOrg *Organization, providerAcct, consumerAcct *Account, providerEnv *Environment, wg *Workgroup, ad *Advertisement) {
+	t.Helper()
+
+	providerOrg, err := store.Organizations.Create(ctx, store.DB(), Organization{Name: "provider-co"})
+	if err != nil {
+		t.Fatalf("create provider org: %v", err)
+	}
+	consumerOrg, err = store.Organizations.Create(ctx, store.DB(), Organization{Name: "consumer-co"})
+	if err != nil {
+		t.Fatalf("create consumer org: %v", err)
+	}
+	providerName := "provider"
+	providerAcct, err = store.Accounts.Create(ctx, store.DB(), Account{
+		OrganizationID: providerOrg.ID,
+		Email:          "provider@example.com",
+		DisplayName:    &providerName,
+		PasswordSalt:   "salt-p",
+		PasswordHash:   "hash-p",
+		AccountToken:   "provider-token",
+		Role:           AccountRoleAdmin,
+		Status:         AccountStatusActive,
+	})
+	if err != nil {
+		t.Fatalf("create provider account: %v", err)
+	}
+	consumerName := "consumer"
+	consumerAcct, err = store.Accounts.Create(ctx, store.DB(), Account{
+		OrganizationID: consumerOrg.ID,
+		Email:          "consumer@example.com",
+		DisplayName:    &consumerName,
+		PasswordSalt:   "salt-c",
+		PasswordHash:   "hash-c",
+		AccountToken:   "consumer-token",
+		Role:           AccountRoleAdmin,
+		Status:         AccountStatusActive,
+	})
+	if err != nil {
+		t.Fatalf("create consumer account: %v", err)
+	}
+
+	envDescription := "provider-env"
+	providerEnv, err = store.Environments.Create(ctx, store.DB(), Environment{
+		OrganizationID: providerOrg.ID,
+		AccountID:      providerAcct.ID,
+		Description:    &envDescription,
+		ZitiIdentityID: "ziti-provider-01",
+		State:          EnvironmentStateEnabled,
+	})
+	if err != nil {
+		t.Fatalf("create provider env: %v", err)
+	}
+
+	wg, err = store.Workgroups.Create(ctx, store.DB(), Workgroup{
+		OwnerOrganizationID: providerOrg.ID,
+		Name:                "shared-channel",
+		Scope:               WorkgroupScopeInterOrg,
+		State:               WorkgroupStateActive,
+	})
+	if err != nil {
+		t.Fatalf("create workgroup: %v", err)
+	}
+	if _, err := store.WorkgroupMemberships.Create(ctx, store.DB(), WorkgroupMembership{
+		WorkgroupID: wg.ID, OrganizationID: providerOrg.ID, AccountID: providerAcct.ID, Role: WorkgroupMembershipRoleAdmin,
+	}); err != nil {
+		t.Fatalf("create provider membership: %v", err)
+	}
+	if _, err := store.WorkgroupMemberships.Create(ctx, store.DB(), WorkgroupMembership{
+		WorkgroupID: wg.ID, OrganizationID: consumerOrg.ID, AccountID: consumerAcct.ID, Role: WorkgroupMembershipRoleMember,
+	}); err != nil {
+		t.Fatalf("create consumer membership: %v", err)
+	}
+
+	ad, err = store.Advertisements.Create(ctx, store.DB(), Advertisement{
+		OrganizationID:      providerOrg.ID,
+		AccountID:           providerAcct.ID,
+		Name:                "data-feed",
+		Capabilities:        CapabilitiesJSON{{Name: "quote"}},
+		InteractionPatterns: InteractionPatternsJSON{{Kind: InteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{wg.ID},
+		TunnelMode:          TunnelModeTCP,
+	})
+	if err != nil {
+		t.Fatalf("create advertisement: %v", err)
+	}
+	return
+}
+
+func mustProposeSession(t *testing.T, ctx context.Context, store *Store, providerOrg, consumerOrg *Organization, providerAcct, consumerAcct *Account, wg *Workgroup, ad *Advertisement) *Session {
+	t.Helper()
+	sess, err := store.Sessions.Create(ctx, store.DB(), Session{
+		AdvertisementID:        ad.ID,
+		WorkgroupID:            wg.ID,
+		ProviderAccountID:      providerAcct.ID,
+		ProviderOrganizationID: providerOrg.ID,
+		ConsumerAccountID:      consumerAcct.ID,
+		ConsumerOrganizationID: consumerOrg.ID,
+		TunnelMode:             ad.TunnelMode,
+	})
+	if err != nil {
+		t.Fatalf("create session: %v", err)
+	}
+	return sess
+}
+
+func TestSessionProposeDefaults(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	providerOrg, consumerOrg, providerAcct, consumerAcct, _, wg, ad := newSessionTestFixture(t, ctx, store)
+
+	sess := mustProposeSession(t, ctx, store, providerOrg, consumerOrg, providerAcct, consumerAcct, wg, ad)
+
+	if sess.State != SessionStateProposed {
+		t.Fatalf("expected proposed, got %q", sess.State)
+	}
+	if sess.TunnelMode != TunnelModeTCP {
+		t.Fatalf("expected tcp, got %q", sess.TunnelMode)
+	}
+	if sess.TunnelID != nil {
+		t.Fatalf("expected nil tunnel id, got %v", sess.TunnelID)
+	}
+	if sess.AcceptedAt != nil || sess.ClosedAt != nil {
+		t.Fatalf("unexpected accepted/closed timestamps")
+	}
+	if sess.ProposedAt.IsZero() {
+		t.Fatalf("expected proposed_at populated")
+	}
+	if !strings.HasPrefix(sess.ID, "ses_") {
+		t.Fatalf("id must have ses_ prefix: %q", sess.ID)
+	}
+}
+
+func TestSessionAcceptFlow(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	providerOrg, consumerOrg, providerAcct, consumerAcct, providerEnv, wg, ad := newSessionTestFixture(t, ctx, store)
+
+	sess := mustProposeSession(t, ctx, store, providerOrg, consumerOrg, providerAcct, consumerAcct, wg, ad)
+
+	accepting, err := store.Sessions.MarkAccepting(ctx, store.DB(), sess.ID)
+	if err != nil {
+		t.Fatalf("mark accepting: %v", err)
+	}
+	if accepting.State != SessionStateAccepting {
+		t.Fatalf("expected accepting, got %q", accepting.State)
+	}
+
+	zitiSvc := "ziti-svc-session"
+	bindPol := "bind-session"
+	tunnel, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
+		OrganizationID: providerOrg.ID,
+		AccountID:      providerAcct.ID,
+		EnvironmentID:  providerEnv.ID,
+		Name:           "session-tun",
+		Mode:           TunnelModeTCP,
+		BackendTarget:  "localhost:9000",
+		ZitiServiceID:  &zitiSvc,
+		BindPolicyID:   &bindPol,
+		State:          TunnelStateActive,
+	})
+	if err != nil {
+		t.Fatalf("create tunnel: %v", err)
+	}
+
+	active, err := store.Sessions.MarkActive(ctx, store.DB(), sess.ID, tunnel.ID)
+	if err != nil {
+		t.Fatalf("mark active: %v", err)
+	}
+	if active.State != SessionStateActive {
+		t.Fatalf("expected active, got %q", active.State)
+	}
+	if active.TunnelID == nil || *active.TunnelID != tunnel.ID {
+		t.Fatalf("tunnel id mismatch: %v", active.TunnelID)
+	}
+	if active.AcceptedAt == nil {
+		t.Fatalf("expected accepted_at populated")
+	}
+}
+
+func TestSessionRejectDirect(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	providerOrg, consumerOrg, providerAcct, consumerAcct, _, wg, ad := newSessionTestFixture(t, ctx, store)
+
+	sess := mustProposeSession(t, ctx, store, providerOrg, consumerOrg, providerAcct, consumerAcct, wg, ad)
+
+	closed, err := store.Sessions.MarkRejected(ctx, store.DB(), sess.ID, "not taking new")
+	if err != nil {
+		t.Fatalf("mark rejected: %v", err)
+	}
+	if closed.State != SessionStateClosed {
+		t.Fatalf("expected closed, got %q", closed.State)
+	}
+	if closed.CloseReason == nil || *closed.CloseReason != SessionCloseReasonRejected {
+		t.Fatalf("close reason mismatch: %v", closed.CloseReason)
+	}
+	if closed.CloseDetail == nil || *closed.CloseDetail != "not taking new" {
+		t.Fatalf("close detail mismatch: %v", closed.CloseDetail)
+	}
+}
+
+func TestSessionCloseIdempotent(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	providerOrg, consumerOrg, providerAcct, consumerAcct, _, wg, ad := newSessionTestFixture(t, ctx, store)
+
+	sess := mustProposeSession(t, ctx, store, providerOrg, consumerOrg, providerAcct, consumerAcct, wg, ad)
+	if _, err := store.Sessions.MarkClosed(ctx, store.DB(), sess.ID, SessionCloseReasonConsumerClose, ""); err != nil {
+		t.Fatalf("first close: %v", err)
+	}
+	again, err := store.Sessions.MarkClosed(ctx, store.DB(), sess.ID, SessionCloseReasonConsumerClose, "")
+	if err != nil {
+		t.Fatalf("idempotent close: %v", err)
+	}
+	if again.State != SessionStateClosed {
+		t.Fatalf("expected closed after re-close, got %q", again.State)
+	}
+}
+
+func TestSessionListFilters(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	providerOrg, consumerOrg, providerAcct, consumerAcct, _, wg, ad := newSessionTestFixture(t, ctx, store)
+
+	// three sessions
+	a := mustProposeSession(t, ctx, store, providerOrg, consumerOrg, providerAcct, consumerAcct, wg, ad)
+	_ = mustProposeSession(t, ctx, store, providerOrg, consumerOrg, providerAcct, consumerAcct, wg, ad)
+	c := mustProposeSession(t, ctx, store, providerOrg, consumerOrg, providerAcct, consumerAcct, wg, ad)
+
+	if _, err := store.Sessions.MarkClosed(ctx, store.DB(), c.ID, SessionCloseReasonConsumerClose, ""); err != nil {
+		t.Fatalf("close c: %v", err)
+	}
+
+	// as provider, see all three regardless of state
+	all, err := store.Sessions.List(ctx, store.DB(), SessionListParams{
+		ParticipantAccountID: providerAcct.ID, RoleFilter: "provider",
+	})
+	if err != nil {
+		t.Fatalf("list provider: %v", err)
+	}
+	if len(all) != 3 {
+		t.Fatalf("expected 3, got %d", len(all))
+	}
+
+	// filter to proposed only
+	proposedOnly, err := store.Sessions.List(ctx, store.DB(), SessionListParams{
+		ParticipantAccountID: providerAcct.ID, RoleFilter: "provider",
+		States: []SessionState{SessionStateProposed},
+	})
+	if err != nil {
+		t.Fatalf("list proposed: %v", err)
+	}
+	if len(proposedOnly) != 2 {
+		t.Fatalf("expected 2 proposed, got %d", len(proposedOnly))
+	}
+
+	// as consumer, see all three
+	asConsumer, err := store.Sessions.List(ctx, store.DB(), SessionListParams{
+		ParticipantAccountID: consumerAcct.ID, RoleFilter: "consumer",
+	})
+	if err != nil {
+		t.Fatalf("list consumer: %v", err)
+	}
+	if len(asConsumer) != 3 {
+		t.Fatalf("expected 3 for consumer, got %d", len(asConsumer))
+	}
+
+	_ = a
 }

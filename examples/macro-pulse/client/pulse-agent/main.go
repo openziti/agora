@@ -5,9 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/openziti/agora/internal/api"
 	"github.com/openziti/agora/sdk/agent"
+	"github.com/openziti/agora/sdk/agent/session"
 )
 
 func main() {
@@ -30,6 +32,34 @@ func main() {
 			return fmt.Errorf("unexpected catalog search response: %T", res)
 		}
 		a.Log().With("count", len(resp.Items)).Infof("discovered advertisements via catalog")
+
+		propose := func(ad api.Advertisement) {
+			if len(ad.WorkgroupScopes) == 0 {
+				a.Log().With("advertisement_id", ad.ID).Warnf("advertisement has no visible workgroup; skipping propose")
+				return
+			}
+			sess, err := session.Propose(ctx, a, ad.ID, session.ProposeOptions{
+				WorkgroupID: ad.WorkgroupScopes[0],
+				Message:     "macro-pulse morning brief",
+				Timeout:     15 * time.Second,
+			})
+			if err != nil {
+				a.Log().
+					With("advertisement_id", ad.ID).
+					With("provider_account_id", ad.AccountId).
+					Warnf("session propose failed: %v", err)
+				return
+			}
+			a.Log().
+				With("session_id", sess.ID).
+				With("tunnel_id", sess.TunnelID).
+				With("advertisement_id", sess.AdvertisementID).
+				Infof("session active; closing")
+			if err := sess.Close(ctx, "brief complete"); err != nil {
+				a.Log().With("session_id", sess.ID).Warnf("close session failed: %v", err)
+			}
+		}
+
 		for _, ad := range resp.Items {
 			capNames := make([]string, 0, len(ad.Capabilities))
 			for _, c := range ad.Capabilities {
@@ -41,7 +71,9 @@ func main() {
 				With("owner_account_id", ad.AccountId).
 				With("capabilities", capNames).
 				Infof("catalog entry")
+			propose(ad)
 		}
+
 		<-ctx.Done()
 		return nil
 	}); err != nil {

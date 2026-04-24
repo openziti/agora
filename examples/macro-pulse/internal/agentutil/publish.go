@@ -21,6 +21,7 @@ type AdvertisementSpec struct {
 	Capabilities        []api.AdvertisementCapability
 	InteractionPatterns []api.AdvertisementInteractionPattern
 	WorkgroupNames      []string
+	TunnelMode          api.AdvertisementTunnelMode // optional; defaults to "tcp" on the controller
 }
 
 // EnsureAdvertisement publishes the advertisement, or — when the
@@ -41,6 +42,9 @@ func EnsureAdvertisement(ctx context.Context, client *api.Client, spec Advertise
 	}
 	if spec.Description != "" {
 		req.Description.SetTo(spec.Description)
+	}
+	if spec.TunnelMode != "" {
+		req.TunnelMode.SetTo(spec.TunnelMode)
 	}
 
 	res, err := client.PublishAdvertisement(ctx, req)

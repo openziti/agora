@@ -124,6 +124,9 @@ func mapAdvertisement(ad *persistence.Advertisement, visibleScopes []string) *ap
 	if ad.RetractedAt != nil {
 		result.RetractedAt.SetTo(*ad.RetractedAt)
 	}
+	if ad.TunnelMode != "" {
+		result.TunnelMode.SetTo(api.AdvertisementTunnelMode(ad.TunnelMode))
+	}
 	return result
 }
 

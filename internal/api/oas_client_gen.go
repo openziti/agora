@@ -21,6 +21,10 @@ func trimTrailingSlashes(u *url.URL) {
 
 // Invoker invokes operations described by OpenAPI v3 specification.
 type Invoker interface {
+	// AcceptSession invokes acceptSession operation.
+	//
+	// POST /sessions/{sessionId}/accept
+	AcceptSession(ctx context.Context, request *AcceptSessionRequest, params AcceptSessionParams) (AcceptSessionRes, error)
 	// AcceptWorkgroupInvitation invokes acceptWorkgroupInvitation operation.
 	//
 	// POST /admin/workgroups/{workgroupId}/invitations/{organizationId}/accept
@@ -33,6 +37,10 @@ type Invoker interface {
 	//
 	// POST /workgroups/{workgroupId}/members
 	AddWorkgroupMember(ctx context.Context, request *AddWorkgroupMemberRequest, params AddWorkgroupMemberParams) (AddWorkgroupMemberRes, error)
+	// AdminCloseSession invokes adminCloseSession operation.
+	//
+	// POST /admin/sessions/{sessionId}/close
+	AdminCloseSession(ctx context.Context, request OptCloseSessionRequest, params AdminCloseSessionParams) (AdminCloseSessionRes, error)
 	// ChangePassword invokes changePassword operation.
 	//
 	// POST /account/change-password
@@ -41,6 +49,10 @@ type Invoker interface {
 	//
 	// PATCH /workgroups/{workgroupId}/members/{membershipId}
 	ChangeWorkgroupMembershipRole(ctx context.Context, request *ChangeWorkgroupMembershipRoleRequest, params ChangeWorkgroupMembershipRoleParams) (ChangeWorkgroupMembershipRoleRes, error)
+	// CloseSession invokes closeSession operation.
+	//
+	// POST /sessions/{sessionId}/close
+	CloseSession(ctx context.Context, request OptCloseSessionRequest, params CloseSessionParams) (CloseSessionRes, error)
 	// ConnectTunnel invokes connectTunnel operation.
 	//
 	// POST /tunnels/connect
@@ -105,6 +117,10 @@ type Invoker interface {
 	//
 	// GET /environments/{environmentId}
 	GetEnvironment(ctx context.Context, params GetEnvironmentParams) (GetEnvironmentRes, error)
+	// GetSession invokes getSession operation.
+	//
+	// GET /sessions/{sessionId}
+	GetSession(ctx context.Context, params GetSessionParams) (GetSessionRes, error)
 	// GetTunnel invokes getTunnel operation.
 	//
 	// GET /tunnels/{tunnelId}
@@ -149,6 +165,10 @@ type Invoker interface {
 	//
 	// GET /organizations
 	ListOrganizations(ctx context.Context) (ListOrganizationsRes, error)
+	// ListSessions invokes listSessions operation.
+	//
+	// GET /sessions
+	ListSessions(ctx context.Context, params ListSessionsParams) (ListSessionsRes, error)
 	// ListTunnelAttachments invokes listTunnelAttachments operation.
 	//
 	// GET /tunnels/{tunnelId}/attachments
@@ -177,6 +197,10 @@ type Invoker interface {
 	//
 	// POST /account/login
 	Login(ctx context.Context, request *LoginRequest) (LoginRes, error)
+	// ProposeSession invokes proposeSession operation.
+	//
+	// POST /sessions
+	ProposeSession(ctx context.Context, request *ProposeSessionRequest) (ProposeSessionRes, error)
 	// PublishAdvertisement invokes publishAdvertisement operation.
 	//
 	// POST /advertisements
@@ -185,6 +209,10 @@ type Invoker interface {
 	//
 	// POST /account/regenerate-token
 	RegenerateAccountToken(ctx context.Context, request *RegenerateTokenRequest) (RegenerateAccountTokenRes, error)
+	// RejectSession invokes rejectSession operation.
+	//
+	// POST /sessions/{sessionId}/reject
+	RejectSession(ctx context.Context, request OptCloseSessionRequest, params RejectSessionParams) (RejectSessionRes, error)
 	// RemoveTunnelGrant invokes removeTunnelGrant operation.
 	//
 	// DELETE /tunnels/{tunnelId}/grants/{accountId}
@@ -254,6 +282,104 @@ func (c *Client) requestURL(ctx context.Context) *url.URL {
 		return c.serverURL
 	}
 	return u
+}
+
+// AcceptSession invokes acceptSession operation.
+//
+// POST /sessions/{sessionId}/accept
+func (c *Client) AcceptSession(ctx context.Context, request *AcceptSessionRequest, params AcceptSessionParams) (AcceptSessionRes, error) {
+	res, err := c.sendAcceptSession(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendAcceptSession(ctx context.Context, request *AcceptSessionRequest, params AcceptSessionParams) (res AcceptSessionRes, err error) {
+	// Validate request before sending.
+	if err := func() error {
+		if err := request.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return res, errors.Wrap(err, "validate")
+	}
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/sessions/"
+	{
+		// Encode "sessionId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "sessionId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.SessionId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/accept"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeAcceptSessionRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, AcceptSessionOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeAcceptSessionResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
 }
 
 // AcceptWorkgroupInvitation invokes acceptWorkgroupInvitation operation.
@@ -569,6 +695,95 @@ func (c *Client) sendAddWorkgroupMember(ctx context.Context, request *AddWorkgro
 	return result, nil
 }
 
+// AdminCloseSession invokes adminCloseSession operation.
+//
+// POST /admin/sessions/{sessionId}/close
+func (c *Client) AdminCloseSession(ctx context.Context, request OptCloseSessionRequest, params AdminCloseSessionParams) (AdminCloseSessionRes, error) {
+	res, err := c.sendAdminCloseSession(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendAdminCloseSession(ctx context.Context, request OptCloseSessionRequest, params AdminCloseSessionParams) (res AdminCloseSessionRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/admin/sessions/"
+	{
+		// Encode "sessionId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "sessionId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.SessionId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/close"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeAdminCloseSessionRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAdminTokenAuth(ctx, AdminCloseSessionOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AdminTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeAdminCloseSessionResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // ChangePassword invokes changePassword operation.
 //
 // POST /account/change-password
@@ -757,6 +972,95 @@ func (c *Client) sendChangeWorkgroupMembershipRole(ctx context.Context, request 
 	defer resp.Body.Close()
 
 	result, err := decodeChangeWorkgroupMembershipRoleResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// CloseSession invokes closeSession operation.
+//
+// POST /sessions/{sessionId}/close
+func (c *Client) CloseSession(ctx context.Context, request OptCloseSessionRequest, params CloseSessionParams) (CloseSessionRes, error) {
+	res, err := c.sendCloseSession(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendCloseSession(ctx context.Context, request OptCloseSessionRequest, params CloseSessionParams) (res CloseSessionRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/sessions/"
+	{
+		// Encode "sessionId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "sessionId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.SessionId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/close"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeCloseSessionRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, CloseSessionOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeCloseSessionResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -2150,6 +2454,91 @@ func (c *Client) sendGetEnvironment(ctx context.Context, params GetEnvironmentPa
 	return result, nil
 }
 
+// GetSession invokes getSession operation.
+//
+// GET /sessions/{sessionId}
+func (c *Client) GetSession(ctx context.Context, params GetSessionParams) (GetSessionRes, error) {
+	res, err := c.sendGetSession(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetSession(ctx context.Context, params GetSessionParams) (res GetSessionRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/sessions/"
+	{
+		// Encode "sessionId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "sessionId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.SessionId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, GetSessionOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeGetSessionResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // GetTunnel invokes getTunnel operation.
 //
 // GET /tunnels/{tunnelId}
@@ -3092,6 +3481,136 @@ func (c *Client) sendListOrganizations(ctx context.Context) (res ListOrganizatio
 	return result, nil
 }
 
+// ListSessions invokes listSessions operation.
+//
+// GET /sessions
+func (c *Client) ListSessions(ctx context.Context, params ListSessionsParams) (ListSessionsRes, error) {
+	res, err := c.sendListSessions(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListSessions(ctx context.Context, params ListSessionsParams) (res ListSessionsRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/sessions"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "state" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "state",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if params.State != nil {
+				return e.EncodeArray(func(e uri.Encoder) error {
+					for i, item := range params.State {
+						if err := func() error {
+							return e.EncodeValue(conv.StringToString(string(item)))
+						}(); err != nil {
+							return errors.Wrapf(err, "[%d]", i)
+						}
+					}
+					return nil
+				})
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "role" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "role",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Role.Get(); ok {
+				return e.EncodeValue(conv.StringToString(string(val)))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "advertisementId" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "advertisementId",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.AdvertisementId.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, ListSessionsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeListSessionsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // ListTunnelAttachments invokes listTunnelAttachments operation.
 //
 // GET /tunnels/{tunnelId}/attachments
@@ -3637,6 +4156,85 @@ func (c *Client) sendLogin(ctx context.Context, request *LoginRequest) (res Logi
 	return result, nil
 }
 
+// ProposeSession invokes proposeSession operation.
+//
+// POST /sessions
+func (c *Client) ProposeSession(ctx context.Context, request *ProposeSessionRequest) (ProposeSessionRes, error) {
+	res, err := c.sendProposeSession(ctx, request)
+	return res, err
+}
+
+func (c *Client) sendProposeSession(ctx context.Context, request *ProposeSessionRequest) (res ProposeSessionRes, err error) {
+	// Validate request before sending.
+	if err := func() error {
+		if err := request.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return res, errors.Wrap(err, "validate")
+	}
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/sessions"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeProposeSessionRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, ProposeSessionOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeProposeSessionResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // PublishAdvertisement invokes publishAdvertisement operation.
 //
 // POST /advertisements
@@ -3788,6 +4386,95 @@ func (c *Client) sendRegenerateAccountToken(ctx context.Context, request *Regene
 	defer resp.Body.Close()
 
 	result, err := decodeRegenerateAccountTokenResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// RejectSession invokes rejectSession operation.
+//
+// POST /sessions/{sessionId}/reject
+func (c *Client) RejectSession(ctx context.Context, request OptCloseSessionRequest, params RejectSessionParams) (RejectSessionRes, error) {
+	res, err := c.sendRejectSession(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendRejectSession(ctx context.Context, request OptCloseSessionRequest, params RejectSessionParams) (res RejectSessionRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/sessions/"
+	{
+		// Encode "sessionId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "sessionId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.SessionId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/reject"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeRejectSessionRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, RejectSessionOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeRejectSessionResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

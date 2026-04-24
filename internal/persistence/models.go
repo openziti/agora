@@ -310,6 +310,48 @@ func marshalJSONB(src any) (driver.Value, error) {
 	return bytes, nil
 }
 
+type SessionState string
+
+const (
+	SessionStateProposed  SessionState = "proposed"
+	SessionStateAccepting SessionState = "accepting"
+	SessionStateActive    SessionState = "active"
+	SessionStateClosing   SessionState = "closing"
+	SessionStateClosed    SessionState = "closed"
+)
+
+type SessionCloseReason string
+
+const (
+	SessionCloseReasonRejected             SessionCloseReason = "rejected"
+	SessionCloseReasonConsumerClose        SessionCloseReason = "consumer_close"
+	SessionCloseReasonProviderClose        SessionCloseReason = "provider_close"
+	SessionCloseReasonContractViolation    SessionCloseReason = "contract_violation"
+	SessionCloseReasonTunnelFailed         SessionCloseReason = "tunnel_failed"
+	SessionCloseReasonAdminClose           SessionCloseReason = "admin_close"
+	SessionCloseReasonWorkgroupDeleted     SessionCloseReason = "workgroup_deleted"
+	SessionCloseReasonEnvironmentDisabled  SessionCloseReason = "environment_disabled"
+)
+
+type Session struct {
+	ID                     string              `db:"id"`
+	AdvertisementID        string              `db:"advertisement_id"`
+	WorkgroupID            string              `db:"workgroup_id"`
+	ProviderAccountID      string              `db:"provider_account_id"`
+	ProviderOrganizationID string              `db:"provider_organization_id"`
+	ConsumerAccountID      string              `db:"consumer_account_id"`
+	ConsumerOrganizationID string              `db:"consumer_organization_id"`
+	TunnelMode             TunnelMode          `db:"tunnel_mode"`
+	TunnelID               *string             `db:"tunnel_id"`
+	State                  SessionState        `db:"state"`
+	CloseReason            *SessionCloseReason `db:"close_reason"`
+	CloseDetail            *string             `db:"close_detail"`
+	ProposerMessage        *string             `db:"proposer_message"`
+	ProposedAt             time.Time           `db:"proposed_at"`
+	AcceptedAt             *time.Time          `db:"accepted_at"`
+	ClosedAt               *time.Time          `db:"closed_at"`
+}
+
 type Advertisement struct {
 	ID                  string                  `db:"id"`
 	OrganizationID      string                  `db:"organization_id"`
@@ -319,6 +361,7 @@ type Advertisement struct {
 	Capabilities        CapabilitiesJSON        `db:"capabilities"`
 	InteractionPatterns InteractionPatternsJSON `db:"interaction_patterns"`
 	WorkgroupScopes     pq.StringArray          `db:"workgroup_scopes"`
+	TunnelMode          TunnelMode              `db:"tunnel_mode"`
 	SchemaVersion       int                     `db:"schema_version"`
 	Status              AdvertisementStatus     `db:"status"`
 	RetractedAt         *time.Time              `db:"retracted_at"`

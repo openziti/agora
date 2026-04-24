@@ -120,9 +120,10 @@ Deterministic given inputs. No LLM calls. The `narrator` agent is template-drive
 Macro Pulse is rolled out incrementally, one increment per Layer 2 slice landing. See [docs/examples/macro-pulse.md](../../docs/examples/macro-pulse.md) "Slice Rollout" for the full dependency matrix. At the time of this document:
 
 - **Documentation and scaffolding**: in progress
-- **`bootstrap/` program** (needs workgroup slice): not started
-- **Provider/tool agents** (need advertisement + session + envelope slices): not started
-- **`pulse-agent` orchestrator**: skeleton only
+- **`bootstrap/` program**: shipped (workgroup slice)
+- **Provider/tool agents publish-on-startup** (catalog/advertisements slice): shipped
+- **Provider/tool agents accept sessions** (sessions slice): shipped — each agent registers a logging session handler
+- **`pulse-agent` orchestrator**: catalog discovery + session propose/close shipped; byte-level ping exchange deferred to envelopes slice
 
 Each slice's PR includes the corresponding advancement of this demo.
 

@@ -80,6 +80,19 @@ paths:
   /catalog/advertisements:
     $ref: "catalog/paths.yml#/~1catalog~1advertisements"
 
+  /sessions:
+    $ref: "sessions/paths.yml#/~1sessions"
+  /sessions/{sessionId}:
+    $ref: "sessions/paths.yml#/~1sessions~1{sessionId}"
+  /sessions/{sessionId}/accept:
+    $ref: "sessions/paths.yml#/~1sessions~1{sessionId}~1accept"
+  /sessions/{sessionId}/reject:
+    $ref: "sessions/paths.yml#/~1sessions~1{sessionId}~1reject"
+  /sessions/{sessionId}/close:
+    $ref: "sessions/paths.yml#/~1sessions~1{sessionId}~1close"
+  /admin/sessions/{sessionId}/close:
+    $ref: "sessions/paths.yml#/~1admin~1sessions~1{sessionId}~1close"
+
 components:
   securitySchemes:
     accountTokenAuth:
@@ -182,6 +195,8 @@ components:
       $ref: "advertisements/schemas.yml#/advertisementInteractionPatternKind"
     advertisementStatus:
       $ref: "advertisements/schemas.yml#/advertisementStatus"
+    advertisementTunnelMode:
+      $ref: "advertisements/schemas.yml#/advertisementTunnelMode"
     publishAdvertisementRequest:
       $ref: "advertisements/schemas.yml#/publishAdvertisementRequest"
     updateAdvertisementRequest:
@@ -190,3 +205,17 @@ components:
       $ref: "advertisements/schemas.yml#/listAdvertisementsResponse"
     catalogSearchResponse:
       $ref: "catalog/schemas.yml#/catalogSearchResponse"
+    session:
+      $ref: "sessions/schemas.yml#/session"
+    sessionState:
+      $ref: "sessions/schemas.yml#/sessionState"
+    sessionCloseReason:
+      $ref: "sessions/schemas.yml#/sessionCloseReason"
+    proposeSessionRequest:
+      $ref: "sessions/schemas.yml#/proposeSessionRequest"
+    acceptSessionRequest:
+      $ref: "sessions/schemas.yml#/acceptSessionRequest"
+    closeSessionRequest:
+      $ref: "sessions/schemas.yml#/closeSessionRequest"
+    listSessionsResponse:
+      $ref: "sessions/schemas.yml#/listSessionsResponse"

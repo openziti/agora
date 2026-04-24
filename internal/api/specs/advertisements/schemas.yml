@@ -39,6 +39,8 @@ advertisement:
       items:
         type: string
         pattern: '^wg_[a-z0-9]{12}$'
+    tunnelMode:
+      $ref: "#/advertisementTunnelMode"
     schemaVersion:
       type: integer
     status:
@@ -86,6 +88,10 @@ advertisementStatus:
   type: string
   enum: [active, retracted]
 
+advertisementTunnelMode:
+  type: string
+  enum: [http, tcp, udp]
+
 publishAdvertisementRequest:
   type: object
   required:
@@ -115,6 +121,8 @@ publishAdvertisementRequest:
       items:
         type: string
         pattern: '^wg_[a-z0-9]{12}$'
+    tunnelMode:
+      $ref: "#/advertisementTunnelMode"
 
 updateAdvertisementRequest:
   type: object
@@ -137,6 +145,8 @@ updateAdvertisementRequest:
       items:
         type: string
         pattern: '^wg_[a-z0-9]{12}$'
+    tunnelMode:
+      $ref: "#/advertisementTunnelMode"
 
 listAdvertisementsResponse:
   type: array

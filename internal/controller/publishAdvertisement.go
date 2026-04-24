@@ -49,11 +49,15 @@ func (s *Service) PublishAdvertisement(ctx context.Context, req *api.PublishAdve
 		Capabilities:        capabilitiesFromAPI(req.Capabilities),
 		InteractionPatterns: interactionPatternsFromAPI(req.InteractionPatterns),
 		WorkgroupScopes:     req.WorkgroupScopes,
+		TunnelMode:          persistence.TunnelModeTCP,
 		Status:              persistence.AdvertisementStatusActive,
 	}
 	if req.Description.Set {
 		v := req.Description.Value
 		ad.Description = &v
+	}
+	if req.TunnelMode.Set {
+		ad.TunnelMode = persistence.TunnelMode(req.TunnelMode.Value)
 	}
 
 	created, err := s.store.Advertisements.Create(ctx, s.store.DB(), ad)

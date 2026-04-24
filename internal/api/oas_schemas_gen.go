@@ -8,6 +8,45 @@ import (
 	"github.com/go-faster/errors"
 )
 
+type AcceptSessionBadRequest Error
+
+func (*AcceptSessionBadRequest) acceptSessionRes() {}
+
+type AcceptSessionConflict Error
+
+func (*AcceptSessionConflict) acceptSessionRes() {}
+
+type AcceptSessionForbidden Error
+
+func (*AcceptSessionForbidden) acceptSessionRes() {}
+
+type AcceptSessionInternalServerError Error
+
+func (*AcceptSessionInternalServerError) acceptSessionRes() {}
+
+type AcceptSessionNotFound Error
+
+func (*AcceptSessionNotFound) acceptSessionRes() {}
+
+// Ref: #/acceptSessionRequest
+type AcceptSessionRequest struct {
+	EnvironmentId string `json:"environmentId"`
+}
+
+// GetEnvironmentId returns the value of EnvironmentId.
+func (s *AcceptSessionRequest) GetEnvironmentId() string {
+	return s.EnvironmentId
+}
+
+// SetEnvironmentId sets the value of EnvironmentId.
+func (s *AcceptSessionRequest) SetEnvironmentId(val string) {
+	s.EnvironmentId = val
+}
+
+type AcceptSessionUnauthorized Error
+
+func (*AcceptSessionUnauthorized) acceptSessionRes() {}
+
 type AcceptWorkgroupInvitationBadRequest Error
 
 func (*AcceptWorkgroupInvitationBadRequest) acceptWorkgroupInvitationRes() {}
@@ -382,6 +421,23 @@ type AddWorkgroupMemberUnauthorized Error
 
 func (*AddWorkgroupMemberUnauthorized) addWorkgroupMemberRes() {}
 
+type AdminCloseSessionInternalServerError Error
+
+func (*AdminCloseSessionInternalServerError) adminCloseSessionRes() {}
+
+// AdminCloseSessionNoContent is response for AdminCloseSession operation.
+type AdminCloseSessionNoContent struct{}
+
+func (*AdminCloseSessionNoContent) adminCloseSessionRes() {}
+
+type AdminCloseSessionNotFound Error
+
+func (*AdminCloseSessionNotFound) adminCloseSessionRes() {}
+
+type AdminCloseSessionUnauthorized Error
+
+func (*AdminCloseSessionUnauthorized) adminCloseSessionRes() {}
+
 type AdminTokenAuth struct {
 	APIKey string
 	Roles  []string
@@ -443,6 +499,7 @@ type Advertisement struct {
 	Capabilities        []AdvertisementCapability         `json:"capabilities"`
 	InteractionPatterns []AdvertisementInteractionPattern `json:"interactionPatterns"`
 	WorkgroupScopes     []string                          `json:"workgroupScopes"`
+	TunnelMode          OptAdvertisementTunnelMode        `json:"tunnelMode"`
 	SchemaVersion       int                               `json:"schemaVersion"`
 	Status              AdvertisementStatus               `json:"status"`
 	RetractedAt         OptDateTime                       `json:"retractedAt"`
@@ -488,6 +545,11 @@ func (s *Advertisement) GetInteractionPatterns() []AdvertisementInteractionPatte
 // GetWorkgroupScopes returns the value of WorkgroupScopes.
 func (s *Advertisement) GetWorkgroupScopes() []string {
 	return s.WorkgroupScopes
+}
+
+// GetTunnelMode returns the value of TunnelMode.
+func (s *Advertisement) GetTunnelMode() OptAdvertisementTunnelMode {
+	return s.TunnelMode
 }
 
 // GetSchemaVersion returns the value of SchemaVersion.
@@ -553,6 +615,11 @@ func (s *Advertisement) SetInteractionPatterns(val []AdvertisementInteractionPat
 // SetWorkgroupScopes sets the value of WorkgroupScopes.
 func (s *Advertisement) SetWorkgroupScopes(val []string) {
 	s.WorkgroupScopes = val
+}
+
+// SetTunnelMode sets the value of TunnelMode.
+func (s *Advertisement) SetTunnelMode(val OptAdvertisementTunnelMode) {
+	s.TunnelMode = val
 }
 
 // SetSchemaVersion sets the value of SchemaVersion.
@@ -756,6 +823,55 @@ func (s *AdvertisementStatus) UnmarshalText(data []byte) error {
 	}
 }
 
+// Ref: #/advertisementTunnelMode
+type AdvertisementTunnelMode string
+
+const (
+	AdvertisementTunnelModeHTTP AdvertisementTunnelMode = "http"
+	AdvertisementTunnelModeTCP  AdvertisementTunnelMode = "tcp"
+	AdvertisementTunnelModeUDP  AdvertisementTunnelMode = "udp"
+)
+
+// AllValues returns all AdvertisementTunnelMode values.
+func (AdvertisementTunnelMode) AllValues() []AdvertisementTunnelMode {
+	return []AdvertisementTunnelMode{
+		AdvertisementTunnelModeHTTP,
+		AdvertisementTunnelModeTCP,
+		AdvertisementTunnelModeUDP,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s AdvertisementTunnelMode) MarshalText() ([]byte, error) {
+	switch s {
+	case AdvertisementTunnelModeHTTP:
+		return []byte(s), nil
+	case AdvertisementTunnelModeTCP:
+		return []byte(s), nil
+	case AdvertisementTunnelModeUDP:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AdvertisementTunnelMode) UnmarshalText(data []byte) error {
+	switch AdvertisementTunnelMode(data) {
+	case AdvertisementTunnelModeHTTP:
+		*s = AdvertisementTunnelModeHTTP
+		return nil
+	case AdvertisementTunnelModeTCP:
+		*s = AdvertisementTunnelModeTCP
+		return nil
+	case AdvertisementTunnelModeUDP:
+		*s = AdvertisementTunnelModeUDP
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 // Ref: #/catalogSearchResponse
 type CatalogSearchResponse struct {
 	Items      []Advertisement `json:"items"`
@@ -880,6 +996,42 @@ func (s *ChangeWorkgroupMembershipRoleRequest) SetRole(val WorkgroupMembershipRo
 type ChangeWorkgroupMembershipRoleUnauthorized Error
 
 func (*ChangeWorkgroupMembershipRoleUnauthorized) changeWorkgroupMembershipRoleRes() {}
+
+type CloseSessionForbidden Error
+
+func (*CloseSessionForbidden) closeSessionRes() {}
+
+type CloseSessionInternalServerError Error
+
+func (*CloseSessionInternalServerError) closeSessionRes() {}
+
+// CloseSessionNoContent is response for CloseSession operation.
+type CloseSessionNoContent struct{}
+
+func (*CloseSessionNoContent) closeSessionRes() {}
+
+type CloseSessionNotFound Error
+
+func (*CloseSessionNotFound) closeSessionRes() {}
+
+// Ref: #/closeSessionRequest
+type CloseSessionRequest struct {
+	Reason OptString `json:"reason"`
+}
+
+// GetReason returns the value of Reason.
+func (s *CloseSessionRequest) GetReason() OptString {
+	return s.Reason
+}
+
+// SetReason sets the value of Reason.
+func (s *CloseSessionRequest) SetReason(val OptString) {
+	s.Reason = val
+}
+
+type CloseSessionUnauthorized Error
+
+func (*CloseSessionUnauthorized) closeSessionRes() {}
 
 type ConnectTunnelConflict Error
 
@@ -1815,6 +1967,18 @@ type GetEnvironmentUnauthorized Error
 
 func (*GetEnvironmentUnauthorized) getEnvironmentRes() {}
 
+type GetSessionInternalServerError Error
+
+func (*GetSessionInternalServerError) getSessionRes() {}
+
+type GetSessionNotFound Error
+
+func (*GetSessionNotFound) getSessionRes() {}
+
+type GetSessionUnauthorized Error
+
+func (*GetSessionUnauthorized) getSessionRes() {}
+
 type GetTunnelInternalServerError Error
 
 func (*GetTunnelInternalServerError) getTunnelRes() {}
@@ -2018,6 +2182,70 @@ func (*ListOrganizationsResponse) listOrganizationsRes() {}
 type ListOrganizationsUnauthorized Error
 
 func (*ListOrganizationsUnauthorized) listOrganizationsRes() {}
+
+type ListSessionsBadRequest Error
+
+func (*ListSessionsBadRequest) listSessionsRes() {}
+
+type ListSessionsInternalServerError Error
+
+func (*ListSessionsInternalServerError) listSessionsRes() {}
+
+type ListSessionsResponse []Session
+
+func (*ListSessionsResponse) listSessionsRes() {}
+
+type ListSessionsRole string
+
+const (
+	ListSessionsRoleProvider ListSessionsRole = "provider"
+	ListSessionsRoleConsumer ListSessionsRole = "consumer"
+	ListSessionsRoleBoth     ListSessionsRole = "both"
+)
+
+// AllValues returns all ListSessionsRole values.
+func (ListSessionsRole) AllValues() []ListSessionsRole {
+	return []ListSessionsRole{
+		ListSessionsRoleProvider,
+		ListSessionsRoleConsumer,
+		ListSessionsRoleBoth,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ListSessionsRole) MarshalText() ([]byte, error) {
+	switch s {
+	case ListSessionsRoleProvider:
+		return []byte(s), nil
+	case ListSessionsRoleConsumer:
+		return []byte(s), nil
+	case ListSessionsRoleBoth:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ListSessionsRole) UnmarshalText(data []byte) error {
+	switch ListSessionsRole(data) {
+	case ListSessionsRoleProvider:
+		*s = ListSessionsRoleProvider
+		return nil
+	case ListSessionsRoleConsumer:
+		*s = ListSessionsRoleConsumer
+		return nil
+	case ListSessionsRoleBoth:
+		*s = ListSessionsRoleBoth
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type ListSessionsUnauthorized Error
+
+func (*ListSessionsUnauthorized) listSessionsRes() {}
 
 type ListTunnelAttachmentsInternalServerError Error
 
@@ -2277,6 +2505,98 @@ func (o OptAdvertisementStatus) Or(d AdvertisementStatus) AdvertisementStatus {
 	return d
 }
 
+// NewOptAdvertisementTunnelMode returns new OptAdvertisementTunnelMode with value set to v.
+func NewOptAdvertisementTunnelMode(v AdvertisementTunnelMode) OptAdvertisementTunnelMode {
+	return OptAdvertisementTunnelMode{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptAdvertisementTunnelMode is optional AdvertisementTunnelMode.
+type OptAdvertisementTunnelMode struct {
+	Value AdvertisementTunnelMode
+	Set   bool
+}
+
+// IsSet returns true if OptAdvertisementTunnelMode was set.
+func (o OptAdvertisementTunnelMode) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptAdvertisementTunnelMode) Reset() {
+	var v AdvertisementTunnelMode
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptAdvertisementTunnelMode) SetTo(v AdvertisementTunnelMode) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptAdvertisementTunnelMode) Get() (v AdvertisementTunnelMode, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptAdvertisementTunnelMode) Or(d AdvertisementTunnelMode) AdvertisementTunnelMode {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptCloseSessionRequest returns new OptCloseSessionRequest with value set to v.
+func NewOptCloseSessionRequest(v CloseSessionRequest) OptCloseSessionRequest {
+	return OptCloseSessionRequest{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptCloseSessionRequest is optional CloseSessionRequest.
+type OptCloseSessionRequest struct {
+	Value CloseSessionRequest
+	Set   bool
+}
+
+// IsSet returns true if OptCloseSessionRequest was set.
+func (o OptCloseSessionRequest) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptCloseSessionRequest) Reset() {
+	var v CloseSessionRequest
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptCloseSessionRequest) SetTo(v CloseSessionRequest) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptCloseSessionRequest) Get() (v CloseSessionRequest, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptCloseSessionRequest) Or(d CloseSessionRequest) CloseSessionRequest {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptCreateAccountRequestRole returns new OptCreateAccountRequestRole with value set to v.
 func NewOptCreateAccountRequestRole(v CreateAccountRequestRole) OptCreateAccountRequestRole {
 	return OptCreateAccountRequestRole{
@@ -2507,6 +2827,52 @@ func (o OptListAdminWorkgroupsState) Or(d ListAdminWorkgroupsState) ListAdminWor
 	return d
 }
 
+// NewOptListSessionsRole returns new OptListSessionsRole with value set to v.
+func NewOptListSessionsRole(v ListSessionsRole) OptListSessionsRole {
+	return OptListSessionsRole{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptListSessionsRole is optional ListSessionsRole.
+type OptListSessionsRole struct {
+	Value ListSessionsRole
+	Set   bool
+}
+
+// IsSet returns true if OptListSessionsRole was set.
+func (o OptListSessionsRole) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptListSessionsRole) Reset() {
+	var v ListSessionsRole
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptListSessionsRole) SetTo(v ListSessionsRole) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptListSessionsRole) Get() (v ListSessionsRole, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptListSessionsRole) Or(d ListSessionsRole) ListSessionsRole {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptListTunnelsScope returns new OptListTunnelsScope with value set to v.
 func NewOptListTunnelsScope(v ListTunnelsScope) OptListTunnelsScope {
 	return OptListTunnelsScope{
@@ -2547,6 +2913,52 @@ func (o OptListTunnelsScope) Get() (v ListTunnelsScope, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptListTunnelsScope) Or(d ListTunnelsScope) ListTunnelsScope {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptSessionCloseReason returns new OptSessionCloseReason with value set to v.
+func NewOptSessionCloseReason(v SessionCloseReason) OptSessionCloseReason {
+	return OptSessionCloseReason{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptSessionCloseReason is optional SessionCloseReason.
+type OptSessionCloseReason struct {
+	Value SessionCloseReason
+	Set   bool
+}
+
+// IsSet returns true if OptSessionCloseReason was set.
+func (o OptSessionCloseReason) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptSessionCloseReason) Reset() {
+	var v SessionCloseReason
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptSessionCloseReason) SetTo(v SessionCloseReason) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptSessionCloseReason) Get() (v SessionCloseReason, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptSessionCloseReason) Or(d SessionCloseReason) SessionCloseReason {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -2741,6 +3153,63 @@ func (s *Organization) SetUpdatedAt(val time.Time) {
 
 func (*Organization) createOrganizationRes() {}
 
+type ProposeSessionBadRequest Error
+
+func (*ProposeSessionBadRequest) proposeSessionRes() {}
+
+type ProposeSessionConflict Error
+
+func (*ProposeSessionConflict) proposeSessionRes() {}
+
+type ProposeSessionInternalServerError Error
+
+func (*ProposeSessionInternalServerError) proposeSessionRes() {}
+
+type ProposeSessionNotFound Error
+
+func (*ProposeSessionNotFound) proposeSessionRes() {}
+
+// Ref: #/proposeSessionRequest
+type ProposeSessionRequest struct {
+	AdvertisementId string    `json:"advertisementId"`
+	WorkgroupId     string    `json:"workgroupId"`
+	ProposerMessage OptString `json:"proposerMessage"`
+}
+
+// GetAdvertisementId returns the value of AdvertisementId.
+func (s *ProposeSessionRequest) GetAdvertisementId() string {
+	return s.AdvertisementId
+}
+
+// GetWorkgroupId returns the value of WorkgroupId.
+func (s *ProposeSessionRequest) GetWorkgroupId() string {
+	return s.WorkgroupId
+}
+
+// GetProposerMessage returns the value of ProposerMessage.
+func (s *ProposeSessionRequest) GetProposerMessage() OptString {
+	return s.ProposerMessage
+}
+
+// SetAdvertisementId sets the value of AdvertisementId.
+func (s *ProposeSessionRequest) SetAdvertisementId(val string) {
+	s.AdvertisementId = val
+}
+
+// SetWorkgroupId sets the value of WorkgroupId.
+func (s *ProposeSessionRequest) SetWorkgroupId(val string) {
+	s.WorkgroupId = val
+}
+
+// SetProposerMessage sets the value of ProposerMessage.
+func (s *ProposeSessionRequest) SetProposerMessage(val OptString) {
+	s.ProposerMessage = val
+}
+
+type ProposeSessionUnauthorized Error
+
+func (*ProposeSessionUnauthorized) proposeSessionRes() {}
+
 type PublishAdvertisementBadRequest Error
 
 func (*PublishAdvertisementBadRequest) publishAdvertisementRes() {}
@@ -2764,6 +3233,7 @@ type PublishAdvertisementRequest struct {
 	Capabilities        []AdvertisementCapability         `json:"capabilities"`
 	InteractionPatterns []AdvertisementInteractionPattern `json:"interactionPatterns"`
 	WorkgroupScopes     []string                          `json:"workgroupScopes"`
+	TunnelMode          OptAdvertisementTunnelMode        `json:"tunnelMode"`
 }
 
 // GetName returns the value of Name.
@@ -2791,6 +3261,11 @@ func (s *PublishAdvertisementRequest) GetWorkgroupScopes() []string {
 	return s.WorkgroupScopes
 }
 
+// GetTunnelMode returns the value of TunnelMode.
+func (s *PublishAdvertisementRequest) GetTunnelMode() OptAdvertisementTunnelMode {
+	return s.TunnelMode
+}
+
 // SetName sets the value of Name.
 func (s *PublishAdvertisementRequest) SetName(val string) {
 	s.Name = val
@@ -2814,6 +3289,11 @@ func (s *PublishAdvertisementRequest) SetInteractionPatterns(val []Advertisement
 // SetWorkgroupScopes sets the value of WorkgroupScopes.
 func (s *PublishAdvertisementRequest) SetWorkgroupScopes(val []string) {
 	s.WorkgroupScopes = val
+}
+
+// SetTunnelMode sets the value of TunnelMode.
+func (s *PublishAdvertisementRequest) SetTunnelMode(val OptAdvertisementTunnelMode) {
+	s.TunnelMode = val
 }
 
 type PublishAdvertisementUnauthorized Error
@@ -2846,6 +3326,31 @@ func (s *RegenerateTokenRequest) GetEmail() string {
 func (s *RegenerateTokenRequest) SetEmail(val string) {
 	s.Email = val
 }
+
+type RejectSessionConflict Error
+
+func (*RejectSessionConflict) rejectSessionRes() {}
+
+type RejectSessionForbidden Error
+
+func (*RejectSessionForbidden) rejectSessionRes() {}
+
+type RejectSessionInternalServerError Error
+
+func (*RejectSessionInternalServerError) rejectSessionRes() {}
+
+// RejectSessionNoContent is response for RejectSession operation.
+type RejectSessionNoContent struct{}
+
+func (*RejectSessionNoContent) rejectSessionRes() {}
+
+type RejectSessionNotFound Error
+
+func (*RejectSessionNotFound) rejectSessionRes() {}
+
+type RejectSessionUnauthorized Error
+
+func (*RejectSessionUnauthorized) rejectSessionRes() {}
 
 type RemoveTunnelGrantInternalServerError Error
 
@@ -2921,6 +3426,337 @@ func (*SearchCatalogInternalServerError) searchCatalogRes() {}
 type SearchCatalogUnauthorized Error
 
 func (*SearchCatalogUnauthorized) searchCatalogRes() {}
+
+// Ref: #/session
+type Session struct {
+	ID                     string                  `json:"id"`
+	AdvertisementId        string                  `json:"advertisementId"`
+	WorkgroupId            string                  `json:"workgroupId"`
+	ProviderAccountId      string                  `json:"providerAccountId"`
+	ProviderOrganizationId string                  `json:"providerOrganizationId"`
+	ConsumerAccountId      string                  `json:"consumerAccountId"`
+	ConsumerOrganizationId string                  `json:"consumerOrganizationId"`
+	TunnelMode             AdvertisementTunnelMode `json:"tunnelMode"`
+	TunnelId               OptString               `json:"tunnelId"`
+	State                  SessionState            `json:"state"`
+	CloseReason            OptSessionCloseReason   `json:"closeReason"`
+	CloseDetail            OptString               `json:"closeDetail"`
+	ProposerMessage        OptString               `json:"proposerMessage"`
+	ProposedAt             time.Time               `json:"proposedAt"`
+	AcceptedAt             OptDateTime             `json:"acceptedAt"`
+	ClosedAt               OptDateTime             `json:"closedAt"`
+}
+
+// GetID returns the value of ID.
+func (s *Session) GetID() string {
+	return s.ID
+}
+
+// GetAdvertisementId returns the value of AdvertisementId.
+func (s *Session) GetAdvertisementId() string {
+	return s.AdvertisementId
+}
+
+// GetWorkgroupId returns the value of WorkgroupId.
+func (s *Session) GetWorkgroupId() string {
+	return s.WorkgroupId
+}
+
+// GetProviderAccountId returns the value of ProviderAccountId.
+func (s *Session) GetProviderAccountId() string {
+	return s.ProviderAccountId
+}
+
+// GetProviderOrganizationId returns the value of ProviderOrganizationId.
+func (s *Session) GetProviderOrganizationId() string {
+	return s.ProviderOrganizationId
+}
+
+// GetConsumerAccountId returns the value of ConsumerAccountId.
+func (s *Session) GetConsumerAccountId() string {
+	return s.ConsumerAccountId
+}
+
+// GetConsumerOrganizationId returns the value of ConsumerOrganizationId.
+func (s *Session) GetConsumerOrganizationId() string {
+	return s.ConsumerOrganizationId
+}
+
+// GetTunnelMode returns the value of TunnelMode.
+func (s *Session) GetTunnelMode() AdvertisementTunnelMode {
+	return s.TunnelMode
+}
+
+// GetTunnelId returns the value of TunnelId.
+func (s *Session) GetTunnelId() OptString {
+	return s.TunnelId
+}
+
+// GetState returns the value of State.
+func (s *Session) GetState() SessionState {
+	return s.State
+}
+
+// GetCloseReason returns the value of CloseReason.
+func (s *Session) GetCloseReason() OptSessionCloseReason {
+	return s.CloseReason
+}
+
+// GetCloseDetail returns the value of CloseDetail.
+func (s *Session) GetCloseDetail() OptString {
+	return s.CloseDetail
+}
+
+// GetProposerMessage returns the value of ProposerMessage.
+func (s *Session) GetProposerMessage() OptString {
+	return s.ProposerMessage
+}
+
+// GetProposedAt returns the value of ProposedAt.
+func (s *Session) GetProposedAt() time.Time {
+	return s.ProposedAt
+}
+
+// GetAcceptedAt returns the value of AcceptedAt.
+func (s *Session) GetAcceptedAt() OptDateTime {
+	return s.AcceptedAt
+}
+
+// GetClosedAt returns the value of ClosedAt.
+func (s *Session) GetClosedAt() OptDateTime {
+	return s.ClosedAt
+}
+
+// SetID sets the value of ID.
+func (s *Session) SetID(val string) {
+	s.ID = val
+}
+
+// SetAdvertisementId sets the value of AdvertisementId.
+func (s *Session) SetAdvertisementId(val string) {
+	s.AdvertisementId = val
+}
+
+// SetWorkgroupId sets the value of WorkgroupId.
+func (s *Session) SetWorkgroupId(val string) {
+	s.WorkgroupId = val
+}
+
+// SetProviderAccountId sets the value of ProviderAccountId.
+func (s *Session) SetProviderAccountId(val string) {
+	s.ProviderAccountId = val
+}
+
+// SetProviderOrganizationId sets the value of ProviderOrganizationId.
+func (s *Session) SetProviderOrganizationId(val string) {
+	s.ProviderOrganizationId = val
+}
+
+// SetConsumerAccountId sets the value of ConsumerAccountId.
+func (s *Session) SetConsumerAccountId(val string) {
+	s.ConsumerAccountId = val
+}
+
+// SetConsumerOrganizationId sets the value of ConsumerOrganizationId.
+func (s *Session) SetConsumerOrganizationId(val string) {
+	s.ConsumerOrganizationId = val
+}
+
+// SetTunnelMode sets the value of TunnelMode.
+func (s *Session) SetTunnelMode(val AdvertisementTunnelMode) {
+	s.TunnelMode = val
+}
+
+// SetTunnelId sets the value of TunnelId.
+func (s *Session) SetTunnelId(val OptString) {
+	s.TunnelId = val
+}
+
+// SetState sets the value of State.
+func (s *Session) SetState(val SessionState) {
+	s.State = val
+}
+
+// SetCloseReason sets the value of CloseReason.
+func (s *Session) SetCloseReason(val OptSessionCloseReason) {
+	s.CloseReason = val
+}
+
+// SetCloseDetail sets the value of CloseDetail.
+func (s *Session) SetCloseDetail(val OptString) {
+	s.CloseDetail = val
+}
+
+// SetProposerMessage sets the value of ProposerMessage.
+func (s *Session) SetProposerMessage(val OptString) {
+	s.ProposerMessage = val
+}
+
+// SetProposedAt sets the value of ProposedAt.
+func (s *Session) SetProposedAt(val time.Time) {
+	s.ProposedAt = val
+}
+
+// SetAcceptedAt sets the value of AcceptedAt.
+func (s *Session) SetAcceptedAt(val OptDateTime) {
+	s.AcceptedAt = val
+}
+
+// SetClosedAt sets the value of ClosedAt.
+func (s *Session) SetClosedAt(val OptDateTime) {
+	s.ClosedAt = val
+}
+
+func (*Session) acceptSessionRes()  {}
+func (*Session) getSessionRes()     {}
+func (*Session) proposeSessionRes() {}
+
+// Ref: #/sessionCloseReason
+type SessionCloseReason string
+
+const (
+	SessionCloseReasonRejected            SessionCloseReason = "rejected"
+	SessionCloseReasonConsumerClose       SessionCloseReason = "consumer_close"
+	SessionCloseReasonProviderClose       SessionCloseReason = "provider_close"
+	SessionCloseReasonContractViolation   SessionCloseReason = "contract_violation"
+	SessionCloseReasonTunnelFailed        SessionCloseReason = "tunnel_failed"
+	SessionCloseReasonAdminClose          SessionCloseReason = "admin_close"
+	SessionCloseReasonWorkgroupDeleted    SessionCloseReason = "workgroup_deleted"
+	SessionCloseReasonEnvironmentDisabled SessionCloseReason = "environment_disabled"
+)
+
+// AllValues returns all SessionCloseReason values.
+func (SessionCloseReason) AllValues() []SessionCloseReason {
+	return []SessionCloseReason{
+		SessionCloseReasonRejected,
+		SessionCloseReasonConsumerClose,
+		SessionCloseReasonProviderClose,
+		SessionCloseReasonContractViolation,
+		SessionCloseReasonTunnelFailed,
+		SessionCloseReasonAdminClose,
+		SessionCloseReasonWorkgroupDeleted,
+		SessionCloseReasonEnvironmentDisabled,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SessionCloseReason) MarshalText() ([]byte, error) {
+	switch s {
+	case SessionCloseReasonRejected:
+		return []byte(s), nil
+	case SessionCloseReasonConsumerClose:
+		return []byte(s), nil
+	case SessionCloseReasonProviderClose:
+		return []byte(s), nil
+	case SessionCloseReasonContractViolation:
+		return []byte(s), nil
+	case SessionCloseReasonTunnelFailed:
+		return []byte(s), nil
+	case SessionCloseReasonAdminClose:
+		return []byte(s), nil
+	case SessionCloseReasonWorkgroupDeleted:
+		return []byte(s), nil
+	case SessionCloseReasonEnvironmentDisabled:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SessionCloseReason) UnmarshalText(data []byte) error {
+	switch SessionCloseReason(data) {
+	case SessionCloseReasonRejected:
+		*s = SessionCloseReasonRejected
+		return nil
+	case SessionCloseReasonConsumerClose:
+		*s = SessionCloseReasonConsumerClose
+		return nil
+	case SessionCloseReasonProviderClose:
+		*s = SessionCloseReasonProviderClose
+		return nil
+	case SessionCloseReasonContractViolation:
+		*s = SessionCloseReasonContractViolation
+		return nil
+	case SessionCloseReasonTunnelFailed:
+		*s = SessionCloseReasonTunnelFailed
+		return nil
+	case SessionCloseReasonAdminClose:
+		*s = SessionCloseReasonAdminClose
+		return nil
+	case SessionCloseReasonWorkgroupDeleted:
+		*s = SessionCloseReasonWorkgroupDeleted
+		return nil
+	case SessionCloseReasonEnvironmentDisabled:
+		*s = SessionCloseReasonEnvironmentDisabled
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/sessionState
+type SessionState string
+
+const (
+	SessionStateProposed  SessionState = "proposed"
+	SessionStateAccepting SessionState = "accepting"
+	SessionStateActive    SessionState = "active"
+	SessionStateClosing   SessionState = "closing"
+	SessionStateClosed    SessionState = "closed"
+)
+
+// AllValues returns all SessionState values.
+func (SessionState) AllValues() []SessionState {
+	return []SessionState{
+		SessionStateProposed,
+		SessionStateAccepting,
+		SessionStateActive,
+		SessionStateClosing,
+		SessionStateClosed,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s SessionState) MarshalText() ([]byte, error) {
+	switch s {
+	case SessionStateProposed:
+		return []byte(s), nil
+	case SessionStateAccepting:
+		return []byte(s), nil
+	case SessionStateActive:
+		return []byte(s), nil
+	case SessionStateClosing:
+		return []byte(s), nil
+	case SessionStateClosed:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *SessionState) UnmarshalText(data []byte) error {
+	switch SessionState(data) {
+	case SessionStateProposed:
+		*s = SessionStateProposed
+		return nil
+	case SessionStateAccepting:
+		*s = SessionStateAccepting
+		return nil
+	case SessionStateActive:
+		*s = SessionStateActive
+		return nil
+	case SessionStateClosing:
+		*s = SessionStateClosing
+		return nil
+	case SessionStateClosed:
+		*s = SessionStateClosed
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 type StartTunnelServeConflict Error
 
@@ -3685,6 +4521,7 @@ type UpdateAdvertisementRequest struct {
 	Capabilities        []AdvertisementCapability         `json:"capabilities"`
 	InteractionPatterns []AdvertisementInteractionPattern `json:"interactionPatterns"`
 	WorkgroupScopes     []string                          `json:"workgroupScopes"`
+	TunnelMode          OptAdvertisementTunnelMode        `json:"tunnelMode"`
 }
 
 // GetName returns the value of Name.
@@ -3712,6 +4549,11 @@ func (s *UpdateAdvertisementRequest) GetWorkgroupScopes() []string {
 	return s.WorkgroupScopes
 }
 
+// GetTunnelMode returns the value of TunnelMode.
+func (s *UpdateAdvertisementRequest) GetTunnelMode() OptAdvertisementTunnelMode {
+	return s.TunnelMode
+}
+
 // SetName sets the value of Name.
 func (s *UpdateAdvertisementRequest) SetName(val OptString) {
 	s.Name = val
@@ -3735,6 +4577,11 @@ func (s *UpdateAdvertisementRequest) SetInteractionPatterns(val []AdvertisementI
 // SetWorkgroupScopes sets the value of WorkgroupScopes.
 func (s *UpdateAdvertisementRequest) SetWorkgroupScopes(val []string) {
 	s.WorkgroupScopes = val
+}
+
+// SetTunnelMode sets the value of TunnelMode.
+func (s *UpdateAdvertisementRequest) SetTunnelMode(val OptAdvertisementTunnelMode) {
+	s.TunnelMode = val
 }
 
 type UpdateAdvertisementUnauthorized Error
