@@ -9,6 +9,7 @@ require (
 	github.com/jackc/pgx/v5 v5.7.6
 	github.com/jedib0t/go-pretty/v6 v6.6.8
 	github.com/jmoiron/sqlx v1.4.0
+	github.com/lib/pq v1.12.3
 	github.com/michaelquigley/df v0.3.14
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/ogen-go/ogen v1.15.1

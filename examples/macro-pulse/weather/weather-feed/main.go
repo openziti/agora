@@ -5,6 +5,8 @@ import (
 	"flag"
 	"os"
 
+	"github.com/openziti/agora/examples/macro-pulse/internal/agentutil"
+	"github.com/openziti/agora/internal/api"
 	"github.com/openziti/agora/sdk/agent"
 )
 
@@ -17,7 +19,21 @@ func main() {
 		agent.WithRuntime(),
 	)
 	if err := app.Run(func(ctx context.Context, a *agent.Agent) error {
-		a.Log().Info("alive")
+		ad, err := agentutil.EnsureAdvertisement(ctx, a.Controller(), agentutil.AdvertisementSpec{
+			Name:        "weather-feed",
+			Description: "Current conditions and forecasts for economic hubs",
+			Capabilities: []api.AdvertisementCapability{
+				{Name: "weather.current", Description: api.NewOptString("Current conditions for configured cities")},
+				{Name: "weather.forecast", Description: api.NewOptString("Short-horizon forecast for configured cities")},
+			},
+			InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
+			WorkgroupNames:      []string{"weather-channel"},
+		})
+		if err != nil {
+			a.Log().Errorf("publish advertisement: %v", err)
+			return err
+		}
+		a.Log().With("advertisement_id", ad.ID).Infof("alive; advertisement published")
 		<-ctx.Done()
 		return nil
 	}); err != nil {

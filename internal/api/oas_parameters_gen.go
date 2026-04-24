@@ -3,6 +3,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 
@@ -1343,6 +1344,87 @@ func decodeDisableEnvironmentParams(args [1]string, argsEscaped bool, r *http.Re
 	return params, nil
 }
 
+// GetAdvertisementParams is parameters of getAdvertisement operation.
+type GetAdvertisementParams struct {
+	AdvertisementId string
+}
+
+func unpackGetAdvertisementParams(packed middleware.Parameters) (params GetAdvertisementParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "advertisementId",
+			In:   "path",
+		}
+		params.AdvertisementId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeGetAdvertisementParams(args [1]string, argsEscaped bool, r *http.Request) (params GetAdvertisementParams, _ error) {
+	// Decode path: advertisementId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "advertisementId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.AdvertisementId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^adv_[a-z0-9]{12}$"],
+				}).Validate(string(params.AdvertisementId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "advertisementId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // GetEnvironmentParams is parameters of getEnvironment operation.
 type GetEnvironmentParams struct {
 	EnvironmentId string
@@ -2218,6 +2300,85 @@ func decodeListAdminWorkgroupsParams(args [0]string, argsEscaped bool, r *http.R
 	return params, nil
 }
 
+// ListAdvertisementsParams is parameters of listAdvertisements operation.
+type ListAdvertisementsParams struct {
+	Status OptAdvertisementStatus
+}
+
+func unpackListAdvertisementsParams(packed middleware.Parameters) (params ListAdvertisementsParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "status",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Status = v.(OptAdvertisementStatus)
+		}
+	}
+	return params
+}
+
+func decodeListAdvertisementsParams(args [0]string, argsEscaped bool, r *http.Request) (params ListAdvertisementsParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode query: status.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "status",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotStatusVal AdvertisementStatus
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotStatusVal = AdvertisementStatus(c)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Status.SetTo(paramsDotStatusVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Status.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "status",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // ListTunnelAttachmentsParams is parameters of listTunnelAttachments operation.
 type ListTunnelAttachmentsParams struct {
 	TunnelId string
@@ -2932,6 +3093,509 @@ func decodeRemoveWorkgroupMemberParams(args [2]string, argsEscaped bool, r *http
 	return params, nil
 }
 
+// RetractAdvertisementParams is parameters of retractAdvertisement operation.
+type RetractAdvertisementParams struct {
+	AdvertisementId string
+}
+
+func unpackRetractAdvertisementParams(packed middleware.Parameters) (params RetractAdvertisementParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "advertisementId",
+			In:   "path",
+		}
+		params.AdvertisementId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeRetractAdvertisementParams(args [1]string, argsEscaped bool, r *http.Request) (params RetractAdvertisementParams, _ error) {
+	// Decode path: advertisementId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "advertisementId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.AdvertisementId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^adv_[a-z0-9]{12}$"],
+				}).Validate(string(params.AdvertisementId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "advertisementId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// SearchCatalogParams is parameters of searchCatalog operation.
+type SearchCatalogParams struct {
+	Workgroup           []string
+	Capability          OptString
+	InteractionPattern  []AdvertisementInteractionPatternKind
+	OwnerOrganizationId OptString
+	Cursor              OptString
+	Limit               OptInt
+}
+
+func unpackSearchCatalogParams(packed middleware.Parameters) (params SearchCatalogParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "workgroup",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Workgroup = v.([]string)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "capability",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Capability = v.(OptString)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "interactionPattern",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.InteractionPattern = v.([]AdvertisementInteractionPatternKind)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "ownerOrganizationId",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.OwnerOrganizationId = v.(OptString)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "cursor",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Cursor = v.(OptString)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "limit",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Limit = v.(OptInt)
+		}
+	}
+	return params
+}
+
+func decodeSearchCatalogParams(args [0]string, argsEscaped bool, r *http.Request) (params SearchCatalogParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode query: workgroup.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "workgroup",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				return d.DecodeArray(func(d uri.Decoder) error {
+					var paramsDotWorkgroupVal string
+					if err := func() error {
+						val, err := d.DecodeValue()
+						if err != nil {
+							return err
+						}
+
+						c, err := conv.ToString(val)
+						if err != nil {
+							return err
+						}
+
+						paramsDotWorkgroupVal = c
+						return nil
+					}(); err != nil {
+						return err
+					}
+					params.Workgroup = append(params.Workgroup, paramsDotWorkgroupVal)
+					return nil
+				})
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				var failures []validate.FieldError
+				for i, elem := range params.Workgroup {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:    0,
+							MinLengthSet: false,
+							MaxLength:    0,
+							MaxLengthSet: false,
+							Email:        false,
+							Hostname:     false,
+							Regex:        regexMap["^wg_[a-z0-9]{12}$"],
+						}).Validate(string(elem)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						failures = append(failures, validate.FieldError{
+							Name:  fmt.Sprintf("[%d]", i),
+							Error: err,
+						})
+					}
+				}
+				if len(failures) > 0 {
+					return &validate.Error{Fields: failures}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "workgroup",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: capability.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "capability",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotCapabilityVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotCapabilityVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Capability.SetTo(paramsDotCapabilityVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "capability",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: interactionPattern.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "interactionPattern",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				return d.DecodeArray(func(d uri.Decoder) error {
+					var paramsDotInteractionPatternVal AdvertisementInteractionPatternKind
+					if err := func() error {
+						val, err := d.DecodeValue()
+						if err != nil {
+							return err
+						}
+
+						c, err := conv.ToString(val)
+						if err != nil {
+							return err
+						}
+
+						paramsDotInteractionPatternVal = AdvertisementInteractionPatternKind(c)
+						return nil
+					}(); err != nil {
+						return err
+					}
+					params.InteractionPattern = append(params.InteractionPattern, paramsDotInteractionPatternVal)
+					return nil
+				})
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				var failures []validate.FieldError
+				for i, elem := range params.InteractionPattern {
+					if err := func() error {
+						if err := elem.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						failures = append(failures, validate.FieldError{
+							Name:  fmt.Sprintf("[%d]", i),
+							Error: err,
+						})
+					}
+				}
+				if len(failures) > 0 {
+					return &validate.Error{Fields: failures}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "interactionPattern",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: ownerOrganizationId.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "ownerOrganizationId",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotOwnerOrganizationIdVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotOwnerOrganizationIdVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.OwnerOrganizationId.SetTo(paramsDotOwnerOrganizationIdVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.OwnerOrganizationId.Get(); ok {
+					if err := func() error {
+						if err := (validate.String{
+							MinLength:    0,
+							MinLengthSet: false,
+							MaxLength:    0,
+							MaxLengthSet: false,
+							Email:        false,
+							Hostname:     false,
+							Regex:        regexMap["^org_[a-z0-9]{12}$"],
+						}).Validate(string(value)); err != nil {
+							return errors.Wrap(err, "string")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "ownerOrganizationId",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: cursor.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "cursor",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotCursorVal string
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotCursorVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Cursor.SetTo(paramsDotCursorVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "cursor",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: limit.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "limit",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotLimitVal int
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToInt(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotLimitVal = c
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Limit.SetTo(paramsDotLimitVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Limit.Get(); ok {
+					if err := func() error {
+						if err := (validate.Int{
+							MinSet:        true,
+							Min:           1,
+							MaxSet:        true,
+							Max:           200,
+							MinExclusive:  false,
+							MaxExclusive:  false,
+							MultipleOfSet: false,
+							MultipleOf:    0,
+						}).Validate(int64(value)); err != nil {
+							return errors.Wrap(err, "int")
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "limit",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // StartTunnelServeParams is parameters of startTunnelServe operation.
 type StartTunnelServeParams struct {
 	TunnelId string
@@ -3006,6 +3670,87 @@ func decodeStartTunnelServeParams(args [1]string, argsEscaped bool, r *http.Requ
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "tunnelId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// UpdateAdvertisementParams is parameters of updateAdvertisement operation.
+type UpdateAdvertisementParams struct {
+	AdvertisementId string
+}
+
+func unpackUpdateAdvertisementParams(packed middleware.Parameters) (params UpdateAdvertisementParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "advertisementId",
+			In:   "path",
+		}
+		params.AdvertisementId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeUpdateAdvertisementParams(args [1]string, argsEscaped bool, r *http.Request) (params UpdateAdvertisementParams, _ error) {
+	// Decode path: advertisementId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "advertisementId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.AdvertisementId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^adv_[a-z0-9]{12}$"],
+				}).Validate(string(params.AdvertisementId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "advertisementId",
 			In:   "path",
 			Err:  err,
 		}

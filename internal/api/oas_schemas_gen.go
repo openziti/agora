@@ -433,6 +433,357 @@ func (s *AdminWorkgroupEntry) SetInvitations(val []WorkgroupInvitation) {
 	s.Invitations = val
 }
 
+// Ref: #/advertisement
+type Advertisement struct {
+	ID                  string                            `json:"id"`
+	OrganizationId      string                            `json:"organizationId"`
+	AccountId           string                            `json:"accountId"`
+	Name                string                            `json:"name"`
+	Description         OptString                         `json:"description"`
+	Capabilities        []AdvertisementCapability         `json:"capabilities"`
+	InteractionPatterns []AdvertisementInteractionPattern `json:"interactionPatterns"`
+	WorkgroupScopes     []string                          `json:"workgroupScopes"`
+	SchemaVersion       int                               `json:"schemaVersion"`
+	Status              AdvertisementStatus               `json:"status"`
+	RetractedAt         OptDateTime                       `json:"retractedAt"`
+	CreatedAt           time.Time                         `json:"createdAt"`
+	UpdatedAt           time.Time                         `json:"updatedAt"`
+}
+
+// GetID returns the value of ID.
+func (s *Advertisement) GetID() string {
+	return s.ID
+}
+
+// GetOrganizationId returns the value of OrganizationId.
+func (s *Advertisement) GetOrganizationId() string {
+	return s.OrganizationId
+}
+
+// GetAccountId returns the value of AccountId.
+func (s *Advertisement) GetAccountId() string {
+	return s.AccountId
+}
+
+// GetName returns the value of Name.
+func (s *Advertisement) GetName() string {
+	return s.Name
+}
+
+// GetDescription returns the value of Description.
+func (s *Advertisement) GetDescription() OptString {
+	return s.Description
+}
+
+// GetCapabilities returns the value of Capabilities.
+func (s *Advertisement) GetCapabilities() []AdvertisementCapability {
+	return s.Capabilities
+}
+
+// GetInteractionPatterns returns the value of InteractionPatterns.
+func (s *Advertisement) GetInteractionPatterns() []AdvertisementInteractionPattern {
+	return s.InteractionPatterns
+}
+
+// GetWorkgroupScopes returns the value of WorkgroupScopes.
+func (s *Advertisement) GetWorkgroupScopes() []string {
+	return s.WorkgroupScopes
+}
+
+// GetSchemaVersion returns the value of SchemaVersion.
+func (s *Advertisement) GetSchemaVersion() int {
+	return s.SchemaVersion
+}
+
+// GetStatus returns the value of Status.
+func (s *Advertisement) GetStatus() AdvertisementStatus {
+	return s.Status
+}
+
+// GetRetractedAt returns the value of RetractedAt.
+func (s *Advertisement) GetRetractedAt() OptDateTime {
+	return s.RetractedAt
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *Advertisement) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *Advertisement) GetUpdatedAt() time.Time {
+	return s.UpdatedAt
+}
+
+// SetID sets the value of ID.
+func (s *Advertisement) SetID(val string) {
+	s.ID = val
+}
+
+// SetOrganizationId sets the value of OrganizationId.
+func (s *Advertisement) SetOrganizationId(val string) {
+	s.OrganizationId = val
+}
+
+// SetAccountId sets the value of AccountId.
+func (s *Advertisement) SetAccountId(val string) {
+	s.AccountId = val
+}
+
+// SetName sets the value of Name.
+func (s *Advertisement) SetName(val string) {
+	s.Name = val
+}
+
+// SetDescription sets the value of Description.
+func (s *Advertisement) SetDescription(val OptString) {
+	s.Description = val
+}
+
+// SetCapabilities sets the value of Capabilities.
+func (s *Advertisement) SetCapabilities(val []AdvertisementCapability) {
+	s.Capabilities = val
+}
+
+// SetInteractionPatterns sets the value of InteractionPatterns.
+func (s *Advertisement) SetInteractionPatterns(val []AdvertisementInteractionPattern) {
+	s.InteractionPatterns = val
+}
+
+// SetWorkgroupScopes sets the value of WorkgroupScopes.
+func (s *Advertisement) SetWorkgroupScopes(val []string) {
+	s.WorkgroupScopes = val
+}
+
+// SetSchemaVersion sets the value of SchemaVersion.
+func (s *Advertisement) SetSchemaVersion(val int) {
+	s.SchemaVersion = val
+}
+
+// SetStatus sets the value of Status.
+func (s *Advertisement) SetStatus(val AdvertisementStatus) {
+	s.Status = val
+}
+
+// SetRetractedAt sets the value of RetractedAt.
+func (s *Advertisement) SetRetractedAt(val OptDateTime) {
+	s.RetractedAt = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *Advertisement) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *Advertisement) SetUpdatedAt(val time.Time) {
+	s.UpdatedAt = val
+}
+
+func (*Advertisement) getAdvertisementRes()     {}
+func (*Advertisement) publishAdvertisementRes() {}
+func (*Advertisement) updateAdvertisementRes()  {}
+
+// Ref: #/advertisementCapability
+type AdvertisementCapability struct {
+	Name        string                             `json:"name"`
+	Description OptString                          `json:"description"`
+	Metadata    OptAdvertisementCapabilityMetadata `json:"metadata"`
+}
+
+// GetName returns the value of Name.
+func (s *AdvertisementCapability) GetName() string {
+	return s.Name
+}
+
+// GetDescription returns the value of Description.
+func (s *AdvertisementCapability) GetDescription() OptString {
+	return s.Description
+}
+
+// GetMetadata returns the value of Metadata.
+func (s *AdvertisementCapability) GetMetadata() OptAdvertisementCapabilityMetadata {
+	return s.Metadata
+}
+
+// SetName sets the value of Name.
+func (s *AdvertisementCapability) SetName(val string) {
+	s.Name = val
+}
+
+// SetDescription sets the value of Description.
+func (s *AdvertisementCapability) SetDescription(val OptString) {
+	s.Description = val
+}
+
+// SetMetadata sets the value of Metadata.
+func (s *AdvertisementCapability) SetMetadata(val OptAdvertisementCapabilityMetadata) {
+	s.Metadata = val
+}
+
+type AdvertisementCapabilityMetadata map[string]string
+
+func (s *AdvertisementCapabilityMetadata) init() AdvertisementCapabilityMetadata {
+	m := *s
+	if m == nil {
+		m = map[string]string{}
+		*s = m
+	}
+	return m
+}
+
+// Ref: #/advertisementInteractionPattern
+type AdvertisementInteractionPattern struct {
+	Kind          AdvertisementInteractionPatternKind `json:"kind"`
+	CustomPattern OptString                           `json:"customPattern"`
+}
+
+// GetKind returns the value of Kind.
+func (s *AdvertisementInteractionPattern) GetKind() AdvertisementInteractionPatternKind {
+	return s.Kind
+}
+
+// GetCustomPattern returns the value of CustomPattern.
+func (s *AdvertisementInteractionPattern) GetCustomPattern() OptString {
+	return s.CustomPattern
+}
+
+// SetKind sets the value of Kind.
+func (s *AdvertisementInteractionPattern) SetKind(val AdvertisementInteractionPatternKind) {
+	s.Kind = val
+}
+
+// SetCustomPattern sets the value of CustomPattern.
+func (s *AdvertisementInteractionPattern) SetCustomPattern(val OptString) {
+	s.CustomPattern = val
+}
+
+// Ref: #/advertisementInteractionPatternKind
+type AdvertisementInteractionPatternKind string
+
+const (
+	AdvertisementInteractionPatternKindRequestResponse AdvertisementInteractionPatternKind = "request-response"
+	AdvertisementInteractionPatternKindStream          AdvertisementInteractionPatternKind = "stream"
+	AdvertisementInteractionPatternKindBroadcast       AdvertisementInteractionPatternKind = "broadcast"
+	AdvertisementInteractionPatternKindCustom          AdvertisementInteractionPatternKind = "custom"
+)
+
+// AllValues returns all AdvertisementInteractionPatternKind values.
+func (AdvertisementInteractionPatternKind) AllValues() []AdvertisementInteractionPatternKind {
+	return []AdvertisementInteractionPatternKind{
+		AdvertisementInteractionPatternKindRequestResponse,
+		AdvertisementInteractionPatternKindStream,
+		AdvertisementInteractionPatternKindBroadcast,
+		AdvertisementInteractionPatternKindCustom,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s AdvertisementInteractionPatternKind) MarshalText() ([]byte, error) {
+	switch s {
+	case AdvertisementInteractionPatternKindRequestResponse:
+		return []byte(s), nil
+	case AdvertisementInteractionPatternKindStream:
+		return []byte(s), nil
+	case AdvertisementInteractionPatternKindBroadcast:
+		return []byte(s), nil
+	case AdvertisementInteractionPatternKindCustom:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AdvertisementInteractionPatternKind) UnmarshalText(data []byte) error {
+	switch AdvertisementInteractionPatternKind(data) {
+	case AdvertisementInteractionPatternKindRequestResponse:
+		*s = AdvertisementInteractionPatternKindRequestResponse
+		return nil
+	case AdvertisementInteractionPatternKindStream:
+		*s = AdvertisementInteractionPatternKindStream
+		return nil
+	case AdvertisementInteractionPatternKindBroadcast:
+		*s = AdvertisementInteractionPatternKindBroadcast
+		return nil
+	case AdvertisementInteractionPatternKindCustom:
+		*s = AdvertisementInteractionPatternKindCustom
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/advertisementStatus
+type AdvertisementStatus string
+
+const (
+	AdvertisementStatusActive    AdvertisementStatus = "active"
+	AdvertisementStatusRetracted AdvertisementStatus = "retracted"
+)
+
+// AllValues returns all AdvertisementStatus values.
+func (AdvertisementStatus) AllValues() []AdvertisementStatus {
+	return []AdvertisementStatus{
+		AdvertisementStatusActive,
+		AdvertisementStatusRetracted,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s AdvertisementStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case AdvertisementStatusActive:
+		return []byte(s), nil
+	case AdvertisementStatusRetracted:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AdvertisementStatus) UnmarshalText(data []byte) error {
+	switch AdvertisementStatus(data) {
+	case AdvertisementStatusActive:
+		*s = AdvertisementStatusActive
+		return nil
+	case AdvertisementStatusRetracted:
+		*s = AdvertisementStatusRetracted
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/catalogSearchResponse
+type CatalogSearchResponse struct {
+	Items      []Advertisement `json:"items"`
+	NextCursor OptString       `json:"nextCursor"`
+}
+
+// GetItems returns the value of Items.
+func (s *CatalogSearchResponse) GetItems() []Advertisement {
+	return s.Items
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *CatalogSearchResponse) GetNextCursor() OptString {
+	return s.NextCursor
+}
+
+// SetItems sets the value of Items.
+func (s *CatalogSearchResponse) SetItems(val []Advertisement) {
+	s.Items = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *CatalogSearchResponse) SetNextCursor(val OptString) {
+	s.NextCursor = val
+}
+
+func (*CatalogSearchResponse) searchCatalogRes() {}
+
 type ChangePasswordInternalServerError Error
 
 func (*ChangePasswordInternalServerError) changePasswordRes() {}
@@ -1440,6 +1791,18 @@ func (s *Error) SetMessage(val string) {
 	s.Message = val
 }
 
+type GetAdvertisementInternalServerError Error
+
+func (*GetAdvertisementInternalServerError) getAdvertisementRes() {}
+
+type GetAdvertisementNotFound Error
+
+func (*GetAdvertisementNotFound) getAdvertisementRes() {}
+
+type GetAdvertisementUnauthorized Error
+
+func (*GetAdvertisementUnauthorized) getAdvertisementRes() {}
+
 type GetEnvironmentInternalServerError Error
 
 func (*GetEnvironmentInternalServerError) getEnvironmentRes() {}
@@ -1619,6 +1982,18 @@ func (s *ListAdminWorkgroupsState) UnmarshalText(data []byte) error {
 type ListAdminWorkgroupsUnauthorized Error
 
 func (*ListAdminWorkgroupsUnauthorized) listAdminWorkgroupsRes() {}
+
+type ListAdvertisementsInternalServerError Error
+
+func (*ListAdvertisementsInternalServerError) listAdvertisementsRes() {}
+
+type ListAdvertisementsResponse []Advertisement
+
+func (*ListAdvertisementsResponse) listAdvertisementsRes() {}
+
+type ListAdvertisementsUnauthorized Error
+
+func (*ListAdvertisementsUnauthorized) listAdvertisementsRes() {}
 
 type ListEnvironmentsInternalServerError Error
 
@@ -1810,6 +2185,98 @@ type LoginUnauthorized Error
 
 func (*LoginUnauthorized) loginRes() {}
 
+// NewOptAdvertisementCapabilityMetadata returns new OptAdvertisementCapabilityMetadata with value set to v.
+func NewOptAdvertisementCapabilityMetadata(v AdvertisementCapabilityMetadata) OptAdvertisementCapabilityMetadata {
+	return OptAdvertisementCapabilityMetadata{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptAdvertisementCapabilityMetadata is optional AdvertisementCapabilityMetadata.
+type OptAdvertisementCapabilityMetadata struct {
+	Value AdvertisementCapabilityMetadata
+	Set   bool
+}
+
+// IsSet returns true if OptAdvertisementCapabilityMetadata was set.
+func (o OptAdvertisementCapabilityMetadata) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptAdvertisementCapabilityMetadata) Reset() {
+	var v AdvertisementCapabilityMetadata
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptAdvertisementCapabilityMetadata) SetTo(v AdvertisementCapabilityMetadata) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptAdvertisementCapabilityMetadata) Get() (v AdvertisementCapabilityMetadata, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptAdvertisementCapabilityMetadata) Or(d AdvertisementCapabilityMetadata) AdvertisementCapabilityMetadata {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptAdvertisementStatus returns new OptAdvertisementStatus with value set to v.
+func NewOptAdvertisementStatus(v AdvertisementStatus) OptAdvertisementStatus {
+	return OptAdvertisementStatus{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptAdvertisementStatus is optional AdvertisementStatus.
+type OptAdvertisementStatus struct {
+	Value AdvertisementStatus
+	Set   bool
+}
+
+// IsSet returns true if OptAdvertisementStatus was set.
+func (o OptAdvertisementStatus) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptAdvertisementStatus) Reset() {
+	var v AdvertisementStatus
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptAdvertisementStatus) SetTo(v AdvertisementStatus) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptAdvertisementStatus) Get() (v AdvertisementStatus, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptAdvertisementStatus) Or(d AdvertisementStatus) AdvertisementStatus {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptCreateAccountRequestRole returns new OptCreateAccountRequestRole with value set to v.
 func NewOptCreateAccountRequestRole(v CreateAccountRequestRole) OptCreateAccountRequestRole {
 	return OptCreateAccountRequestRole{
@@ -1942,6 +2409,52 @@ func (o OptDateTime) Get() (v time.Time, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptDateTime) Or(d time.Time) time.Time {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptInt returns new OptInt with value set to v.
+func NewOptInt(v int) OptInt {
+	return OptInt{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptInt is optional int.
+type OptInt struct {
+	Value int
+	Set   bool
+}
+
+// IsSet returns true if OptInt was set.
+func (o OptInt) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptInt) Reset() {
+	var v int
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptInt) SetTo(v int) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptInt) Get() (v int, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptInt) Or(d int) int {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -2228,6 +2741,85 @@ func (s *Organization) SetUpdatedAt(val time.Time) {
 
 func (*Organization) createOrganizationRes() {}
 
+type PublishAdvertisementBadRequest Error
+
+func (*PublishAdvertisementBadRequest) publishAdvertisementRes() {}
+
+type PublishAdvertisementConflict Error
+
+func (*PublishAdvertisementConflict) publishAdvertisementRes() {}
+
+type PublishAdvertisementForbidden Error
+
+func (*PublishAdvertisementForbidden) publishAdvertisementRes() {}
+
+type PublishAdvertisementInternalServerError Error
+
+func (*PublishAdvertisementInternalServerError) publishAdvertisementRes() {}
+
+// Ref: #/publishAdvertisementRequest
+type PublishAdvertisementRequest struct {
+	Name                string                            `json:"name"`
+	Description         OptString                         `json:"description"`
+	Capabilities        []AdvertisementCapability         `json:"capabilities"`
+	InteractionPatterns []AdvertisementInteractionPattern `json:"interactionPatterns"`
+	WorkgroupScopes     []string                          `json:"workgroupScopes"`
+}
+
+// GetName returns the value of Name.
+func (s *PublishAdvertisementRequest) GetName() string {
+	return s.Name
+}
+
+// GetDescription returns the value of Description.
+func (s *PublishAdvertisementRequest) GetDescription() OptString {
+	return s.Description
+}
+
+// GetCapabilities returns the value of Capabilities.
+func (s *PublishAdvertisementRequest) GetCapabilities() []AdvertisementCapability {
+	return s.Capabilities
+}
+
+// GetInteractionPatterns returns the value of InteractionPatterns.
+func (s *PublishAdvertisementRequest) GetInteractionPatterns() []AdvertisementInteractionPattern {
+	return s.InteractionPatterns
+}
+
+// GetWorkgroupScopes returns the value of WorkgroupScopes.
+func (s *PublishAdvertisementRequest) GetWorkgroupScopes() []string {
+	return s.WorkgroupScopes
+}
+
+// SetName sets the value of Name.
+func (s *PublishAdvertisementRequest) SetName(val string) {
+	s.Name = val
+}
+
+// SetDescription sets the value of Description.
+func (s *PublishAdvertisementRequest) SetDescription(val OptString) {
+	s.Description = val
+}
+
+// SetCapabilities sets the value of Capabilities.
+func (s *PublishAdvertisementRequest) SetCapabilities(val []AdvertisementCapability) {
+	s.Capabilities = val
+}
+
+// SetInteractionPatterns sets the value of InteractionPatterns.
+func (s *PublishAdvertisementRequest) SetInteractionPatterns(val []AdvertisementInteractionPattern) {
+	s.InteractionPatterns = val
+}
+
+// SetWorkgroupScopes sets the value of WorkgroupScopes.
+func (s *PublishAdvertisementRequest) SetWorkgroupScopes(val []string) {
+	s.WorkgroupScopes = val
+}
+
+type PublishAdvertisementUnauthorized Error
+
+func (*PublishAdvertisementUnauthorized) publishAdvertisementRes() {}
+
 type RegenerateAccountTokenInternalServerError Error
 
 func (*RegenerateAccountTokenInternalServerError) regenerateAccountTokenRes() {}
@@ -2296,6 +2888,39 @@ func (*RemoveWorkgroupMemberNotFound) removeWorkgroupMemberRes() {}
 type RemoveWorkgroupMemberUnauthorized Error
 
 func (*RemoveWorkgroupMemberUnauthorized) removeWorkgroupMemberRes() {}
+
+type RetractAdvertisementForbidden Error
+
+func (*RetractAdvertisementForbidden) retractAdvertisementRes() {}
+
+type RetractAdvertisementInternalServerError Error
+
+func (*RetractAdvertisementInternalServerError) retractAdvertisementRes() {}
+
+// RetractAdvertisementNoContent is response for RetractAdvertisement operation.
+type RetractAdvertisementNoContent struct{}
+
+func (*RetractAdvertisementNoContent) retractAdvertisementRes() {}
+
+type RetractAdvertisementNotFound Error
+
+func (*RetractAdvertisementNotFound) retractAdvertisementRes() {}
+
+type RetractAdvertisementUnauthorized Error
+
+func (*RetractAdvertisementUnauthorized) retractAdvertisementRes() {}
+
+type SearchCatalogBadRequest Error
+
+func (*SearchCatalogBadRequest) searchCatalogRes() {}
+
+type SearchCatalogInternalServerError Error
+
+func (*SearchCatalogInternalServerError) searchCatalogRes() {}
+
+type SearchCatalogUnauthorized Error
+
+func (*SearchCatalogUnauthorized) searchCatalogRes() {}
 
 type StartTunnelServeConflict Error
 
@@ -3032,6 +3657,89 @@ func (s *TunnelState) UnmarshalText(data []byte) error {
 		return errors.Errorf("invalid value: %q", data)
 	}
 }
+
+type UpdateAdvertisementBadRequest Error
+
+func (*UpdateAdvertisementBadRequest) updateAdvertisementRes() {}
+
+type UpdateAdvertisementConflict Error
+
+func (*UpdateAdvertisementConflict) updateAdvertisementRes() {}
+
+type UpdateAdvertisementForbidden Error
+
+func (*UpdateAdvertisementForbidden) updateAdvertisementRes() {}
+
+type UpdateAdvertisementInternalServerError Error
+
+func (*UpdateAdvertisementInternalServerError) updateAdvertisementRes() {}
+
+type UpdateAdvertisementNotFound Error
+
+func (*UpdateAdvertisementNotFound) updateAdvertisementRes() {}
+
+// Ref: #/updateAdvertisementRequest
+type UpdateAdvertisementRequest struct {
+	Name                OptString                         `json:"name"`
+	Description         OptString                         `json:"description"`
+	Capabilities        []AdvertisementCapability         `json:"capabilities"`
+	InteractionPatterns []AdvertisementInteractionPattern `json:"interactionPatterns"`
+	WorkgroupScopes     []string                          `json:"workgroupScopes"`
+}
+
+// GetName returns the value of Name.
+func (s *UpdateAdvertisementRequest) GetName() OptString {
+	return s.Name
+}
+
+// GetDescription returns the value of Description.
+func (s *UpdateAdvertisementRequest) GetDescription() OptString {
+	return s.Description
+}
+
+// GetCapabilities returns the value of Capabilities.
+func (s *UpdateAdvertisementRequest) GetCapabilities() []AdvertisementCapability {
+	return s.Capabilities
+}
+
+// GetInteractionPatterns returns the value of InteractionPatterns.
+func (s *UpdateAdvertisementRequest) GetInteractionPatterns() []AdvertisementInteractionPattern {
+	return s.InteractionPatterns
+}
+
+// GetWorkgroupScopes returns the value of WorkgroupScopes.
+func (s *UpdateAdvertisementRequest) GetWorkgroupScopes() []string {
+	return s.WorkgroupScopes
+}
+
+// SetName sets the value of Name.
+func (s *UpdateAdvertisementRequest) SetName(val OptString) {
+	s.Name = val
+}
+
+// SetDescription sets the value of Description.
+func (s *UpdateAdvertisementRequest) SetDescription(val OptString) {
+	s.Description = val
+}
+
+// SetCapabilities sets the value of Capabilities.
+func (s *UpdateAdvertisementRequest) SetCapabilities(val []AdvertisementCapability) {
+	s.Capabilities = val
+}
+
+// SetInteractionPatterns sets the value of InteractionPatterns.
+func (s *UpdateAdvertisementRequest) SetInteractionPatterns(val []AdvertisementInteractionPattern) {
+	s.InteractionPatterns = val
+}
+
+// SetWorkgroupScopes sets the value of WorkgroupScopes.
+func (s *UpdateAdvertisementRequest) SetWorkgroupScopes(val []string) {
+	s.WorkgroupScopes = val
+}
+
+type UpdateAdvertisementUnauthorized Error
+
+func (*UpdateAdvertisementUnauthorized) updateAdvertisementRes() {}
 
 // Ref: #/workgroup
 type Workgroup struct {

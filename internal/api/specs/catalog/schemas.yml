@@ -1,0 +1,11 @@
+catalogSearchResponse:
+  type: object
+  required:
+    - items
+  properties:
+    items:
+      type: array
+      items:
+        $ref: "../agora.yml#/components/schemas/advertisement"
+    nextCursor:
+      type: string

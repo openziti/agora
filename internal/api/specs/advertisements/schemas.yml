@@ -1,0 +1,144 @@
+advertisement:
+  type: object
+  required:
+    - id
+    - organizationId
+    - accountId
+    - name
+    - capabilities
+    - interactionPatterns
+    - workgroupScopes
+    - schemaVersion
+    - status
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      type: string
+      pattern: '^adv_[a-z0-9]{12}$'
+    organizationId:
+      type: string
+      pattern: '^org_[a-z0-9]{12}$'
+    accountId:
+      type: string
+      pattern: '^ac_[a-z0-9]{12}$'
+    name:
+      type: string
+    description:
+      type: string
+    capabilities:
+      type: array
+      items:
+        $ref: "#/advertisementCapability"
+    interactionPatterns:
+      type: array
+      items:
+        $ref: "#/advertisementInteractionPattern"
+    workgroupScopes:
+      type: array
+      items:
+        type: string
+        pattern: '^wg_[a-z0-9]{12}$'
+    schemaVersion:
+      type: integer
+    status:
+      $ref: "#/advertisementStatus"
+    retractedAt:
+      type: string
+      format: date-time
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+advertisementCapability:
+  type: object
+  required:
+    - name
+  properties:
+    name:
+      type: string
+      minLength: 1
+    description:
+      type: string
+    metadata:
+      type: object
+      additionalProperties:
+        type: string
+
+advertisementInteractionPattern:
+  type: object
+  required:
+    - kind
+  properties:
+    kind:
+      $ref: "#/advertisementInteractionPatternKind"
+    customPattern:
+      type: string
+
+advertisementInteractionPatternKind:
+  type: string
+  enum: [request-response, stream, broadcast, custom]
+
+advertisementStatus:
+  type: string
+  enum: [active, retracted]
+
+publishAdvertisementRequest:
+  type: object
+  required:
+    - name
+    - capabilities
+    - interactionPatterns
+    - workgroupScopes
+  properties:
+    name:
+      type: string
+      minLength: 1
+    description:
+      type: string
+    capabilities:
+      type: array
+      minItems: 1
+      items:
+        $ref: "#/advertisementCapability"
+    interactionPatterns:
+      type: array
+      minItems: 1
+      items:
+        $ref: "#/advertisementInteractionPattern"
+    workgroupScopes:
+      type: array
+      minItems: 1
+      items:
+        type: string
+        pattern: '^wg_[a-z0-9]{12}$'
+
+updateAdvertisementRequest:
+  type: object
+  properties:
+    name:
+      type: string
+      minLength: 1
+    description:
+      type: string
+    capabilities:
+      type: array
+      items:
+        $ref: "#/advertisementCapability"
+    interactionPatterns:
+      type: array
+      items:
+        $ref: "#/advertisementInteractionPattern"
+    workgroupScopes:
+      type: array
+      items:
+        type: string
+        pattern: '^wg_[a-z0-9]{12}$'
+
+listAdvertisementsResponse:
+  type: array
+  items:
+    $ref: "#/advertisement"

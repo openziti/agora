@@ -23,6 +23,14 @@ This repository is in early-stage development. Favor simple, explicit structure 
 - Full build: `go build ./...`
 - Install binary: `go install ./...`
 
+### Build verification (do not leave stray binaries in the working tree)
+- `go build ./...` at the repo root is safe: it only compiles and never writes binaries to disk.
+- `go install ./...` is safe: outputs land in `$GOBIN` / `$GOPATH/bin`, not in the working tree.
+- `go vet ./...` is safe and is the preferred compile-check for a single change.
+- **Never** run `go build ./path/to/cmd` or `go build ./path/to/cmd/...` — those forms emit the built binary into the current directory, which is almost always the repo root for an agent session. Those stray binaries are trivial to accidentally `git add` and commit (and at ~50 MB each, they are expensive mistakes).
+- If a specific `main` package needs to be compiled to check a change, use `go build -o /dev/null ./path/to/cmd` so no file is written.
+- `.gitignore` already lists the known `main` package output names as a safety net, but the rule above is what prevents the problem in the first place.
+
 ### Testing
 - Go tests: `go test ./...`
 - Persistence integration tests use PostgreSQL containers via `testcontainers-go`

@@ -1,0 +1,73 @@
+/catalog/advertisements:
+  get:
+    tags:
+      - catalog
+    operationId: searchCatalog
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: workgroup
+        in: query
+        required: false
+        explode: true
+        schema:
+          type: array
+          items:
+            type: string
+            pattern: '^wg_[a-z0-9]{12}$'
+      - name: capability
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: interactionPattern
+        in: query
+        required: false
+        explode: true
+        schema:
+          type: array
+          items:
+            $ref: "../agora.yml#/components/schemas/advertisementInteractionPatternKind"
+      - name: ownerOrganizationId
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: '^org_[a-z0-9]{12}$'
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/catalogSearchResponse"
+      400:
+        description: bad request
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"

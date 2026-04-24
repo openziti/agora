@@ -118,6 +118,14 @@ Workgroup implementation surfaces:
 - CLI: `cmd/agora/workgroup*.go` and `cmd/agora/adminWorkgroup*.go`
 - demo bootstrap: `examples/macro-pulse/bootstrap/main.go` provisions the full Macro Pulse topology against the workgroup admin endpoints
 
+Catalog + advertisements implementation surfaces (slice 2):
+
+- persistence: `internal/persistence/advertisements.go` + migration `0004_layer2_advertisements.sql` (jsonb capabilities/interaction-patterns columns; `text[]` workgroup_scopes; cursor-based search via keyset pagination)
+- API: `internal/api/specs/advertisements/` (5 endpoints) and `internal/api/specs/catalog/` (1 search endpoint)
+- controller: `publishAdvertisement.go`, `listAdvertisements.go`, `getAdvertisement.go`, `updateAdvertisement.go`, `retractAdvertisement.go`, `searchCatalog.go` + `advertisement_helpers.go` (visibility + scope validation)
+- CLI: `cmd/agora/advertise*.go` and `cmd/agora/catalog*.go`
+- Macro Pulse advancement: each provider/tool agent calls `agentutil.EnsureAdvertisement` on startup; `pulse-agent` calls `client.SearchCatalog` for discovery
+
 Alongside the Layer 2 specs, the project also has a primary reference demo under [../../examples/macro-pulse/](../../examples/macro-pulse/) with its own formal doc at [../examples/macro-pulse.md](../examples/macro-pulse.md). The demo is scaffolded but not yet runnable end-to-end — it advances one slice at a time as Layer 2 slices ship. See [../examples/index.md](../examples/index.md) for the example-set overview.
 
 Metrics and limits are intentionally deferred to post-MVP work and tracked in [../roadmap/post-mvp.md](../roadmap/post-mvp.md).

@@ -84,6 +84,10 @@ type Handler interface {
 	//
 	// POST /environments
 	EnableEnvironment(ctx context.Context, req *EnableEnvironmentRequest) (EnableEnvironmentRes, error)
+	// GetAdvertisement implements getAdvertisement operation.
+	//
+	// GET /advertisements/{advertisementId}
+	GetAdvertisement(ctx context.Context, params GetAdvertisementParams) (GetAdvertisementRes, error)
 	// GetEnvironment implements getEnvironment operation.
 	//
 	// GET /environments/{environmentId}
@@ -120,6 +124,10 @@ type Handler interface {
 	//
 	// GET /admin/workgroups
 	ListAdminWorkgroups(ctx context.Context, params ListAdminWorkgroupsParams) (ListAdminWorkgroupsRes, error)
+	// ListAdvertisements implements listAdvertisements operation.
+	//
+	// GET /advertisements
+	ListAdvertisements(ctx context.Context, params ListAdvertisementsParams) (ListAdvertisementsRes, error)
 	// ListEnvironments implements listEnvironments operation.
 	//
 	// GET /environments
@@ -156,6 +164,10 @@ type Handler interface {
 	//
 	// POST /account/login
 	Login(ctx context.Context, req *LoginRequest) (LoginRes, error)
+	// PublishAdvertisement implements publishAdvertisement operation.
+	//
+	// POST /advertisements
+	PublishAdvertisement(ctx context.Context, req *PublishAdvertisementRequest) (PublishAdvertisementRes, error)
 	// RegenerateAccountToken implements regenerateAccountToken operation.
 	//
 	// POST /account/regenerate-token
@@ -168,10 +180,22 @@ type Handler interface {
 	//
 	// DELETE /workgroups/{workgroupId}/members/{membershipId}
 	RemoveWorkgroupMember(ctx context.Context, params RemoveWorkgroupMemberParams) (RemoveWorkgroupMemberRes, error)
+	// RetractAdvertisement implements retractAdvertisement operation.
+	//
+	// DELETE /advertisements/{advertisementId}
+	RetractAdvertisement(ctx context.Context, params RetractAdvertisementParams) (RetractAdvertisementRes, error)
+	// SearchCatalog implements searchCatalog operation.
+	//
+	// GET /catalog/advertisements
+	SearchCatalog(ctx context.Context, params SearchCatalogParams) (SearchCatalogRes, error)
 	// StartTunnelServe implements startTunnelServe operation.
 	//
 	// POST /tunnels/{tunnelId}/serve
 	StartTunnelServe(ctx context.Context, req *StartTunnelServeRequest, params StartTunnelServeParams) (StartTunnelServeRes, error)
+	// UpdateAdvertisement implements updateAdvertisement operation.
+	//
+	// PATCH /advertisements/{advertisementId}
+	UpdateAdvertisement(ctx context.Context, req *UpdateAdvertisementRequest, params UpdateAdvertisementParams) (UpdateAdvertisementRes, error)
 }
 
 // Server implements http server based on OpenAPI v3 specification and

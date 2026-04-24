@@ -192,6 +192,20 @@ func encodeLoginRequest(
 	return nil
 }
 
+func encodePublishAdvertisementRequest(
+	req *PublishAdvertisementRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodeRegenerateAccountTokenRequest(
 	req *RegenerateTokenRequest,
 	r *http.Request,
@@ -208,6 +222,20 @@ func encodeRegenerateAccountTokenRequest(
 
 func encodeStartTunnelServeRequest(
 	req *StartTunnelServeRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeUpdateAdvertisementRequest(
+	req *UpdateAdvertisementRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"

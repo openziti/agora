@@ -3,6 +3,7 @@ package persistence
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -22,8 +23,8 @@ func TestMigrateUpAndCompatibilityCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}
-	if applied != 3 {
-		t.Fatalf("expected 3 migrations applied, got %d", applied)
+	if applied != 4 {
+		t.Fatalf("expected 4 migrations applied, got %d", applied)
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); err != nil {
@@ -49,8 +50,8 @@ func TestCheckSchemaCompatibilityBehindBinary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migration status: %v", err)
 	}
-	if len(statuses) != 3 {
-		t.Fatalf("expected 3 migration statuses, got %d", len(statuses))
+	if len(statuses) != 4 {
+		t.Fatalf("expected 4 migration statuses, got %d", len(statuses))
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); !errors.Is(err, ErrSchemaBehindBinary) {
@@ -667,5 +668,388 @@ func TestWorkgroupIDFormatConstraint(t *testing.T) {
 		State:               WorkgroupStateActive,
 	}); err == nil {
 		t.Fatalf("expected error on invalid wg id, got nil")
+	}
+}
+
+func newAdvertisementTestFixture(t *testing.T, ctx context.Context, store *Store) (*Organization, *Account, *Workgroup) {
+	t.Helper()
+	org, acct, _ := createOrgAccountEnvironment(t, ctx, store)
+	wg, err := store.Workgroups.Create(ctx, store.DB(), Workgroup{
+		OwnerOrganizationID: org.ID,
+		Name:                "ad-test-wg",
+		Scope:               WorkgroupScopeIntraOrg,
+		State:               WorkgroupStateActive,
+	})
+	if err != nil {
+		t.Fatalf("create workgroup: %v", err)
+	}
+	if _, err := store.WorkgroupMemberships.Create(ctx, store.DB(), WorkgroupMembership{
+		WorkgroupID:    wg.ID,
+		OrganizationID: org.ID,
+		AccountID:      acct.ID,
+		Role:           WorkgroupMembershipRoleAdmin,
+	}); err != nil {
+		t.Fatalf("create membership: %v", err)
+	}
+	return org, acct, wg
+}
+
+func TestAdvertisementNameUniquenessWithinAccount(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, acct, wg := newAdvertisementTestFixture(t, ctx, store)
+
+	first, err := store.Advertisements.Create(ctx, store.DB(), Advertisement{
+		OrganizationID:  org.ID,
+		AccountID:       acct.ID,
+		Name:            "Sum-Service",
+		WorkgroupScopes: []string{wg.ID},
+		Capabilities:    CapabilitiesJSON{{Name: "summarize"}},
+		InteractionPatterns: InteractionPatternsJSON{{Kind: InteractionPatternKindRequestResponse}},
+	})
+	if err != nil {
+		t.Fatalf("create first advertisement: %v", err)
+	}
+
+	if _, err := store.Advertisements.Create(ctx, store.DB(), Advertisement{
+		OrganizationID:  org.ID,
+		AccountID:       acct.ID,
+		Name:            "sum-service",
+		WorkgroupScopes: []string{wg.ID},
+		Capabilities:    CapabilitiesJSON{{Name: "summarize"}},
+		InteractionPatterns: InteractionPatternsJSON{{Kind: InteractionPatternKindRequestResponse}},
+	}); !isUniqueViolation(err) {
+		t.Fatalf("expected unique violation on case-insensitive name reuse, got %v", err)
+	}
+
+	if err := store.Advertisements.MarkRetracted(ctx, store.DB(), first.ID); err != nil {
+		t.Fatalf("retract: %v", err)
+	}
+
+	if _, err := store.Advertisements.Create(ctx, store.DB(), Advertisement{
+		OrganizationID:  org.ID,
+		AccountID:       acct.ID,
+		Name:            "Sum-Service",
+		WorkgroupScopes: []string{wg.ID},
+		Capabilities:    CapabilitiesJSON{{Name: "summarize"}},
+		InteractionPatterns: InteractionPatternsJSON{{Kind: InteractionPatternKindRequestResponse}},
+	}); err != nil {
+		t.Fatalf("expected name reuse after retract to succeed, got %v", err)
+	}
+}
+
+func TestAdvertisementJSONBRoundtrip(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, acct, wg := newAdvertisementTestFixture(t, ctx, store)
+
+	caps := CapabilitiesJSON{
+		{Name: "summarize", Description: "summarize a body of text", Metadata: map[string]string{"a2a_kind": "tool", "version": "v1"}},
+		{Name: "translate", Description: "convert text to a target language"},
+	}
+	patterns := InteractionPatternsJSON{
+		{Kind: InteractionPatternKindRequestResponse},
+		{Kind: InteractionPatternKindCustom, CustomPattern: "websocket-stream"},
+	}
+
+	created, err := store.Advertisements.Create(ctx, store.DB(), Advertisement{
+		OrganizationID:      org.ID,
+		AccountID:           acct.ID,
+		Name:                "rich-ad",
+		Capabilities:        caps,
+		InteractionPatterns: patterns,
+		WorkgroupScopes:     []string{wg.ID},
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	loaded, err := store.Advertisements.GetByID(ctx, store.DB(), created.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if len(loaded.Capabilities) != 2 || loaded.Capabilities[0].Name != "summarize" {
+		t.Fatalf("unexpected capabilities round-trip: %#v", loaded.Capabilities)
+	}
+	if loaded.Capabilities[0].Metadata["a2a_kind"] != "tool" {
+		t.Fatalf("metadata did not round-trip: %#v", loaded.Capabilities[0].Metadata)
+	}
+	if len(loaded.InteractionPatterns) != 2 || loaded.InteractionPatterns[1].CustomPattern != "websocket-stream" {
+		t.Fatalf("unexpected interaction patterns round-trip: %#v", loaded.InteractionPatterns)
+	}
+}
+
+func TestAdvertisementWorkgroupScopesArray(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, acct, wg := newAdvertisementTestFixture(t, ctx, store)
+
+	wg2, err := store.Workgroups.Create(ctx, store.DB(), Workgroup{
+		OwnerOrganizationID: org.ID,
+		Name:                "second-wg",
+		Scope:               WorkgroupScopeIntraOrg,
+		State:               WorkgroupStateActive,
+	})
+	if err != nil {
+		t.Fatalf("create second workgroup: %v", err)
+	}
+
+	created, err := store.Advertisements.Create(ctx, store.DB(), Advertisement{
+		OrganizationID:      org.ID,
+		AccountID:           acct.ID,
+		Name:                "scoped-ad",
+		WorkgroupScopes:     []string{wg.ID, wg2.ID},
+		Capabilities:        CapabilitiesJSON{{Name: "x"}},
+		InteractionPatterns: InteractionPatternsJSON{{Kind: InteractionPatternKindStream}},
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	loaded, err := store.Advertisements.GetByID(ctx, store.DB(), created.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if len(loaded.WorkgroupScopes) != 2 {
+		t.Fatalf("expected 2 workgroup scopes, got %d", len(loaded.WorkgroupScopes))
+	}
+}
+
+func TestAdvertisementSearchVisibility(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, ownerAcct, ownerWG := newAdvertisementTestFixture(t, ctx, store)
+
+	// publish an ad scoped to ownerWG
+	publishedAd, err := store.Advertisements.Create(ctx, store.DB(), Advertisement{
+		OrganizationID:      org.ID,
+		AccountID:           ownerAcct.ID,
+		Name:                "owner-ad",
+		WorkgroupScopes:     []string{ownerWG.ID},
+		Capabilities:        CapabilitiesJSON{{Name: "owned"}},
+		InteractionPatterns: InteractionPatternsJSON{{Kind: InteractionPatternKindRequestResponse}},
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+
+	// caller A: member of ownerWG, NOT the owner
+	memberAcct, err := store.Accounts.Create(ctx, store.DB(), Account{
+		OrganizationID: org.ID,
+		Email:          "member@example.com",
+		PasswordSalt:   "s", PasswordHash: "h", AccountToken: "tok-member",
+		Role:   AccountRoleMember,
+		Status: AccountStatusActive,
+	})
+	if err != nil {
+		t.Fatalf("create member account: %v", err)
+	}
+	if _, err := store.WorkgroupMemberships.Create(ctx, store.DB(), WorkgroupMembership{
+		WorkgroupID:    ownerWG.ID,
+		OrganizationID: org.ID,
+		AccountID:      memberAcct.ID,
+		Role:           WorkgroupMembershipRoleMember,
+	}); err != nil {
+		t.Fatalf("create membership: %v", err)
+	}
+
+	// caller B: in same org, NOT a member of ownerWG
+	outsiderAcct, err := store.Accounts.Create(ctx, store.DB(), Account{
+		OrganizationID: org.ID,
+		Email:          "outsider@example.com",
+		PasswordSalt:   "s", PasswordHash: "h", AccountToken: "tok-outsider",
+		Role:   AccountRoleMember,
+		Status: AccountStatusActive,
+	})
+	if err != nil {
+		t.Fatalf("create outsider account: %v", err)
+	}
+
+	memberResults, _, err := store.Advertisements.Search(ctx, store.DB(), SearchParams{
+		CallerAccountID:    memberAcct.ID,
+		CallerWorkgroupIDs: []string{ownerWG.ID},
+	})
+	if err != nil {
+		t.Fatalf("member search: %v", err)
+	}
+	if len(memberResults) != 1 || memberResults[0].ID != publishedAd.ID {
+		t.Fatalf("expected member to see the ad, got %d results", len(memberResults))
+	}
+
+	outsiderResults, _, err := store.Advertisements.Search(ctx, store.DB(), SearchParams{
+		CallerAccountID:    outsiderAcct.ID,
+		CallerWorkgroupIDs: nil,
+	})
+	if err != nil {
+		t.Fatalf("outsider search: %v", err)
+	}
+	if len(outsiderResults) != 0 {
+		t.Fatalf("expected outsider to see no ads, got %d", len(outsiderResults))
+	}
+
+	ownerResults, _, err := store.Advertisements.Search(ctx, store.DB(), SearchParams{
+		CallerAccountID:    ownerAcct.ID,
+		CallerWorkgroupIDs: []string{ownerWG.ID},
+	})
+	if err != nil {
+		t.Fatalf("owner search: %v", err)
+	}
+	if len(ownerResults) != 1 {
+		t.Fatalf("expected owner to see own ad, got %d", len(ownerResults))
+	}
+}
+
+func TestAdvertisementSearchPagination(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, acct, wg := newAdvertisementTestFixture(t, ctx, store)
+
+	for i := 0; i < 3; i++ {
+		_, err := store.Advertisements.Create(ctx, store.DB(), Advertisement{
+			OrganizationID:      org.ID,
+			AccountID:           acct.ID,
+			Name:                fmt.Sprintf("paged-%d", i),
+			WorkgroupScopes:     []string{wg.ID},
+			Capabilities:        CapabilitiesJSON{{Name: "x"}},
+			InteractionPatterns: InteractionPatternsJSON{{Kind: InteractionPatternKindRequestResponse}},
+		})
+		if err != nil {
+			t.Fatalf("create %d: %v", i, err)
+		}
+		time.Sleep(time.Millisecond * 5) // ensure distinct timestamps for sort stability
+	}
+
+	page1, cursor1, err := store.Advertisements.Search(ctx, store.DB(), SearchParams{
+		CallerAccountID:    acct.ID,
+		CallerWorkgroupIDs: []string{wg.ID},
+		Limit:              2,
+	})
+	if err != nil {
+		t.Fatalf("page 1: %v", err)
+	}
+	if len(page1) != 2 || cursor1 == "" {
+		t.Fatalf("expected page 1 to have 2 items + cursor, got %d items / cursor=%q", len(page1), cursor1)
+	}
+
+	decoded, err := DecodeSearchCursor(cursor1)
+	if err != nil {
+		t.Fatalf("decode cursor: %v", err)
+	}
+
+	page2, cursor2, err := store.Advertisements.Search(ctx, store.DB(), SearchParams{
+		CallerAccountID:    acct.ID,
+		CallerWorkgroupIDs: []string{wg.ID},
+		Limit:              2,
+		Cursor:             decoded,
+	})
+	if err != nil {
+		t.Fatalf("page 2: %v", err)
+	}
+	if len(page2) != 1 {
+		t.Fatalf("expected page 2 to have 1 item, got %d", len(page2))
+	}
+	if cursor2 != "" {
+		t.Fatalf("expected no cursor on final page, got %q", cursor2)
+	}
+}
+
+func TestAdvertisementSearchFilters(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, acct, wg := newAdvertisementTestFixture(t, ctx, store)
+
+	wg2, err := store.Workgroups.Create(ctx, store.DB(), Workgroup{
+		OwnerOrganizationID: org.ID,
+		Name:                "wg-two",
+		Scope:               WorkgroupScopeIntraOrg,
+		State:               WorkgroupStateActive,
+	})
+	if err != nil {
+		t.Fatalf("create wg2: %v", err)
+	}
+	if _, err := store.WorkgroupMemberships.Create(ctx, store.DB(), WorkgroupMembership{
+		WorkgroupID:    wg2.ID,
+		OrganizationID: org.ID,
+		AccountID:      acct.ID,
+		Role:           WorkgroupMembershipRoleMember,
+	}); err != nil {
+		t.Fatalf("create wg2 membership: %v", err)
+	}
+
+	mustCreate := func(name string, caps CapabilitiesJSON, patterns InteractionPatternsJSON, scopes []string) {
+		t.Helper()
+		if _, err := store.Advertisements.Create(ctx, store.DB(), Advertisement{
+			OrganizationID:      org.ID,
+			AccountID:           acct.ID,
+			Name:                name,
+			WorkgroupScopes:     scopes,
+			Capabilities:        caps,
+			InteractionPatterns: patterns,
+		}); err != nil {
+			t.Fatalf("create %s: %v", name, err)
+		}
+	}
+	mustCreate("translator", CapabilitiesJSON{{Name: "translate"}}, InteractionPatternsJSON{{Kind: InteractionPatternKindRequestResponse}}, []string{wg.ID})
+	mustCreate("summary-bot", CapabilitiesJSON{{Name: "summarize"}}, InteractionPatternsJSON{{Kind: InteractionPatternKindStream}}, []string{wg.ID})
+	mustCreate("wg2-only", CapabilitiesJSON{{Name: "summarize"}}, InteractionPatternsJSON{{Kind: InteractionPatternKindRequestResponse}}, []string{wg2.ID})
+
+	callerScopes := []string{wg.ID, wg2.ID}
+
+	// capability keyword
+	results, _, err := store.Advertisements.Search(ctx, store.DB(), SearchParams{
+		CallerAccountID:    acct.ID,
+		CallerWorkgroupIDs: callerScopes,
+		CapabilityKeyword:  "summar",
+	})
+	if err != nil {
+		t.Fatalf("capability search: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected 2 summary-related ads, got %d", len(results))
+	}
+
+	// interaction pattern
+	results, _, err = store.Advertisements.Search(ctx, store.DB(), SearchParams{
+		CallerAccountID:         acct.ID,
+		CallerWorkgroupIDs:      callerScopes,
+		InteractionPatternKinds: []InteractionPatternKind{InteractionPatternKindStream},
+	})
+	if err != nil {
+		t.Fatalf("interaction search: %v", err)
+	}
+	if len(results) != 1 || results[0].Name != "summary-bot" {
+		t.Fatalf("expected summary-bot, got %d results", len(results))
+	}
+
+	// workgroup filter
+	results, _, err = store.Advertisements.Search(ctx, store.DB(), SearchParams{
+		CallerAccountID:    acct.ID,
+		CallerWorkgroupIDs: callerScopes,
+		WorkgroupFilter:    []string{wg2.ID},
+	})
+	if err != nil {
+		t.Fatalf("workgroup filter search: %v", err)
+	}
+	if len(results) != 1 || results[0].Name != "wg2-only" {
+		t.Fatalf("expected wg2-only, got %d results", len(results))
+	}
+
+	// owner-org
+	results, _, err = store.Advertisements.Search(ctx, store.DB(), SearchParams{
+		CallerAccountID:     acct.ID,
+		CallerWorkgroupIDs:  callerScopes,
+		OwnerOrganizationID: org.ID,
+	})
+	if err != nil {
+		t.Fatalf("owner-org search: %v", err)
+	}
+	if len(results) != 3 {
+		t.Fatalf("expected 3 ads from this org, got %d", len(results))
 	}
 }

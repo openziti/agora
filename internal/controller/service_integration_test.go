@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -835,5 +836,327 @@ func TestWorkgroupInterOrgDeclineLocksWorkgroup(t *testing.T) {
 	}
 	if _, ok := subsequent.(*api.AcceptWorkgroupInvitationConflict); !ok {
 		t.Fatalf("expected workgroup_declined conflict, got %T", subsequent)
+	}
+}
+
+func (e *workgroupTestEnv) seedIntraOrgWorkgroup(t *testing.T, orgID, name, adminAcctID string) string {
+	t.Helper()
+	admin := e.adminClient(t)
+	res, err := admin.CreateWorkgroup(e.ctx, &api.CreateWorkgroupRequest{
+		Name:                  name,
+		Scope:                 api.CreateWorkgroupRequestScopeIntraOrg,
+		OwnerOrganizationId:   orgID,
+		InitialAdminAccountId: adminAcctID,
+	})
+	if err != nil {
+		t.Fatalf("create workgroup %q: %v", name, err)
+	}
+	return res.(*api.CreateWorkgroupResponse).Workgroup.ID
+}
+
+func TestAdvertisementPublishVisibility(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	bobID, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	wgID := env.seedIntraOrgWorkgroup(t, orgA, "channel", aliceID)
+
+	aliceClient := env.accountClient(t, aliceToken)
+	pubRes, err := aliceClient.PublishAdvertisement(env.ctx, &api.PublishAdvertisementRequest{
+		Name:                "alice-summarizer",
+		Capabilities:        []api.AdvertisementCapability{{Name: "summarize"}},
+		InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{wgID},
+	})
+	if err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	ad, ok := pubRes.(*api.Advertisement)
+	if !ok {
+		t.Fatalf("publish unexpected response: %T", pubRes)
+	}
+
+	bobClient := env.accountClient(t, bobToken)
+	bobGet, err := bobClient.GetAdvertisement(env.ctx, api.GetAdvertisementParams{AdvertisementId: ad.ID})
+	if err != nil {
+		t.Fatalf("bob get: %v", err)
+	}
+	if _, ok := bobGet.(*api.GetAdvertisementNotFound); !ok {
+		t.Fatalf("expected bob to get 404 (no shared workgroup), got %T", bobGet)
+	}
+
+	addMember, err := aliceClient.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID})
+	if err != nil {
+		t.Fatalf("add bob to workgroup: %v", err)
+	}
+	if _, ok := addMember.(*api.WorkgroupMembership); !ok {
+		t.Fatalf("add member unexpected response: %T", addMember)
+	}
+
+	bobGet2, err := bobClient.GetAdvertisement(env.ctx, api.GetAdvertisementParams{AdvertisementId: ad.ID})
+	if err != nil {
+		t.Fatalf("bob get after add: %v", err)
+	}
+	if _, ok := bobGet2.(*api.Advertisement); !ok {
+		t.Fatalf("expected bob to see ad after joining workgroup, got %T", bobGet2)
+	}
+
+	_ = bobID
+}
+
+func TestAdvertisementPublishRejectedNotMember(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgA, aliceID, _ := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	wgID := env.seedIntraOrgWorkgroup(t, orgA, "alice-only", aliceID)
+
+	bobClient := env.accountClient(t, bobToken)
+	res, err := bobClient.PublishAdvertisement(env.ctx, &api.PublishAdvertisementRequest{
+		Name:                "bob-tries",
+		Capabilities:        []api.AdvertisementCapability{{Name: "x"}},
+		InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{wgID},
+	})
+	if err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	if _, ok := res.(*api.PublishAdvertisementForbidden); !ok {
+		t.Fatalf("expected 403 not_a_workgroup_member, got %T", res)
+	}
+}
+
+func TestAdvertisementPublishUnknownWorkgroup(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	_, _, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	aliceClient := env.accountClient(t, aliceToken)
+
+	res, err := aliceClient.PublishAdvertisement(env.ctx, &api.PublishAdvertisementRequest{
+		Name:                "ghost",
+		Capabilities:        []api.AdvertisementCapability{{Name: "x"}},
+		InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{"wg_zzzzzzzzzzzz"},
+	})
+	if err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	if _, ok := res.(*api.PublishAdvertisementBadRequest); !ok {
+		t.Fatalf("expected 400 unknown_workgroup, got %T", res)
+	}
+}
+
+func TestAdvertisementNameUniqueness(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	wgID := env.seedIntraOrgWorkgroup(t, orgA, "ch", aliceID)
+
+	aliceClient := env.accountClient(t, aliceToken)
+	pubReq := &api.PublishAdvertisementRequest{
+		Name:                "DupName",
+		Capabilities:        []api.AdvertisementCapability{{Name: "x"}},
+		InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{wgID},
+	}
+	if _, err := aliceClient.PublishAdvertisement(env.ctx, pubReq); err != nil {
+		t.Fatalf("first publish: %v", err)
+	}
+	dupRes, err := aliceClient.PublishAdvertisement(env.ctx, pubReq)
+	if err != nil {
+		t.Fatalf("second publish: %v", err)
+	}
+	if _, ok := dupRes.(*api.PublishAdvertisementConflict); !ok {
+		t.Fatalf("expected 409 name_in_use, got %T", dupRes)
+	}
+}
+
+func TestAdvertisementUpdateAndRetract(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	wgID := env.seedIntraOrgWorkgroup(t, orgA, "ch", aliceID)
+
+	aliceClient := env.accountClient(t, aliceToken)
+	bobClient := env.accountClient(t, bobToken)
+
+	pubRes, err := aliceClient.PublishAdvertisement(env.ctx, &api.PublishAdvertisementRequest{
+		Name:                "to-update",
+		Capabilities:        []api.AdvertisementCapability{{Name: "v1"}},
+		InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{wgID},
+	})
+	if err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	advID := pubRes.(*api.Advertisement).ID
+
+	updReq := &api.UpdateAdvertisementRequest{Capabilities: []api.AdvertisementCapability{{Name: "v2"}}}
+	updRes, err := bobClient.UpdateAdvertisement(env.ctx, updReq, api.UpdateAdvertisementParams{AdvertisementId: advID})
+	if err != nil {
+		t.Fatalf("bob update: %v", err)
+	}
+	if _, ok := updRes.(*api.UpdateAdvertisementNotFound); !ok {
+		t.Fatalf("expected bob to receive 404 on update (non-owner), got %T", updRes)
+	}
+
+	updRes2, err := aliceClient.UpdateAdvertisement(env.ctx, updReq, api.UpdateAdvertisementParams{AdvertisementId: advID})
+	if err != nil {
+		t.Fatalf("alice update: %v", err)
+	}
+	if _, ok := updRes2.(*api.Advertisement); !ok {
+		t.Fatalf("expected updated advertisement, got %T", updRes2)
+	}
+
+	retract, err := aliceClient.RetractAdvertisement(env.ctx, api.RetractAdvertisementParams{AdvertisementId: advID})
+	if err != nil {
+		t.Fatalf("retract: %v", err)
+	}
+	if _, ok := retract.(*api.RetractAdvertisementNoContent); !ok {
+		t.Fatalf("expected 204, got %T", retract)
+	}
+
+	// idempotent re-retract returns 204
+	retract2, err := aliceClient.RetractAdvertisement(env.ctx, api.RetractAdvertisementParams{AdvertisementId: advID})
+	if err != nil {
+		t.Fatalf("re-retract: %v", err)
+	}
+	if _, ok := retract2.(*api.RetractAdvertisementNoContent); !ok {
+		t.Fatalf("expected idempotent 204, got %T", retract2)
+	}
+}
+
+func TestAdvertisementUpdateRetractedReturns409(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	wgID := env.seedIntraOrgWorkgroup(t, orgA, "ch", aliceID)
+	aliceClient := env.accountClient(t, aliceToken)
+
+	pub, _ := aliceClient.PublishAdvertisement(env.ctx, &api.PublishAdvertisementRequest{
+		Name:                "ad",
+		Capabilities:        []api.AdvertisementCapability{{Name: "x"}},
+		InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{wgID},
+	})
+	advID := pub.(*api.Advertisement).ID
+	if _, err := aliceClient.RetractAdvertisement(env.ctx, api.RetractAdvertisementParams{AdvertisementId: advID}); err != nil {
+		t.Fatalf("retract: %v", err)
+	}
+
+	updReq := &api.UpdateAdvertisementRequest{Capabilities: []api.AdvertisementCapability{{Name: "y"}}}
+	updRes, err := aliceClient.UpdateAdvertisement(env.ctx, updReq, api.UpdateAdvertisementParams{AdvertisementId: advID})
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if _, ok := updRes.(*api.UpdateAdvertisementConflict); !ok {
+		t.Fatalf("expected 409 advertisement_retracted, got %T", updRes)
+	}
+}
+
+func TestCatalogSearchVisibilityAndFilters(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	wgID := env.seedIntraOrgWorkgroup(t, orgA, "shared", aliceID)
+	otherWG := env.seedIntraOrgWorkgroup(t, orgA, "alice-only", aliceID)
+
+	aliceClient := env.accountClient(t, aliceToken)
+	bobClient := env.accountClient(t, bobToken)
+
+	// add bob to "shared" only
+	if _, err := aliceClient.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID}); err != nil {
+		t.Fatalf("add bob: %v", err)
+	}
+
+	publish := func(name, capName string, scopes []string) {
+		t.Helper()
+		if _, err := aliceClient.PublishAdvertisement(env.ctx, &api.PublishAdvertisementRequest{
+			Name:                name,
+			Capabilities:        []api.AdvertisementCapability{{Name: capName}},
+			InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
+			WorkgroupScopes:     scopes,
+		}); err != nil {
+			t.Fatalf("publish %s: %v", name, err)
+		}
+	}
+	publish("shared-summarizer", "summarize", []string{wgID})
+	publish("shared-translator", "translate", []string{wgID})
+	publish("alice-only-tool", "internal", []string{otherWG})
+
+	// bob: shared has 2 ads visible; alice-only is invisible
+	bobSearch, err := bobClient.SearchCatalog(env.ctx, api.SearchCatalogParams{})
+	if err != nil {
+		t.Fatalf("bob search: %v", err)
+	}
+	bobResp, ok := bobSearch.(*api.CatalogSearchResponse)
+	if !ok {
+		t.Fatalf("bob search unexpected response: %T", bobSearch)
+	}
+	if len(bobResp.Items) != 2 {
+		t.Fatalf("expected bob to see 2 ads, got %d", len(bobResp.Items))
+	}
+
+	// capability filter: substring "summar" → 1 result
+	capSearch, _ := bobClient.SearchCatalog(env.ctx, api.SearchCatalogParams{Capability: api.NewOptString("summar")})
+	capResp := capSearch.(*api.CatalogSearchResponse)
+	if len(capResp.Items) != 1 || capResp.Items[0].Name != "shared-summarizer" {
+		t.Fatalf("expected single summarizer match, got %d items", len(capResp.Items))
+	}
+}
+
+func TestCatalogSearchPagination(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	wgID := env.seedIntraOrgWorkgroup(t, orgA, "ch", aliceID)
+	aliceClient := env.accountClient(t, aliceToken)
+
+	for i := 0; i < 3; i++ {
+		if _, err := aliceClient.PublishAdvertisement(env.ctx, &api.PublishAdvertisementRequest{
+			Name:                fmt.Sprintf("paged-%d", i),
+			Capabilities:        []api.AdvertisementCapability{{Name: "x"}},
+			InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
+			WorkgroupScopes:     []string{wgID},
+		}); err != nil {
+			t.Fatalf("publish %d: %v", i, err)
+		}
+		time.Sleep(time.Millisecond * 5)
+	}
+
+	page1Res, err := aliceClient.SearchCatalog(env.ctx, api.SearchCatalogParams{Limit: api.NewOptInt(2)})
+	if err != nil {
+		t.Fatalf("page1: %v", err)
+	}
+	page1 := page1Res.(*api.CatalogSearchResponse)
+	if len(page1.Items) != 2 || !page1.NextCursor.Set {
+		t.Fatalf("expected 2 items + cursor, got items=%d cursor.Set=%v", len(page1.Items), page1.NextCursor.Set)
+	}
+
+	page2Res, err := aliceClient.SearchCatalog(env.ctx, api.SearchCatalogParams{Limit: api.NewOptInt(2), Cursor: api.NewOptString(page1.NextCursor.Value)})
+	if err != nil {
+		t.Fatalf("page2: %v", err)
+	}
+	page2 := page2Res.(*api.CatalogSearchResponse)
+	if len(page2.Items) != 1 || page2.NextCursor.Set {
+		t.Fatalf("expected 1 item + no cursor, got items=%d cursor.Set=%v", len(page2.Items), page2.NextCursor.Set)
 	}
 }

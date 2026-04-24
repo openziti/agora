@@ -72,6 +72,14 @@ paths:
   /admin/workgroups/{workgroupId}/invitations/{organizationId}/decline:
     $ref: "admin/paths.yml#/~1admin~1workgroups~1{workgroupId}~1invitations~1{organizationId}~1decline"
 
+  /advertisements:
+    $ref: "advertisements/paths.yml#/~1advertisements"
+  /advertisements/{advertisementId}:
+    $ref: "advertisements/paths.yml#/~1advertisements~1{advertisementId}"
+
+  /catalog/advertisements:
+    $ref: "catalog/paths.yml#/~1catalog~1advertisements"
+
 components:
   securitySchemes:
     accountTokenAuth:
@@ -164,3 +172,21 @@ components:
       $ref: "admin/schemas.yml#/acknowledgeWorkgroupInvitationResponse"
     listAdminWorkgroupsResponse:
       $ref: "admin/schemas.yml#/listAdminWorkgroupsResponse"
+    advertisement:
+      $ref: "advertisements/schemas.yml#/advertisement"
+    advertisementCapability:
+      $ref: "advertisements/schemas.yml#/advertisementCapability"
+    advertisementInteractionPattern:
+      $ref: "advertisements/schemas.yml#/advertisementInteractionPattern"
+    advertisementInteractionPatternKind:
+      $ref: "advertisements/schemas.yml#/advertisementInteractionPatternKind"
+    advertisementStatus:
+      $ref: "advertisements/schemas.yml#/advertisementStatus"
+    publishAdvertisementRequest:
+      $ref: "advertisements/schemas.yml#/publishAdvertisementRequest"
+    updateAdvertisementRequest:
+      $ref: "advertisements/schemas.yml#/updateAdvertisementRequest"
+    listAdvertisementsResponse:
+      $ref: "advertisements/schemas.yml#/listAdvertisementsResponse"
+    catalogSearchResponse:
+      $ref: "catalog/schemas.yml#/catalogSearchResponse"

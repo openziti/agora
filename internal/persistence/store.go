@@ -30,6 +30,7 @@ type Store struct {
 	Workgroups           *WorkgroupsRepository
 	WorkgroupInvitations *WorkgroupInvitationsRepository
 	WorkgroupMemberships *WorkgroupMembershipsRepository
+	Advertisements       *AdvertisementsRepository
 }
 
 func Open(ctx context.Context, cfg Config) (*Store, error) {
@@ -69,6 +70,7 @@ func Open(ctx context.Context, cfg Config) (*Store, error) {
 	store.Workgroups = &WorkgroupsRepository{}
 	store.WorkgroupInvitations = &WorkgroupInvitationsRepository{}
 	store.WorkgroupMemberships = &WorkgroupMembershipsRepository{}
+	store.Advertisements = &AdvertisementsRepository{}
 
 	return store, nil
 }

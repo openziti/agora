@@ -97,6 +97,10 @@ type Invoker interface {
 	//
 	// POST /environments
 	EnableEnvironment(ctx context.Context, request *EnableEnvironmentRequest) (EnableEnvironmentRes, error)
+	// GetAdvertisement invokes getAdvertisement operation.
+	//
+	// GET /advertisements/{advertisementId}
+	GetAdvertisement(ctx context.Context, params GetAdvertisementParams) (GetAdvertisementRes, error)
 	// GetEnvironment invokes getEnvironment operation.
 	//
 	// GET /environments/{environmentId}
@@ -133,6 +137,10 @@ type Invoker interface {
 	//
 	// GET /admin/workgroups
 	ListAdminWorkgroups(ctx context.Context, params ListAdminWorkgroupsParams) (ListAdminWorkgroupsRes, error)
+	// ListAdvertisements invokes listAdvertisements operation.
+	//
+	// GET /advertisements
+	ListAdvertisements(ctx context.Context, params ListAdvertisementsParams) (ListAdvertisementsRes, error)
 	// ListEnvironments invokes listEnvironments operation.
 	//
 	// GET /environments
@@ -169,6 +177,10 @@ type Invoker interface {
 	//
 	// POST /account/login
 	Login(ctx context.Context, request *LoginRequest) (LoginRes, error)
+	// PublishAdvertisement invokes publishAdvertisement operation.
+	//
+	// POST /advertisements
+	PublishAdvertisement(ctx context.Context, request *PublishAdvertisementRequest) (PublishAdvertisementRes, error)
 	// RegenerateAccountToken invokes regenerateAccountToken operation.
 	//
 	// POST /account/regenerate-token
@@ -181,10 +193,22 @@ type Invoker interface {
 	//
 	// DELETE /workgroups/{workgroupId}/members/{membershipId}
 	RemoveWorkgroupMember(ctx context.Context, params RemoveWorkgroupMemberParams) (RemoveWorkgroupMemberRes, error)
+	// RetractAdvertisement invokes retractAdvertisement operation.
+	//
+	// DELETE /advertisements/{advertisementId}
+	RetractAdvertisement(ctx context.Context, params RetractAdvertisementParams) (RetractAdvertisementRes, error)
+	// SearchCatalog invokes searchCatalog operation.
+	//
+	// GET /catalog/advertisements
+	SearchCatalog(ctx context.Context, params SearchCatalogParams) (SearchCatalogRes, error)
 	// StartTunnelServe invokes startTunnelServe operation.
 	//
 	// POST /tunnels/{tunnelId}/serve
 	StartTunnelServe(ctx context.Context, request *StartTunnelServeRequest, params StartTunnelServeParams) (StartTunnelServeRes, error)
+	// UpdateAdvertisement invokes updateAdvertisement operation.
+	//
+	// PATCH /advertisements/{advertisementId}
+	UpdateAdvertisement(ctx context.Context, request *UpdateAdvertisementRequest, params UpdateAdvertisementParams) (UpdateAdvertisementRes, error)
 }
 
 // Client implements OAS client.
@@ -1956,6 +1980,91 @@ func (c *Client) sendEnableEnvironment(ctx context.Context, request *EnableEnvir
 	return result, nil
 }
 
+// GetAdvertisement invokes getAdvertisement operation.
+//
+// GET /advertisements/{advertisementId}
+func (c *Client) GetAdvertisement(ctx context.Context, params GetAdvertisementParams) (GetAdvertisementRes, error) {
+	res, err := c.sendGetAdvertisement(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetAdvertisement(ctx context.Context, params GetAdvertisementParams) (res GetAdvertisementRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/advertisements/"
+	{
+		// Encode "advertisementId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "advertisementId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.AdvertisementId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, GetAdvertisementOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeGetAdvertisementResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // GetEnvironment invokes getEnvironment operation.
 //
 // GET /environments/{environmentId}
@@ -2762,6 +2871,93 @@ func (c *Client) sendListAdminWorkgroups(ctx context.Context, params ListAdminWo
 	return result, nil
 }
 
+// ListAdvertisements invokes listAdvertisements operation.
+//
+// GET /advertisements
+func (c *Client) ListAdvertisements(ctx context.Context, params ListAdvertisementsParams) (ListAdvertisementsRes, error) {
+	res, err := c.sendListAdvertisements(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendListAdvertisements(ctx context.Context, params ListAdvertisementsParams) (res ListAdvertisementsRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/advertisements"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "status" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "status",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Status.Get(); ok {
+				return e.EncodeValue(conv.StringToString(string(val)))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, ListAdvertisementsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeListAdvertisementsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // ListEnvironments invokes listEnvironments operation.
 //
 // GET /environments
@@ -3441,6 +3637,85 @@ func (c *Client) sendLogin(ctx context.Context, request *LoginRequest) (res Logi
 	return result, nil
 }
 
+// PublishAdvertisement invokes publishAdvertisement operation.
+//
+// POST /advertisements
+func (c *Client) PublishAdvertisement(ctx context.Context, request *PublishAdvertisementRequest) (PublishAdvertisementRes, error) {
+	res, err := c.sendPublishAdvertisement(ctx, request)
+	return res, err
+}
+
+func (c *Client) sendPublishAdvertisement(ctx context.Context, request *PublishAdvertisementRequest) (res PublishAdvertisementRes, err error) {
+	// Validate request before sending.
+	if err := func() error {
+		if err := request.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return res, errors.Wrap(err, "validate")
+	}
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/advertisements"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodePublishAdvertisementRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, PublishAdvertisementOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodePublishAdvertisementResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // RegenerateAccountToken invokes regenerateAccountToken operation.
 //
 // POST /account/regenerate-token
@@ -3728,6 +4003,281 @@ func (c *Client) sendRemoveWorkgroupMember(ctx context.Context, params RemoveWor
 	return result, nil
 }
 
+// RetractAdvertisement invokes retractAdvertisement operation.
+//
+// DELETE /advertisements/{advertisementId}
+func (c *Client) RetractAdvertisement(ctx context.Context, params RetractAdvertisementParams) (RetractAdvertisementRes, error) {
+	res, err := c.sendRetractAdvertisement(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendRetractAdvertisement(ctx context.Context, params RetractAdvertisementParams) (res RetractAdvertisementRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/advertisements/"
+	{
+		// Encode "advertisementId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "advertisementId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.AdvertisementId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, RetractAdvertisementOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeRetractAdvertisementResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// SearchCatalog invokes searchCatalog operation.
+//
+// GET /catalog/advertisements
+func (c *Client) SearchCatalog(ctx context.Context, params SearchCatalogParams) (SearchCatalogRes, error) {
+	res, err := c.sendSearchCatalog(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendSearchCatalog(ctx context.Context, params SearchCatalogParams) (res SearchCatalogRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/catalog/advertisements"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "workgroup" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "workgroup",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if params.Workgroup != nil {
+				return e.EncodeArray(func(e uri.Encoder) error {
+					for i, item := range params.Workgroup {
+						if err := func() error {
+							return e.EncodeValue(conv.StringToString(item))
+						}(); err != nil {
+							return errors.Wrapf(err, "[%d]", i)
+						}
+					}
+					return nil
+				})
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "capability" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "capability",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Capability.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "interactionPattern" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "interactionPattern",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if params.InteractionPattern != nil {
+				return e.EncodeArray(func(e uri.Encoder) error {
+					for i, item := range params.InteractionPattern {
+						if err := func() error {
+							return e.EncodeValue(conv.StringToString(string(item)))
+						}(); err != nil {
+							return errors.Wrapf(err, "[%d]", i)
+						}
+					}
+					return nil
+				})
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "ownerOrganizationId" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "ownerOrganizationId",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.OwnerOrganizationId.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "cursor" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "cursor",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Cursor.Get(); ok {
+				return e.EncodeValue(conv.StringToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "limit" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "limit",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Limit.Get(); ok {
+				return e.EncodeValue(conv.IntToString(val))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, SearchCatalogOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeSearchCatalogResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // StartTunnelServe invokes startTunnelServe operation.
 //
 // POST /tunnels/{tunnelId}/serve
@@ -3819,6 +4369,103 @@ func (c *Client) sendStartTunnelServe(ctx context.Context, request *StartTunnelS
 	defer resp.Body.Close()
 
 	result, err := decodeStartTunnelServeResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// UpdateAdvertisement invokes updateAdvertisement operation.
+//
+// PATCH /advertisements/{advertisementId}
+func (c *Client) UpdateAdvertisement(ctx context.Context, request *UpdateAdvertisementRequest, params UpdateAdvertisementParams) (UpdateAdvertisementRes, error) {
+	res, err := c.sendUpdateAdvertisement(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendUpdateAdvertisement(ctx context.Context, request *UpdateAdvertisementRequest, params UpdateAdvertisementParams) (res UpdateAdvertisementRes, err error) {
+	// Validate request before sending.
+	if err := func() error {
+		if err := request.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return res, errors.Wrap(err, "validate")
+	}
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/advertisements/"
+	{
+		// Encode "advertisementId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "advertisementId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.AdvertisementId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "PATCH", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeUpdateAdvertisementRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, UpdateAdvertisementOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeUpdateAdvertisementResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

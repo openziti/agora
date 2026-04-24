@@ -77,6 +77,10 @@ type EnableEnvironmentRes interface {
 	enableEnvironmentRes()
 }
 
+type GetAdvertisementRes interface {
+	getAdvertisementRes()
+}
+
 type GetEnvironmentRes interface {
 	getEnvironmentRes()
 }
@@ -111,6 +115,10 @@ type ListAccountsRes interface {
 
 type ListAdminWorkgroupsRes interface {
 	listAdminWorkgroupsRes()
+}
+
+type ListAdvertisementsRes interface {
+	listAdvertisementsRes()
 }
 
 type ListEnvironmentsRes interface {
@@ -149,6 +157,10 @@ type LoginRes interface {
 	loginRes()
 }
 
+type PublishAdvertisementRes interface {
+	publishAdvertisementRes()
+}
+
 type RegenerateAccountTokenRes interface {
 	regenerateAccountTokenRes()
 }
@@ -161,6 +173,18 @@ type RemoveWorkgroupMemberRes interface {
 	removeWorkgroupMemberRes()
 }
 
+type RetractAdvertisementRes interface {
+	retractAdvertisementRes()
+}
+
+type SearchCatalogRes interface {
+	searchCatalogRes()
+}
+
 type StartTunnelServeRes interface {
 	startTunnelServeRes()
+}
+
+type UpdateAdvertisementRes interface {
+	updateAdvertisementRes()
 }

@@ -5,6 +5,8 @@ import (
 	"flag"
 	"os"
 
+	"github.com/openziti/agora/examples/macro-pulse/internal/agentutil"
+	"github.com/openziti/agora/internal/api"
 	"github.com/openziti/agora/sdk/agent"
 )
 
@@ -17,7 +19,20 @@ func main() {
 		agent.WithRuntime(),
 	)
 	if err := app.Run(func(ctx context.Context, a *agent.Agent) error {
-		a.Log().Info("alive")
+		ad, err := agentutil.EnsureAdvertisement(ctx, a.Controller(), agentutil.AdvertisementSpec{
+			Name:        "narrator",
+			Description: "Template-driven prose summaries of numeric inputs",
+			Capabilities: []api.AdvertisementCapability{
+				{Name: "analytics.narrate", Description: api.NewOptString("Render structured numeric inputs as prose")},
+			},
+			InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
+			WorkgroupNames:      []string{"analytics-channel"},
+		})
+		if err != nil {
+			a.Log().Errorf("publish advertisement: %v", err)
+			return err
+		}
+		a.Log().With("advertisement_id", ad.ID).Infof("alive; advertisement published")
 		<-ctx.Done()
 		return nil
 	}); err != nil {

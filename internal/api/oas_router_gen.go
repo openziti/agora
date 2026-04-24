@@ -181,125 +181,139 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 					}
 
-				case 'd': // Prefix: "dmin/workgroups"
+				case 'd': // Prefix: "d"
 
-					if l := len("dmin/workgroups"); len(elem) >= l && elem[0:l] == "dmin/workgroups" {
+					if l := len("d"); len(elem) >= l && elem[0:l] == "d" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
 					if len(elem) == 0 {
-						switch r.Method {
-						case "GET":
-							s.handleListAdminWorkgroupsRequest([0]string{}, elemIsEscaped, w, r)
-						case "POST":
-							s.handleCreateWorkgroupRequest([0]string{}, elemIsEscaped, w, r)
-						default:
-							s.notAllowed(w, r, "GET,POST")
-						}
-
-						return
+						break
 					}
 					switch elem[0] {
-					case '/': // Prefix: "/"
+					case 'm': // Prefix: "min/workgroups"
 
-						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						if l := len("min/workgroups"); len(elem) >= l && elem[0:l] == "min/workgroups" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
-						// Param: "workgroupId"
-						// Match until "/"
-						idx := strings.IndexByte(elem, '/')
-						if idx < 0 {
-							idx = len(elem)
-						}
-						args[0] = elem[:idx]
-						elem = elem[idx:]
-
 						if len(elem) == 0 {
-							break
+							switch r.Method {
+							case "GET":
+								s.handleListAdminWorkgroupsRequest([0]string{}, elemIsEscaped, w, r)
+							case "POST":
+								s.handleCreateWorkgroupRequest([0]string{}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, "GET,POST")
+							}
+
+							return
 						}
 						switch elem[0] {
-						case '/': // Prefix: "/invitations/"
+						case '/': // Prefix: "/"
 
-							if l := len("/invitations/"); len(elem) >= l && elem[0:l] == "/invitations/" {
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 								elem = elem[l:]
 							} else {
 								break
 							}
 
-							// Param: "organizationId"
+							// Param: "workgroupId"
 							// Match until "/"
 							idx := strings.IndexByte(elem, '/')
 							if idx < 0 {
 								idx = len(elem)
 							}
-							args[1] = elem[:idx]
+							args[0] = elem[:idx]
 							elem = elem[idx:]
 
 							if len(elem) == 0 {
 								break
 							}
 							switch elem[0] {
-							case '/': // Prefix: "/"
+							case '/': // Prefix: "/invitations/"
 
-								if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								if l := len("/invitations/"); len(elem) >= l && elem[0:l] == "/invitations/" {
 									elem = elem[l:]
 								} else {
 									break
 								}
 
+								// Param: "organizationId"
+								// Match until "/"
+								idx := strings.IndexByte(elem, '/')
+								if idx < 0 {
+									idx = len(elem)
+								}
+								args[1] = elem[:idx]
+								elem = elem[idx:]
+
 								if len(elem) == 0 {
 									break
 								}
 								switch elem[0] {
-								case 'a': // Prefix: "accept"
+								case '/': // Prefix: "/"
 
-									if l := len("accept"); len(elem) >= l && elem[0:l] == "accept" {
+									if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 										elem = elem[l:]
 									} else {
 										break
 									}
 
 									if len(elem) == 0 {
-										// Leaf node.
-										switch r.Method {
-										case "POST":
-											s.handleAcceptWorkgroupInvitationRequest([2]string{
-												args[0],
-												args[1],
-											}, elemIsEscaped, w, r)
-										default:
-											s.notAllowed(w, r, "POST")
-										}
-
-										return
-									}
-
-								case 'd': // Prefix: "decline"
-
-									if l := len("decline"); len(elem) >= l && elem[0:l] == "decline" {
-										elem = elem[l:]
-									} else {
 										break
 									}
+									switch elem[0] {
+									case 'a': // Prefix: "accept"
 
-									if len(elem) == 0 {
-										// Leaf node.
-										switch r.Method {
-										case "POST":
-											s.handleDeclineWorkgroupInvitationRequest([2]string{
-												args[0],
-												args[1],
-											}, elemIsEscaped, w, r)
-										default:
-											s.notAllowed(w, r, "POST")
+										if l := len("accept"); len(elem) >= l && elem[0:l] == "accept" {
+											elem = elem[l:]
+										} else {
+											break
 										}
 
-										return
+										if len(elem) == 0 {
+											// Leaf node.
+											switch r.Method {
+											case "POST":
+												s.handleAcceptWorkgroupInvitationRequest([2]string{
+													args[0],
+													args[1],
+												}, elemIsEscaped, w, r)
+											default:
+												s.notAllowed(w, r, "POST")
+											}
+
+											return
+										}
+
+									case 'd': // Prefix: "decline"
+
+										if l := len("decline"); len(elem) >= l && elem[0:l] == "decline" {
+											elem = elem[l:]
+										} else {
+											break
+										}
+
+										if len(elem) == 0 {
+											// Leaf node.
+											switch r.Method {
+											case "POST":
+												s.handleDeclineWorkgroupInvitationRequest([2]string{
+													args[0],
+													args[1],
+												}, elemIsEscaped, w, r)
+											default:
+												s.notAllowed(w, r, "POST")
+											}
+
+											return
+										}
+
 									}
 
 								}
@@ -308,8 +322,90 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 						}
 
+					case 'v': // Prefix: "vertisements"
+
+						if l := len("vertisements"); len(elem) >= l && elem[0:l] == "vertisements" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							switch r.Method {
+							case "GET":
+								s.handleListAdvertisementsRequest([0]string{}, elemIsEscaped, w, r)
+							case "POST":
+								s.handlePublishAdvertisementRequest([0]string{}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, "GET,POST")
+							}
+
+							return
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
+
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							// Param: "advertisementId"
+							// Leaf parameter, slashes are prohibited
+							idx := strings.IndexByte(elem, '/')
+							if idx >= 0 {
+								break
+							}
+							args[0] = elem
+							elem = ""
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "DELETE":
+									s.handleRetractAdvertisementRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								case "GET":
+									s.handleGetAdvertisementRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								case "PATCH":
+									s.handleUpdateAdvertisementRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, "DELETE,GET,PATCH")
+								}
+
+								return
+							}
+
+						}
+
 					}
 
+				}
+
+			case 'c': // Prefix: "catalog/advertisements"
+
+				if l := len("catalog/advertisements"); len(elem) >= l && elem[0:l] == "catalog/advertisements" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch r.Method {
+					case "GET":
+						s.handleSearchCatalogRequest([0]string{}, elemIsEscaped, w, r)
+					default:
+						s.notAllowed(w, r, "GET")
+					}
+
+					return
 				}
 
 			case 'e': // Prefix: "environments"
@@ -1200,137 +1296,151 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 
 					}
 
-				case 'd': // Prefix: "dmin/workgroups"
+				case 'd': // Prefix: "d"
 
-					if l := len("dmin/workgroups"); len(elem) >= l && elem[0:l] == "dmin/workgroups" {
+					if l := len("d"); len(elem) >= l && elem[0:l] == "d" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
 					if len(elem) == 0 {
-						switch method {
-						case "GET":
-							r.name = ListAdminWorkgroupsOperation
-							r.summary = ""
-							r.operationID = "listAdminWorkgroups"
-							r.pathPattern = "/admin/workgroups"
-							r.args = args
-							r.count = 0
-							return r, true
-						case "POST":
-							r.name = CreateWorkgroupOperation
-							r.summary = ""
-							r.operationID = "createWorkgroup"
-							r.pathPattern = "/admin/workgroups"
-							r.args = args
-							r.count = 0
-							return r, true
-						default:
-							return
-						}
+						break
 					}
 					switch elem[0] {
-					case '/': // Prefix: "/"
+					case 'm': // Prefix: "min/workgroups"
 
-						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+						if l := len("min/workgroups"); len(elem) >= l && elem[0:l] == "min/workgroups" {
 							elem = elem[l:]
 						} else {
 							break
 						}
 
-						// Param: "workgroupId"
-						// Match until "/"
-						idx := strings.IndexByte(elem, '/')
-						if idx < 0 {
-							idx = len(elem)
-						}
-						args[0] = elem[:idx]
-						elem = elem[idx:]
-
 						if len(elem) == 0 {
-							break
+							switch method {
+							case "GET":
+								r.name = ListAdminWorkgroupsOperation
+								r.summary = ""
+								r.operationID = "listAdminWorkgroups"
+								r.pathPattern = "/admin/workgroups"
+								r.args = args
+								r.count = 0
+								return r, true
+							case "POST":
+								r.name = CreateWorkgroupOperation
+								r.summary = ""
+								r.operationID = "createWorkgroup"
+								r.pathPattern = "/admin/workgroups"
+								r.args = args
+								r.count = 0
+								return r, true
+							default:
+								return
+							}
 						}
 						switch elem[0] {
-						case '/': // Prefix: "/invitations/"
+						case '/': // Prefix: "/"
 
-							if l := len("/invitations/"); len(elem) >= l && elem[0:l] == "/invitations/" {
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 								elem = elem[l:]
 							} else {
 								break
 							}
 
-							// Param: "organizationId"
+							// Param: "workgroupId"
 							// Match until "/"
 							idx := strings.IndexByte(elem, '/')
 							if idx < 0 {
 								idx = len(elem)
 							}
-							args[1] = elem[:idx]
+							args[0] = elem[:idx]
 							elem = elem[idx:]
 
 							if len(elem) == 0 {
 								break
 							}
 							switch elem[0] {
-							case '/': // Prefix: "/"
+							case '/': // Prefix: "/invitations/"
 
-								if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								if l := len("/invitations/"); len(elem) >= l && elem[0:l] == "/invitations/" {
 									elem = elem[l:]
 								} else {
 									break
 								}
 
+								// Param: "organizationId"
+								// Match until "/"
+								idx := strings.IndexByte(elem, '/')
+								if idx < 0 {
+									idx = len(elem)
+								}
+								args[1] = elem[:idx]
+								elem = elem[idx:]
+
 								if len(elem) == 0 {
 									break
 								}
 								switch elem[0] {
-								case 'a': // Prefix: "accept"
+								case '/': // Prefix: "/"
 
-									if l := len("accept"); len(elem) >= l && elem[0:l] == "accept" {
+									if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
 										elem = elem[l:]
 									} else {
 										break
 									}
 
 									if len(elem) == 0 {
-										// Leaf node.
-										switch method {
-										case "POST":
-											r.name = AcceptWorkgroupInvitationOperation
-											r.summary = ""
-											r.operationID = "acceptWorkgroupInvitation"
-											r.pathPattern = "/admin/workgroups/{workgroupId}/invitations/{organizationId}/accept"
-											r.args = args
-											r.count = 2
-											return r, true
-										default:
-											return
-										}
-									}
-
-								case 'd': // Prefix: "decline"
-
-									if l := len("decline"); len(elem) >= l && elem[0:l] == "decline" {
-										elem = elem[l:]
-									} else {
 										break
 									}
+									switch elem[0] {
+									case 'a': // Prefix: "accept"
 
-									if len(elem) == 0 {
-										// Leaf node.
-										switch method {
-										case "POST":
-											r.name = DeclineWorkgroupInvitationOperation
-											r.summary = ""
-											r.operationID = "declineWorkgroupInvitation"
-											r.pathPattern = "/admin/workgroups/{workgroupId}/invitations/{organizationId}/decline"
-											r.args = args
-											r.count = 2
-											return r, true
-										default:
-											return
+										if l := len("accept"); len(elem) >= l && elem[0:l] == "accept" {
+											elem = elem[l:]
+										} else {
+											break
 										}
+
+										if len(elem) == 0 {
+											// Leaf node.
+											switch method {
+											case "POST":
+												r.name = AcceptWorkgroupInvitationOperation
+												r.summary = ""
+												r.operationID = "acceptWorkgroupInvitation"
+												r.pathPattern = "/admin/workgroups/{workgroupId}/invitations/{organizationId}/accept"
+												r.args = args
+												r.count = 2
+												return r, true
+											default:
+												return
+											}
+										}
+
+									case 'd': // Prefix: "decline"
+
+										if l := len("decline"); len(elem) >= l && elem[0:l] == "decline" {
+											elem = elem[l:]
+										} else {
+											break
+										}
+
+										if len(elem) == 0 {
+											// Leaf node.
+											switch method {
+											case "POST":
+												r.name = DeclineWorkgroupInvitationOperation
+												r.summary = ""
+												r.operationID = "declineWorkgroupInvitation"
+												r.pathPattern = "/admin/workgroups/{workgroupId}/invitations/{organizationId}/decline"
+												r.args = args
+												r.count = 2
+												return r, true
+											default:
+												return
+											}
+										}
+
 									}
 
 								}
@@ -1339,8 +1449,114 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 
 						}
 
+					case 'v': // Prefix: "vertisements"
+
+						if l := len("vertisements"); len(elem) >= l && elem[0:l] == "vertisements" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							switch method {
+							case "GET":
+								r.name = ListAdvertisementsOperation
+								r.summary = ""
+								r.operationID = "listAdvertisements"
+								r.pathPattern = "/advertisements"
+								r.args = args
+								r.count = 0
+								return r, true
+							case "POST":
+								r.name = PublishAdvertisementOperation
+								r.summary = ""
+								r.operationID = "publishAdvertisement"
+								r.pathPattern = "/advertisements"
+								r.args = args
+								r.count = 0
+								return r, true
+							default:
+								return
+							}
+						}
+						switch elem[0] {
+						case '/': // Prefix: "/"
+
+							if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							// Param: "advertisementId"
+							// Leaf parameter, slashes are prohibited
+							idx := strings.IndexByte(elem, '/')
+							if idx >= 0 {
+								break
+							}
+							args[0] = elem
+							elem = ""
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "DELETE":
+									r.name = RetractAdvertisementOperation
+									r.summary = ""
+									r.operationID = "retractAdvertisement"
+									r.pathPattern = "/advertisements/{advertisementId}"
+									r.args = args
+									r.count = 1
+									return r, true
+								case "GET":
+									r.name = GetAdvertisementOperation
+									r.summary = ""
+									r.operationID = "getAdvertisement"
+									r.pathPattern = "/advertisements/{advertisementId}"
+									r.args = args
+									r.count = 1
+									return r, true
+								case "PATCH":
+									r.name = UpdateAdvertisementOperation
+									r.summary = ""
+									r.operationID = "updateAdvertisement"
+									r.pathPattern = "/advertisements/{advertisementId}"
+									r.args = args
+									r.count = 1
+									return r, true
+								default:
+									return
+								}
+							}
+
+						}
+
 					}
 
+				}
+
+			case 'c': // Prefix: "catalog/advertisements"
+
+				if l := len("catalog/advertisements"); len(elem) >= l && elem[0:l] == "catalog/advertisements" {
+					elem = elem[l:]
+				} else {
+					break
+				}
+
+				if len(elem) == 0 {
+					// Leaf node.
+					switch method {
+					case "GET":
+						r.name = SearchCatalogOperation
+						r.summary = ""
+						r.operationID = "searchCatalog"
+						r.pathPattern = "/catalog/advertisements"
+						r.args = args
+						r.count = 0
+						return r, true
+					default:
+						return
+					}
 				}
 
 			case 'e': // Prefix: "environments"

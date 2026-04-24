@@ -36,8 +36,8 @@ Current state:
 | --- | --- | --- | --- |
 | Foundation (cross-cutting) | [foundation.md](foundation.md) | A | n/a |
 | Workgroups | [workgroups.md](workgroups.md) | A | shipped (slice 1) |
-| Catalog | [catalog.md](catalog.md) | A | not started |
-| Advertisements | [advertisements.md](advertisements.md) | A | not started |
+| Catalog | [catalog.md](catalog.md) | A | shipped (slice 2) |
+| Advertisements | [advertisements.md](advertisements.md) | A | shipped (slice 2) |
 | Sessions | [sessions.md](sessions.md) | B | not started |
 | Contracts | [contracts.md](contracts.md) | B | not started |
 | Envelopes | [envelopes.md](envelopes.md) | B | not started |
@@ -64,8 +64,8 @@ This means the next Layer 2 work can focus on collaboration semantics rather tha
 The cleanest order for initial Layer 2 work is:
 
 1. ~~workgroup model and membership semantics~~ — **shipped**
-2. catalog and advertisement persistence plus visibility rules — next
-3. session model and engagement lifecycle
+2. ~~catalog and advertisement persistence plus visibility rules~~ — **shipped**
+3. session model and engagement lifecycle — next
 4. declarative contract model and controller-side evaluation
 5. envelope model and session-governed message semantics
 

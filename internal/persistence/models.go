@@ -1,6 +1,13 @@
 package persistence
 
-import "time"
+import (
+	"database/sql/driver"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	"github.com/lib/pq"
+)
 
 type Organization struct {
 	ID        string    `db:"id"`
@@ -230,4 +237,91 @@ type WorkgroupMembership struct {
 	Deleted        bool                    `db:"deleted"`
 	CreatedAt      time.Time               `db:"created_at"`
 	UpdatedAt      time.Time               `db:"updated_at"`
+}
+
+type AdvertisementStatus string
+
+const (
+	AdvertisementStatusActive    AdvertisementStatus = "active"
+	AdvertisementStatusRetracted AdvertisementStatus = "retracted"
+)
+
+type InteractionPatternKind string
+
+const (
+	InteractionPatternKindRequestResponse InteractionPatternKind = "request-response"
+	InteractionPatternKindStream          InteractionPatternKind = "stream"
+	InteractionPatternKindBroadcast       InteractionPatternKind = "broadcast"
+	InteractionPatternKindCustom          InteractionPatternKind = "custom"
+)
+
+type Capability struct {
+	Name        string            `json:"name"`
+	Description string            `json:"description,omitempty"`
+	Metadata    map[string]string `json:"metadata,omitempty"`
+}
+
+type InteractionPattern struct {
+	Kind          InteractionPatternKind `json:"kind"`
+	CustomPattern string                 `json:"customPattern,omitempty"`
+}
+
+// CapabilitiesJSON wraps []Capability so it can be scanned from and
+// stored to a jsonb column via database/sql.
+type CapabilitiesJSON []Capability
+
+func (c *CapabilitiesJSON) Scan(src any) error { return scanJSONB(src, c) }
+func (c CapabilitiesJSON) Value() (driver.Value, error) {
+	return marshalJSONB(c)
+}
+
+// InteractionPatternsJSON wraps []InteractionPattern for jsonb storage.
+type InteractionPatternsJSON []InteractionPattern
+
+func (p *InteractionPatternsJSON) Scan(src any) error { return scanJSONB(src, p) }
+func (p InteractionPatternsJSON) Value() (driver.Value, error) {
+	return marshalJSONB(p)
+}
+
+func scanJSONB(src any, dst any) error {
+	if src == nil {
+		return nil
+	}
+	var data []byte
+	switch v := src.(type) {
+	case []byte:
+		data = v
+	case string:
+		data = []byte(v)
+	default:
+		return fmt.Errorf("unsupported scan type %T for jsonb", src)
+	}
+	if len(data) == 0 {
+		return nil
+	}
+	return json.Unmarshal(data, dst)
+}
+
+func marshalJSONB(src any) (driver.Value, error) {
+	bytes, err := json.Marshal(src)
+	if err != nil {
+		return nil, err
+	}
+	return bytes, nil
+}
+
+type Advertisement struct {
+	ID                  string                  `db:"id"`
+	OrganizationID      string                  `db:"organization_id"`
+	AccountID           string                  `db:"account_id"`
+	Name                string                  `db:"name"`
+	Description         *string                 `db:"description"`
+	Capabilities        CapabilitiesJSON        `db:"capabilities"`
+	InteractionPatterns InteractionPatternsJSON `db:"interaction_patterns"`
+	WorkgroupScopes     pq.StringArray          `db:"workgroup_scopes"`
+	SchemaVersion       int                     `db:"schema_version"`
+	Status              AdvertisementStatus     `db:"status"`
+	RetractedAt         *time.Time              `db:"retracted_at"`
+	CreatedAt           time.Time               `db:"created_at"`
+	UpdatedAt           time.Time               `db:"updated_at"`
 }
