@@ -38,7 +38,7 @@ Current state:
 | Workgroups | [workgroups.md](workgroups.md) | A | shipped (slice 1) |
 | Catalog | [catalog.md](catalog.md) | A | shipped (slice 2) |
 | Advertisements | [advertisements.md](advertisements.md) | A | shipped (slice 2) |
-| Sessions | [sessions.md](sessions.md) | B | not started |
+| Sessions | [sessions.md](sessions.md) | A | not started |
 | Contracts | [contracts.md](contracts.md) | B | not started |
 | Envelopes | [envelopes.md](envelopes.md) | B | not started |
 

@@ -13,6 +13,7 @@ Advertisements are persistent and tied to the advertising **account**, not to a 
 - **Workgroups** determine where an advertisement is visible. An advertisement declares one or more workgroup scopes; visibility to a given caller is the intersection of those scopes with the caller's workgroup memberships.
 - **Catalog** queries return advertisements filtered by the caller's workgroup memberships. The catalog's `search` is the discovery entry point; the per-advertisement `describe` lives on the advertisement surface itself, accessible via both `agora advertise describe` and `agora catalog describe`.
 - **Contracts** will reference advertisements as their requirements once the contracts slice ships. **In the workgroups + catalog/advertisements slice, advertisements have no `contract_requirements` field**; the contracts slice's migration will add it.
+- **Tunnel mode** is declared by the advertisement. The `tunnel_mode` field was added by the sessions slice's migration (`0005_advertisement_tunnel_mode.sql`) — the catalog/advertisements slice that first shipped advertisements did not yet carry a mode. Consumers accept the declared mode by proposing a session, or do not propose. There is no per-session mode negotiation.
 - **Sessions** are proposed against an advertisement. The advertisement's contract requirements (once contracts ship) are evaluated when a session is proposed.
 
 ## Data Model
@@ -25,6 +26,7 @@ Advertisements are persistent and tied to the advertising **account**, not to a 
   - `capabilities` — list of `{name, description, metadata}` records (see below)
   - `interaction_patterns` — list of `{kind, custom_pattern}` records (see below)
   - `workgroup_scopes` — list of `wg_...` IDs the advertisement is visible in
+  - `tunnel_mode` — enum `http`, `tcp`, `udp` (MVP default: `tcp`). Declares the Layer 1 tunnel mode used by every session backed by this advertisement. Added by the sessions slice migration; not present in the original catalog/advertisements slice.
   - `schema_version` (integer, MVP: `1`)
   - `status` (`active`, `retracted`)
   - `created_at`, `updated_at`, `retracted_at` (nullable)
@@ -129,6 +131,7 @@ Module: `internal/api/specs/advertisements/`. All endpoints use `accountTokenAut
     ...
   ],
   "workgroupScopes": ["wg_...", ...],
+  "tunnelMode": "http" | "tcp" | "udp",      // declared by the advertisement
   "schemaVersion": 1,
   "status": "active" | "retracted",
   "createdAt": "<RFC3339>",
@@ -148,7 +151,8 @@ Module: `internal/api/specs/advertisements/`. All endpoints use `accountTokenAut
     "description": "<string>",                // optional
     "capabilities": [{...}, ...],             // required; non-empty
     "interactionPatterns": [{...}, ...],      // required; non-empty
-    "workgroupScopes": ["wg_...", ...]        // required; non-empty
+    "workgroupScopes": ["wg_...", ...],       // required; non-empty
+    "tunnelMode": "http" | "tcp" | "udp"      // optional; defaults to "tcp"
   }
   ```
 - response `201`: the created `Advertisement`
@@ -173,7 +177,7 @@ Module: `internal/api/specs/advertisements/`. All endpoints use `accountTokenAut
 
 **`PATCH /v1/advertisements/{advId}`** — update an existing advertisement.
 
-- only the owner may call. Any subset of `name`, `description`, `capabilities`, `interactionPatterns`, `workgroupScopes` may be supplied; omitted fields are unchanged. Validation rules match `POST`.
+- only the owner may call. Any subset of `name`, `description`, `capabilities`, `interactionPatterns`, `workgroupScopes`, `tunnelMode` may be supplied; omitted fields are unchanged. Validation rules match `POST`. Mutating `tunnelMode` only affects sessions proposed after the update; in-flight sessions continue on the mode snapshotted at their propose time.
 - response `200`: the updated `Advertisement`
 - errors:
   - `400` (same as POST)
@@ -209,6 +213,7 @@ Per [foundation.md](foundation.md): `agora advertise ...`. Output via `clioutput
   - `--capability <name>[=<description>][:k1=v1,k2=v2]` — repeatable; CLI sugar that parses into the structured shape
   - `--interaction <kind>` — repeatable; `kind` is `request-response`, `stream`, `broadcast`, or `custom:<pattern>`
   - `--workgroup <name|wg_...>` — repeatable; required at least once
+  - `--tunnel-mode <http|tcp|udp>` — optional; defaults to `tcp`
 - positional args: advertisement name
 - default output: confirmation with the new `adv_...` ID and a one-line summary
 - `-j`, `--json` — emit the raw response
@@ -254,6 +259,7 @@ Each row names a failure, its trigger, the expected HTTP status from the control
 - **Missing required field on publish** (e.g. empty capabilities, missing name) → `400 invalid_request`.
 - **Capability without `name`** → `400 invalid_request` with field detail.
 - **Interaction pattern with `kind=custom` and missing `custom_pattern`** → `400 invalid_request`.
+- **Unknown `tunnelMode` value** (not one of `http`, `tcp`, `udp`) → `400 invalid_request`.
 - **Unknown workgroup ID in `workgroupScopes`** → `400 unknown_workgroup`.
 - **Caller not a member of one of the listed workgroups on publish/update** → `403 not_a_workgroup_member`.
 - **Advertisement name collision** within owner → `409 name_in_use`. Retracted advertisements with the same name do not block reuse.
@@ -279,6 +285,7 @@ The advertisements slice is implemented when all of the following are true. Each
 - **Name reuse after retract.** After retracting an advertisement, a new advertisement with the same name can be published; the new advertisement gets a fresh `adv_...` ID.
 - **Capabilities round-trip.** Capabilities with `metadata` survive publish→describe with byte-equal map content.
 - **Interaction patterns round-trip.** All four enum values plus a `custom` pattern with `custom_pattern` survive publish→describe.
+- **Tunnel mode round-trip.** An advertisement published with `--tunnel-mode http` (or `tcp`/`udp`) round-trips the mode through describe unchanged. Omitting the flag defaults to `tcp`.
 - **Retract.** Owner can retract; subsequent describe by non-owner returns `404`; subsequent describe by owner returns the record with `status=retracted` and a populated `retracted_at`.
 - **Idempotent retract.** Re-issuing retract on an already-retracted advertisement returns `204`.
 - **Catalog visibility integration.** The advertisement appears in catalog search results for accounts in shared workgroups; not for others.

@@ -101,7 +101,7 @@ Layer 2 commands that need runtime involvement (primarily `agora session` subcom
 Concretely:
 
 - Establishing a session provisions a Layer 1 tunnel between the participants as part of the engagement flow. The tunnel is owned by the session's provider account and is scoped to the session's workgroup.
-- Envelopes flow through that tunnel. The tunnel mode (`http`, `tcp`, `udp`) is selected during the engagement flow based on what the participants negotiate; `tcp` is the expected default for MVP envelope transport.
+- Envelopes flow through that tunnel. The tunnel mode (`http`, `tcp`, `udp`) is declared by the advertisement; the consumer accepts that mode by proposing a session, or does not propose. There is no per-session mode negotiation. `tcp` is the expected default for MVP envelope transport.
 - Closing the session deletes the tunnel. Session closure is the authoritative lifecycle event; tunnel deletion is a consequence.
 - A given account may hold multiple concurrent sessions with the same counterparty; each session backs its own tunnel.
 

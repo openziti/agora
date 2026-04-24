@@ -1,6 +1,6 @@
 # Layer 2: Sessions
 
-Tier: B (skeleton). See [foundation.md](foundation.md) for cross-cutting decisions, especially the **session-to-tunnel 1:1 relationship** that this spec depends on.
+Tier: A. Implementation-ready. See [foundation.md](foundation.md) for cross-cutting decisions, especially the **session-to-tunnel 1:1 relationship** that this spec depends on.
 
 ## Purpose
 
@@ -10,94 +10,457 @@ A session is distinct from the Layer 1 tunnel that carries it. The session is th
 
 ## Relationship To Other Layer 2 Concepts
 
-- **Advertisements** are the target of a session. A consumer proposes a session against a specific advertisement, and the advertisement's contract requirements govern acceptance.
-- **Workgroups** scope a session. Both provider and consumer must share the workgroup the advertisement is visible in.
-- **Contracts** are bound to a session at engagement time. The contract's terms are in force for the session's lifetime.
-- **Envelopes** are the messages exchanged within a session. Envelopes flow through the session's backing Layer 1 tunnel.
-- **Layer 1 tunnels** carry session traffic. Session creation provisions a tunnel; session closure deletes it.
+- **Advertisements** are the target of a session. A consumer proposes a session against a specific advertisement; the advertisement declares the tunnel mode and (once contracts ship) the contract requirements evaluated on acceptance.
+- **Workgroups** scope a session. Both provider and consumer must share the workgroup the advertisement is visible in. The consumer picks a specific workgroup from the intersection at propose time; that choice is recorded on the session.
+- **Contracts** are bound to a session at engagement time. The contract's terms are in force for the session's lifetime. In the sessions slice, `contract_snapshot` is present in the data model but left `NULL`; the contracts slice fills it in and starts evaluating terms.
+- **Envelopes** are the messages exchanged within a session. Envelopes flow through the session's backing Layer 1 tunnel. In the sessions slice, the only traffic the demo exercises is a minimal "ping" payload; the envelopes slice defines the real wire format.
+- **Layer 1 tunnels** carry session traffic. Session acceptance provisions a tunnel; session closure deletes it. The tunnel is owned by the provider account and scoped to the session's workgroup.
 
 ## Data Model
 
 - **Session**
   - `id` (`ses_...`)
-  - `provider_account_id`, `provider_organization_id`
-  - `consumer_account_id`, `consumer_organization_id`
-  - `workgroup_id`
-  - `advertisement_id`
-  - `contract_snapshot` (frozen copy of the contract at engagement time — see `contracts.md`)
-  - `tunnel_id` (the Layer 1 tunnel backing this session)
-  - `state` (see lifecycle below)
-  - `close_reason` (populated on close)
-  - `proposed_at`, `accepted_at`, `closed_at`
+  - `provider_account_id`, `provider_organization_id` — the advertisement owner at propose time
+  - `consumer_account_id`, `consumer_organization_id` — the proposing account
+  - `workgroup_id` — the specific workgroup selected by the consumer from the intersection of the advertisement's `workgroup_scopes` and the consumer's memberships
+  - `advertisement_id` — the target advertisement
+  - `tunnel_mode` — copied from the advertisement at propose time (`http`, `tcp`, or `udp`). The backing tunnel is provisioned in this mode on accept.
+  - `tunnel_id` — nullable until acceptance succeeds. Populated with the Layer 1 tunnel ID once the controller provisions the tunnel.
+  - `contract_snapshot` — nullable `jsonb`. In the sessions slice this field is always `NULL`; the contracts slice populates it on accept with a frozen copy of the contract evaluated at engagement time.
+  - `state` — one of `proposed`, `accepting`, `active`, `closing`, `closed` (see lifecycle below)
+  - `close_reason` — populated on close; nullable until then. Enum: `rejected`, `consumer_close`, `provider_close`, `contract_violation`, `tunnel_failed`, `admin_close`, `workgroup_deleted`, `environment_disabled`.
+  - `close_detail` — nullable free-form string. Carries the `reason` field supplied by the caller who closed the session (consumer, provider, or admin). Opaque to the controller.
+  - `proposer_message` — nullable free-form string supplied by the consumer at propose time. Carries optional engagement context for the provider (e.g. "weekly morning pulse job"). Opaque to the controller.
+  - `proposed_at`, `accepted_at`, `closed_at` — state-transition timestamps. `accepted_at` is `NULL` on sessions that never reached `active`; `closed_at` is populated on any terminal `closed` transition.
 
-One session record per established channel. The `tunnel_id` references a Layer 1 tunnel resource owned by the provider account and scoped to the workgroup.
+One session record per established channel. A given account may hold many concurrent sessions — including multiple concurrent sessions with the same counterparty against the same advertisement. There is no cap in MVP; limits are post-MVP (see [../roadmap/post-mvp.md](../roadmap/post-mvp.md)).
+
+Self-sessions are permitted: `provider_account_id` and `consumer_account_id` may be equal when an account proposes against its own advertisement. Same authorization rules apply.
+
+Sessions are never hard-deleted. Terminal `closed` rows are retained for audit.
 
 ## Lifecycle / State Machine
 
-States and transitions:
+States:
 
-- `proposed` — consumer has proposed a session; provider has not yet responded
-- `accepting` — provider has begun the engagement flow (e.g. tunnel provisioning, contract evaluation)
-- `active` — engagement completed; tunnel is up; envelopes may flow
-- `closing` — close has been requested; tunnel is being drained and deprovisioned
-- `closed` — terminal; tunnel deleted; no further traffic
+- `proposed` — consumer has proposed a session; provider has not yet responded.
+- `accepting` — provider has begun the engagement flow. The controller is provisioning the Layer 1 tunnel. Transient.
+- `active` — tunnel is up; envelopes may flow. Terminal before close.
+- `closing` — close has been requested; tunnel is being drained and deprovisioned. Transient.
+- `closed` — terminal. Tunnel deleted. No further traffic. `close_reason` and `closed_at` populated.
 
 Transitions:
 
-- consumer proposes → `proposed`
-- provider accepts → `accepting` → (on success) `active`
-- provider rejects during `proposed` or `accepting` → `closed` with `close_reason = rejected`
-- either side closes while `active` → `closing` → `closed`
-- controller closes for contract violation → `closing` → `closed` with `close_reason = contract_violation`
-- controller closes because the tunnel failed → `closed` with `close_reason = tunnel_failed`
+```
+                    (consumer proposes)
+                           │
+                           ▼
+                     ┌───────────┐
+                     │ proposed  │
+                     └─────┬─────┘
+           ┌───────────────┼───────────────┐
+           │               │               │
+ (provider rejects) (provider accepts) (consumer closes,
+           │               │             admin close,
+           │               │             workgroup/env
+           │               │             invalidation)
+           │               ▼               │
+           │         ┌───────────┐         │
+           │         │ accepting │         │
+           │         └─────┬─────┘         │
+           │               │               │
+           │      (tunnel provisioned)     │
+           │               │               │
+           │               ▼               │
+           │         ┌───────────┐         │
+           │         │  active   │         │
+           │         └─────┬─────┘         │
+           │               │               │
+           │      (either side closes,     │
+           │       contract violation,     │
+           │       tunnel failed,          │
+           │       admin close)            │
+           │               │               │
+           │               ▼               │
+           │         ┌───────────┐         │
+           │         │  closing  │         │
+           │         └─────┬─────┘         │
+           │               │               │
+           │      (tunnel deprovisioned)   │
+           │               │               │
+           ▼               ▼               ▼
+                     ┌───────────┐
+                     │  closed   │
+                     └───────────┘
+```
 
-Rejection and close reasons are enumerated in `close_reason` for auditability.
+Close reasons and the transitions that produce them:
+
+- `rejected` — provider rejected during `proposed`. Goes `proposed → closed` directly; no `accepting` or `closing` phase.
+- `consumer_close` — consumer called close while session was `proposed` or `active`.
+- `provider_close` — provider called close while session was `active`.
+- `contract_violation` — controller closed while `active` because contract evaluation failed. (Wired in the contracts slice. Sessions slice persists the enum value but never writes it.)
+- `tunnel_failed` — controller or runtime observed the backing tunnel failed during `accepting` or `active`. Session moves immediately to `closed`; no resumption in MVP.
+- `admin_close` — platform admin called the admin close endpoint.
+- `workgroup_deleted` — controller closed because the session's workgroup was removed. (Workgroup deletion is not in MVP; the enum value is reserved for the workgroup-deletion slice.)
+- `environment_disabled` — controller closed because the provider's environment was disabled out from under the tunnel.
+
+Engagement flow is **asynchronous**. The consumer's propose call returns immediately with the `proposed` session. The provider's accept or reject call is a separate API interaction. The consumer learns about state changes by polling `GET /v1/sessions/{id}` (the SDK helper wraps this); there are no push notifications in MVP.
+
+Unilateral close semantics: when one side closes an `active` session, the **envelope stream ending is authoritative** for the counterparty — the local Layer 1 tunnel teardown surfaces as a closed connection on the other side. The controller's session row reflects the close within a short reaping window; `close_reason` / `close_detail` on that row are the audit record. Consumers of the REST API may see the session still in `closing` briefly after the tunnel has ended.
 
 ## Authorization
 
-Placeholder (Tier A). Both provider and consumer must be members of the advertisement's workgroup; contract requirements further constrain acceptance.
+- **Propose**: any account that holds a non-deleted membership in at least one workgroup in the target advertisement's `workgroup_scopes`. The consumer specifies which workgroup (from the intersection) scopes the session. Self-proposal by the advertisement owner is permitted.
+- **Accept / reject**: only the advertisement-owning account (the session's provider). Any environment enrolled to that account may act.
+- **Close** (participant): either participant account (provider or consumer). Any environment enrolled to that account may act.
+- **Close** (admin): platform admin token. Uses `X-ADMIN-TOKEN`, the existing admin auth path described in [foundation.md](foundation.md). No new admin role is introduced.
+- **Describe**: provider or consumer account. Admin surfaces may describe any session.
+- **List**: the account-token endpoint returns sessions where the caller is either provider or consumer. Admin endpoints list without that restriction.
+
+Rejection of a non-visible advertisement (caller shares no workgroup, or the advertisement is retracted, or the ID is not found) is mapped to `404 not_found` — same response for all three cases, matching the advertisements spec's non-disclosure posture.
 
 ## Visibility Rules
 
-Placeholder (Tier A). A session is visible to its provider, its consumer, and admin surfaces of their respective organizations.
+- A session is visible to its `provider_account_id` and `consumer_account_id` (and any environment enrolled to either account).
+- Non-participants — including other accounts in the provider's or consumer's organizations — cannot describe or list the session through the account-token surface. Cross-account org-level visibility is post-MVP.
+- Platform admin surfaces can describe and list any session.
+- Non-visible sessions return `404 not_found` on direct describe attempts; list endpoints simply do not include them.
 
 ## Controller API Surface
 
-Placeholder (Tier A). Module: `internal/api/specs/sessions/`.
+Module: `internal/api/specs/sessions/`. All account-token endpoints use `accountTokenAuth`; admin endpoints use `adminTokenAuth`. Property names are camelCase; timestamps are RFC3339; the error response schema is the existing `error` from `common/schemas.yml`.
+
+### Resource shape
+
+**Session** (response):
+
+```
+{
+  "id": "ses_...",                            // pattern: ^ses_[a-z0-9]{12}$
+  "providerAccountId": "ac_...",
+  "providerOrganizationId": "org_...",
+  "consumerAccountId": "ac_...",
+  "consumerOrganizationId": "org_...",
+  "workgroupId": "wg_...",
+  "advertisementId": "adv_...",
+  "tunnelMode": "http" | "tcp" | "udp",
+  "tunnelId": "tun_...",                      // null until active
+  "state": "proposed" | "accepting" | "active" | "closing" | "closed",
+  "closeReason": "<enum>",                    // null until state=closed or closing
+  "closeDetail": "<string>",                  // null unless supplied by caller
+  "proposerMessage": "<string>",              // null if not supplied by consumer
+  "proposedAt": "<RFC3339>",
+  "acceptedAt": "<RFC3339>",                  // null if never accepted
+  "closedAt": "<RFC3339>"                     // null until state=closed
+}
+```
+
+`contractSnapshot` is intentionally not exposed in the sessions slice's response shape; the contracts slice adds it once there is a real snapshot to return.
+
+### Endpoints
+
+**`POST /v1/sessions`** — propose a new session. *Consumer-facing.*
+
+- request body:
+  ```
+  {
+    "advertisementId": "adv_...",             // required
+    "workgroupId": "wg_...",                  // required; must be in the intersection
+                                              // of the advertisement's workgroupScopes
+                                              // and the caller's memberships
+    "proposerMessage": "<string>"             // optional
+  }
+  ```
+- response `201`: the created `Session` in state `proposed`.
+- errors:
+  - `400 invalid_request` — missing required fields, malformed IDs
+  - `404 not_found` — advertisement does not exist or caller has no shared workgroup with it
+  - `400 workgroup_not_in_scope` — caller is a workgroup member but the supplied `workgroupId` is not in the advertisement's `workgroup_scopes`
+  - `409 advertisement_retracted` — advertisement exists and is visible to the caller but is retracted
+  - `401`, `500`
+
+**`GET /v1/sessions`** — list sessions the caller participates in. *Account-token.*
+
+- query parameters:
+  - `state` (optional, repeatable; filter by one or more states)
+  - `role` (optional; `provider`, `consumer`, or `both` — default `both`)
+  - `advertisementId` (optional; restrict to sessions against a specific advertisement)
+- response `200`: array of `Session`, ordered by `proposed_at` descending. Unpaginated in MVP, matching the list-mine convention for workgroups and advertisements.
+
+**`GET /v1/sessions/{sessionId}`** — describe a session. *Account-token.*
+
+- response `200`: `Session` shape.
+- errors: `401`; `404 not_found` when the session does not exist or the caller is not a participant.
+
+**`POST /v1/sessions/{sessionId}/accept`** — provider accepts a proposed session. *Account-token, provider only.*
+
+- request body: empty object or omitted.
+- response `200`: the `Session` with `state=active` (and populated `tunnelId`, `acceptedAt`). Blocks for the duration of tunnel provisioning; if provisioning fails the controller transitions the session to `closed` with `close_reason=tunnel_failed` and returns `500`.
+- errors:
+  - `403 not_provider` — caller is not the advertisement-owning account
+  - `404 not_found` — session not visible
+  - `409 invalid_state` — session is not in `proposed`
+  - `500 tunnel_provisioning_failed` — session transitioned to `closed(tunnel_failed)`
+  - `401`
+
+**`POST /v1/sessions/{sessionId}/reject`** — provider rejects a proposed session. *Account-token, provider only.*
+
+- request body:
+  ```
+  {
+    "reason": "<string>"                      // optional; stored in close_detail
+  }
+  ```
+- response `204`: session transitions to `closed` with `close_reason=rejected`.
+- errors: same shape as accept; `409 invalid_state` when not in `proposed`.
+
+**`POST /v1/sessions/{sessionId}/close`** — either participant closes. *Account-token, participant only.*
+
+- request body:
+  ```
+  {
+    "reason": "<string>"                      // optional; stored in close_detail
+  }
+  ```
+- response `204`: session transitions to `closing` then `closed`. `close_reason` is `consumer_close` or `provider_close` based on which participant called. Idempotent: closing an already-closed session returns `204`.
+- errors:
+  - `403 not_participant` — caller is neither provider nor consumer
+  - `404 not_found` — session not visible
+  - `401`, `500`
+
+**`POST /v1/admin/sessions/{sessionId}/close`** — platform admin close. *Admin-token.*
+
+- request body: same `{reason}` as participant close.
+- response `204`: session transitions to `closed` with `close_reason=admin_close`. Idempotent on already-closed.
+- errors: `401`; `404 not_found` when the session ID is malformed or does not exist.
+
+### Controller-initiated closes
+
+The controller may close a session without an explicit API call when it observes an invalidating condition:
+
+- Backing tunnel failure (reported by the runtime or detected by the controller's tunnel liveness check) → `close_reason=tunnel_failed`.
+- Contract evaluation failure during `active` → `close_reason=contract_violation`. (Enum reserved; wired in the contracts slice.)
+- Provider environment disabled → `close_reason=environment_disabled`.
+- Workgroup removed from the provider's or consumer's scope (workgroup deletion path; not in MVP) → `close_reason=workgroup_deleted`.
+
+These transitions appear to participants as ordinary terminal closes: the `Session` describe reflects the terminal state, and the envelope stream ends. No REST notification is pushed.
 
 ## Agent / Runtime Surface
 
-Placeholder (Tier A). Session lifecycle involves the local runtime because the backing Layer 1 tunnel's serve/connect is agent-hosted. Coordination pattern expected to mirror the existing `agora tunnel serve`/`agora tunnel connect` delegation through the gRPC+UDS surface.
+The session lifecycle drives Layer 1 tunnel provisioning on both sides. The patterns match `agora tunnel serve` / `agora tunnel connect` from Layer 1, delegated through the existing daemon client surface.
+
+### Controller → Layer 1 bridge
+
+On `accept`, the controller provisions a Layer 1 tunnel:
+
+- owner = provider account
+- organization = provider organization
+- workgroup = session's workgroup
+- mode = session's `tunnel_mode`
+
+The tunnel resource's ID is recorded on the session as `tunnel_id`. The controller's tunnel lifecycle remains the same as Layer 1 — the controller provisions; the provider-side runtime performs the `serve` attach; the consumer-side runtime performs the `connect`. Attachment addressing is conveyed to both sides through describe on the session resource, not through any new push channel.
+
+### Runtime-side reconciliation
+
+Both the `agora network start` daemon and the embedded `sdk/agent` runtime reconcile local session work by polling:
+
+- **Provider reconciliation**: for each advertisement the agent owns and has registered a session handler for, the runtime polls `GET /v1/sessions?advertisementId=<adv>&role=provider&state=proposed` at 1 Hz. Each newly observed `proposed` session is routed to the registered handler. The handler's return value determines whether the runtime calls `/accept` or `/reject`.
+- **Consumer reconciliation**: when the SDK's `Propose` is called, the SDK polls `GET /v1/sessions/{id}` at 1 Hz until the session reaches `active` or a terminal state. `Propose` returns a `Session` handle on `active`; on any terminal state other than `active`, it returns an error carrying the `close_reason`.
+- **Active-session liveness**: for each session where the local runtime is provider or consumer, it monitors the backing tunnel. On tunnel failure, the runtime reports the failure to the controller (existing Layer 1 tunnel-failure path) and closes the local end.
+
+Polling is simple and sufficient for MVP. Push notifications and long-lived streams are post-MVP.
+
+### Daemon-client surface
+
+The existing `internal/network/daemon` client gains one new helper:
+
+- `OpenSession(ctx, sessionID, mode) (localEndpoint, error)` — instructs the local daemon to attach as provider or consumer to the Layer 1 tunnel backing the session. Internally it delegates to the existing `tunnel serve` / `tunnel connect` RPCs on the daemon, keyed by the session's `tunnel_id`. For `agora network start` daemon mode, this is how CLI `agora session accept` / `agora session propose` plumb session traffic. For embedded `sdk/agent` mode, the SDK session helper calls this directly in-process.
+
+No new gRPC service is introduced. Session handling rides on top of the existing tunnel serve/connect machinery.
 
 ## CLI Surface
 
-Placeholder (Tier A). Per [foundation.md](foundation.md): `agora session propose|accept|close|list|describe|send`.
+Per [foundation.md](foundation.md): `agora session ...`. Output via `clioutput.NewTable()` / `RenderJSON()`.
+
+`agora session propose <advertisement-id> --workgroup <name|wg_...>`
+
+- positional: `advertisement-id` — full `adv_...`. The CLI does not resolve advertisement names here because advertisement names are only unique within the owning account; consumers refer to someone else's advertisement by ID (typically copied from `agora catalog search` output).
+- flags:
+  - `--workgroup <name|wg_...>` — required; the workgroup to scope the session under. The name form resolves through the caller's memberships.
+  - `--message <string>` — optional proposer message
+  - `--timeout <duration>` — optional; default `30s`. Upper bound on the `propose → active` wait.
+  - `-j`, `--json` — emit the raw `Session` on success
+- default output: once the session reaches `active`, prints the `ses_...` ID, the `tunnel_id`, and the local attach endpoint. Exits non-zero (with the `close_reason` in stderr) on rejection, timeout, or tunnel-provisioning failure.
+
+`agora session list`
+
+- flags:
+  - `--state <state>` — repeatable; filter by state
+  - `--role <provider|consumer|both>` — optional; default `both`
+  - `--advertisement <adv_...>` — optional
+  - `-j`, `--json` — emit the raw array
+- default output: table with columns `id`, `state`, `role`, `counterparty`, `advertisement`, `workgroup`, `proposed`, `closed`
+
+`agora session describe <ses_...>`
+
+- flags: `-j`, `--json`
+- default output: indented summary including both participants, workgroup, advertisement, tunnel ID and mode, state, and timestamps. `close_reason` and `close_detail` shown when present.
+
+`agora session accept <ses_...>`
+
+- no flags beyond output/log flags.
+- default output: once the session reaches `active`, prints the `tunnel_id` and the local attach endpoint. Exits non-zero if acceptance fails; the session row is already transitioned to `closed(tunnel_failed)` by the controller in that case.
+
+`agora session reject <ses_...>`
+
+- flags:
+  - `--reason <string>` — optional
+- default output: one-line confirmation.
+
+`agora session close <ses_...>`
+
+- flags:
+  - `--reason <string>` — optional
+  - `-y`, `--yes` — skip interactive confirmation on `active` sessions
+- default output: one-line confirmation.
+
+`agora session send <ses_...>`
+
+- flags:
+  - `--payload <string>` — inline payload
+  - `--payload-file <path>` — file payload
+  - `-j`, `--json` — structured send result
+- default output: minimal confirmation. In the sessions slice this sends a single byte buffer through the backing tunnel and prints the reply byte count; the envelopes slice gives this command a real envelope-shaped payload.
+
+Admin:
+
+`agora admin session close <ses_...> --reason <string>`
+
+- requires `AGORA_ADMIN_TOKEN`.
+- default output: one-line confirmation.
 
 ## SDK Surface
 
-Placeholder (Tier A).
+The sessions slice introduces the first meaningful Layer 2 SDK surface, in a new package:
+
+- `sdk/agent/session` — sessions helper.
+
+Proposed API:
+
+```go
+package session
+
+// Session is the local handle returned once a session reaches `active`.
+type Session interface {
+    ID() string
+    TunnelID() string
+    Send(ctx context.Context, payload []byte) error
+    Receive(ctx context.Context) ([]byte, error)
+    Close(ctx context.Context, reason string) error
+}
+
+// ProposeOptions configures a consumer-side propose call.
+type ProposeOptions struct {
+    WorkgroupID string         // required
+    Message     string         // optional proposer message
+    Timeout     time.Duration  // default 30s
+}
+
+// Propose drives the consumer-side propose flow. It creates the session,
+// polls for transitions, opens the local end of the backing tunnel once
+// active, and returns a Session handle. The returned error carries the
+// close_reason if the session terminates before reaching active.
+func Propose(ctx context.Context, a *agent.Agent, advertisementID string, opts ProposeOptions) (Session, error)
+
+// Handler is invoked once per proposed session the provider decides to
+// accept or reject.
+type Handler interface {
+    // Accept is called when a proposal is observed. Returning nil accepts;
+    // returning an error rejects with the error's message as the reason.
+    Accept(ctx context.Context, proposal Proposal) error
+    // Serve runs for the lifetime of an accepted session. Returning causes
+    // the provider side to close the session with provider_close and the
+    // returned error's message as the close_detail.
+    Serve(ctx context.Context, sess Session) error
+}
+
+type Proposal struct {
+    SessionID       string
+    ConsumerAccount string
+    WorkgroupID     string
+    Message         string
+}
+
+// RegisterHandler starts a provider-side reconciliation loop for the given
+// advertisement. It polls for proposed sessions, routes each through the
+// handler, and runs until ctx is cancelled.
+func RegisterHandler(ctx context.Context, a *agent.Agent, advertisementID string, handler Handler) error
+```
+
+Implementation notes:
+
+- `session.Propose` and `session.RegisterHandler` are thin wrappers over the existing `a.Controller()` REST client and the embedded Layer 1 runtime's tunnel attach primitives. They do not introduce new gRPC methods.
+- The interface intentionally elides `accepting` and `closing` — users see `active` or a terminal error.
+- The envelopes slice replaces `Send([]byte)` / `Receive() []byte` with envelope-shaped signatures. The wire stays stable: the sessions slice sends raw bytes framed by the Layer 1 tunnel; the envelopes slice adds the envelope header/payload discipline on top.
+- Self-session works through the same API with no special case.
 
 ## Failure Modes
 
-Placeholder (Tier A).
+All user-visible failures emit a structured `df/dl` log entry with `session_id`, `advertisement_id`, `workgroup_id`, and the failure reason.
+
+- **Missing or invalid auth token** → `401 unauthorized`. CLI exits 1.
+- **Propose against non-existent or non-visible advertisement** → `404 not_found`. Indistinguishable from wrong ID.
+- **Propose with `workgroupId` outside the advertisement's scopes** → `400 workgroup_not_in_scope`.
+- **Propose against a retracted advertisement (caller can still see it)** → `409 advertisement_retracted`.
+- **Accept or reject by non-provider** → `403 not_provider`.
+- **Close by non-participant** → `403 not_participant`.
+- **Accept/reject/close on a session in the wrong state** → `409 invalid_state`.
+- **Accept succeeds but tunnel provisioning fails** → controller transitions session to `closed(tunnel_failed)` and returns `500 tunnel_provisioning_failed` to the provider.
+- **Describe a session the caller is not a participant of** → `404 not_found`. Same response for "session does not exist" by design.
+- **Idempotent close** → closing an already-closed session returns `204`.
+- **Tunnel failure during `active`** → controller observes/receives failure report, session transitions to `closed(tunnel_failed)`. Envelope stream ending is the authoritative signal on both sides.
+- **Controller store error** → `500 internal`.
+- **Propose timeout in the SDK/CLI** → the propose helper returns a timeout error; the underlying session row stays in `proposed` until the provider responds or an out-of-band close occurs. Consumers can re-attach by describing the session.
 
 ## Acceptance Criteria
 
-Placeholder (Tier A).
+The sessions slice is implemented when all of the following are true. Each is verifiable by CLI or direct REST interaction.
+
+- **Propose.** A consumer in a workgroup shared with an advertisement can `agora session propose adv_... --workgroup <wg>` and receive a `201`. The session is in `proposed`.
+- **Propose with mismatched workgroup.** Supplying a `--workgroup` outside the advertisement's scopes returns `400 workgroup_not_in_scope`.
+- **Propose against non-visible advertisement.** Returns `404`, indistinguishable from a malformed ID.
+- **Accept.** The provider can `agora session accept ses_...`, the session transitions to `active`, and a Layer 1 tunnel (`tunnel_mode` from the advertisement) is provisioned and referenced by `tunnel_id`.
+- **Reject.** The provider can `agora session reject ses_... --reason <text>` and the session transitions to `closed` with `close_reason=rejected` and the reason stored in `close_detail`.
+- **Accept by non-provider.** Returns `403 not_provider`.
+- **Close by consumer.** Consumer can close an `active` session; `close_reason=consumer_close`; the provider observes envelope-stream end on the backing tunnel.
+- **Close by provider.** Provider can close an `active` session; `close_reason=provider_close`; the consumer observes envelope-stream end.
+- **Close idempotent.** Re-closing a `closed` session returns `204`.
+- **Close by non-participant.** Returns `403 not_participant`.
+- **Describe.** Both participants can describe the session and see its state, timestamps, and tunnel details.
+- **Describe by non-participant.** Returns `404`.
+- **List.** `agora session list` returns only the caller's sessions, filterable by `--state` and `--role`.
+- **Tunnel mode honored.** An advertisement published with `--tunnel-mode http` produces sessions whose backing tunnels are `http`-mode; same for `tcp` and `udp`.
+- **Tunnel failure closes session.** Forcibly killing the backing tunnel transitions the session to `closed(tunnel_failed)` within the reaping window.
+- **Admin close.** `agora admin session close ses_... --reason <text>` with `AGORA_ADMIN_TOKEN` transitions the session to `closed(admin_close)`.
+- **Self-session.** An account can propose against its own advertisement; the session establishes as `active` and closes cleanly.
+- **Minimal ping payload.** `agora session send ses_... --payload hello` sends a raw byte buffer through the backing tunnel and reports the byte count on both sides. (Structured envelope payloads are the envelopes slice.)
+- **SDK-driven propose/accept.** The Macro Pulse `pulse-agent` can `session.Propose(...)` against each provider's advertisement in the four demo channels; each provider agent serves the session via `session.RegisterHandler(...)`.
+- **Persistence schema.** New persistence integration tests cover session state transitions, the `tunnel_mode` inheritance from the advertisement, idempotent close, and the `closed(tunnel_failed)` path.
+- **Tests.** `go test ./...` passes including new persistence and controller HTTP integration tests.
 
 ## Out Of Scope For First Slice
 
-- session multiplexing over a shared tunnel — deferred (see [foundation.md](foundation.md))
-- mid-session contract renegotiation
-- session handoff between environments
-- semantic or policy-driven auto-engagement
+- **Session multiplexing over a shared tunnel** — deferred per [foundation.md](foundation.md).
+- **Mid-session contract renegotiation** — contracts slice only freezes a snapshot; renegotiation is post-MVP.
+- **Session resumption after tunnel failure** — MVP closes on failure; resumption is post-MVP.
+- **Push notifications / long-lived state streams** — MVP uses polling; server-sent state changes are post-MVP.
+- **Per-account concurrent-session caps** — limits are post-MVP.
+- **Session handoff between environments** — post-MVP.
+- **Semantic or policy-driven auto-engagement** — post-MVP.
+- **Contract snapshot content** — the sessions slice writes `NULL`; the contracts slice populates and evaluates.
+- **Structured envelope payloads** — the sessions slice sends raw byte buffers through the backing tunnel; the envelopes slice defines the envelope format.
 
 ## Open Questions
 
-- **Engagement flow mechanics.** Is the propose/accept exchange synchronous (consumer waits for acceptance in one REST call) or asynchronous (consumer proposes, polls for provider response)? Proposed MVP: asynchronous — consumer proposes, session starts in `proposed` state, provider accepts or rejects in a separate call; consumer polls or subscribes to state changes. Needs confirmation.
-- **Tunnel mode negotiation.** A session is 1:1 with a Layer 1 tunnel, which has a mode (`http`, `tcp`, `udp`). Who picks the mode — the advertisement declares it, the consumer requests it, or it's negotiated? Proposed: the advertisement declares the mode; the consumer accepts that mode or does not propose. `tcp` is the expected default for envelope transport.
-- **Unilateral close semantics.** When one side closes an `active` session, does the other side learn via envelope stream end, an explicit control envelope, or a separate REST notification? Proposed: envelope stream end (tunnel teardown) is authoritative; controller state reflects the close within the reaping window.
-- **Controller-initiated close.** What triggers controller-initiated closure? Contract violations (clear), workgroup deletion (clear), environment disable (clear). Other triggers TBD.
-- **Session resumption after tunnel failure.** If the backing tunnel fails (e.g. network partition), does the session attempt to reconnect, or immediately close with `tunnel_failed`? Proposed MVP: immediate close; future slice may add resumption.
-- **Concurrent sessions limit.** Are there platform- or account-level caps on concurrent active sessions? Limits are deferred to post-MVP per [../roadmap/post-mvp.md](../roadmap/post-mvp.md), so MVP: no cap, tracked for observability only.
-- **Provider self-session.** Can an account have a session with itself (e.g. across its own environments)? Proposed: yes, same rules apply; useful for local testing.
+None. All concept-level design questions are resolved. The sessions slice is implementation-ready.
