@@ -22,6 +22,22 @@ type AdvertisementSpec struct {
 	InteractionPatterns []api.AdvertisementInteractionPattern
 	WorkgroupNames      []string
 	TunnelMode          api.AdvertisementTunnelMode // optional; defaults to "tcp" on the controller
+	// Contract attaches a contract (by name within the caller's own
+	// contracts, or by con_... id) to the advertisement. Optional.
+	Contract *ContractSpec
+}
+
+// ContractSpec describes a contract to ensure-exists and reference
+// from the advertisement. Names are unique within the owning account.
+type ContractSpec struct {
+	Name                         string
+	Description                  string
+	MaxDurationSeconds           int
+	MaxEnvelopeCount             int
+	AllowedMessageTypes          []string
+	RequiredWorkgroupNames       []string
+	MinAccountAgeDays            int
+	AccessMode                   api.ContractAccessMode
 }
 
 // EnsureAdvertisement publishes the advertisement, or — when the
@@ -45,6 +61,13 @@ func EnsureAdvertisement(ctx context.Context, client *api.Client, spec Advertise
 	}
 	if spec.TunnelMode != "" {
 		req.TunnelMode.SetTo(spec.TunnelMode)
+	}
+	if spec.Contract != nil {
+		contract, err := ensureContract(ctx, client, *spec.Contract)
+		if err != nil {
+			return nil, err
+		}
+		req.ContractId.SetTo(contract.ID)
 	}
 
 	res, err := client.PublishAdvertisement(ctx, req)
@@ -99,6 +122,99 @@ func resolveWorkgroupNames(ctx context.Context, client *api.Client, names []stri
 		resolved = append(resolved, id)
 	}
 	return resolved, nil
+}
+
+// ensureContract looks up a contract by name in the caller's own
+// contracts list; if absent, creates it. Idempotent against repeated
+// agent startup.
+func ensureContract(ctx context.Context, client *api.Client, spec ContractSpec) (*api.Contract, error) {
+	if spec.Name == "" {
+		return nil, errors.New("contract spec requires a name")
+	}
+	listRes, err := client.ListContracts(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list contracts: %w", err)
+	}
+	listing, ok := listRes.(*api.ListContractsResponse)
+	if !ok {
+		return nil, fmt.Errorf("unexpected list contracts response: %T", listRes)
+	}
+	for i := range *listing {
+		c := (*listing)[i]
+		if strings.EqualFold(c.Name, spec.Name) {
+			return &c, nil
+		}
+	}
+
+	var wgIDs []string
+	if len(spec.RequiredWorkgroupNames) > 0 {
+		var err error
+		wgIDs, err = resolveWorkgroupNames(ctx, client, spec.RequiredWorkgroupNames)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	req := &api.CreateContractRequest{Name: spec.Name}
+	if spec.Description != "" {
+		req.Description.SetTo(spec.Description)
+	}
+	if spec.MaxDurationSeconds > 0 {
+		req.MaxDurationSeconds.SetTo(spec.MaxDurationSeconds)
+	}
+	if spec.MaxEnvelopeCount > 0 {
+		req.MaxEnvelopeCount.SetTo(spec.MaxEnvelopeCount)
+	}
+	if len(spec.AllowedMessageTypes) > 0 {
+		req.AllowedMessageTypes = append([]string{}, spec.AllowedMessageTypes...)
+	}
+	if len(wgIDs) > 0 {
+		req.RequiredWorkgroupMemberships = wgIDs
+	}
+	if spec.MinAccountAgeDays > 0 {
+		req.MaturityRequirements.SetTo(api.MaturityRequirements{
+			MinAccountAgeDays: api.NewOptInt(spec.MinAccountAgeDays),
+		})
+	}
+	if spec.AccessMode != "" {
+		req.AccessMode.SetTo(spec.AccessMode)
+	}
+
+	res, err := client.CreateContract(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("create contract: %w", err)
+	}
+	switch typed := res.(type) {
+	case *api.Contract:
+		return typed, nil
+	case *api.CreateContractConflict:
+		// race: another process created it in the meantime; look up again.
+		again, err := client.ListContracts(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("list contracts after conflict: %w", err)
+		}
+		listing2, ok := again.(*api.ListContractsResponse)
+		if !ok {
+			return nil, fmt.Errorf("unexpected list contracts response: %T", again)
+		}
+		for i := range *listing2 {
+			c := (*listing2)[i]
+			if strings.EqualFold(c.Name, spec.Name) {
+				return &c, nil
+			}
+		}
+		return nil, fmt.Errorf("contract %q conflicted but not found on re-list", spec.Name)
+	case *api.CreateContractBadRequest:
+		return nil, errors.New("create contract bad_request: " + typed.Message)
+	case *api.CreateContractForbidden:
+		return nil, errors.New("create contract forbidden: " + typed.Message)
+	case *api.CreateContractUnauthorized:
+		return nil, errors.New("create contract unauthorized: " + typed.Message)
+	case *api.CreateContractInternalServerError:
+		return nil, errors.New("create contract internal_error: " + typed.Message)
+	default:
+		return nil, fmt.Errorf("unexpected create contract response: %T", res)
+	}
 }
 
 func findAdvertisementByName(ctx context.Context, client *api.Client, name string) (*api.Advertisement, error) {

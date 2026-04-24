@@ -17,6 +17,7 @@ const (
 	PrefixWorkgroupMembership ResourcePrefix = "wgm_"
 	PrefixAdvertisement       ResourcePrefix = "adv_"
 	PrefixSession             ResourcePrefix = "ses_"
+	PrefixContract            ResourcePrefix = "con_"
 )
 
 const (

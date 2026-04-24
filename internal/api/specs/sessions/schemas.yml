@@ -54,6 +54,8 @@ session:
     closedAt:
       type: string
       format: date-time
+    contractSnapshot:
+      $ref: "../agora.yml#/components/schemas/contractSnapshot"
 
 sessionState:
   type: string

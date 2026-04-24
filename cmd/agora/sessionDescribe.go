@@ -78,4 +78,21 @@ func (cmd *sessionDescribeCommand) run(_ *cobra.Command, args []string) {
 	if sess.CloseDetail.Set {
 		fmt.Printf("  close detail  : %s\n", sess.CloseDetail.Value)
 	}
+	if sess.ContractSnapshot.Set {
+		snap := sess.ContractSnapshot.Value
+		fmt.Printf("  contract      : %s (%s)\n", snap.ContractId, snap.Name)
+		fmt.Printf("    access_mode         : %s\n", snap.AccessMode)
+		fmt.Printf("    max_duration_seconds: %d\n", snap.MaxDurationSeconds)
+		fmt.Printf("    max_envelope_count  : %d\n", snap.MaxEnvelopeCount)
+		if len(snap.AllowedMessageTypes) > 0 {
+			fmt.Printf("    allowed_message_types: %v\n", snap.AllowedMessageTypes)
+		}
+		if len(snap.RequiredWorkgroupMemberships) > 0 {
+			fmt.Printf("    required_memberships : %v\n", snap.RequiredWorkgroupMemberships)
+		}
+		if snap.MaturityRequirements.Set && snap.MaturityRequirements.Value.MinAccountAgeDays.Set {
+			fmt.Printf("    min_account_age_days : %d\n", snap.MaturityRequirements.Value.MinAccountAgeDays.Value)
+		}
+		fmt.Printf("    snapshotted_at       : %s\n", clioutput.TimeUTC(snap.SnapshottedAt))
+	}
 }

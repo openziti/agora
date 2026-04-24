@@ -41,6 +41,10 @@ type CreateAccountRes interface {
 	createAccountRes()
 }
 
+type CreateContractRes interface {
+	createContractRes()
+}
+
 type CreateOrganizationRes interface {
 	createOrganizationRes()
 }
@@ -59,6 +63,10 @@ type DeclineWorkgroupInvitationRes interface {
 
 type DeleteAccountRes interface {
 	deleteAccountRes()
+}
+
+type DeleteContractRes interface {
+	deleteContractRes()
 }
 
 type DeleteOrganizationRes interface {
@@ -91,6 +99,10 @@ type EnableEnvironmentRes interface {
 
 type GetAdvertisementRes interface {
 	getAdvertisementRes()
+}
+
+type GetContractRes interface {
+	getContractRes()
 }
 
 type GetEnvironmentRes interface {
@@ -135,6 +147,10 @@ type ListAdminWorkgroupsRes interface {
 
 type ListAdvertisementsRes interface {
 	listAdvertisementsRes()
+}
+
+type ListContractsRes interface {
+	listContractsRes()
 }
 
 type ListEnvironmentsRes interface {
@@ -215,4 +231,8 @@ type StartTunnelServeRes interface {
 
 type UpdateAdvertisementRes interface {
 	updateAdvertisementRes()
+}
+
+type UpdateContractRes interface {
+	updateContractRes()
 }

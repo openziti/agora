@@ -1598,3 +1598,331 @@ func TestSessionSelfSessionAllowed(t *testing.T) {
 		t.Fatalf("expected active, got %s", active.State)
 	}
 }
+
+// --- contract tests ---
+
+func seedContractAndAdvertisement(t *testing.T, env *workgroupTestEnv, orgA, aliceID, wgID string) (contractID, adID string) {
+	t.Helper()
+	alice := env.accountClient(t, env.mustTokenForAccount(t, aliceID))
+	cRes, err := alice.CreateContract(env.ctx, &api.CreateContractRequest{
+		Name:               "demo-contract",
+		MaxDurationSeconds: api.NewOptInt(60),
+	})
+	if err != nil {
+		t.Fatalf("create contract: %v", err)
+	}
+	c, ok := cRes.(*api.Contract)
+	if !ok {
+		t.Fatalf("create contract unexpected: %T", cRes)
+	}
+	adRes, err := alice.PublishAdvertisement(env.ctx, &api.PublishAdvertisementRequest{
+		Name:                "alice-feed",
+		Capabilities:        []api.AdvertisementCapability{{Name: "quote"}},
+		InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{wgID},
+		ContractId:          api.NewOptString(c.ID),
+	})
+	if err != nil {
+		t.Fatalf("publish ad with contract: %v", err)
+	}
+	ad, ok := adRes.(*api.Advertisement)
+	if !ok {
+		t.Fatalf("publish ad unexpected: %T", adRes)
+	}
+	if !ad.ContractId.Set || ad.ContractId.Value != c.ID {
+		t.Fatalf("contractId not echoed on advertisement: %v", ad.ContractId)
+	}
+	_ = orgA
+	return c.ID, ad.ID
+}
+
+func TestContractCreateAndList(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	_, _, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	alice := env.accountClient(t, aliceToken)
+
+	if _, err := alice.CreateContract(env.ctx, &api.CreateContractRequest{Name: "a"}); err != nil {
+		t.Fatalf("create a: %v", err)
+	}
+	if _, err := alice.CreateContract(env.ctx, &api.CreateContractRequest{Name: "b"}); err != nil {
+		t.Fatalf("create b: %v", err)
+	}
+	res, err := alice.ListContracts(env.ctx)
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	listing := res.(*api.ListContractsResponse)
+	if len(*listing) != 2 {
+		t.Fatalf("expected 2 contracts, got %d", len(*listing))
+	}
+
+	// name collision
+	res2, err := alice.CreateContract(env.ctx, &api.CreateContractRequest{Name: "A"})
+	if err != nil {
+		t.Fatalf("create collision: %v", err)
+	}
+	if _, ok := res2.(*api.CreateContractConflict); !ok {
+		t.Fatalf("expected 409 name_in_use, got %T", res2)
+	}
+}
+
+func TestContractCreateUnknownWorkgroup(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	_, _, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	alice := env.accountClient(t, aliceToken)
+	res, err := alice.CreateContract(env.ctx, &api.CreateContractRequest{
+		Name:                         "ghost",
+		RequiredWorkgroupMemberships: []string{"wg_zzzzzzzzzzzz"},
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if _, ok := res.(*api.CreateContractBadRequest); !ok {
+		t.Fatalf("expected 400 unknown_workgroup, got %T", res)
+	}
+}
+
+func TestContractUpdateAndDeleteInUse(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	wgID := env.seedIntraOrgWorkgroup(t, orgA, "shared", aliceID)
+	contractID, adID := seedContractAndAdvertisement(t, env, orgA, aliceID, wgID)
+
+	alice := env.accountClient(t, aliceToken)
+
+	// delete while in use → 409
+	delRes, err := alice.DeleteContract(env.ctx, api.DeleteContractParams{ContractId: contractID})
+	if err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	if _, ok := delRes.(*api.DeleteContractConflict); !ok {
+		t.Fatalf("expected 409 contract_in_use, got %T", delRes)
+	}
+
+	// update works
+	updRes, err := alice.UpdateContract(env.ctx,
+		&api.UpdateContractRequest{MaxDurationSeconds: api.NewOptInt(120)},
+		api.UpdateContractParams{ContractId: contractID})
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	updated, ok := updRes.(*api.Contract)
+	if !ok {
+		t.Fatalf("update unexpected: %T", updRes)
+	}
+	if updated.MaxDurationSeconds != 120 {
+		t.Fatalf("update max duration not applied: %d", updated.MaxDurationSeconds)
+	}
+
+	// retract the advertisement to unblock delete
+	if _, err := alice.RetractAdvertisement(env.ctx, api.RetractAdvertisementParams{AdvertisementId: adID}); err != nil {
+		t.Fatalf("retract ad: %v", err)
+	}
+	delRes2, err := alice.DeleteContract(env.ctx, api.DeleteContractParams{ContractId: contractID})
+	if err != nil {
+		t.Fatalf("delete after retract: %v", err)
+	}
+	if _, ok := delRes2.(*api.DeleteContractNoContent); !ok {
+		t.Fatalf("expected 204 after retract, got %T", delRes2)
+	}
+}
+
+func TestContractAdvertisementPublishUnknownContract(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	wgID := env.seedIntraOrgWorkgroup(t, orgA, "shared", aliceID)
+
+	alice := env.accountClient(t, aliceToken)
+	res, err := alice.PublishAdvertisement(env.ctx, &api.PublishAdvertisementRequest{
+		Name:                "mystery",
+		Capabilities:        []api.AdvertisementCapability{{Name: "x"}},
+		InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{wgID},
+		ContractId:          api.NewOptString("con_zzzzzzzzzzzz"),
+	})
+	if err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	if _, ok := res.(*api.PublishAdvertisementBadRequest); !ok {
+		t.Fatalf("expected 400 unknown_contract, got %T", res)
+	}
+}
+
+func TestContractAdmissionMissingMembership(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+
+	// advertisement workgroup — both alice and bob will be members
+	sharedWG := env.seedIntraOrgWorkgroup(t, orgA, "shared", aliceID)
+	// contract requires membership in this extra workgroup, which bob is NOT in
+	extraWG := env.seedIntraOrgWorkgroup(t, orgA, "extra", aliceID)
+
+	alice := env.accountClient(t, aliceToken)
+	if _, err := alice.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: sharedWG}); err != nil {
+		t.Fatalf("add bob to shared: %v", err)
+	}
+
+	cRes, err := alice.CreateContract(env.ctx, &api.CreateContractRequest{
+		Name:                         "strict",
+		RequiredWorkgroupMemberships: []string{extraWG},
+	})
+	if err != nil {
+		t.Fatalf("create contract: %v", err)
+	}
+	c := cRes.(*api.Contract)
+
+	adRes, err := alice.PublishAdvertisement(env.ctx, &api.PublishAdvertisementRequest{
+		Name:                "gated",
+		Capabilities:        []api.AdvertisementCapability{{Name: "q"}},
+		InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{sharedWG},
+		ContractId:          api.NewOptString(c.ID),
+	})
+	if err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	ad := adRes.(*api.Advertisement)
+
+	bob := env.accountClient(t, bobToken)
+	propRes, err := bob.ProposeSession(env.ctx, &api.ProposeSessionRequest{
+		AdvertisementId: ad.ID,
+		WorkgroupId:     sharedWG,
+	})
+	if err != nil {
+		t.Fatalf("propose: %v", err)
+	}
+	sess := propRes.(*api.Session)
+	aliceEnvID := env.enableEnvironment(t, aliceToken)
+	acceptRes, err := alice.AcceptSession(env.ctx,
+		&api.AcceptSessionRequest{EnvironmentId: aliceEnvID},
+		api.AcceptSessionParams{SessionId: sess.ID})
+	if err != nil {
+		t.Fatalf("accept: %v", err)
+	}
+	if _, ok := acceptRes.(*api.AcceptSessionForbidden); !ok {
+		t.Fatalf("expected 403 contract_violation_memberships, got %T", acceptRes)
+	}
+
+	// session transitioned to closed(contract_violation)
+	descRes, _ := bob.GetSession(env.ctx, api.GetSessionParams{SessionId: sess.ID})
+	d := descRes.(*api.Session)
+	if d.State != api.SessionStateClosed {
+		t.Fatalf("expected closed, got %s", d.State)
+	}
+	if !d.CloseReason.Set || d.CloseReason.Value != api.SessionCloseReasonContractViolation {
+		t.Fatalf("expected contract_violation, got %v", d.CloseReason)
+	}
+}
+
+func TestContractAdmissionPassAndSnapshot(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	wgID := env.seedIntraOrgWorkgroup(t, orgA, "shared", aliceID)
+
+	alice := env.accountClient(t, aliceToken)
+	if _, err := alice.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID}); err != nil {
+		t.Fatalf("add bob: %v", err)
+	}
+
+	contractID, adID := seedContractAndAdvertisement(t, env, orgA, aliceID, wgID)
+	_ = contractID
+	bob := env.accountClient(t, bobToken)
+	propRes, _ := bob.ProposeSession(env.ctx, &api.ProposeSessionRequest{AdvertisementId: adID, WorkgroupId: wgID})
+	sess := propRes.(*api.Session)
+
+	aliceEnvID := env.enableEnvironment(t, aliceToken)
+	acceptRes, err := alice.AcceptSession(env.ctx,
+		&api.AcceptSessionRequest{EnvironmentId: aliceEnvID},
+		api.AcceptSessionParams{SessionId: sess.ID})
+	if err != nil {
+		t.Fatalf("accept: %v", err)
+	}
+	active, ok := acceptRes.(*api.Session)
+	if !ok {
+		t.Fatalf("expected active session, got %T", acceptRes)
+	}
+	if !active.ContractSnapshot.Set {
+		t.Fatalf("expected contractSnapshot populated on active session")
+	}
+	snap := active.ContractSnapshot.Value
+	if snap.ContractId != contractID {
+		t.Fatalf("snapshot contractId mismatch: %s vs %s", snap.ContractId, contractID)
+	}
+	if snap.MaxDurationSeconds != 60 {
+		t.Fatalf("snapshot max duration mismatch: %d", snap.MaxDurationSeconds)
+	}
+	if snap.SnapshottedAt.IsZero() {
+		t.Fatalf("snapshot timestamp not populated")
+	}
+}
+
+func TestContractDurationReaper(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	wgID := env.seedIntraOrgWorkgroup(t, orgA, "shared", aliceID)
+
+	alice := env.accountClient(t, aliceToken)
+	if _, err := alice.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID}); err != nil {
+		t.Fatalf("add bob: %v", err)
+	}
+	cRes, err := alice.CreateContract(env.ctx, &api.CreateContractRequest{
+		Name:               "tight",
+		MaxDurationSeconds: api.NewOptInt(1),
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	c := cRes.(*api.Contract)
+	adRes, err := alice.PublishAdvertisement(env.ctx, &api.PublishAdvertisementRequest{
+		Name:                "short-lived",
+		Capabilities:        []api.AdvertisementCapability{{Name: "q"}},
+		InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{wgID},
+		ContractId:          api.NewOptString(c.ID),
+	})
+	if err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	ad := adRes.(*api.Advertisement)
+
+	bob := env.accountClient(t, bobToken)
+	propRes, _ := bob.ProposeSession(env.ctx, &api.ProposeSessionRequest{AdvertisementId: ad.ID, WorkgroupId: wgID})
+	sess := propRes.(*api.Session)
+	aliceEnvID := env.enableEnvironment(t, aliceToken)
+	if _, err := alice.AcceptSession(env.ctx,
+		&api.AcceptSessionRequest{EnvironmentId: aliceEnvID},
+		api.AcceptSessionParams{SessionId: sess.ID}); err != nil {
+		t.Fatalf("accept: %v", err)
+	}
+
+	// wait past the cap, then invoke the reaper directly
+	time.Sleep(1500 * time.Millisecond)
+	if err := env.service.ReapExpiredSessions(env.ctx, time.Now().UTC()); err != nil {
+		t.Fatalf("reap: %v", err)
+	}
+	descRes, _ := bob.GetSession(env.ctx, api.GetSessionParams{SessionId: sess.ID})
+	d := descRes.(*api.Session)
+	if d.State != api.SessionStateClosed {
+		t.Fatalf("expected closed after reap, got %s", d.State)
+	}
+	if !d.CloseReason.Set || d.CloseReason.Value != api.SessionCloseReasonContractViolation {
+		t.Fatalf("expected contract_violation, got %v", d.CloseReason)
+	}
+}

@@ -162,6 +162,20 @@ func encodeCreateAccountRequest(
 	return nil
 }
 
+func encodeCreateContractRequest(
+	req *CreateContractRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
 func encodeCreateOrganizationRequest(
 	req *CreateOrganizationRequest,
 	r *http.Request,
@@ -324,6 +338,20 @@ func encodeStartTunnelServeRequest(
 
 func encodeUpdateAdvertisementRequest(
 	req *UpdateAdvertisementRequest,
+	r *http.Request,
+) error {
+	const contentType = "application/json"
+	e := new(jx.Encoder)
+	{
+		req.Encode(e)
+	}
+	encoded := e.Bytes()
+	ht.SetBody(r, bytes.NewReader(encoded), contentType)
+	return nil
+}
+
+func encodeUpdateContractRequest(
+	req *UpdateContractRequest,
 	r *http.Request,
 ) error {
 	const contentType = "application/json"

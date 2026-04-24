@@ -93,6 +93,11 @@ paths:
   /admin/sessions/{sessionId}/close:
     $ref: "sessions/paths.yml#/~1admin~1sessions~1{sessionId}~1close"
 
+  /contracts:
+    $ref: "contracts/paths.yml#/~1contracts"
+  /contracts/{contractId}:
+    $ref: "contracts/paths.yml#/~1contracts~1{contractId}"
+
 components:
   securitySchemes:
     accountTokenAuth:
@@ -219,3 +224,17 @@ components:
       $ref: "sessions/schemas.yml#/closeSessionRequest"
     listSessionsResponse:
       $ref: "sessions/schemas.yml#/listSessionsResponse"
+    contract:
+      $ref: "contracts/schemas.yml#/contract"
+    contractAccessMode:
+      $ref: "contracts/schemas.yml#/contractAccessMode"
+    maturityRequirements:
+      $ref: "contracts/schemas.yml#/maturityRequirements"
+    createContractRequest:
+      $ref: "contracts/schemas.yml#/createContractRequest"
+    updateContractRequest:
+      $ref: "contracts/schemas.yml#/updateContractRequest"
+    listContractsResponse:
+      $ref: "contracts/schemas.yml#/listContractsResponse"
+    contractSnapshot:
+      $ref: "contracts/schemas.yml#/contractSnapshot"

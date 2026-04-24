@@ -18,6 +18,44 @@ func init() {
 	rootCmd.AddCommand(advertiseCmd)
 }
 
+// resolveContractID resolves a name-or-id token to a con_... ID by
+// listing the caller's own contracts. If the token is already a
+// con_... ID it is returned as-is. The sentinel "-none-" returns the
+// empty string so callers can clear the contract reference on update.
+func resolveContractID(client *api.Client, token string) string {
+	token = strings.TrimSpace(token)
+	if token == "-none-" || token == "" {
+		return ""
+	}
+	if strings.HasPrefix(token, "con_") {
+		return token
+	}
+	res, err := client.ListContracts(context.Background())
+	panicIfErr(err)
+	listing, ok := res.(*api.ListContractsResponse)
+	if !ok {
+		panic(fmt.Sprintf("unexpected list contracts response: %T", res))
+	}
+	matches := make([]api.Contract, 0)
+	for _, c := range *listing {
+		if strings.EqualFold(c.Name, token) {
+			matches = append(matches, c)
+		}
+	}
+	switch len(matches) {
+	case 0:
+		panic(fmt.Sprintf("no contract matches name or id '%s'", token))
+	case 1:
+		return matches[0].ID
+	default:
+		ids := make([]string, len(matches))
+		for i, c := range matches {
+			ids[i] = c.ID
+		}
+		panic(fmt.Sprintf("multiple contracts match name '%s'; specify the id explicitly: %s", token, strings.Join(ids, ", ")))
+	}
+}
+
 // resolveAdvertisementID resolves a name-or-id token to an adv_... ID
 // by listing the caller's own advertisements. If the token is already
 // an adv_... ID it is returned as-is.

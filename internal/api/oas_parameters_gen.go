@@ -1101,6 +1101,87 @@ func decodeDeleteAccountParams(args [2]string, argsEscaped bool, r *http.Request
 	return params, nil
 }
 
+// DeleteContractParams is parameters of deleteContract operation.
+type DeleteContractParams struct {
+	ContractId string
+}
+
+func unpackDeleteContractParams(packed middleware.Parameters) (params DeleteContractParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "contractId",
+			In:   "path",
+		}
+		params.ContractId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeDeleteContractParams(args [1]string, argsEscaped bool, r *http.Request) (params DeleteContractParams, _ error) {
+	// Decode path: contractId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "contractId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.ContractId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^con_[a-z0-9]{12}$"],
+				}).Validate(string(params.ContractId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "contractId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // DeleteOrganizationParams is parameters of deleteOrganization operation.
 type DeleteOrganizationParams struct {
 	OrganizationId string
@@ -1661,6 +1742,87 @@ func decodeGetAdvertisementParams(args [1]string, argsEscaped bool, r *http.Requ
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "advertisementId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// GetContractParams is parameters of getContract operation.
+type GetContractParams struct {
+	ContractId string
+}
+
+func unpackGetContractParams(packed middleware.Parameters) (params GetContractParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "contractId",
+			In:   "path",
+		}
+		params.ContractId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeGetContractParams(args [1]string, argsEscaped bool, r *http.Request) (params GetContractParams, _ error) {
+	// Decode path: contractId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "contractId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.ContractId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^con_[a-z0-9]{12}$"],
+				}).Validate(string(params.ContractId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "contractId",
 			In:   "path",
 			Err:  err,
 		}
@@ -4384,6 +4546,87 @@ func decodeUpdateAdvertisementParams(args [1]string, argsEscaped bool, r *http.R
 	}(); err != nil {
 		return params, &ogenerrors.DecodeParamError{
 			Name: "advertisementId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// UpdateContractParams is parameters of updateContract operation.
+type UpdateContractParams struct {
+	ContractId string
+}
+
+func unpackUpdateContractParams(packed middleware.Parameters) (params UpdateContractParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "contractId",
+			In:   "path",
+		}
+		params.ContractId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeUpdateContractParams(args [1]string, argsEscaped bool, r *http.Request) (params UpdateContractParams, _ error) {
+	// Decode path: contractId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "contractId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.ContractId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^con_[a-z0-9]{12}$"],
+				}).Validate(string(params.ContractId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "contractId",
 			In:   "path",
 			Err:  err,
 		}

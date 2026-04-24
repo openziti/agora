@@ -500,6 +500,7 @@ type Advertisement struct {
 	InteractionPatterns []AdvertisementInteractionPattern `json:"interactionPatterns"`
 	WorkgroupScopes     []string                          `json:"workgroupScopes"`
 	TunnelMode          OptAdvertisementTunnelMode        `json:"tunnelMode"`
+	ContractId          OptString                         `json:"contractId"`
 	SchemaVersion       int                               `json:"schemaVersion"`
 	Status              AdvertisementStatus               `json:"status"`
 	RetractedAt         OptDateTime                       `json:"retractedAt"`
@@ -550,6 +551,11 @@ func (s *Advertisement) GetWorkgroupScopes() []string {
 // GetTunnelMode returns the value of TunnelMode.
 func (s *Advertisement) GetTunnelMode() OptAdvertisementTunnelMode {
 	return s.TunnelMode
+}
+
+// GetContractId returns the value of ContractId.
+func (s *Advertisement) GetContractId() OptString {
+	return s.ContractId
 }
 
 // GetSchemaVersion returns the value of SchemaVersion.
@@ -620,6 +626,11 @@ func (s *Advertisement) SetWorkgroupScopes(val []string) {
 // SetTunnelMode sets the value of TunnelMode.
 func (s *Advertisement) SetTunnelMode(val OptAdvertisementTunnelMode) {
 	s.TunnelMode = val
+}
+
+// SetContractId sets the value of ContractId.
+func (s *Advertisement) SetContractId(val OptString) {
+	s.ContractId = val
 }
 
 // SetSchemaVersion sets the value of SchemaVersion.
@@ -1114,6 +1125,335 @@ type ConnectTunnelUnauthorized Error
 
 func (*ConnectTunnelUnauthorized) connectTunnelRes() {}
 
+// Ref: #/contract
+type Contract struct {
+	ID                           string                  `json:"id"`
+	AccountId                    string                  `json:"accountId"`
+	OrganizationId               string                  `json:"organizationId"`
+	Name                         string                  `json:"name"`
+	Description                  OptString               `json:"description"`
+	SchemaVersion                int                     `json:"schemaVersion"`
+	MaxDurationSeconds           int                     `json:"maxDurationSeconds"`
+	MaxEnvelopeCount             int                     `json:"maxEnvelopeCount"`
+	AllowedMessageTypes          []string                `json:"allowedMessageTypes"`
+	RequiredWorkgroupMemberships []string                `json:"requiredWorkgroupMemberships"`
+	MaturityRequirements         OptMaturityRequirements `json:"maturityRequirements"`
+	AccessMode                   ContractAccessMode      `json:"accessMode"`
+	CreatedAt                    time.Time               `json:"createdAt"`
+	UpdatedAt                    time.Time               `json:"updatedAt"`
+}
+
+// GetID returns the value of ID.
+func (s *Contract) GetID() string {
+	return s.ID
+}
+
+// GetAccountId returns the value of AccountId.
+func (s *Contract) GetAccountId() string {
+	return s.AccountId
+}
+
+// GetOrganizationId returns the value of OrganizationId.
+func (s *Contract) GetOrganizationId() string {
+	return s.OrganizationId
+}
+
+// GetName returns the value of Name.
+func (s *Contract) GetName() string {
+	return s.Name
+}
+
+// GetDescription returns the value of Description.
+func (s *Contract) GetDescription() OptString {
+	return s.Description
+}
+
+// GetSchemaVersion returns the value of SchemaVersion.
+func (s *Contract) GetSchemaVersion() int {
+	return s.SchemaVersion
+}
+
+// GetMaxDurationSeconds returns the value of MaxDurationSeconds.
+func (s *Contract) GetMaxDurationSeconds() int {
+	return s.MaxDurationSeconds
+}
+
+// GetMaxEnvelopeCount returns the value of MaxEnvelopeCount.
+func (s *Contract) GetMaxEnvelopeCount() int {
+	return s.MaxEnvelopeCount
+}
+
+// GetAllowedMessageTypes returns the value of AllowedMessageTypes.
+func (s *Contract) GetAllowedMessageTypes() []string {
+	return s.AllowedMessageTypes
+}
+
+// GetRequiredWorkgroupMemberships returns the value of RequiredWorkgroupMemberships.
+func (s *Contract) GetRequiredWorkgroupMemberships() []string {
+	return s.RequiredWorkgroupMemberships
+}
+
+// GetMaturityRequirements returns the value of MaturityRequirements.
+func (s *Contract) GetMaturityRequirements() OptMaturityRequirements {
+	return s.MaturityRequirements
+}
+
+// GetAccessMode returns the value of AccessMode.
+func (s *Contract) GetAccessMode() ContractAccessMode {
+	return s.AccessMode
+}
+
+// GetCreatedAt returns the value of CreatedAt.
+func (s *Contract) GetCreatedAt() time.Time {
+	return s.CreatedAt
+}
+
+// GetUpdatedAt returns the value of UpdatedAt.
+func (s *Contract) GetUpdatedAt() time.Time {
+	return s.UpdatedAt
+}
+
+// SetID sets the value of ID.
+func (s *Contract) SetID(val string) {
+	s.ID = val
+}
+
+// SetAccountId sets the value of AccountId.
+func (s *Contract) SetAccountId(val string) {
+	s.AccountId = val
+}
+
+// SetOrganizationId sets the value of OrganizationId.
+func (s *Contract) SetOrganizationId(val string) {
+	s.OrganizationId = val
+}
+
+// SetName sets the value of Name.
+func (s *Contract) SetName(val string) {
+	s.Name = val
+}
+
+// SetDescription sets the value of Description.
+func (s *Contract) SetDescription(val OptString) {
+	s.Description = val
+}
+
+// SetSchemaVersion sets the value of SchemaVersion.
+func (s *Contract) SetSchemaVersion(val int) {
+	s.SchemaVersion = val
+}
+
+// SetMaxDurationSeconds sets the value of MaxDurationSeconds.
+func (s *Contract) SetMaxDurationSeconds(val int) {
+	s.MaxDurationSeconds = val
+}
+
+// SetMaxEnvelopeCount sets the value of MaxEnvelopeCount.
+func (s *Contract) SetMaxEnvelopeCount(val int) {
+	s.MaxEnvelopeCount = val
+}
+
+// SetAllowedMessageTypes sets the value of AllowedMessageTypes.
+func (s *Contract) SetAllowedMessageTypes(val []string) {
+	s.AllowedMessageTypes = val
+}
+
+// SetRequiredWorkgroupMemberships sets the value of RequiredWorkgroupMemberships.
+func (s *Contract) SetRequiredWorkgroupMemberships(val []string) {
+	s.RequiredWorkgroupMemberships = val
+}
+
+// SetMaturityRequirements sets the value of MaturityRequirements.
+func (s *Contract) SetMaturityRequirements(val OptMaturityRequirements) {
+	s.MaturityRequirements = val
+}
+
+// SetAccessMode sets the value of AccessMode.
+func (s *Contract) SetAccessMode(val ContractAccessMode) {
+	s.AccessMode = val
+}
+
+// SetCreatedAt sets the value of CreatedAt.
+func (s *Contract) SetCreatedAt(val time.Time) {
+	s.CreatedAt = val
+}
+
+// SetUpdatedAt sets the value of UpdatedAt.
+func (s *Contract) SetUpdatedAt(val time.Time) {
+	s.UpdatedAt = val
+}
+
+func (*Contract) createContractRes() {}
+func (*Contract) getContractRes()    {}
+func (*Contract) updateContractRes() {}
+
+// Ref: #/contractAccessMode
+type ContractAccessMode string
+
+const (
+	ContractAccessModeOpen             ContractAccessMode = "open"
+	ContractAccessModeApprovalRequired ContractAccessMode = "approval_required"
+)
+
+// AllValues returns all ContractAccessMode values.
+func (ContractAccessMode) AllValues() []ContractAccessMode {
+	return []ContractAccessMode{
+		ContractAccessModeOpen,
+		ContractAccessModeApprovalRequired,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ContractAccessMode) MarshalText() ([]byte, error) {
+	switch s {
+	case ContractAccessModeOpen:
+		return []byte(s), nil
+	case ContractAccessModeApprovalRequired:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ContractAccessMode) UnmarshalText(data []byte) error {
+	switch ContractAccessMode(data) {
+	case ContractAccessModeOpen:
+		*s = ContractAccessModeOpen
+		return nil
+	case ContractAccessModeApprovalRequired:
+		*s = ContractAccessModeApprovalRequired
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/contractSnapshot
+type ContractSnapshot struct {
+	ContractId                   string                  `json:"contractId"`
+	Name                         string                  `json:"name"`
+	Description                  OptString               `json:"description"`
+	SchemaVersion                int                     `json:"schemaVersion"`
+	MaxDurationSeconds           int                     `json:"maxDurationSeconds"`
+	MaxEnvelopeCount             int                     `json:"maxEnvelopeCount"`
+	AllowedMessageTypes          []string                `json:"allowedMessageTypes"`
+	RequiredWorkgroupMemberships []string                `json:"requiredWorkgroupMemberships"`
+	MaturityRequirements         OptMaturityRequirements `json:"maturityRequirements"`
+	AccessMode                   ContractAccessMode      `json:"accessMode"`
+	SnapshottedAt                time.Time               `json:"snapshottedAt"`
+}
+
+// GetContractId returns the value of ContractId.
+func (s *ContractSnapshot) GetContractId() string {
+	return s.ContractId
+}
+
+// GetName returns the value of Name.
+func (s *ContractSnapshot) GetName() string {
+	return s.Name
+}
+
+// GetDescription returns the value of Description.
+func (s *ContractSnapshot) GetDescription() OptString {
+	return s.Description
+}
+
+// GetSchemaVersion returns the value of SchemaVersion.
+func (s *ContractSnapshot) GetSchemaVersion() int {
+	return s.SchemaVersion
+}
+
+// GetMaxDurationSeconds returns the value of MaxDurationSeconds.
+func (s *ContractSnapshot) GetMaxDurationSeconds() int {
+	return s.MaxDurationSeconds
+}
+
+// GetMaxEnvelopeCount returns the value of MaxEnvelopeCount.
+func (s *ContractSnapshot) GetMaxEnvelopeCount() int {
+	return s.MaxEnvelopeCount
+}
+
+// GetAllowedMessageTypes returns the value of AllowedMessageTypes.
+func (s *ContractSnapshot) GetAllowedMessageTypes() []string {
+	return s.AllowedMessageTypes
+}
+
+// GetRequiredWorkgroupMemberships returns the value of RequiredWorkgroupMemberships.
+func (s *ContractSnapshot) GetRequiredWorkgroupMemberships() []string {
+	return s.RequiredWorkgroupMemberships
+}
+
+// GetMaturityRequirements returns the value of MaturityRequirements.
+func (s *ContractSnapshot) GetMaturityRequirements() OptMaturityRequirements {
+	return s.MaturityRequirements
+}
+
+// GetAccessMode returns the value of AccessMode.
+func (s *ContractSnapshot) GetAccessMode() ContractAccessMode {
+	return s.AccessMode
+}
+
+// GetSnapshottedAt returns the value of SnapshottedAt.
+func (s *ContractSnapshot) GetSnapshottedAt() time.Time {
+	return s.SnapshottedAt
+}
+
+// SetContractId sets the value of ContractId.
+func (s *ContractSnapshot) SetContractId(val string) {
+	s.ContractId = val
+}
+
+// SetName sets the value of Name.
+func (s *ContractSnapshot) SetName(val string) {
+	s.Name = val
+}
+
+// SetDescription sets the value of Description.
+func (s *ContractSnapshot) SetDescription(val OptString) {
+	s.Description = val
+}
+
+// SetSchemaVersion sets the value of SchemaVersion.
+func (s *ContractSnapshot) SetSchemaVersion(val int) {
+	s.SchemaVersion = val
+}
+
+// SetMaxDurationSeconds sets the value of MaxDurationSeconds.
+func (s *ContractSnapshot) SetMaxDurationSeconds(val int) {
+	s.MaxDurationSeconds = val
+}
+
+// SetMaxEnvelopeCount sets the value of MaxEnvelopeCount.
+func (s *ContractSnapshot) SetMaxEnvelopeCount(val int) {
+	s.MaxEnvelopeCount = val
+}
+
+// SetAllowedMessageTypes sets the value of AllowedMessageTypes.
+func (s *ContractSnapshot) SetAllowedMessageTypes(val []string) {
+	s.AllowedMessageTypes = val
+}
+
+// SetRequiredWorkgroupMemberships sets the value of RequiredWorkgroupMemberships.
+func (s *ContractSnapshot) SetRequiredWorkgroupMemberships(val []string) {
+	s.RequiredWorkgroupMemberships = val
+}
+
+// SetMaturityRequirements sets the value of MaturityRequirements.
+func (s *ContractSnapshot) SetMaturityRequirements(val OptMaturityRequirements) {
+	s.MaturityRequirements = val
+}
+
+// SetAccessMode sets the value of AccessMode.
+func (s *ContractSnapshot) SetAccessMode(val ContractAccessMode) {
+	s.AccessMode = val
+}
+
+// SetSnapshottedAt sets the value of SnapshottedAt.
+func (s *ContractSnapshot) SetSnapshottedAt(val time.Time) {
+	s.SnapshottedAt = val
+}
+
 type CreateAccountConflict Error
 
 func (*CreateAccountConflict) createAccountRes() {}
@@ -1270,6 +1610,118 @@ func (s *CreateAccountRequestStatus) UnmarshalText(data []byte) error {
 type CreateAccountUnauthorized Error
 
 func (*CreateAccountUnauthorized) createAccountRes() {}
+
+type CreateContractBadRequest Error
+
+func (*CreateContractBadRequest) createContractRes() {}
+
+type CreateContractConflict Error
+
+func (*CreateContractConflict) createContractRes() {}
+
+type CreateContractForbidden Error
+
+func (*CreateContractForbidden) createContractRes() {}
+
+type CreateContractInternalServerError Error
+
+func (*CreateContractInternalServerError) createContractRes() {}
+
+// Ref: #/createContractRequest
+type CreateContractRequest struct {
+	Name                         string                  `json:"name"`
+	Description                  OptString               `json:"description"`
+	MaxDurationSeconds           OptInt                  `json:"maxDurationSeconds"`
+	MaxEnvelopeCount             OptInt                  `json:"maxEnvelopeCount"`
+	AllowedMessageTypes          []string                `json:"allowedMessageTypes"`
+	RequiredWorkgroupMemberships []string                `json:"requiredWorkgroupMemberships"`
+	MaturityRequirements         OptMaturityRequirements `json:"maturityRequirements"`
+	AccessMode                   OptContractAccessMode   `json:"accessMode"`
+}
+
+// GetName returns the value of Name.
+func (s *CreateContractRequest) GetName() string {
+	return s.Name
+}
+
+// GetDescription returns the value of Description.
+func (s *CreateContractRequest) GetDescription() OptString {
+	return s.Description
+}
+
+// GetMaxDurationSeconds returns the value of MaxDurationSeconds.
+func (s *CreateContractRequest) GetMaxDurationSeconds() OptInt {
+	return s.MaxDurationSeconds
+}
+
+// GetMaxEnvelopeCount returns the value of MaxEnvelopeCount.
+func (s *CreateContractRequest) GetMaxEnvelopeCount() OptInt {
+	return s.MaxEnvelopeCount
+}
+
+// GetAllowedMessageTypes returns the value of AllowedMessageTypes.
+func (s *CreateContractRequest) GetAllowedMessageTypes() []string {
+	return s.AllowedMessageTypes
+}
+
+// GetRequiredWorkgroupMemberships returns the value of RequiredWorkgroupMemberships.
+func (s *CreateContractRequest) GetRequiredWorkgroupMemberships() []string {
+	return s.RequiredWorkgroupMemberships
+}
+
+// GetMaturityRequirements returns the value of MaturityRequirements.
+func (s *CreateContractRequest) GetMaturityRequirements() OptMaturityRequirements {
+	return s.MaturityRequirements
+}
+
+// GetAccessMode returns the value of AccessMode.
+func (s *CreateContractRequest) GetAccessMode() OptContractAccessMode {
+	return s.AccessMode
+}
+
+// SetName sets the value of Name.
+func (s *CreateContractRequest) SetName(val string) {
+	s.Name = val
+}
+
+// SetDescription sets the value of Description.
+func (s *CreateContractRequest) SetDescription(val OptString) {
+	s.Description = val
+}
+
+// SetMaxDurationSeconds sets the value of MaxDurationSeconds.
+func (s *CreateContractRequest) SetMaxDurationSeconds(val OptInt) {
+	s.MaxDurationSeconds = val
+}
+
+// SetMaxEnvelopeCount sets the value of MaxEnvelopeCount.
+func (s *CreateContractRequest) SetMaxEnvelopeCount(val OptInt) {
+	s.MaxEnvelopeCount = val
+}
+
+// SetAllowedMessageTypes sets the value of AllowedMessageTypes.
+func (s *CreateContractRequest) SetAllowedMessageTypes(val []string) {
+	s.AllowedMessageTypes = val
+}
+
+// SetRequiredWorkgroupMemberships sets the value of RequiredWorkgroupMemberships.
+func (s *CreateContractRequest) SetRequiredWorkgroupMemberships(val []string) {
+	s.RequiredWorkgroupMemberships = val
+}
+
+// SetMaturityRequirements sets the value of MaturityRequirements.
+func (s *CreateContractRequest) SetMaturityRequirements(val OptMaturityRequirements) {
+	s.MaturityRequirements = val
+}
+
+// SetAccessMode sets the value of AccessMode.
+func (s *CreateContractRequest) SetAccessMode(val OptContractAccessMode) {
+	s.AccessMode = val
+}
+
+type CreateContractUnauthorized Error
+
+func (*CreateContractUnauthorized) createContractRes() {}
 
 type CreateOrganizationConflict Error
 
@@ -1583,6 +2035,31 @@ func (*DeleteAccountNotFound) deleteAccountRes() {}
 type DeleteAccountUnauthorized Error
 
 func (*DeleteAccountUnauthorized) deleteAccountRes() {}
+
+type DeleteContractConflict Error
+
+func (*DeleteContractConflict) deleteContractRes() {}
+
+type DeleteContractForbidden Error
+
+func (*DeleteContractForbidden) deleteContractRes() {}
+
+type DeleteContractInternalServerError Error
+
+func (*DeleteContractInternalServerError) deleteContractRes() {}
+
+// DeleteContractNoContent is response for DeleteContract operation.
+type DeleteContractNoContent struct{}
+
+func (*DeleteContractNoContent) deleteContractRes() {}
+
+type DeleteContractNotFound Error
+
+func (*DeleteContractNotFound) deleteContractRes() {}
+
+type DeleteContractUnauthorized Error
+
+func (*DeleteContractUnauthorized) deleteContractRes() {}
 
 type DeleteOrganizationConflict Error
 
@@ -1955,6 +2432,18 @@ type GetAdvertisementUnauthorized Error
 
 func (*GetAdvertisementUnauthorized) getAdvertisementRes() {}
 
+type GetContractInternalServerError Error
+
+func (*GetContractInternalServerError) getContractRes() {}
+
+type GetContractNotFound Error
+
+func (*GetContractNotFound) getContractRes() {}
+
+type GetContractUnauthorized Error
+
+func (*GetContractUnauthorized) getContractRes() {}
+
 type GetEnvironmentInternalServerError Error
 
 func (*GetEnvironmentInternalServerError) getEnvironmentRes() {}
@@ -2158,6 +2647,18 @@ func (*ListAdvertisementsResponse) listAdvertisementsRes() {}
 type ListAdvertisementsUnauthorized Error
 
 func (*ListAdvertisementsUnauthorized) listAdvertisementsRes() {}
+
+type ListContractsInternalServerError Error
+
+func (*ListContractsInternalServerError) listContractsRes() {}
+
+type ListContractsResponse []Contract
+
+func (*ListContractsResponse) listContractsRes() {}
+
+type ListContractsUnauthorized Error
+
+func (*ListContractsUnauthorized) listContractsRes() {}
 
 type ListEnvironmentsInternalServerError Error
 
@@ -2413,6 +2914,21 @@ type LoginUnauthorized Error
 
 func (*LoginUnauthorized) loginRes() {}
 
+// Ref: #/maturityRequirements
+type MaturityRequirements struct {
+	MinAccountAgeDays OptInt `json:"minAccountAgeDays"`
+}
+
+// GetMinAccountAgeDays returns the value of MinAccountAgeDays.
+func (s *MaturityRequirements) GetMinAccountAgeDays() OptInt {
+	return s.MinAccountAgeDays
+}
+
+// SetMinAccountAgeDays sets the value of MinAccountAgeDays.
+func (s *MaturityRequirements) SetMinAccountAgeDays(val OptInt) {
+	s.MinAccountAgeDays = val
+}
+
 // NewOptAdvertisementCapabilityMetadata returns new OptAdvertisementCapabilityMetadata with value set to v.
 func NewOptAdvertisementCapabilityMetadata(v AdvertisementCapabilityMetadata) OptAdvertisementCapabilityMetadata {
 	return OptAdvertisementCapabilityMetadata{
@@ -2591,6 +3107,98 @@ func (o OptCloseSessionRequest) Get() (v CloseSessionRequest, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptCloseSessionRequest) Or(d CloseSessionRequest) CloseSessionRequest {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptContractAccessMode returns new OptContractAccessMode with value set to v.
+func NewOptContractAccessMode(v ContractAccessMode) OptContractAccessMode {
+	return OptContractAccessMode{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptContractAccessMode is optional ContractAccessMode.
+type OptContractAccessMode struct {
+	Value ContractAccessMode
+	Set   bool
+}
+
+// IsSet returns true if OptContractAccessMode was set.
+func (o OptContractAccessMode) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptContractAccessMode) Reset() {
+	var v ContractAccessMode
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptContractAccessMode) SetTo(v ContractAccessMode) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptContractAccessMode) Get() (v ContractAccessMode, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptContractAccessMode) Or(d ContractAccessMode) ContractAccessMode {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptContractSnapshot returns new OptContractSnapshot with value set to v.
+func NewOptContractSnapshot(v ContractSnapshot) OptContractSnapshot {
+	return OptContractSnapshot{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptContractSnapshot is optional ContractSnapshot.
+type OptContractSnapshot struct {
+	Value ContractSnapshot
+	Set   bool
+}
+
+// IsSet returns true if OptContractSnapshot was set.
+func (o OptContractSnapshot) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptContractSnapshot) Reset() {
+	var v ContractSnapshot
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptContractSnapshot) SetTo(v ContractSnapshot) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptContractSnapshot) Get() (v ContractSnapshot, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptContractSnapshot) Or(d ContractSnapshot) ContractSnapshot {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -2919,6 +3527,52 @@ func (o OptListTunnelsScope) Or(d ListTunnelsScope) ListTunnelsScope {
 	return d
 }
 
+// NewOptMaturityRequirements returns new OptMaturityRequirements with value set to v.
+func NewOptMaturityRequirements(v MaturityRequirements) OptMaturityRequirements {
+	return OptMaturityRequirements{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptMaturityRequirements is optional MaturityRequirements.
+type OptMaturityRequirements struct {
+	Value MaturityRequirements
+	Set   bool
+}
+
+// IsSet returns true if OptMaturityRequirements was set.
+func (o OptMaturityRequirements) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptMaturityRequirements) Reset() {
+	var v MaturityRequirements
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptMaturityRequirements) SetTo(v MaturityRequirements) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptMaturityRequirements) Get() (v MaturityRequirements, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptMaturityRequirements) Or(d MaturityRequirements) MaturityRequirements {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptSessionCloseReason returns new OptSessionCloseReason with value set to v.
 func NewOptSessionCloseReason(v SessionCloseReason) OptSessionCloseReason {
 	return OptSessionCloseReason{
@@ -3234,6 +3888,7 @@ type PublishAdvertisementRequest struct {
 	InteractionPatterns []AdvertisementInteractionPattern `json:"interactionPatterns"`
 	WorkgroupScopes     []string                          `json:"workgroupScopes"`
 	TunnelMode          OptAdvertisementTunnelMode        `json:"tunnelMode"`
+	ContractId          OptString                         `json:"contractId"`
 }
 
 // GetName returns the value of Name.
@@ -3266,6 +3921,11 @@ func (s *PublishAdvertisementRequest) GetTunnelMode() OptAdvertisementTunnelMode
 	return s.TunnelMode
 }
 
+// GetContractId returns the value of ContractId.
+func (s *PublishAdvertisementRequest) GetContractId() OptString {
+	return s.ContractId
+}
+
 // SetName sets the value of Name.
 func (s *PublishAdvertisementRequest) SetName(val string) {
 	s.Name = val
@@ -3294,6 +3954,11 @@ func (s *PublishAdvertisementRequest) SetWorkgroupScopes(val []string) {
 // SetTunnelMode sets the value of TunnelMode.
 func (s *PublishAdvertisementRequest) SetTunnelMode(val OptAdvertisementTunnelMode) {
 	s.TunnelMode = val
+}
+
+// SetContractId sets the value of ContractId.
+func (s *PublishAdvertisementRequest) SetContractId(val OptString) {
+	s.ContractId = val
 }
 
 type PublishAdvertisementUnauthorized Error
@@ -3445,6 +4110,7 @@ type Session struct {
 	ProposedAt             time.Time               `json:"proposedAt"`
 	AcceptedAt             OptDateTime             `json:"acceptedAt"`
 	ClosedAt               OptDateTime             `json:"closedAt"`
+	ContractSnapshot       OptContractSnapshot     `json:"contractSnapshot"`
 }
 
 // GetID returns the value of ID.
@@ -3527,6 +4193,11 @@ func (s *Session) GetClosedAt() OptDateTime {
 	return s.ClosedAt
 }
 
+// GetContractSnapshot returns the value of ContractSnapshot.
+func (s *Session) GetContractSnapshot() OptContractSnapshot {
+	return s.ContractSnapshot
+}
+
 // SetID sets the value of ID.
 func (s *Session) SetID(val string) {
 	s.ID = val
@@ -3605,6 +4276,11 @@ func (s *Session) SetAcceptedAt(val OptDateTime) {
 // SetClosedAt sets the value of ClosedAt.
 func (s *Session) SetClosedAt(val OptDateTime) {
 	s.ClosedAt = val
+}
+
+// SetContractSnapshot sets the value of ContractSnapshot.
+func (s *Session) SetContractSnapshot(val OptContractSnapshot) {
+	s.ContractSnapshot = val
 }
 
 func (*Session) acceptSessionRes()  {}
@@ -4522,6 +5198,7 @@ type UpdateAdvertisementRequest struct {
 	InteractionPatterns []AdvertisementInteractionPattern `json:"interactionPatterns"`
 	WorkgroupScopes     []string                          `json:"workgroupScopes"`
 	TunnelMode          OptAdvertisementTunnelMode        `json:"tunnelMode"`
+	ContractId          OptString                         `json:"contractId"`
 }
 
 // GetName returns the value of Name.
@@ -4554,6 +5231,11 @@ func (s *UpdateAdvertisementRequest) GetTunnelMode() OptAdvertisementTunnelMode 
 	return s.TunnelMode
 }
 
+// GetContractId returns the value of ContractId.
+func (s *UpdateAdvertisementRequest) GetContractId() OptString {
+	return s.ContractId
+}
+
 // SetName sets the value of Name.
 func (s *UpdateAdvertisementRequest) SetName(val OptString) {
 	s.Name = val
@@ -4584,9 +5266,130 @@ func (s *UpdateAdvertisementRequest) SetTunnelMode(val OptAdvertisementTunnelMod
 	s.TunnelMode = val
 }
 
+// SetContractId sets the value of ContractId.
+func (s *UpdateAdvertisementRequest) SetContractId(val OptString) {
+	s.ContractId = val
+}
+
 type UpdateAdvertisementUnauthorized Error
 
 func (*UpdateAdvertisementUnauthorized) updateAdvertisementRes() {}
+
+type UpdateContractBadRequest Error
+
+func (*UpdateContractBadRequest) updateContractRes() {}
+
+type UpdateContractConflict Error
+
+func (*UpdateContractConflict) updateContractRes() {}
+
+type UpdateContractForbidden Error
+
+func (*UpdateContractForbidden) updateContractRes() {}
+
+type UpdateContractInternalServerError Error
+
+func (*UpdateContractInternalServerError) updateContractRes() {}
+
+type UpdateContractNotFound Error
+
+func (*UpdateContractNotFound) updateContractRes() {}
+
+// Ref: #/updateContractRequest
+type UpdateContractRequest struct {
+	Name                         OptString               `json:"name"`
+	Description                  OptString               `json:"description"`
+	MaxDurationSeconds           OptInt                  `json:"maxDurationSeconds"`
+	MaxEnvelopeCount             OptInt                  `json:"maxEnvelopeCount"`
+	AllowedMessageTypes          []string                `json:"allowedMessageTypes"`
+	RequiredWorkgroupMemberships []string                `json:"requiredWorkgroupMemberships"`
+	MaturityRequirements         OptMaturityRequirements `json:"maturityRequirements"`
+	AccessMode                   OptContractAccessMode   `json:"accessMode"`
+}
+
+// GetName returns the value of Name.
+func (s *UpdateContractRequest) GetName() OptString {
+	return s.Name
+}
+
+// GetDescription returns the value of Description.
+func (s *UpdateContractRequest) GetDescription() OptString {
+	return s.Description
+}
+
+// GetMaxDurationSeconds returns the value of MaxDurationSeconds.
+func (s *UpdateContractRequest) GetMaxDurationSeconds() OptInt {
+	return s.MaxDurationSeconds
+}
+
+// GetMaxEnvelopeCount returns the value of MaxEnvelopeCount.
+func (s *UpdateContractRequest) GetMaxEnvelopeCount() OptInt {
+	return s.MaxEnvelopeCount
+}
+
+// GetAllowedMessageTypes returns the value of AllowedMessageTypes.
+func (s *UpdateContractRequest) GetAllowedMessageTypes() []string {
+	return s.AllowedMessageTypes
+}
+
+// GetRequiredWorkgroupMemberships returns the value of RequiredWorkgroupMemberships.
+func (s *UpdateContractRequest) GetRequiredWorkgroupMemberships() []string {
+	return s.RequiredWorkgroupMemberships
+}
+
+// GetMaturityRequirements returns the value of MaturityRequirements.
+func (s *UpdateContractRequest) GetMaturityRequirements() OptMaturityRequirements {
+	return s.MaturityRequirements
+}
+
+// GetAccessMode returns the value of AccessMode.
+func (s *UpdateContractRequest) GetAccessMode() OptContractAccessMode {
+	return s.AccessMode
+}
+
+// SetName sets the value of Name.
+func (s *UpdateContractRequest) SetName(val OptString) {
+	s.Name = val
+}
+
+// SetDescription sets the value of Description.
+func (s *UpdateContractRequest) SetDescription(val OptString) {
+	s.Description = val
+}
+
+// SetMaxDurationSeconds sets the value of MaxDurationSeconds.
+func (s *UpdateContractRequest) SetMaxDurationSeconds(val OptInt) {
+	s.MaxDurationSeconds = val
+}
+
+// SetMaxEnvelopeCount sets the value of MaxEnvelopeCount.
+func (s *UpdateContractRequest) SetMaxEnvelopeCount(val OptInt) {
+	s.MaxEnvelopeCount = val
+}
+
+// SetAllowedMessageTypes sets the value of AllowedMessageTypes.
+func (s *UpdateContractRequest) SetAllowedMessageTypes(val []string) {
+	s.AllowedMessageTypes = val
+}
+
+// SetRequiredWorkgroupMemberships sets the value of RequiredWorkgroupMemberships.
+func (s *UpdateContractRequest) SetRequiredWorkgroupMemberships(val []string) {
+	s.RequiredWorkgroupMemberships = val
+}
+
+// SetMaturityRequirements sets the value of MaturityRequirements.
+func (s *UpdateContractRequest) SetMaturityRequirements(val OptMaturityRequirements) {
+	s.MaturityRequirements = val
+}
+
+// SetAccessMode sets the value of AccessMode.
+func (s *UpdateContractRequest) SetAccessMode(val OptContractAccessMode) {
+	s.AccessMode = val
+}
+
+type UpdateContractUnauthorized Error
+
+func (*UpdateContractUnauthorized) updateContractRes() {}
 
 // Ref: #/workgroup
 type Workgroup struct {

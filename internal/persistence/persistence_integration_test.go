@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/lib/pq"
 	"github.com/openziti/agora/internal/persistence/testutil"
 	migrate "github.com/rubenv/sql-migrate"
 )
@@ -23,8 +24,8 @@ func TestMigrateUpAndCompatibilityCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}
-	if applied != 6 {
-		t.Fatalf("expected 6 migrations applied, got %d", applied)
+	if applied != 7 {
+		t.Fatalf("expected 7 migrations applied, got %d", applied)
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); err != nil {
@@ -50,8 +51,8 @@ func TestCheckSchemaCompatibilityBehindBinary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migration status: %v", err)
 	}
-	if len(statuses) != 6 {
-		t.Fatalf("expected 6 migration statuses, got %d", len(statuses))
+	if len(statuses) != 7 {
+		t.Fatalf("expected 7 migration statuses, got %d", len(statuses))
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); !errors.Is(err, ErrSchemaBehindBinary) {
@@ -1386,4 +1387,158 @@ func TestSessionListFilters(t *testing.T) {
 	}
 
 	_ = a
+}
+
+// --- contract tests ---
+
+func newContractTestFixture(t *testing.T, ctx context.Context, store *Store) (*Organization, *Account, *Workgroup) {
+	t.Helper()
+	return newAdvertisementTestFixture(t, ctx, store)
+}
+
+func TestContractCreateAndNameUniqueness(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, acct, wg := newContractTestFixture(t, ctx, store)
+
+	first, err := store.Contracts.Create(ctx, store.DB(), Contract{
+		OrganizationID:               org.ID,
+		AccountID:                    acct.ID,
+		Name:                         "morning-brief",
+		MaxDurationSeconds:           60,
+		RequiredWorkgroupMemberships: pq.StringArray{wg.ID},
+		AccessMode:                   ContractAccessModeApprovalRequired,
+	})
+	if err != nil {
+		t.Fatalf("create contract: %v", err)
+	}
+	if first.ID == "" || !strings.HasPrefix(first.ID, "con_") {
+		t.Fatalf("unexpected contract id: %q", first.ID)
+	}
+	if first.SchemaVersion != 1 {
+		t.Fatalf("expected schema version 1, got %d", first.SchemaVersion)
+	}
+
+	if _, err := store.Contracts.Create(ctx, store.DB(), Contract{
+		OrganizationID: org.ID,
+		AccountID:      acct.ID,
+		Name:           "Morning-Brief",
+		AccessMode:     ContractAccessModeApprovalRequired,
+	}); !isUniqueViolation(err) {
+		t.Fatalf("expected unique violation on case-insensitive name collision, got %v", err)
+	}
+}
+
+func TestContractGetByAccountAndName(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, acct, _ := newContractTestFixture(t, ctx, store)
+
+	created, err := store.Contracts.Create(ctx, store.DB(), Contract{
+		OrganizationID: org.ID, AccountID: acct.ID,
+		Name: "by-name", AccessMode: ContractAccessModeOpen,
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	got, err := store.Contracts.GetByAccountAndName(ctx, store.DB(), acct.ID, "BY-NAME")
+	if err != nil {
+		t.Fatalf("get by name: %v", err)
+	}
+	if got.ID != created.ID {
+		t.Fatalf("expected %s, got %s", created.ID, got.ID)
+	}
+	if _, err := store.Contracts.GetByAccountAndName(ctx, store.DB(), acct.ID, "nope"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expected ErrNotFound, got %v", err)
+	}
+}
+
+func TestContractMaturityJSONBRoundtrip(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, acct, _ := newContractTestFixture(t, ctx, store)
+
+	created, err := store.Contracts.Create(ctx, store.DB(), Contract{
+		OrganizationID: org.ID, AccountID: acct.ID,
+		Name:                 "mature",
+		MaturityRequirements: MaturityRequirementsJSON{MinAccountAgeDays: 30},
+		AccessMode:           ContractAccessModeOpen,
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	loaded, err := store.Contracts.GetByID(ctx, store.DB(), created.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if loaded.MaturityRequirements.MinAccountAgeDays != 30 {
+		t.Fatalf("maturity did not round-trip: got %+v", loaded.MaturityRequirements)
+	}
+}
+
+func TestContractDeleteReferenceBlocked(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, acct, wg := newContractTestFixture(t, ctx, store)
+
+	c, err := store.Contracts.Create(ctx, store.DB(), Contract{
+		OrganizationID: org.ID, AccountID: acct.ID,
+		Name: "ref", AccessMode: ContractAccessModeOpen,
+	})
+	if err != nil {
+		t.Fatalf("create contract: %v", err)
+	}
+	_, err = store.Advertisements.Create(ctx, store.DB(), Advertisement{
+		OrganizationID:      org.ID,
+		AccountID:           acct.ID,
+		Name:                "uses-contract",
+		Capabilities:        CapabilitiesJSON{{Name: "x"}},
+		InteractionPatterns: InteractionPatternsJSON{{Kind: InteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{wg.ID},
+		ContractID:          &c.ID,
+	})
+	if err != nil {
+		t.Fatalf("create ad: %v", err)
+	}
+
+	inUse, err := store.Contracts.IsReferencedByActiveAdvertisement(ctx, store.DB(), c.ID)
+	if err != nil {
+		t.Fatalf("in-use check: %v", err)
+	}
+	if !inUse {
+		t.Fatalf("expected in-use, got false")
+	}
+}
+
+func TestContractUpdate(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, acct, wg := newContractTestFixture(t, ctx, store)
+
+	c, err := store.Contracts.Create(ctx, store.DB(), Contract{
+		OrganizationID: org.ID, AccountID: acct.ID,
+		Name: "editable", AccessMode: ContractAccessModeApprovalRequired,
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	c.MaxDurationSeconds = 120
+	c.MaxEnvelopeCount = 500
+	c.AllowedMessageTypes = pq.StringArray{"markets.equity.request", "markets.equity.response"}
+	c.RequiredWorkgroupMemberships = pq.StringArray{wg.ID}
+	updated, err := store.Contracts.Update(ctx, store.DB(), *c)
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if updated.MaxDurationSeconds != 120 || updated.MaxEnvelopeCount != 500 {
+		t.Fatalf("caps did not round-trip: %+v", updated)
+	}
+	if len(updated.AllowedMessageTypes) != 2 {
+		t.Fatalf("allowed_message_types did not round-trip: %+v", updated.AllowedMessageTypes)
+	}
 }

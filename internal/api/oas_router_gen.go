@@ -447,24 +447,100 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 				}
 
-			case 'c': // Prefix: "catalog/advertisements"
+			case 'c': // Prefix: "c"
 
-				if l := len("catalog/advertisements"); len(elem) >= l && elem[0:l] == "catalog/advertisements" {
+				if l := len("c"); len(elem) >= l && elem[0:l] == "c" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
 				if len(elem) == 0 {
-					// Leaf node.
-					switch r.Method {
-					case "GET":
-						s.handleSearchCatalogRequest([0]string{}, elemIsEscaped, w, r)
-					default:
-						s.notAllowed(w, r, "GET")
+					break
+				}
+				switch elem[0] {
+				case 'a': // Prefix: "atalog/advertisements"
+
+					if l := len("atalog/advertisements"); len(elem) >= l && elem[0:l] == "atalog/advertisements" {
+						elem = elem[l:]
+					} else {
+						break
 					}
 
-					return
+					if len(elem) == 0 {
+						// Leaf node.
+						switch r.Method {
+						case "GET":
+							s.handleSearchCatalogRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, "GET")
+						}
+
+						return
+					}
+
+				case 'o': // Prefix: "ontracts"
+
+					if l := len("ontracts"); len(elem) >= l && elem[0:l] == "ontracts" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						switch r.Method {
+						case "GET":
+							s.handleListContractsRequest([0]string{}, elemIsEscaped, w, r)
+						case "POST":
+							s.handleCreateContractRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, "GET,POST")
+						}
+
+						return
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "contractId"
+						// Leaf parameter, slashes are prohibited
+						idx := strings.IndexByte(elem, '/')
+						if idx >= 0 {
+							break
+						}
+						args[0] = elem
+						elem = ""
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "DELETE":
+								s.handleDeleteContractRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							case "GET":
+								s.handleGetContractRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							case "PATCH":
+								s.handleUpdateContractRequest([1]string{
+									args[0],
+								}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, "DELETE,GET,PATCH")
+							}
+
+							return
+						}
+
+					}
+
 				}
 
 			case 'e': // Prefix: "environments"
@@ -1790,28 +1866,124 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 
 				}
 
-			case 'c': // Prefix: "catalog/advertisements"
+			case 'c': // Prefix: "c"
 
-				if l := len("catalog/advertisements"); len(elem) >= l && elem[0:l] == "catalog/advertisements" {
+				if l := len("c"); len(elem) >= l && elem[0:l] == "c" {
 					elem = elem[l:]
 				} else {
 					break
 				}
 
 				if len(elem) == 0 {
-					// Leaf node.
-					switch method {
-					case "GET":
-						r.name = SearchCatalogOperation
-						r.summary = ""
-						r.operationID = "searchCatalog"
-						r.pathPattern = "/catalog/advertisements"
-						r.args = args
-						r.count = 0
-						return r, true
-					default:
-						return
+					break
+				}
+				switch elem[0] {
+				case 'a': // Prefix: "atalog/advertisements"
+
+					if l := len("atalog/advertisements"); len(elem) >= l && elem[0:l] == "atalog/advertisements" {
+						elem = elem[l:]
+					} else {
+						break
 					}
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch method {
+						case "GET":
+							r.name = SearchCatalogOperation
+							r.summary = ""
+							r.operationID = "searchCatalog"
+							r.pathPattern = "/catalog/advertisements"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
+					}
+
+				case 'o': // Prefix: "ontracts"
+
+					if l := len("ontracts"); len(elem) >= l && elem[0:l] == "ontracts" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						switch method {
+						case "GET":
+							r.name = ListContractsOperation
+							r.summary = ""
+							r.operationID = "listContracts"
+							r.pathPattern = "/contracts"
+							r.args = args
+							r.count = 0
+							return r, true
+						case "POST":
+							r.name = CreateContractOperation
+							r.summary = ""
+							r.operationID = "createContract"
+							r.pathPattern = "/contracts"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
+					}
+					switch elem[0] {
+					case '/': // Prefix: "/"
+
+						if l := len("/"); len(elem) >= l && elem[0:l] == "/" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						// Param: "contractId"
+						// Leaf parameter, slashes are prohibited
+						idx := strings.IndexByte(elem, '/')
+						if idx >= 0 {
+							break
+						}
+						args[0] = elem
+						elem = ""
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "DELETE":
+								r.name = DeleteContractOperation
+								r.summary = ""
+								r.operationID = "deleteContract"
+								r.pathPattern = "/contracts/{contractId}"
+								r.args = args
+								r.count = 1
+								return r, true
+							case "GET":
+								r.name = GetContractOperation
+								r.summary = ""
+								r.operationID = "getContract"
+								r.pathPattern = "/contracts/{contractId}"
+								r.args = args
+								r.count = 1
+								return r, true
+							case "PATCH":
+								r.name = UpdateContractOperation
+								r.summary = ""
+								r.operationID = "updateContract"
+								r.pathPattern = "/contracts/{contractId}"
+								r.args = args
+								r.count = 1
+								return r, true
+							default:
+								return
+							}
+						}
+
+					}
+
 				}
 
 			case 'e': // Prefix: "environments"

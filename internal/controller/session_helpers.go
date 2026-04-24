@@ -59,5 +59,8 @@ func mapSession(sess *persistence.Session) *api.Session {
 	if sess.ClosedAt != nil {
 		out.ClosedAt.SetTo(*sess.ClosedAt)
 	}
+	if snap, err := mapSessionSnapshot(sess.ContractSnapshotJSON); err == nil {
+		out.ContractSnapshot = snap
+	}
 	return out
 }

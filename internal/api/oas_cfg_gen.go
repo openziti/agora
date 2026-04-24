@@ -14,6 +14,7 @@ import (
 var regexMap = map[string]ogenregex.Regexp{
 	"^ac_[a-z0-9]{12}$":  ogenregex.MustCompile("^ac_[a-z0-9]{12}$"),
 	"^adv_[a-z0-9]{12}$": ogenregex.MustCompile("^adv_[a-z0-9]{12}$"),
+	"^con_[a-z0-9]{12}$": ogenregex.MustCompile("^con_[a-z0-9]{12}$"),
 	"^ev_[a-z0-9]{12}$":  ogenregex.MustCompile("^ev_[a-z0-9]{12}$"),
 	"^org_[a-z0-9]{12}$": ogenregex.MustCompile("^org_[a-z0-9]{12}$"),
 	"^ses_[a-z0-9]{12}$": ogenregex.MustCompile("^ses_[a-z0-9]{12}$"),

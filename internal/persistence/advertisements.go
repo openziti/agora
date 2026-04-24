@@ -94,12 +94,12 @@ func (r *AdvertisementsRepository) Create(ctx context.Context, db Queryer, ad Ad
 	const query = `
 insert into advertisements (
     id, organization_id, account_id, name, description, capabilities, interaction_patterns,
-    workgroup_scopes, tunnel_mode, schema_version, status, retracted_at, created_at, updated_at
+    workgroup_scopes, tunnel_mode, contract_id, schema_version, status, retracted_at, created_at, updated_at
 ) values (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
 )
 returning id, organization_id, account_id, name, description, capabilities, interaction_patterns,
-    workgroup_scopes, tunnel_mode, schema_version, status, retracted_at, created_at, updated_at`
+    workgroup_scopes, tunnel_mode, contract_id, schema_version, status, retracted_at, created_at, updated_at`
 
 	var created Advertisement
 	if err := db.GetContext(
@@ -115,6 +115,7 @@ returning id, organization_id, account_id, name, description, capabilities, inte
 		ad.InteractionPatterns,
 		ad.WorkgroupScopes,
 		ad.TunnelMode,
+		ad.ContractID,
 		ad.SchemaVersion,
 		ad.Status,
 		ad.RetractedAt,
@@ -129,7 +130,7 @@ returning id, organization_id, account_id, name, description, capabilities, inte
 func (r *AdvertisementsRepository) GetByID(ctx context.Context, db Queryer, id string) (*Advertisement, error) {
 	const query = `
 select id, organization_id, account_id, name, description, capabilities, interaction_patterns,
-    workgroup_scopes, tunnel_mode, schema_version, status, retracted_at, created_at, updated_at
+    workgroup_scopes, tunnel_mode, contract_id, schema_version, status, retracted_at, created_at, updated_at
 from advertisements
 where id = $1`
 
@@ -146,7 +147,7 @@ where id = $1`
 func (r *AdvertisementsRepository) GetByAccountAndName(ctx context.Context, db Queryer, accountID, name string) (*Advertisement, error) {
 	const query = `
 select id, organization_id, account_id, name, description, capabilities, interaction_patterns,
-    workgroup_scopes, tunnel_mode, schema_version, status, retracted_at, created_at, updated_at
+    workgroup_scopes, tunnel_mode, contract_id, schema_version, status, retracted_at, created_at, updated_at
 from advertisements
 where account_id = $1 and lower(name) = lower($2) and status = 'active'`
 
@@ -169,7 +170,7 @@ func (r *AdvertisementsRepository) ListByAccount(ctx context.Context, db Queryer
 	}
 	query := fmt.Sprintf(`
 select id, organization_id, account_id, name, description, capabilities, interaction_patterns,
-    workgroup_scopes, tunnel_mode, schema_version, status, retracted_at, created_at, updated_at
+    workgroup_scopes, tunnel_mode, contract_id, schema_version, status, retracted_at, created_at, updated_at
 from advertisements
 where %s
 order by updated_at desc, created_at desc, id asc`, strings.Join(clauses, " and "))
@@ -253,7 +254,7 @@ func (r *AdvertisementsRepository) Search(ctx context.Context, db Queryer, param
 
 	query := fmt.Sprintf(`
 select id, organization_id, account_id, name, description, capabilities, interaction_patterns,
-    workgroup_scopes, tunnel_mode, schema_version, status, retracted_at, created_at, updated_at
+    workgroup_scopes, tunnel_mode, contract_id, schema_version, status, retracted_at, created_at, updated_at
 from advertisements
 where %s
 order by updated_at desc, created_at desc, id asc
@@ -303,10 +304,11 @@ set name = $2,
     interaction_patterns = $5,
     workgroup_scopes = $6,
     tunnel_mode = $7,
-    updated_at = $8
+    contract_id = $8,
+    updated_at = $9
 where id = $1
 returning id, organization_id, account_id, name, description, capabilities, interaction_patterns,
-    workgroup_scopes, tunnel_mode, schema_version, status, retracted_at, created_at, updated_at`
+    workgroup_scopes, tunnel_mode, contract_id, schema_version, status, retracted_at, created_at, updated_at`
 
 	var updated Advertisement
 	if err := db.GetContext(
@@ -320,6 +322,7 @@ returning id, organization_id, account_id, name, description, capabilities, inte
 		ad.InteractionPatterns,
 		ad.WorkgroupScopes,
 		ad.TunnelMode,
+		ad.ContractID,
 		ad.UpdatedAt,
 	); err != nil {
 		if isNotFound(err) {

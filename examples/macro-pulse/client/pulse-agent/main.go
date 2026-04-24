@@ -50,11 +50,17 @@ func main() {
 					Warnf("session propose failed: %v", err)
 				return
 			}
-			a.Log().
+			logger := a.Log().
 				With("session_id", sess.ID).
 				With("tunnel_id", sess.TunnelID).
-				With("advertisement_id", sess.AdvertisementID).
-				Infof("session active; closing")
+				With("advertisement_id", sess.AdvertisementID)
+			if sess.ContractSnapshot != nil {
+				logger = logger.
+					With("contract_id", sess.ContractSnapshot.ContractId).
+					With("contract_max_duration_seconds", sess.ContractSnapshot.MaxDurationSeconds).
+					With("contract_access_mode", sess.ContractSnapshot.AccessMode)
+			}
+			logger.Infof("session active; closing")
 			if err := sess.Close(ctx, "brief complete"); err != nil {
 				a.Log().With("session_id", sess.ID).Warnf("close session failed: %v", err)
 			}

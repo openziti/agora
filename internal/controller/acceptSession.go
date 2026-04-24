@@ -45,6 +45,40 @@ func (s *Service) AcceptSession(ctx context.Context, req *api.AcceptSessionReque
 		return &api.AcceptSessionInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
 
+	// Evaluate contract admission if the advertisement references one.
+	var snapshotJSON []byte
+	ad, err := s.store.Advertisements.GetByID(ctx, s.store.DB(), sess.AdvertisementID)
+	if err != nil {
+		return &api.AcceptSessionInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+	}
+	if ad.ContractID != nil {
+		contract, err := s.store.Contracts.GetByID(ctx, s.store.DB(), *ad.ContractID)
+		if err != nil {
+			return &api.AcceptSessionInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+		}
+		consumer, err := s.store.Accounts.GetByID(ctx, s.store.DB(), sess.ConsumerAccountID)
+		if err != nil {
+			return &api.AcceptSessionInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+		}
+		if err := s.evaluateContractAdmission(ctx, consumer, contract); err != nil {
+			detail := err.Error()
+			_, _ = s.store.Sessions.MarkClosed(ctx, s.store.DB(), sess.ID, persistence.SessionCloseReasonContractViolation, detail)
+			dl.Warnf("contract admission failed session_id='%s' contract_id='%s' reason='%v' %s", sess.ID, contract.ID, err, principalLogFields(principal))
+			switch {
+			case errors.Is(err, errContractViolationMemb):
+				return &api.AcceptSessionForbidden{Code: "contract_violation_memberships", Message: "consumer does not hold required workgroup memberships"}, nil
+			case errors.Is(err, errContractViolationMat):
+				return &api.AcceptSessionForbidden{Code: "contract_violation_maturity", Message: "consumer account does not meet the minimum account age"}, nil
+			default:
+				return &api.AcceptSessionInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+			}
+		}
+		snapshotJSON, err = snapshotContract(contract)
+		if err != nil {
+			return &api.AcceptSessionInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+		}
+	}
+
 	if _, err := s.store.Sessions.MarkAccepting(ctx, s.store.DB(), sess.ID); err != nil {
 		return &api.AcceptSessionInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
@@ -99,6 +133,11 @@ func (s *Service) AcceptSession(ctx context.Context, req *api.AcceptSessionReque
 				AccountID:      sess.ConsumerAccountID,
 				OrganizationID: sess.ConsumerOrganizationID,
 			}); err != nil {
+				return err
+			}
+		}
+		if len(snapshotJSON) > 0 {
+			if err := s.store.Sessions.WriteContractSnapshot(ctx, tx, sess.ID, snapshotJSON); err != nil {
 				return err
 			}
 		}

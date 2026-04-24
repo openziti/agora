@@ -127,6 +127,9 @@ func mapAdvertisement(ad *persistence.Advertisement, visibleScopes []string) *ap
 	if ad.TunnelMode != "" {
 		result.TunnelMode.SetTo(api.AdvertisementTunnelMode(ad.TunnelMode))
 	}
+	if ad.ContractID != nil {
+		result.ContractId.SetTo(*ad.ContractID)
+	}
 	return result
 }
 

@@ -77,7 +77,7 @@ func Run(cfg *config.Config) error {
 	defer cancelRoot()
 
 	var reapers sync.WaitGroup
-	reapers.Add(2)
+	reapers.Add(3)
 	go func() {
 		defer reapers.Done()
 		controller.service.RunTunnelAttachmentReaper(rootCtx)
@@ -85,6 +85,10 @@ func Run(cfg *config.Config) error {
 	go func() {
 		defer reapers.Done()
 		controller.service.RunTunnelServeReaper(rootCtx)
+	}()
+	go func() {
+		defer reapers.Done()
+		controller.service.RunSessionDurationReaper(rootCtx)
 	}()
 
 	srv := &http.Server{

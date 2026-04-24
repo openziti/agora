@@ -108,7 +108,7 @@ Remaining Layer 1 operational hardening:
 - a documented local development and smoke-test stack
 - clearer end-to-end operational validation for enable, serve, connect, status, and cleanup
 
-Layer 2 work has a foundation doc ([../layer-2/foundation.md](../layer-2/foundation.md)), Tier-A specs for workgroups, catalog, advertisements, and sessions — all with implementation shipped (slices 1–3 of 5) — and Tier-B skeletons for contracts and envelopes. See [../layer-2/status.md](../layer-2/status.md) for Tier tracking and build order.
+Layer 2 work has a foundation doc ([../layer-2/foundation.md](../layer-2/foundation.md)), Tier-A specs for workgroups, catalog, advertisements, sessions, and contracts — all with implementation shipped (slices 1–4 of 5) — and a Tier-B skeleton for envelopes. See [../layer-2/status.md](../layer-2/status.md) for Tier tracking and build order.
 
 Workgroup implementation surfaces:
 
@@ -135,6 +135,16 @@ Sessions implementation surfaces (slice 3):
 - SDK: `sdk/agent/session/` exposes `Propose`, `RegisterHandler`, and `Session.Close`; thin wrappers over `a.Controller()` REST calls with 1 Hz polling for state transitions
 - Macro Pulse advancement: all 8 provider/tool agents use `agentutil.LoggingSessionHandler` via `session.RegisterHandler`; `pulse-agent` iterates the catalog and calls `session.Propose` + `Session.Close` per advertisement
 - Scope note: sessions reach `active` with the backing tunnel resource provisioned on the controller; local runtime `EnsureServe`/`EnsureConnect` attach and byte-level session I/O are deferred to the envelopes slice (slice 5)
+
+Contracts implementation surfaces (slice 4):
+
+- persistence: `internal/persistence/contracts.go` + migration `0007_layer2_contracts.sql` (adds `contracts` table + nullable `advertisements.contract_id` with `on delete set null`); existing sessions table's `contract_snapshot` jsonb column is now populated at accept time
+- API: `internal/api/specs/contracts/` (5 endpoints: create/list/get/update/delete); advertisements schemas extended with `contractId`; session response extended with `contractSnapshot`
+- controller: `createContract.go`, `listContracts.go`, `getContract.go`, `updateContract.go`, `deleteContract.go` + `contract_helpers.go` (ownership + visibility + admission evaluation + snapshot production); `publishAdvertisement` / `updateAdvertisement` validate contract ownership; `acceptSession` evaluates admission terms (workgroup memberships, account age) and writes the frozen snapshot; `sessionDurationReaper.go` closes expired sessions with `close_reason=contract_violation`
+- CLI: `agora advertise publish/update --contract` + describe extensions (no standalone `agora contract` verb per spec)
+- SDK: `*session.Session` gains `ContractSnapshot *api.ContractSnapshot`
+- Macro Pulse advancement: each provider/tool agent ensures a shared `macro-pulse-provider-default` contract via `agentutil.ContractSpec` and attaches it to its advertisement; `pulse-agent` logs the snapshot parameters it receives per session
+- Scope note: contracts persist `max_envelope_count` and `allowed_message_types` but enforcement of those two dimensions ships in the envelopes slice, which wires envelope-level observability
 
 Alongside the Layer 2 specs, the project also has a primary reference demo under [../../examples/macro-pulse/](../../examples/macro-pulse/) with its own formal doc at [../examples/macro-pulse.md](../examples/macro-pulse.md). The demo is scaffolded but not yet runnable end-to-end — it advances one slice at a time as Layer 2 slices ship. See [../examples/index.md](../examples/index.md) for the example-set overview.
 

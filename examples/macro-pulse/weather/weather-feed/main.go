@@ -29,6 +29,12 @@ func main() {
 			},
 			InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
 			WorkgroupNames:      []string{"weather-channel"},
+			Contract: &agentutil.ContractSpec{
+				Name:               "macro-pulse-provider-default",
+				Description:        "Demo contract: bounded session duration for macro-pulse morning briefings.",
+				MaxDurationSeconds: 60,
+				AccessMode:         api.ContractAccessModeApprovalRequired,
+			},
 		})
 		if err != nil {
 			a.Log().Errorf("publish advertisement: %v", err)

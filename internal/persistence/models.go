@@ -343,6 +343,7 @@ type Session struct {
 	ConsumerOrganizationID string              `db:"consumer_organization_id"`
 	TunnelMode             TunnelMode          `db:"tunnel_mode"`
 	TunnelID               *string             `db:"tunnel_id"`
+	ContractSnapshotJSON   []byte              `db:"contract_snapshot"`
 	State                  SessionState        `db:"state"`
 	CloseReason            *SessionCloseReason `db:"close_reason"`
 	CloseDetail            *string             `db:"close_detail"`
@@ -362,9 +363,67 @@ type Advertisement struct {
 	InteractionPatterns InteractionPatternsJSON `db:"interaction_patterns"`
 	WorkgroupScopes     pq.StringArray          `db:"workgroup_scopes"`
 	TunnelMode          TunnelMode              `db:"tunnel_mode"`
+	ContractID          *string                 `db:"contract_id"`
 	SchemaVersion       int                     `db:"schema_version"`
 	Status              AdvertisementStatus     `db:"status"`
 	RetractedAt         *time.Time              `db:"retracted_at"`
 	CreatedAt           time.Time               `db:"created_at"`
 	UpdatedAt           time.Time               `db:"updated_at"`
+}
+
+type ContractAccessMode string
+
+const (
+	ContractAccessModeOpen             ContractAccessMode = "open"
+	ContractAccessModeApprovalRequired ContractAccessMode = "approval_required"
+)
+
+// MaturityRequirements is the structured object carried in the jsonb
+// maturity_requirements column. Zero-value MinAccountAgeDays means no
+// gate; the field is omitempty in the JSON representation so the
+// "absent" case round-trips cleanly.
+type MaturityRequirements struct {
+	MinAccountAgeDays int `json:"minAccountAgeDays,omitempty"`
+}
+
+// MaturityRequirementsJSON wraps MaturityRequirements so it can be
+// scanned from / stored to a jsonb column via database/sql.
+type MaturityRequirementsJSON MaturityRequirements
+
+func (m *MaturityRequirementsJSON) Scan(src any) error { return scanJSONB(src, m) }
+func (m MaturityRequirementsJSON) Value() (driver.Value, error) {
+	return marshalJSONB(m)
+}
+
+type Contract struct {
+	ID                           string                   `db:"id"`
+	AccountID                    string                   `db:"account_id"`
+	OrganizationID               string                   `db:"organization_id"`
+	Name                         string                   `db:"name"`
+	Description                  *string                  `db:"description"`
+	SchemaVersion                int                      `db:"schema_version"`
+	MaxDurationSeconds           int                      `db:"max_duration_seconds"`
+	MaxEnvelopeCount             int                      `db:"max_envelope_count"`
+	AllowedMessageTypes          pq.StringArray           `db:"allowed_message_types"`
+	RequiredWorkgroupMemberships pq.StringArray           `db:"required_workgroup_memberships"`
+	MaturityRequirements         MaturityRequirementsJSON `db:"maturity_requirements"`
+	AccessMode                   ContractAccessMode       `db:"access_mode"`
+	CreatedAt                    time.Time                `db:"created_at"`
+	UpdatedAt                    time.Time                `db:"updated_at"`
+}
+
+// ContractSnapshotJSON is the frozen shape stored on sessions.contract_snapshot.
+// It mirrors Contract minus the ownership and resource-timestamp fields.
+type ContractSnapshot struct {
+	ContractID                   string               `json:"contractId"`
+	Name                         string               `json:"name"`
+	Description                  string               `json:"description,omitempty"`
+	SchemaVersion                int                  `json:"schemaVersion"`
+	MaxDurationSeconds           int                  `json:"maxDurationSeconds"`
+	MaxEnvelopeCount             int                  `json:"maxEnvelopeCount"`
+	AllowedMessageTypes          []string             `json:"allowedMessageTypes"`
+	RequiredWorkgroupMemberships []string             `json:"requiredWorkgroupMemberships"`
+	MaturityRequirements         MaturityRequirements `json:"maturityRequirements"`
+	AccessMode                   ContractAccessMode   `json:"accessMode"`
+	SnapshottedAt                time.Time            `json:"snapshottedAt"`
 }

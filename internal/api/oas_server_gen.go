@@ -48,6 +48,10 @@ type Handler interface {
 	//
 	// POST /organizations/{organizationId}/accounts
 	CreateAccount(ctx context.Context, req *CreateAccountRequest, params CreateAccountParams) (CreateAccountRes, error)
+	// CreateContract implements createContract operation.
+	//
+	// POST /contracts
+	CreateContract(ctx context.Context, req *CreateContractRequest) (CreateContractRes, error)
 	// CreateOrganization implements createOrganization operation.
 	//
 	// POST /organizations
@@ -68,6 +72,10 @@ type Handler interface {
 	//
 	// DELETE /organizations/{organizationId}/accounts/{accountId}
 	DeleteAccount(ctx context.Context, params DeleteAccountParams) (DeleteAccountRes, error)
+	// DeleteContract implements deleteContract operation.
+	//
+	// DELETE /contracts/{contractId}
+	DeleteContract(ctx context.Context, params DeleteContractParams) (DeleteContractRes, error)
 	// DeleteOrganization implements deleteOrganization operation.
 	//
 	// DELETE /organizations/{organizationId}
@@ -100,6 +108,10 @@ type Handler interface {
 	//
 	// GET /advertisements/{advertisementId}
 	GetAdvertisement(ctx context.Context, params GetAdvertisementParams) (GetAdvertisementRes, error)
+	// GetContract implements getContract operation.
+	//
+	// GET /contracts/{contractId}
+	GetContract(ctx context.Context, params GetContractParams) (GetContractRes, error)
 	// GetEnvironment implements getEnvironment operation.
 	//
 	// GET /environments/{environmentId}
@@ -144,6 +156,10 @@ type Handler interface {
 	//
 	// GET /advertisements
 	ListAdvertisements(ctx context.Context, params ListAdvertisementsParams) (ListAdvertisementsRes, error)
+	// ListContracts implements listContracts operation.
+	//
+	// GET /contracts
+	ListContracts(ctx context.Context) (ListContractsRes, error)
 	// ListEnvironments implements listEnvironments operation.
 	//
 	// GET /environments
@@ -224,6 +240,10 @@ type Handler interface {
 	//
 	// PATCH /advertisements/{advertisementId}
 	UpdateAdvertisement(ctx context.Context, req *UpdateAdvertisementRequest, params UpdateAdvertisementParams) (UpdateAdvertisementRes, error)
+	// UpdateContract implements updateContract operation.
+	//
+	// PATCH /contracts/{contractId}
+	UpdateContract(ctx context.Context, req *UpdateContractRequest, params UpdateContractParams) (UpdateContractRes, error)
 }
 
 // Server implements http server based on OpenAPI v3 specification and

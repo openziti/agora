@@ -1,0 +1,172 @@
+contract:
+  type: object
+  required:
+    - id
+    - accountId
+    - organizationId
+    - name
+    - schemaVersion
+    - maxDurationSeconds
+    - maxEnvelopeCount
+    - allowedMessageTypes
+    - requiredWorkgroupMemberships
+    - accessMode
+    - createdAt
+    - updatedAt
+  properties:
+    id:
+      type: string
+      pattern: '^con_[a-z0-9]{12}$'
+    accountId:
+      type: string
+      pattern: '^ac_[a-z0-9]{12}$'
+    organizationId:
+      type: string
+      pattern: '^org_[a-z0-9]{12}$'
+    name:
+      type: string
+    description:
+      type: string
+    schemaVersion:
+      type: integer
+    maxDurationSeconds:
+      type: integer
+      minimum: 0
+    maxEnvelopeCount:
+      type: integer
+      minimum: 0
+    allowedMessageTypes:
+      type: array
+      items:
+        type: string
+    requiredWorkgroupMemberships:
+      type: array
+      items:
+        type: string
+        pattern: '^wg_[a-z0-9]{12}$'
+    maturityRequirements:
+      $ref: "#/maturityRequirements"
+    accessMode:
+      $ref: "#/contractAccessMode"
+    createdAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+
+maturityRequirements:
+  type: object
+  properties:
+    minAccountAgeDays:
+      type: integer
+      minimum: 0
+
+contractAccessMode:
+  type: string
+  enum: [open, approval_required]
+
+createContractRequest:
+  type: object
+  required:
+    - name
+  properties:
+    name:
+      type: string
+      minLength: 1
+    description:
+      type: string
+    maxDurationSeconds:
+      type: integer
+      minimum: 0
+    maxEnvelopeCount:
+      type: integer
+      minimum: 0
+    allowedMessageTypes:
+      type: array
+      items:
+        type: string
+    requiredWorkgroupMemberships:
+      type: array
+      items:
+        type: string
+        pattern: '^wg_[a-z0-9]{12}$'
+    maturityRequirements:
+      $ref: "#/maturityRequirements"
+    accessMode:
+      $ref: "#/contractAccessMode"
+
+updateContractRequest:
+  type: object
+  properties:
+    name:
+      type: string
+      minLength: 1
+    description:
+      type: string
+    maxDurationSeconds:
+      type: integer
+      minimum: 0
+    maxEnvelopeCount:
+      type: integer
+      minimum: 0
+    allowedMessageTypes:
+      type: array
+      items:
+        type: string
+    requiredWorkgroupMemberships:
+      type: array
+      items:
+        type: string
+        pattern: '^wg_[a-z0-9]{12}$'
+    maturityRequirements:
+      $ref: "#/maturityRequirements"
+    accessMode:
+      $ref: "#/contractAccessMode"
+
+listContractsResponse:
+  type: array
+  items:
+    $ref: "#/contract"
+
+contractSnapshot:
+  type: object
+  required:
+    - contractId
+    - name
+    - schemaVersion
+    - maxDurationSeconds
+    - maxEnvelopeCount
+    - allowedMessageTypes
+    - requiredWorkgroupMemberships
+    - accessMode
+    - snapshottedAt
+  properties:
+    contractId:
+      type: string
+      pattern: '^con_[a-z0-9]{12}$'
+    name:
+      type: string
+    description:
+      type: string
+    schemaVersion:
+      type: integer
+    maxDurationSeconds:
+      type: integer
+    maxEnvelopeCount:
+      type: integer
+    allowedMessageTypes:
+      type: array
+      items:
+        type: string
+    requiredWorkgroupMemberships:
+      type: array
+      items:
+        type: string
+    maturityRequirements:
+      $ref: "#/maturityRequirements"
+    accessMode:
+      $ref: "#/contractAccessMode"
+    snapshottedAt:
+      type: string
+      format: date-time

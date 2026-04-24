@@ -41,6 +41,9 @@ advertisement:
         pattern: '^wg_[a-z0-9]{12}$'
     tunnelMode:
       $ref: "#/advertisementTunnelMode"
+    contractId:
+      type: string
+      pattern: '^con_[a-z0-9]{12}$'
     schemaVersion:
       type: integer
     status:
@@ -123,6 +126,9 @@ publishAdvertisementRequest:
         pattern: '^wg_[a-z0-9]{12}$'
     tunnelMode:
       $ref: "#/advertisementTunnelMode"
+    contractId:
+      type: string
+      pattern: '^con_[a-z0-9]{12}$'
 
 updateAdvertisementRequest:
   type: object
@@ -147,6 +153,9 @@ updateAdvertisementRequest:
         pattern: '^wg_[a-z0-9]{12}$'
     tunnelMode:
       $ref: "#/advertisementTunnelMode"
+    contractId:
+      type: string
+      pattern: '^con_[a-z0-9]{12}$'
 
 listAdvertisementsResponse:
   type: array

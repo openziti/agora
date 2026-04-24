@@ -59,6 +59,16 @@ func (s *Service) PublishAdvertisement(ctx context.Context, req *api.PublishAdve
 	if req.TunnelMode.Set {
 		ad.TunnelMode = persistence.TunnelMode(req.TunnelMode.Value)
 	}
+	if req.ContractId.Set && req.ContractId.Value != "" {
+		if err := s.validateContractOwnership(ctx, principal, req.ContractId.Value); err != nil {
+			if errors.Is(err, errUnknownContract) {
+				return &api.PublishAdvertisementBadRequest{Code: "unknown_contract", Message: "contract does not exist or is not owned by this account"}, nil
+			}
+			return &api.PublishAdvertisementInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+		}
+		v := req.ContractId.Value
+		ad.ContractID = &v
+	}
 
 	created, err := s.store.Advertisements.Create(ctx, s.store.DB(), ad)
 	if err != nil {

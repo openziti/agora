@@ -42,7 +42,9 @@ var operationRolesAccountTokenAuth = map[string][]string{
 	ChangeWorkgroupMembershipRoleOperation: []string{},
 	CloseSessionOperation:                  []string{},
 	ConnectTunnelOperation:                 []string{},
+	CreateContractOperation:                []string{},
 	CreateTunnelOperation:                  []string{},
+	DeleteContractOperation:                []string{},
 	DeleteTunnelOperation:                  []string{},
 	DeleteTunnelAttachmentOperation:        []string{},
 	DeleteTunnelServeOperation:             []string{},
@@ -50,6 +52,7 @@ var operationRolesAccountTokenAuth = map[string][]string{
 	DisableEnvironmentOperation:            []string{},
 	EnableEnvironmentOperation:             []string{},
 	GetAdvertisementOperation:              []string{},
+	GetContractOperation:                   []string{},
 	GetEnvironmentOperation:                []string{},
 	GetSessionOperation:                    []string{},
 	GetTunnelOperation:                     []string{},
@@ -59,6 +62,7 @@ var operationRolesAccountTokenAuth = map[string][]string{
 	HeartbeatTunnelAttachmentOperation:     []string{},
 	HeartbeatTunnelServeOperation:          []string{},
 	ListAdvertisementsOperation:            []string{},
+	ListContractsOperation:                 []string{},
 	ListEnvironmentsOperation:              []string{},
 	ListSessionsOperation:                  []string{},
 	ListTunnelAttachmentsOperation:         []string{},
@@ -76,6 +80,7 @@ var operationRolesAccountTokenAuth = map[string][]string{
 	SearchCatalogOperation:                 []string{},
 	StartTunnelServeOperation:              []string{},
 	UpdateAdvertisementOperation:           []string{},
+	UpdateContractOperation:                []string{},
 }
 
 func (s *Server) securityAccountTokenAuth(ctx context.Context, operationName OperationName, req *http.Request) (context.Context, bool, error) {

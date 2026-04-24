@@ -61,6 +61,10 @@ type Invoker interface {
 	//
 	// POST /organizations/{organizationId}/accounts
 	CreateAccount(ctx context.Context, request *CreateAccountRequest, params CreateAccountParams) (CreateAccountRes, error)
+	// CreateContract invokes createContract operation.
+	//
+	// POST /contracts
+	CreateContract(ctx context.Context, request *CreateContractRequest) (CreateContractRes, error)
 	// CreateOrganization invokes createOrganization operation.
 	//
 	// POST /organizations
@@ -81,6 +85,10 @@ type Invoker interface {
 	//
 	// DELETE /organizations/{organizationId}/accounts/{accountId}
 	DeleteAccount(ctx context.Context, params DeleteAccountParams) (DeleteAccountRes, error)
+	// DeleteContract invokes deleteContract operation.
+	//
+	// DELETE /contracts/{contractId}
+	DeleteContract(ctx context.Context, params DeleteContractParams) (DeleteContractRes, error)
 	// DeleteOrganization invokes deleteOrganization operation.
 	//
 	// DELETE /organizations/{organizationId}
@@ -113,6 +121,10 @@ type Invoker interface {
 	//
 	// GET /advertisements/{advertisementId}
 	GetAdvertisement(ctx context.Context, params GetAdvertisementParams) (GetAdvertisementRes, error)
+	// GetContract invokes getContract operation.
+	//
+	// GET /contracts/{contractId}
+	GetContract(ctx context.Context, params GetContractParams) (GetContractRes, error)
 	// GetEnvironment invokes getEnvironment operation.
 	//
 	// GET /environments/{environmentId}
@@ -157,6 +169,10 @@ type Invoker interface {
 	//
 	// GET /advertisements
 	ListAdvertisements(ctx context.Context, params ListAdvertisementsParams) (ListAdvertisementsRes, error)
+	// ListContracts invokes listContracts operation.
+	//
+	// GET /contracts
+	ListContracts(ctx context.Context) (ListContractsRes, error)
 	// ListEnvironments invokes listEnvironments operation.
 	//
 	// GET /environments
@@ -237,6 +253,10 @@ type Invoker interface {
 	//
 	// PATCH /advertisements/{advertisementId}
 	UpdateAdvertisement(ctx context.Context, request *UpdateAdvertisementRequest, params UpdateAdvertisementParams) (UpdateAdvertisementRes, error)
+	// UpdateContract invokes updateContract operation.
+	//
+	// PATCH /contracts/{contractId}
+	UpdateContract(ctx context.Context, request *UpdateContractRequest, params UpdateContractParams) (UpdateContractRes, error)
 }
 
 // Client implements OAS client.
@@ -1245,6 +1265,85 @@ func (c *Client) sendCreateAccount(ctx context.Context, request *CreateAccountRe
 	return result, nil
 }
 
+// CreateContract invokes createContract operation.
+//
+// POST /contracts
+func (c *Client) CreateContract(ctx context.Context, request *CreateContractRequest) (CreateContractRes, error) {
+	res, err := c.sendCreateContract(ctx, request)
+	return res, err
+}
+
+func (c *Client) sendCreateContract(ctx context.Context, request *CreateContractRequest) (res CreateContractRes, err error) {
+	// Validate request before sending.
+	if err := func() error {
+		if err := request.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return res, errors.Wrap(err, "validate")
+	}
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/contracts"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeCreateContractRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, CreateContractOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeCreateContractResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // CreateOrganization invokes createOrganization operation.
 //
 // POST /organizations
@@ -1696,6 +1795,91 @@ func (c *Client) sendDeleteAccount(ctx context.Context, params DeleteAccountPara
 	defer resp.Body.Close()
 
 	result, err := decodeDeleteAccountResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// DeleteContract invokes deleteContract operation.
+//
+// DELETE /contracts/{contractId}
+func (c *Client) DeleteContract(ctx context.Context, params DeleteContractParams) (DeleteContractRes, error) {
+	res, err := c.sendDeleteContract(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendDeleteContract(ctx context.Context, params DeleteContractParams) (res DeleteContractRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/contracts/"
+	{
+		// Encode "contractId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "contractId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ContractId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, DeleteContractOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeDeleteContractResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -2362,6 +2546,91 @@ func (c *Client) sendGetAdvertisement(ctx context.Context, params GetAdvertiseme
 	defer resp.Body.Close()
 
 	result, err := decodeGetAdvertisementResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetContract invokes getContract operation.
+//
+// GET /contracts/{contractId}
+func (c *Client) GetContract(ctx context.Context, params GetContractParams) (GetContractRes, error) {
+	res, err := c.sendGetContract(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetContract(ctx context.Context, params GetContractParams) (res GetContractRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/contracts/"
+	{
+		// Encode "contractId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "contractId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ContractId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, GetContractOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeGetContractResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -3340,6 +3609,73 @@ func (c *Client) sendListAdvertisements(ctx context.Context, params ListAdvertis
 	defer resp.Body.Close()
 
 	result, err := decodeListAdvertisementsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ListContracts invokes listContracts operation.
+//
+// GET /contracts
+func (c *Client) ListContracts(ctx context.Context) (ListContractsRes, error) {
+	res, err := c.sendListContracts(ctx)
+	return res, err
+}
+
+func (c *Client) sendListContracts(ctx context.Context) (res ListContractsRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/contracts"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, ListContractsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeListContractsResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}
@@ -5153,6 +5489,103 @@ func (c *Client) sendUpdateAdvertisement(ctx context.Context, request *UpdateAdv
 	defer resp.Body.Close()
 
 	result, err := decodeUpdateAdvertisementResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// UpdateContract invokes updateContract operation.
+//
+// PATCH /contracts/{contractId}
+func (c *Client) UpdateContract(ctx context.Context, request *UpdateContractRequest, params UpdateContractParams) (UpdateContractRes, error) {
+	res, err := c.sendUpdateContract(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendUpdateContract(ctx context.Context, request *UpdateContractRequest, params UpdateContractParams) (res UpdateContractRes, err error) {
+	// Validate request before sending.
+	if err := func() error {
+		if err := request.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return res, errors.Wrap(err, "validate")
+	}
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [2]string
+	pathParts[0] = "/contracts/"
+	{
+		// Encode "contractId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "contractId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.ContractId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "PATCH", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeUpdateContractRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, UpdateContractOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeUpdateContractResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

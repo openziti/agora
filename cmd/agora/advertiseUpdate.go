@@ -19,6 +19,7 @@ type advertiseUpdateCommand struct {
 	interactions []string
 	workgroups   []string
 	tunnelMode   string
+	contract     string
 	cmd          *cobra.Command
 }
 
@@ -35,6 +36,7 @@ func newAdvertiseUpdateCommand() *advertiseUpdateCommand {
 	cmd.Flags().StringSliceVar(&command.interactions, "interaction", nil, "Interaction pattern; repeatable; replaces current set when provided")
 	cmd.Flags().StringSliceVar(&command.workgroups, "workgroup", nil, "Workgroup name or wg_...; repeatable; replaces current set when provided")
 	cmd.Flags().StringVar(&command.tunnelMode, "tunnel-mode", "", "Tunnel mode for future sessions: http|tcp|udp")
+	cmd.Flags().StringVar(&command.contract, "contract", "", "Contract name or con_... id to attach; pass '-none-' to clear")
 	cmd.Run = command.run
 	return command
 }
@@ -74,6 +76,9 @@ func (cmd *advertiseUpdateCommand) run(cobraCmd *cobra.Command, args []string) {
 	}
 	if cobraCmd.Flags().Changed("tunnel-mode") {
 		req.TunnelMode.SetTo(api.AdvertisementTunnelMode(cmd.tunnelMode))
+	}
+	if cobraCmd.Flags().Changed("contract") {
+		req.ContractId.SetTo(resolveContractID(client, cmd.contract))
 	}
 
 	res, err := client.UpdateAdvertisement(context.Background(), req, api.UpdateAdvertisementParams{AdvertisementId: advID})

@@ -12,7 +12,7 @@ type SessionsRepository struct{}
 const sessionColumns = `id, advertisement_id, workgroup_id,
     provider_account_id, provider_organization_id,
     consumer_account_id, consumer_organization_id,
-    tunnel_mode, tunnel_id, state, close_reason, close_detail, proposer_message,
+    tunnel_mode, tunnel_id, contract_snapshot, state, close_reason, close_detail, proposer_message,
     proposed_at, accepted_at, closed_at`
 
 // Create inserts a new session in the proposed state. ID is generated if empty.
@@ -29,8 +29,13 @@ func (r *SessionsRepository) Create(ctx context.Context, db Queryer, sess Sessio
 
 	query := fmt.Sprintf(`
 insert into sessions (%s) values (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
 ) returning %s`, sessionColumns, sessionColumns)
+
+	snapshotArg := any(nil)
+	if len(sess.ContractSnapshotJSON) > 0 {
+		snapshotArg = []byte(sess.ContractSnapshotJSON)
+	}
 
 	var created Session
 	if err := db.GetContext(
@@ -44,6 +49,7 @@ insert into sessions (%s) values (
 		sess.ConsumerOrganizationID,
 		sess.TunnelMode,
 		sess.TunnelID,
+		snapshotArg,
 		sess.State,
 		sess.CloseReason,
 		sess.CloseDetail,
@@ -55,6 +61,38 @@ insert into sessions (%s) values (
 		return nil, fmt.Errorf("create session: %w", err)
 	}
 	return &created, nil
+}
+
+// WriteContractSnapshot persists the frozen contract snapshot onto an
+// existing session row. Intended to be called during the accept flow
+// alongside MarkActive, inside the same transaction.
+func (r *SessionsRepository) WriteContractSnapshot(ctx context.Context, db Queryer, sessionID string, snapshotJSON []byte) error {
+	if len(snapshotJSON) == 0 {
+		return nil
+	}
+	const query = `update sessions set contract_snapshot = $2 where id = $1`
+	if _, err := db.ExecContext(ctx, query, sessionID, snapshotJSON); err != nil {
+		return fmt.Errorf("write contract snapshot: %w", err)
+	}
+	return nil
+}
+
+// ListActiveWithDurationCap returns every active session whose
+// snapshot contains a positive max_duration_seconds value. The reaper
+// uses this to evaluate duration bounds on a periodic tick.
+func (r *SessionsRepository) ListActiveWithDurationCap(ctx context.Context, db Queryer) ([]Session, error) {
+	query := fmt.Sprintf(`
+select %s
+from sessions
+where state = 'active'
+  and contract_snapshot is not null
+  and coalesce((contract_snapshot->>'maxDurationSeconds')::int, 0) > 0`, sessionColumns)
+
+	var rows []Session
+	if err := db.SelectContext(ctx, &rows, query); err != nil {
+		return nil, fmt.Errorf("list active sessions with duration cap: %w", err)
+	}
+	return rows, nil
 }
 
 func (r *SessionsRepository) GetByID(ctx context.Context, db Queryer, id string) (*Session, error) {

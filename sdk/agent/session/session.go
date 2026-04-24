@@ -32,6 +32,10 @@ type Session struct {
 	ConsumerAccountID      string
 	ProviderOrganizationID string
 	ConsumerOrganizationID string
+	// ContractSnapshot is the frozen contract the controller evaluated
+	// against at accept time. Populated when the advertisement has a
+	// contract attached; nil otherwise.
+	ContractSnapshot *api.ContractSnapshot
 
 	agent *agent.Agent
 }
@@ -267,6 +271,10 @@ func sessionFromAPI(a *agent.Agent, s *api.Session) *Session {
 	}
 	if s.TunnelId.Set {
 		out.TunnelID = s.TunnelId.Value
+	}
+	if s.ContractSnapshot.Set {
+		snap := s.ContractSnapshot.Value
+		out.ContractSnapshot = &snap
 	}
 	return out
 }

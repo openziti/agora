@@ -83,6 +83,12 @@ func (cmd *advertiseDescribeCommand) run(_ *cobra.Command, args []string) {
 			fmt.Printf("  - %s\n", p.Kind)
 		}
 	}
+	if ad.TunnelMode.Set {
+		fmt.Printf("Tunnel mode:         %s\n", ad.TunnelMode.Value)
+	}
+	if ad.ContractId.Set {
+		fmt.Printf("Contract:            %s\n", ad.ContractId.Value)
+	}
 	fmt.Printf("Created at:          %s\n", clioutput.TimeUTC(ad.CreatedAt))
 	fmt.Printf("Updated at:          %s\n", clioutput.TimeUTC(ad.UpdatedAt))
 }
