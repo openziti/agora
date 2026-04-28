@@ -1926,3 +1926,126 @@ func TestContractDurationReaper(t *testing.T) {
 		t.Fatalf("expected contract_violation, got %v", d.CloseReason)
 	}
 }
+
+func TestSessionEnvelopeCountReportAndVisibility(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	wgID, adID := seedSharedWorkgroupAd(t, env, orgA, aliceID, "shared", "ad")
+
+	alice := env.accountClient(t, aliceToken)
+	if _, err := alice.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID}); err != nil {
+		t.Fatalf("add bob: %v", err)
+	}
+	bob := env.accountClient(t, bobToken)
+
+	propRes, _ := bob.ProposeSession(env.ctx, &api.ProposeSessionRequest{AdvertisementId: adID, WorkgroupId: wgID})
+	sess := propRes.(*api.Session)
+
+	aliceEnvID := env.enableEnvironment(t, aliceToken)
+	if _, err := alice.AcceptSession(env.ctx,
+		&api.AcceptSessionRequest{EnvironmentId: aliceEnvID, BackendAddress: api.NewOptString("127.0.0.1:9000")},
+		api.AcceptSessionParams{SessionId: sess.ID}); err != nil {
+		t.Fatalf("accept: %v", err)
+	}
+
+	// consumer cannot report (not provider)
+	consReport, err := bob.ReportSessionEnvelopeCount(env.ctx,
+		&api.ReportEnvelopeCountRequest{Count: 5, ObservedAt: time.Now().UTC()},
+		api.ReportSessionEnvelopeCountParams{SessionId: sess.ID})
+	if err != nil {
+		t.Fatalf("report as consumer: %v", err)
+	}
+	if _, ok := consReport.(*api.ReportSessionEnvelopeCountForbidden); !ok {
+		t.Fatalf("expected 403 not_provider, got %T", consReport)
+	}
+
+	// provider reports 3
+	rep3, err := alice.ReportSessionEnvelopeCount(env.ctx,
+		&api.ReportEnvelopeCountRequest{Count: 3, ObservedAt: time.Now().UTC()},
+		api.ReportSessionEnvelopeCountParams{SessionId: sess.ID})
+	if err != nil {
+		t.Fatalf("report 3: %v", err)
+	}
+	if _, ok := rep3.(*api.ReportSessionEnvelopeCountNoContent); !ok {
+		t.Fatalf("expected 204, got %T", rep3)
+	}
+
+	descRes, _ := bob.GetSession(env.ctx, api.GetSessionParams{SessionId: sess.ID})
+	d := descRes.(*api.Session)
+	if !d.EnvelopeCount.Set || d.EnvelopeCount.Value != 3 {
+		t.Fatalf("expected envelopeCount=3, got %v", d.EnvelopeCount)
+	}
+
+	// stale lower report is ignored
+	_, _ = alice.ReportSessionEnvelopeCount(env.ctx,
+		&api.ReportEnvelopeCountRequest{Count: 1, ObservedAt: time.Now().UTC()},
+		api.ReportSessionEnvelopeCountParams{SessionId: sess.ID})
+	descRes2, _ := bob.GetSession(env.ctx, api.GetSessionParams{SessionId: sess.ID})
+	if descRes2.(*api.Session).EnvelopeCount.Value != 3 {
+		t.Fatalf("expected count to stay at 3 after stale lower report")
+	}
+}
+
+func TestContractSnapshotCarriesMaxEnvelopeBytes(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	_, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	wgID := env.seedIntraOrgWorkgroup(t, orgA, "shared", aliceID)
+
+	alice := env.accountClient(t, aliceToken)
+	if _, err := alice.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID}); err != nil {
+		t.Fatalf("add bob: %v", err)
+	}
+
+	cRes, err := alice.CreateContract(env.ctx, &api.CreateContractRequest{
+		Name:             "bytes-capped",
+		MaxEnvelopeBytes: api.NewOptInt(1024),
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	c := cRes.(*api.Contract)
+	if c.MaxEnvelopeBytes != 1024 {
+		t.Fatalf("create did not echo maxEnvelopeBytes: %d", c.MaxEnvelopeBytes)
+	}
+
+	adRes, err := alice.PublishAdvertisement(env.ctx, &api.PublishAdvertisementRequest{
+		Name:                "capped",
+		Capabilities:        []api.AdvertisementCapability{{Name: "q"}},
+		InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{wgID},
+		ContractId:          api.NewOptString(c.ID),
+	})
+	if err != nil {
+		t.Fatalf("publish: %v", err)
+	}
+	ad := adRes.(*api.Advertisement)
+
+	bob := env.accountClient(t, bobToken)
+	propRes, _ := bob.ProposeSession(env.ctx, &api.ProposeSessionRequest{AdvertisementId: ad.ID, WorkgroupId: wgID})
+	sess := propRes.(*api.Session)
+
+	aliceEnvID := env.enableEnvironment(t, aliceToken)
+	acceptRes, err := alice.AcceptSession(env.ctx,
+		&api.AcceptSessionRequest{EnvironmentId: aliceEnvID},
+		api.AcceptSessionParams{SessionId: sess.ID})
+	if err != nil {
+		t.Fatalf("accept: %v", err)
+	}
+	active, ok := acceptRes.(*api.Session)
+	if !ok {
+		t.Fatalf("expected active: %T", acceptRes)
+	}
+	if !active.ContractSnapshot.Set {
+		t.Fatalf("expected snapshot populated")
+	}
+	snap := active.ContractSnapshot.Value
+	if snap.MaxEnvelopeBytes != 1024 {
+		t.Fatalf("snapshot mtu mismatch: %d", snap.MaxEnvelopeBytes)
+	}
+}

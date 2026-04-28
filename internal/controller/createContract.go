@@ -58,6 +58,9 @@ func (s *Service) CreateContract(ctx context.Context, req *api.CreateContractReq
 	if req.MaxEnvelopeCount.Set {
 		c.MaxEnvelopeCount = req.MaxEnvelopeCount.Value
 	}
+	if req.MaxEnvelopeBytes.Set {
+		c.MaxEnvelopeBytes = req.MaxEnvelopeBytes.Value
+	}
 	if req.MaturityRequirements.Set && req.MaturityRequirements.Value.MinAccountAgeDays.Set {
 		c.MaturityRequirements = persistence.MaturityRequirementsJSON{
 			MinAccountAgeDays: req.MaturityRequirements.Value.MinAccountAgeDays.Value,

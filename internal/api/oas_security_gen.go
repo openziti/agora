@@ -76,6 +76,7 @@ var operationRolesAccountTokenAuth = map[string][]string{
 	RejectSessionOperation:                 []string{},
 	RemoveTunnelGrantOperation:             []string{},
 	RemoveWorkgroupMemberOperation:         []string{},
+	ReportSessionEnvelopeCountOperation:    []string{},
 	RetractAdvertisementOperation:          []string{},
 	SearchCatalogOperation:                 []string{},
 	StartTunnelServeOperation:              []string{},

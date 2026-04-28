@@ -12,7 +12,7 @@ type SessionsRepository struct{}
 const sessionColumns = `id, advertisement_id, workgroup_id,
     provider_account_id, provider_organization_id,
     consumer_account_id, consumer_organization_id,
-    tunnel_mode, tunnel_id, contract_snapshot, state, close_reason, close_detail, proposer_message,
+    tunnel_mode, tunnel_id, contract_snapshot, envelope_count, state, close_reason, close_detail, proposer_message,
     proposed_at, accepted_at, closed_at`
 
 // Create inserts a new session in the proposed state. ID is generated if empty.
@@ -29,7 +29,7 @@ func (r *SessionsRepository) Create(ctx context.Context, db Queryer, sess Sessio
 
 	query := fmt.Sprintf(`
 insert into sessions (%s) values (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18
 ) returning %s`, sessionColumns, sessionColumns)
 
 	snapshotArg := any(nil)
@@ -50,6 +50,7 @@ insert into sessions (%s) values (
 		sess.TunnelMode,
 		sess.TunnelID,
 		snapshotArg,
+		sess.EnvelopeCount,
 		sess.State,
 		sess.CloseReason,
 		sess.CloseDetail,
@@ -73,6 +74,29 @@ func (r *SessionsRepository) WriteContractSnapshot(ctx context.Context, db Query
 	const query = `update sessions set contract_snapshot = $2 where id = $1`
 	if _, err := db.ExecContext(ctx, query, sessionID, snapshotJSON); err != nil {
 		return fmt.Errorf("write contract snapshot: %w", err)
+	}
+	return nil
+}
+
+// RecordEnvelopeCount stores the reported envelope count on the session
+// row using max-seen semantics: the stored value only increases. This
+// protects against reordered heartbeats and idempotent retries.
+// Returns ErrNotFound when the session does not exist.
+func (r *SessionsRepository) RecordEnvelopeCount(ctx context.Context, db Queryer, sessionID string, count int) error {
+	const query = `
+update sessions
+set envelope_count = greatest(coalesce(envelope_count, 0), $2)
+where id = $1`
+	result, err := db.ExecContext(ctx, query, sessionID, count)
+	if err != nil {
+		return fmt.Errorf("record envelope count: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("record envelope count rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrNotFound
 	}
 	return nil
 }

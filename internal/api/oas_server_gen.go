@@ -224,6 +224,10 @@ type Handler interface {
 	//
 	// DELETE /workgroups/{workgroupId}/members/{membershipId}
 	RemoveWorkgroupMember(ctx context.Context, params RemoveWorkgroupMemberParams) (RemoveWorkgroupMemberRes, error)
+	// ReportSessionEnvelopeCount implements reportSessionEnvelopeCount operation.
+	//
+	// POST /sessions/{sessionId}/envelope-count
+	ReportSessionEnvelopeCount(ctx context.Context, req *ReportEnvelopeCountRequest, params ReportSessionEnvelopeCountParams) (ReportSessionEnvelopeCountRes, error)
 	// RetractAdvertisement implements retractAdvertisement operation.
 	//
 	// DELETE /advertisements/{advertisementId}

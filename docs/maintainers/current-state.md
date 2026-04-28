@@ -108,7 +108,7 @@ Remaining Layer 1 operational hardening:
 - a documented local development and smoke-test stack
 - clearer end-to-end operational validation for enable, serve, connect, status, and cleanup
 
-Layer 2 work has a foundation doc ([../layer-2/foundation.md](../layer-2/foundation.md)), Tier-A specs for workgroups, catalog, advertisements, sessions, and contracts — all with implementation shipped (slices 1–4 of 5) — and a Tier-B skeleton for envelopes. See [../layer-2/status.md](../layer-2/status.md) for Tier tracking and build order.
+Layer 2 is MVP-complete. All five concepts (workgroups, catalog, advertisements, sessions, contracts, envelopes) have Tier-A specs and shipped implementations. See [../layer-2/status.md](../layer-2/status.md) for the per-slice status table; [../layer-2/foundation.md](../layer-2/foundation.md) holds the cross-cutting decisions. Post-MVP extensions are tracked in [../roadmap/post-mvp.md](../roadmap/post-mvp.md).
 
 Workgroup implementation surfaces:
 
@@ -145,6 +145,16 @@ Contracts implementation surfaces (slice 4):
 - SDK: `*session.Session` gains `ContractSnapshot *api.ContractSnapshot`
 - Macro Pulse advancement: each provider/tool agent ensures a shared `macro-pulse-provider-default` contract via `agentutil.ContractSpec` and attaches it to its advertisement; `pulse-agent` logs the snapshot parameters it receives per session
 - Scope note: contracts persist `max_envelope_count` and `allowed_message_types` but enforcement of those two dimensions ships in the envelopes slice, which wires envelope-level observability
+
+Envelopes implementation surfaces (slice 5):
+
+- persistence: migration `0008_envelope_mtu_count.sql` adds `contracts.max_envelope_bytes` and `sessions.envelope_count`; `SessionsRepository.RecordEnvelopeCount` uses max-seen semantics for the count; `ContractSnapshot` persistence struct gained `MaxEnvelopeBytes`
+- API: new endpoint `POST /v1/sessions/{id}/envelope-count`; `envelopeCount` field on session response; `maxEnvelopeBytes` on contract + snapshot; `backendAddress` optional field on `acceptSessionRequest`
+- controller: `reportSessionEnvelopeCount.go` (provider-only, 404-leak pattern, max-seen); `acceptSession` honors `backendAddress` on the tunnel it provisions; `contract_helpers.go` + `createContract.go` + `updateContract.go` thread the new `max_envelope_bytes` field
+- SDK: `sdk/agent/session/envelope.go` with the wire-format encoder/decoder (1-byte `FrameVersion` + 4+4 length-prefixed JSON header + opaque payload, 10 MiB platform ceiling); `sdk/agent/session/transport.go` with `attachConsumerStream` / `attachProviderStream` / `countReporterLoop` / `teardownTransport`; `sdk/agent/session/transport_enforcement.go` with `Session.Send` / `Session.Receive` and contract enforcement (message-type wildcard, max-count, max-bytes). `Propose` attaches consumer transport on `active`; `RegisterHandler`/`handleProposal` allocate provider listener before accept and pass `backendAddress` through the API
+- CLI: `agora session send <adv_...>` one-shot (propose → send → receive → close)
+- Macro Pulse advancement: `agentutil.EchoSessionHandler` replaces `LoggingSessionHandler`; providers echo inbound envelopes with `.request` → `.response`; `pulse-agent` sends a per-advertisement ping and logs the response envelope
+- Scope note: MVP envelope transport is `tcp`-carrier only. `http`/`udp` carriers, envelope-level signing, richer A2A bridging, session multiplexing, and per-envelope contract-violation error envelopes are all post-MVP.
 
 Alongside the Layer 2 specs, the project also has a primary reference demo under [../../examples/macro-pulse/](../../examples/macro-pulse/) with its own formal doc at [../examples/macro-pulse.md](../examples/macro-pulse.md). The demo is scaffolded but not yet runnable end-to-end — it advances one slice at a time as Layer 2 slices ship. See [../examples/index.md](../examples/index.md) for the example-set overview.
 

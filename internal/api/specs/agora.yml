@@ -90,6 +90,8 @@ paths:
     $ref: "sessions/paths.yml#/~1sessions~1{sessionId}~1reject"
   /sessions/{sessionId}/close:
     $ref: "sessions/paths.yml#/~1sessions~1{sessionId}~1close"
+  /sessions/{sessionId}/envelope-count:
+    $ref: "sessions/paths.yml#/~1sessions~1{sessionId}~1envelope-count"
   /admin/sessions/{sessionId}/close:
     $ref: "sessions/paths.yml#/~1admin~1sessions~1{sessionId}~1close"
 
@@ -224,6 +226,8 @@ components:
       $ref: "sessions/schemas.yml#/closeSessionRequest"
     listSessionsResponse:
       $ref: "sessions/schemas.yml#/listSessionsResponse"
+    reportEnvelopeCountRequest:
+      $ref: "sessions/schemas.yml#/reportEnvelopeCountRequest"
     contract:
       $ref: "contracts/schemas.yml#/contract"
     contractAccessMode:

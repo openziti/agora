@@ -845,6 +845,28 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								return
 							}
 
+						case 'e': // Prefix: "envelope-count"
+
+							if l := len("envelope-count"); len(elem) >= l && elem[0:l] == "envelope-count" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "POST":
+									s.handleReportSessionEnvelopeCountRequest([1]string{
+										args[0],
+									}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, "POST")
+								}
+
+								return
+							}
+
 						case 'r': // Prefix: "reject"
 
 							if l := len("reject"); len(elem) >= l && elem[0:l] == "reject" {
@@ -2333,6 +2355,30 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 									r.summary = ""
 									r.operationID = "closeSession"
 									r.pathPattern = "/sessions/{sessionId}/close"
+									r.args = args
+									r.count = 1
+									return r, true
+								default:
+									return
+								}
+							}
+
+						case 'e': // Prefix: "envelope-count"
+
+							if l := len("envelope-count"); len(elem) >= l && elem[0:l] == "envelope-count" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "POST":
+									r.name = ReportSessionEnvelopeCountOperation
+									r.summary = ""
+									r.operationID = "reportSessionEnvelopeCount"
+									r.pathPattern = "/sessions/{sessionId}/envelope-count"
 									r.args = args
 									r.count = 1
 									return r, true

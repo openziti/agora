@@ -237,6 +237,10 @@ type Invoker interface {
 	//
 	// DELETE /workgroups/{workgroupId}/members/{membershipId}
 	RemoveWorkgroupMember(ctx context.Context, params RemoveWorkgroupMemberParams) (RemoveWorkgroupMemberRes, error)
+	// ReportSessionEnvelopeCount invokes reportSessionEnvelopeCount operation.
+	//
+	// POST /sessions/{sessionId}/envelope-count
+	ReportSessionEnvelopeCount(ctx context.Context, request *ReportEnvelopeCountRequest, params ReportSessionEnvelopeCountParams) (ReportSessionEnvelopeCountRes, error)
 	// RetractAdvertisement invokes retractAdvertisement operation.
 	//
 	// DELETE /advertisements/{advertisementId}
@@ -5019,6 +5023,104 @@ func (c *Client) sendRemoveWorkgroupMember(ctx context.Context, params RemoveWor
 	defer resp.Body.Close()
 
 	result, err := decodeRemoveWorkgroupMemberResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// ReportSessionEnvelopeCount invokes reportSessionEnvelopeCount operation.
+//
+// POST /sessions/{sessionId}/envelope-count
+func (c *Client) ReportSessionEnvelopeCount(ctx context.Context, request *ReportEnvelopeCountRequest, params ReportSessionEnvelopeCountParams) (ReportSessionEnvelopeCountRes, error) {
+	res, err := c.sendReportSessionEnvelopeCount(ctx, request, params)
+	return res, err
+}
+
+func (c *Client) sendReportSessionEnvelopeCount(ctx context.Context, request *ReportEnvelopeCountRequest, params ReportSessionEnvelopeCountParams) (res ReportSessionEnvelopeCountRes, err error) {
+	// Validate request before sending.
+	if err := func() error {
+		if err := request.Validate(); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return res, errors.Wrap(err, "validate")
+	}
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/sessions/"
+	{
+		// Encode "sessionId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "sessionId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.SessionId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/envelope-count"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+	if err := encodeReportSessionEnvelopeCountRequest(request, r); err != nil {
+		return res, errors.Wrap(err, "encode request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, ReportSessionEnvelopeCountOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeReportSessionEnvelopeCountResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

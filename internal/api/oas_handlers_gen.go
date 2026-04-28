@@ -6914,6 +6914,147 @@ func (s *Server) handleRemoveWorkgroupMemberRequest(args [2]string, argsEscaped 
 	}
 }
 
+// handleReportSessionEnvelopeCountRequest handles reportSessionEnvelopeCount operation.
+//
+// POST /sessions/{sessionId}/envelope-count
+func (s *Server) handleReportSessionEnvelopeCountRequest(args [1]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	ctx := r.Context()
+
+	var (
+		err          error
+		opErrContext = ogenerrors.OperationContext{
+			Name: ReportSessionEnvelopeCountOperation,
+			ID:   "reportSessionEnvelopeCount",
+		}
+	)
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+			sctx, ok, err := s.securityAccountTokenAuth(ctx, ReportSessionEnvelopeCountOperation, r)
+			if err != nil {
+				err = &ogenerrors.SecurityError{
+					OperationContext: opErrContext,
+					Security:         "AccountTokenAuth",
+					Err:              err,
+				}
+				defer recordError("Security:AccountTokenAuth", err)
+				s.cfg.ErrorHandler(ctx, w, r, err)
+				return
+			}
+			if ok {
+				satisfied[0] |= 1 << 0
+				ctx = sctx
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			err = &ogenerrors.SecurityError{
+				OperationContext: opErrContext,
+				Err:              ogenerrors.ErrSecurityRequirementIsNotSatisfied,
+			}
+			defer recordError("Security", err)
+			s.cfg.ErrorHandler(ctx, w, r, err)
+			return
+		}
+	}
+	params, err := decodeReportSessionEnvelopeCountParams(args, argsEscaped, r)
+	if err != nil {
+		err = &ogenerrors.DecodeParamsError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeParams", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	var rawBody []byte
+	request, rawBody, close, err := s.decodeReportSessionEnvelopeCountRequest(r)
+	if err != nil {
+		err = &ogenerrors.DecodeRequestError{
+			OperationContext: opErrContext,
+			Err:              err,
+		}
+		defer recordError("DecodeRequest", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+	defer func() {
+		if err := close(); err != nil {
+			recordError("CloseRequest", err)
+		}
+	}()
+
+	var response ReportSessionEnvelopeCountRes
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    ReportSessionEnvelopeCountOperation,
+			OperationSummary: "",
+			OperationID:      "reportSessionEnvelopeCount",
+			Body:             request,
+			RawBody:          rawBody,
+			Params: middleware.Parameters{
+				{
+					Name: "sessionId",
+					In:   "path",
+				}: params.SessionId,
+			},
+			Raw: r,
+		}
+
+		type (
+			Request  = *ReportEnvelopeCountRequest
+			Params   = ReportSessionEnvelopeCountParams
+			Response = ReportSessionEnvelopeCountRes
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			unpackReportSessionEnvelopeCountParams,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				response, err = s.h.ReportSessionEnvelopeCount(ctx, request, params)
+				return response, err
+			},
+		)
+	} else {
+		response, err = s.h.ReportSessionEnvelopeCount(ctx, request, params)
+	}
+	if err != nil {
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	if err := encodeReportSessionEnvelopeCountResponse(response, w); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
 // handleRetractAdvertisementRequest handles retractAdvertisement operation.
 //
 // DELETE /advertisements/{advertisementId}

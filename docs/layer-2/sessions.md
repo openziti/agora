@@ -198,10 +198,13 @@ Module: `internal/api/specs/sessions/`. All account-token endpoints use `account
 - request body:
   ```
   {
-    "environmentId": "env_..."                // required; which provider environment hosts the tunnel
+    "environmentId": "env_...",               // required; which provider environment hosts the tunnel
+    "backendAddress": "127.0.0.1:<port>"      // optional; local TCP address bound as the tunnel backend
   }
   ```
   The environment must be enrolled to the provider's account. Layer 1 tunnels are environment-scoped, so the session must commit to a specific environment at accept time. The SDK/CLI passes the caller runtime's own environment.
+
+  `backendAddress` is the local TCP address the provider will listen on for session traffic. It is used as the created tunnel's `backend_target`. The envelopes slice's SDK always supplies this; the sessions-slice-only SDK may omit it, in which case the controller stores the placeholder `session:<ses_id>` and envelope transport is not functional.
 - response `200`: the `Session` with `state=active` (and populated `tunnelId`, `acceptedAt`). Blocks for the duration of tunnel provisioning; if provisioning fails the controller transitions the session to `closed` with `close_reason=tunnel_failed` and returns `500`.
 - errors:
   - `403 not_provider` — caller is not the advertisement-owning account

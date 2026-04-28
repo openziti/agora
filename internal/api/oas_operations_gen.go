@@ -60,6 +60,7 @@ const (
 	RejectSessionOperation                 OperationName = "RejectSession"
 	RemoveTunnelGrantOperation             OperationName = "RemoveTunnelGrant"
 	RemoveWorkgroupMemberOperation         OperationName = "RemoveWorkgroupMember"
+	ReportSessionEnvelopeCountOperation    OperationName = "ReportSessionEnvelopeCount"
 	RetractAdvertisementOperation          OperationName = "RetractAdvertisement"
 	SearchCatalogOperation                 OperationName = "SearchCatalog"
 	StartTunnelServeOperation              OperationName = "StartTunnelServe"

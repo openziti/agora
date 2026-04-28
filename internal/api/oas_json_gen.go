@@ -216,10 +216,17 @@ func (s *AcceptSessionRequest) encodeFields(e *jx.Encoder) {
 		e.FieldStart("environmentId")
 		e.Str(s.EnvironmentId)
 	}
+	{
+		if s.BackendAddress.Set {
+			e.FieldStart("backendAddress")
+			s.BackendAddress.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfAcceptSessionRequest = [1]string{
+var jsonFieldsNameOfAcceptSessionRequest = [2]string{
 	0: "environmentId",
+	1: "backendAddress",
 }
 
 // Decode decodes AcceptSessionRequest from json.
@@ -242,6 +249,16 @@ func (s *AcceptSessionRequest) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"environmentId\"")
+			}
+		case "backendAddress":
+			if err := func() error {
+				s.BackendAddress.Reset()
+				if err := s.BackendAddress.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"backendAddress\"")
 			}
 		default:
 			return d.Skip()
@@ -4125,6 +4142,10 @@ func (s *Contract) encodeFields(e *jx.Encoder) {
 		e.Int(s.MaxEnvelopeCount)
 	}
 	{
+		e.FieldStart("maxEnvelopeBytes")
+		e.Int(s.MaxEnvelopeBytes)
+	}
+	{
 		e.FieldStart("allowedMessageTypes")
 		e.ArrStart()
 		for _, elem := range s.AllowedMessageTypes {
@@ -4160,7 +4181,7 @@ func (s *Contract) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfContract = [14]string{
+var jsonFieldsNameOfContract = [15]string{
 	0:  "id",
 	1:  "accountId",
 	2:  "organizationId",
@@ -4169,12 +4190,13 @@ var jsonFieldsNameOfContract = [14]string{
 	5:  "schemaVersion",
 	6:  "maxDurationSeconds",
 	7:  "maxEnvelopeCount",
-	8:  "allowedMessageTypes",
-	9:  "requiredWorkgroupMemberships",
-	10: "maturityRequirements",
-	11: "accessMode",
-	12: "createdAt",
-	13: "updatedAt",
+	8:  "maxEnvelopeBytes",
+	9:  "allowedMessageTypes",
+	10: "requiredWorkgroupMemberships",
+	11: "maturityRequirements",
+	12: "accessMode",
+	13: "createdAt",
+	14: "updatedAt",
 }
 
 // Decode decodes Contract from json.
@@ -4280,8 +4302,20 @@ func (s *Contract) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"maxEnvelopeCount\"")
 			}
-		case "allowedMessageTypes":
+		case "maxEnvelopeBytes":
 			requiredBitSet[1] |= 1 << 0
+			if err := func() error {
+				v, err := d.Int()
+				s.MaxEnvelopeBytes = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"maxEnvelopeBytes\"")
+			}
+		case "allowedMessageTypes":
+			requiredBitSet[1] |= 1 << 1
 			if err := func() error {
 				s.AllowedMessageTypes = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -4301,7 +4335,7 @@ func (s *Contract) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"allowedMessageTypes\"")
 			}
 		case "requiredWorkgroupMemberships":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				s.RequiredWorkgroupMemberships = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -4331,7 +4365,7 @@ func (s *Contract) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"maturityRequirements\"")
 			}
 		case "accessMode":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				if err := s.AccessMode.Decode(d); err != nil {
 					return err
@@ -4341,7 +4375,7 @@ func (s *Contract) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"accessMode\"")
 			}
 		case "createdAt":
-			requiredBitSet[1] |= 1 << 4
+			requiredBitSet[1] |= 1 << 5
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CreatedAt = v
@@ -4353,7 +4387,7 @@ func (s *Contract) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"createdAt\"")
 			}
 		case "updatedAt":
-			requiredBitSet[1] |= 1 << 5
+			requiredBitSet[1] |= 1 << 6
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.UpdatedAt = v
@@ -4375,7 +4409,7 @@ func (s *Contract) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b11101111,
-		0b00111011,
+		0b01110111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -4497,6 +4531,10 @@ func (s *ContractSnapshot) encodeFields(e *jx.Encoder) {
 		e.Int(s.MaxEnvelopeCount)
 	}
 	{
+		e.FieldStart("maxEnvelopeBytes")
+		e.Int(s.MaxEnvelopeBytes)
+	}
+	{
 		e.FieldStart("allowedMessageTypes")
 		e.ArrStart()
 		for _, elem := range s.AllowedMessageTypes {
@@ -4528,18 +4566,19 @@ func (s *ContractSnapshot) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfContractSnapshot = [11]string{
+var jsonFieldsNameOfContractSnapshot = [12]string{
 	0:  "contractId",
 	1:  "name",
 	2:  "description",
 	3:  "schemaVersion",
 	4:  "maxDurationSeconds",
 	5:  "maxEnvelopeCount",
-	6:  "allowedMessageTypes",
-	7:  "requiredWorkgroupMemberships",
-	8:  "maturityRequirements",
-	9:  "accessMode",
-	10: "snapshottedAt",
+	6:  "maxEnvelopeBytes",
+	7:  "allowedMessageTypes",
+	8:  "requiredWorkgroupMemberships",
+	9:  "maturityRequirements",
+	10: "accessMode",
+	11: "snapshottedAt",
 }
 
 // Decode decodes ContractSnapshot from json.
@@ -4621,8 +4660,20 @@ func (s *ContractSnapshot) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"maxEnvelopeCount\"")
 			}
-		case "allowedMessageTypes":
+		case "maxEnvelopeBytes":
 			requiredBitSet[0] |= 1 << 6
+			if err := func() error {
+				v, err := d.Int()
+				s.MaxEnvelopeBytes = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"maxEnvelopeBytes\"")
+			}
+		case "allowedMessageTypes":
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				s.AllowedMessageTypes = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -4642,7 +4693,7 @@ func (s *ContractSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"allowedMessageTypes\"")
 			}
 		case "requiredWorkgroupMemberships":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				s.RequiredWorkgroupMemberships = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -4672,7 +4723,7 @@ func (s *ContractSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"maturityRequirements\"")
 			}
 		case "accessMode":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 2
 			if err := func() error {
 				if err := s.AccessMode.Decode(d); err != nil {
 					return err
@@ -4682,7 +4733,7 @@ func (s *ContractSnapshot) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"accessMode\"")
 			}
 		case "snapshottedAt":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.SnapshottedAt = v
@@ -4704,7 +4755,7 @@ func (s *ContractSnapshot) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b11111011,
-		0b00000110,
+		0b00001101,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -5330,6 +5381,12 @@ func (s *CreateContractRequest) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.MaxEnvelopeBytes.Set {
+			e.FieldStart("maxEnvelopeBytes")
+			s.MaxEnvelopeBytes.Encode(e)
+		}
+	}
+	{
 		if s.AllowedMessageTypes != nil {
 			e.FieldStart("allowedMessageTypes")
 			e.ArrStart()
@@ -5363,15 +5420,16 @@ func (s *CreateContractRequest) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCreateContractRequest = [8]string{
+var jsonFieldsNameOfCreateContractRequest = [9]string{
 	0: "name",
 	1: "description",
 	2: "maxDurationSeconds",
 	3: "maxEnvelopeCount",
-	4: "allowedMessageTypes",
-	5: "requiredWorkgroupMemberships",
-	6: "maturityRequirements",
-	7: "accessMode",
+	4: "maxEnvelopeBytes",
+	5: "allowedMessageTypes",
+	6: "requiredWorkgroupMemberships",
+	7: "maturityRequirements",
+	8: "accessMode",
 }
 
 // Decode decodes CreateContractRequest from json.
@@ -5379,7 +5437,7 @@ func (s *CreateContractRequest) Decode(d *jx.Decoder) error {
 	if s == nil {
 		return errors.New("invalid: unable to decode CreateContractRequest to nil")
 	}
-	var requiredBitSet [1]uint8
+	var requiredBitSet [2]uint8
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
@@ -5424,6 +5482,16 @@ func (s *CreateContractRequest) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"maxEnvelopeCount\"")
+			}
+		case "maxEnvelopeBytes":
+			if err := func() error {
+				s.MaxEnvelopeBytes.Reset()
+				if err := s.MaxEnvelopeBytes.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"maxEnvelopeBytes\"")
 			}
 		case "allowedMessageTypes":
 			if err := func() error {
@@ -5492,8 +5560,9 @@ func (s *CreateContractRequest) Decode(d *jx.Decoder) error {
 	}
 	// Validate required fields.
 	var failures []validate.FieldError
-	for i, mask := range [1]uint8{
+	for i, mask := range [2]uint8{
 		0b00000001,
+		0b00000000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -13986,6 +14055,309 @@ func (s *RemoveWorkgroupMemberUnauthorized) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode implements json.Marshaler.
+func (s *ReportEnvelopeCountRequest) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *ReportEnvelopeCountRequest) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("count")
+		e.Int(s.Count)
+	}
+	{
+		e.FieldStart("observedAt")
+		json.EncodeDateTime(e, s.ObservedAt)
+	}
+}
+
+var jsonFieldsNameOfReportEnvelopeCountRequest = [2]string{
+	0: "count",
+	1: "observedAt",
+}
+
+// Decode decodes ReportEnvelopeCountRequest from json.
+func (s *ReportEnvelopeCountRequest) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ReportEnvelopeCountRequest to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "count":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				v, err := d.Int()
+				s.Count = int(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"count\"")
+			}
+		case "observedAt":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := json.DecodeDateTime(d)
+				s.ObservedAt = v
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"observedAt\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode ReportEnvelopeCountRequest")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000011,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfReportEnvelopeCountRequest) {
+					name = jsonFieldsNameOfReportEnvelopeCountRequest[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ReportEnvelopeCountRequest) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ReportEnvelopeCountRequest) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ReportSessionEnvelopeCountBadRequest as json.
+func (s *ReportSessionEnvelopeCountBadRequest) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes ReportSessionEnvelopeCountBadRequest from json.
+func (s *ReportSessionEnvelopeCountBadRequest) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ReportSessionEnvelopeCountBadRequest to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = ReportSessionEnvelopeCountBadRequest(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ReportSessionEnvelopeCountBadRequest) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ReportSessionEnvelopeCountBadRequest) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ReportSessionEnvelopeCountForbidden as json.
+func (s *ReportSessionEnvelopeCountForbidden) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes ReportSessionEnvelopeCountForbidden from json.
+func (s *ReportSessionEnvelopeCountForbidden) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ReportSessionEnvelopeCountForbidden to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = ReportSessionEnvelopeCountForbidden(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ReportSessionEnvelopeCountForbidden) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ReportSessionEnvelopeCountForbidden) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ReportSessionEnvelopeCountInternalServerError as json.
+func (s *ReportSessionEnvelopeCountInternalServerError) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes ReportSessionEnvelopeCountInternalServerError from json.
+func (s *ReportSessionEnvelopeCountInternalServerError) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ReportSessionEnvelopeCountInternalServerError to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = ReportSessionEnvelopeCountInternalServerError(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ReportSessionEnvelopeCountInternalServerError) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ReportSessionEnvelopeCountInternalServerError) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ReportSessionEnvelopeCountNotFound as json.
+func (s *ReportSessionEnvelopeCountNotFound) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes ReportSessionEnvelopeCountNotFound from json.
+func (s *ReportSessionEnvelopeCountNotFound) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ReportSessionEnvelopeCountNotFound to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = ReportSessionEnvelopeCountNotFound(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ReportSessionEnvelopeCountNotFound) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ReportSessionEnvelopeCountNotFound) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes ReportSessionEnvelopeCountUnauthorized as json.
+func (s *ReportSessionEnvelopeCountUnauthorized) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes ReportSessionEnvelopeCountUnauthorized from json.
+func (s *ReportSessionEnvelopeCountUnauthorized) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ReportSessionEnvelopeCountUnauthorized to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = ReportSessionEnvelopeCountUnauthorized(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ReportSessionEnvelopeCountUnauthorized) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ReportSessionEnvelopeCountUnauthorized) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes RetractAdvertisementForbidden as json.
 func (s *RetractAdvertisementForbidden) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -14343,9 +14715,15 @@ func (s *Session) encodeFields(e *jx.Encoder) {
 			s.ContractSnapshot.Encode(e)
 		}
 	}
+	{
+		if s.EnvelopeCount.Set {
+			e.FieldStart("envelopeCount")
+			s.EnvelopeCount.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfSession = [17]string{
+var jsonFieldsNameOfSession = [18]string{
 	0:  "id",
 	1:  "advertisementId",
 	2:  "workgroupId",
@@ -14363,6 +14741,7 @@ var jsonFieldsNameOfSession = [17]string{
 	14: "acceptedAt",
 	15: "closedAt",
 	16: "contractSnapshot",
+	17: "envelopeCount",
 }
 
 // Decode decodes Session from json.
@@ -14559,6 +14938,16 @@ func (s *Session) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"contractSnapshot\"")
+			}
+		case "envelopeCount":
+			if err := func() error {
+				s.EnvelopeCount.Reset()
+				if err := s.EnvelopeCount.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"envelopeCount\"")
 			}
 		default:
 			return d.Skip()
@@ -16858,6 +17247,12 @@ func (s *UpdateContractRequest) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
+		if s.MaxEnvelopeBytes.Set {
+			e.FieldStart("maxEnvelopeBytes")
+			s.MaxEnvelopeBytes.Encode(e)
+		}
+	}
+	{
 		if s.AllowedMessageTypes != nil {
 			e.FieldStart("allowedMessageTypes")
 			e.ArrStart()
@@ -16891,15 +17286,16 @@ func (s *UpdateContractRequest) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfUpdateContractRequest = [8]string{
+var jsonFieldsNameOfUpdateContractRequest = [9]string{
 	0: "name",
 	1: "description",
 	2: "maxDurationSeconds",
 	3: "maxEnvelopeCount",
-	4: "allowedMessageTypes",
-	5: "requiredWorkgroupMemberships",
-	6: "maturityRequirements",
-	7: "accessMode",
+	4: "maxEnvelopeBytes",
+	5: "allowedMessageTypes",
+	6: "requiredWorkgroupMemberships",
+	7: "maturityRequirements",
+	8: "accessMode",
 }
 
 // Decode decodes UpdateContractRequest from json.
@@ -16949,6 +17345,16 @@ func (s *UpdateContractRequest) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"maxEnvelopeCount\"")
+			}
+		case "maxEnvelopeBytes":
+			if err := func() error {
+				s.MaxEnvelopeBytes.Reset()
+				if err := s.MaxEnvelopeBytes.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"maxEnvelopeBytes\"")
 			}
 		case "allowedMessageTypes":
 			if err := func() error {

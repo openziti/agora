@@ -32,7 +32,8 @@ func main() {
 			Contract: &agentutil.ContractSpec{
 				Name:               "macro-pulse-provider-default",
 				Description:        "Demo contract: bounded session duration for macro-pulse morning briefings.",
-				MaxDurationSeconds: 60,
+				MaxDurationSeconds:  60,
+				AllowedMessageTypes: []string{"*"},
 				AccessMode:         api.ContractAccessModeApprovalRequired,
 			},
 		})
@@ -41,7 +42,7 @@ func main() {
 			return err
 		}
 		a.Log().With("advertisement_id", ad.ID).Infof("alive; advertisement published")
-		handler := &agentutil.LoggingSessionHandler{Agent: a}
+		handler := &agentutil.EchoSessionHandler{Agent: a}
 		go func() {
 			if err := session.RegisterHandler(ctx, a, ad.ID, handler); err != nil {
 				a.Log().With("advertisement_id", ad.ID).Warnf("session handler exited: %v", err)

@@ -62,5 +62,8 @@ func mapSession(sess *persistence.Session) *api.Session {
 	if snap, err := mapSessionSnapshot(sess.ContractSnapshotJSON); err == nil {
 		out.ContractSnapshot = snap
 	}
+	if sess.EnvelopeCount != nil {
+		out.EnvelopeCount.SetTo(*sess.EnvelopeCount)
+	}
 	return out
 }

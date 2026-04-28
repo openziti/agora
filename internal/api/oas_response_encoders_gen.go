@@ -3468,6 +3468,78 @@ func encodeRemoveWorkgroupMemberResponse(response RemoveWorkgroupMemberRes, w ht
 	}
 }
 
+func encodeReportSessionEnvelopeCountResponse(response ReportSessionEnvelopeCountRes, w http.ResponseWriter) error {
+	switch response := response.(type) {
+	case *ReportSessionEnvelopeCountNoContent:
+		w.WriteHeader(204)
+
+		return nil
+
+	case *ReportSessionEnvelopeCountBadRequest:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(400)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *ReportSessionEnvelopeCountUnauthorized:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *ReportSessionEnvelopeCountForbidden:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(403)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *ReportSessionEnvelopeCountNotFound:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *ReportSessionEnvelopeCountInternalServerError:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(500)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
 func encodeRetractAdvertisementResponse(response RetractAdvertisementRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *RetractAdvertisementNoContent:

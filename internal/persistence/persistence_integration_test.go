@@ -24,8 +24,8 @@ func TestMigrateUpAndCompatibilityCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}
-	if applied != 7 {
-		t.Fatalf("expected 7 migrations applied, got %d", applied)
+	if applied != 8 {
+		t.Fatalf("expected 8 migrations applied, got %d", applied)
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); err != nil {
@@ -51,8 +51,8 @@ func TestCheckSchemaCompatibilityBehindBinary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migration status: %v", err)
 	}
-	if len(statuses) != 7 {
-		t.Fatalf("expected 7 migration statuses, got %d", len(statuses))
+	if len(statuses) != 8 {
+		t.Fatalf("expected 8 migration statuses, got %d", len(statuses))
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); !errors.Is(err, ErrSchemaBehindBinary) {
@@ -1540,5 +1540,84 @@ func TestContractUpdate(t *testing.T) {
 	}
 	if len(updated.AllowedMessageTypes) != 2 {
 		t.Fatalf("allowed_message_types did not round-trip: %+v", updated.AllowedMessageTypes)
+	}
+}
+
+func TestContractMaxEnvelopeBytesRoundtrip(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, acct, _ := newContractTestFixture(t, ctx, store)
+
+	created, err := store.Contracts.Create(ctx, store.DB(), Contract{
+		OrganizationID:   org.ID,
+		AccountID:        acct.ID,
+		Name:             "sized",
+		MaxEnvelopeBytes: 512,
+		AccessMode:       ContractAccessModeOpen,
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if created.MaxEnvelopeBytes != 512 {
+		t.Fatalf("expected 512, got %d", created.MaxEnvelopeBytes)
+	}
+
+	created.MaxEnvelopeBytes = 4096
+	updated, err := store.Contracts.Update(ctx, store.DB(), *created)
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if updated.MaxEnvelopeBytes != 4096 {
+		t.Fatalf("updated mtu mismatch: %d", updated.MaxEnvelopeBytes)
+	}
+
+	reloaded, err := store.Contracts.GetByID(ctx, store.DB(), created.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if reloaded.MaxEnvelopeBytes != 4096 {
+		t.Fatalf("reloaded mtu mismatch: %d", reloaded.MaxEnvelopeBytes)
+	}
+}
+
+func TestSessionRecordEnvelopeCountMaxSeen(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	providerOrg, consumerOrg, providerAcct, consumerAcct, _, wg, ad := newSessionTestFixture(t, ctx, store)
+
+	sess := mustProposeSession(t, ctx, store, providerOrg, consumerOrg, providerAcct, consumerAcct, wg, ad)
+
+	if err := store.Sessions.RecordEnvelopeCount(ctx, store.DB(), sess.ID, 5); err != nil {
+		t.Fatalf("record 5: %v", err)
+	}
+	reloaded, err := store.Sessions.GetByID(ctx, store.DB(), sess.ID)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if reloaded.EnvelopeCount == nil || *reloaded.EnvelopeCount != 5 {
+		t.Fatalf("expected 5, got %v", reloaded.EnvelopeCount)
+	}
+
+	// stale lower report is ignored (max-seen semantics).
+	if err := store.Sessions.RecordEnvelopeCount(ctx, store.DB(), sess.ID, 3); err != nil {
+		t.Fatalf("record 3: %v", err)
+	}
+	reloaded2, err := store.Sessions.GetByID(ctx, store.DB(), sess.ID)
+	if err != nil {
+		t.Fatalf("get 2: %v", err)
+	}
+	if reloaded2.EnvelopeCount == nil || *reloaded2.EnvelopeCount != 5 {
+		t.Fatalf("expected count to stay at 5, got %v", reloaded2.EnvelopeCount)
+	}
+
+	// higher report advances.
+	if err := store.Sessions.RecordEnvelopeCount(ctx, store.DB(), sess.ID, 9); err != nil {
+		t.Fatalf("record 9: %v", err)
+	}
+	reloaded3, _ := store.Sessions.GetByID(ctx, store.DB(), sess.ID)
+	if reloaded3.EnvelopeCount == nil || *reloaded3.EnvelopeCount != 9 {
+		t.Fatalf("expected 9, got %v", reloaded3.EnvelopeCount)
 	}
 }

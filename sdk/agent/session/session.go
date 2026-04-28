@@ -11,6 +11,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"sync"
 	"time"
 
 	"github.com/openziti/agora/internal/api"
@@ -38,12 +40,26 @@ type Session struct {
 	ContractSnapshot *api.ContractSnapshot
 
 	agent *agent.Agent
+
+	// transport state — populated when the envelopes-slice transport
+	// is wired up (consumer side after Propose, provider side in
+	// handleProposal). The zero-value Session (sessions slice only)
+	// has no transport and cannot Send/Receive.
+	conn               net.Conn
+	providerListener   net.Listener
+	localListenAddress string
+	backendAddress     string
+	streamMu           sync.Mutex // serializes writes on conn
+
+	sentCount int64 // atomic
+	recvCount int64 // atomic
 }
 
 // Close closes the session via the controller. The reason is stored as
 // close_detail on the terminal session row. Idempotent on already-closed
-// sessions.
+// sessions. Tears down any attached transport.
 func (s *Session) Close(ctx context.Context, reason string) error {
+	teardownTransport(s)
 	body := api.OptCloseSessionRequest{}
 	if reason != "" {
 		body.SetTo(api.CloseSessionRequest{Reason: api.NewOptString(reason)})
@@ -129,7 +145,13 @@ func Propose(ctx context.Context, a *agent.Agent, advertisementID string, opts P
 		}
 		switch current.State {
 		case api.SessionStateActive:
-			return sessionFromAPI(a, current), nil
+			sess := sessionFromAPI(a, current)
+			if err := attachConsumerStream(ctx, a, sess); err != nil {
+				// attach failure: close the session so the provider unblocks.
+				_ = sess.Close(ctx, "consumer_attach_failed")
+				return nil, fmt.Errorf("attach transport: %w", err)
+			}
+			return sess, nil
 		case api.SessionStateClosed:
 			reason := "<unknown>"
 			if current.CloseReason.Set {
@@ -208,19 +230,43 @@ func handleProposal(ctx context.Context, a *agent.Agent, envID string, s api.Ses
 		return
 	}
 
+	// Allocate provider-side listener before accept so we can commit the
+	// backend address to the controller atomically with acceptance.
+	listener, err := net.Listen("tcp", providerListenAddr+":0")
+	if err != nil {
+		a.Log().With("session_id", s.ID).Warnf("allocate provider listener: %v", err)
+		return
+	}
+	backendAddr := listener.Addr().String()
+
 	acceptRes, err := a.Controller().AcceptSession(ctx,
-		&api.AcceptSessionRequest{EnvironmentId: envID},
+		&api.AcceptSessionRequest{
+			EnvironmentId:  envID,
+			BackendAddress: api.NewOptString(backendAddr),
+		},
 		api.AcceptSessionParams{SessionId: s.ID})
 	if err != nil {
+		_ = listener.Close()
 		a.Log().With("session_id", s.ID).Warnf("accept session api error: %v", err)
 		return
 	}
 	active, ok := acceptRes.(*api.Session)
 	if !ok {
+		_ = listener.Close()
 		a.Log().With("session_id", s.ID).Warnf("accept session unexpected response: %T %s", acceptRes, describeError(acceptRes))
 		return
 	}
 	sess := sessionFromAPI(a, active)
+	if err := attachProviderStream(ctx, a, sess, backendAddr, listener); err != nil {
+		a.Log().With("session_id", sess.ID).Warnf("attach provider stream failed: %v", err)
+		_ = sess.Close(ctx, "provider_attach_failed")
+		return
+	}
+
+	reporterCtx, cancelReporter := context.WithCancel(ctx)
+	defer cancelReporter()
+	go countReporterLoop(reporterCtx, a, sess)
+
 	if serveErr := handler.Serve(ctx, sess); serveErr != nil {
 		if closeErr := sess.Close(ctx, serveErr.Error()); closeErr != nil {
 			a.Log().With("session_id", sess.ID).Warnf("close after serve error failed: %v", closeErr)

@@ -46,6 +46,9 @@ func (s *Service) UpdateContract(ctx context.Context, req *api.UpdateContractReq
 	if req.MaxEnvelopeCount.Set {
 		updated.MaxEnvelopeCount = req.MaxEnvelopeCount.Value
 	}
+	if req.MaxEnvelopeBytes.Set {
+		updated.MaxEnvelopeBytes = req.MaxEnvelopeBytes.Value
+	}
 	if req.AllowedMessageTypes != nil {
 		updated.AllowedMessageTypes = pq.StringArray(sanitizeStringList(req.AllowedMessageTypes))
 	}

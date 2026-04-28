@@ -12,7 +12,7 @@ import (
 type ContractsRepository struct{}
 
 const contractColumns = `id, account_id, organization_id, name, description,
-    schema_version, max_duration_seconds, max_envelope_count,
+    schema_version, max_duration_seconds, max_envelope_count, max_envelope_bytes,
     allowed_message_types, required_workgroup_memberships,
     maturity_requirements, access_mode, created_at, updated_at`
 
@@ -39,7 +39,7 @@ func (r *ContractsRepository) Create(ctx context.Context, db Queryer, c Contract
 
 	query := fmt.Sprintf(`
 insert into contracts (%s) values (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
 ) returning %s`, contractColumns, contractColumns)
 
 	var created Contract
@@ -53,6 +53,7 @@ insert into contracts (%s) values (
 		c.SchemaVersion,
 		c.MaxDurationSeconds,
 		c.MaxEnvelopeCount,
+		c.MaxEnvelopeBytes,
 		c.AllowedMessageTypes,
 		c.RequiredWorkgroupMemberships,
 		c.MaturityRequirements,
@@ -121,11 +122,12 @@ update contracts set
     description = $3,
     max_duration_seconds = $4,
     max_envelope_count = $5,
-    allowed_message_types = $6,
-    required_workgroup_memberships = $7,
-    maturity_requirements = $8,
-    access_mode = $9,
-    updated_at = $10
+    max_envelope_bytes = $6,
+    allowed_message_types = $7,
+    required_workgroup_memberships = $8,
+    maturity_requirements = $9,
+    access_mode = $10,
+    updated_at = $11
 where id = $1
 returning %s`, contractColumns)
 
@@ -137,6 +139,7 @@ returning %s`, contractColumns)
 		c.Description,
 		c.MaxDurationSeconds,
 		c.MaxEnvelopeCount,
+		c.MaxEnvelopeBytes,
 		c.AllowedMessageTypes,
 		c.RequiredWorkgroupMemberships,
 		c.MaturityRequirements,

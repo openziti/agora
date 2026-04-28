@@ -56,6 +56,9 @@ session:
       format: date-time
     contractSnapshot:
       $ref: "../agora.yml#/components/schemas/contractSnapshot"
+    envelopeCount:
+      type: integer
+      minimum: 0
 
 sessionState:
   type: string
@@ -96,6 +99,22 @@ acceptSessionRequest:
     environmentId:
       type: string
       pattern: '^ev_[a-z0-9]{12}$'
+    backendAddress:
+      type: string
+      description: Local TCP address the provider will serve on; used as the tunnel backend_target. When omitted, a placeholder is stored and envelope transport is not functional.
+
+reportEnvelopeCountRequest:
+  type: object
+  required:
+    - count
+    - observedAt
+  properties:
+    count:
+      type: integer
+      minimum: 0
+    observedAt:
+      type: string
+      format: date-time
 
 closeSessionRequest:
   type: object

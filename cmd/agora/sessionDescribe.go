@@ -78,6 +78,9 @@ func (cmd *sessionDescribeCommand) run(_ *cobra.Command, args []string) {
 	if sess.CloseDetail.Set {
 		fmt.Printf("  close detail  : %s\n", sess.CloseDetail.Value)
 	}
+	if sess.EnvelopeCount.Set {
+		fmt.Printf("  envelope count: %d\n", sess.EnvelopeCount.Value)
+	}
 	if sess.ContractSnapshot.Set {
 		snap := sess.ContractSnapshot.Value
 		fmt.Printf("  contract      : %s (%s)\n", snap.ContractId, snap.Name)

@@ -31,6 +31,9 @@ func (*AcceptSessionNotFound) acceptSessionRes() {}
 // Ref: #/acceptSessionRequest
 type AcceptSessionRequest struct {
 	EnvironmentId string `json:"environmentId"`
+	// Local TCP address the provider will serve on; used as the tunnel backend_target. When omitted, a
+	// placeholder is stored and envelope transport is not functional.
+	BackendAddress OptString `json:"backendAddress"`
 }
 
 // GetEnvironmentId returns the value of EnvironmentId.
@@ -38,9 +41,19 @@ func (s *AcceptSessionRequest) GetEnvironmentId() string {
 	return s.EnvironmentId
 }
 
+// GetBackendAddress returns the value of BackendAddress.
+func (s *AcceptSessionRequest) GetBackendAddress() OptString {
+	return s.BackendAddress
+}
+
 // SetEnvironmentId sets the value of EnvironmentId.
 func (s *AcceptSessionRequest) SetEnvironmentId(val string) {
 	s.EnvironmentId = val
+}
+
+// SetBackendAddress sets the value of BackendAddress.
+func (s *AcceptSessionRequest) SetBackendAddress(val OptString) {
+	s.BackendAddress = val
 }
 
 type AcceptSessionUnauthorized Error
@@ -1135,6 +1148,7 @@ type Contract struct {
 	SchemaVersion                int                     `json:"schemaVersion"`
 	MaxDurationSeconds           int                     `json:"maxDurationSeconds"`
 	MaxEnvelopeCount             int                     `json:"maxEnvelopeCount"`
+	MaxEnvelopeBytes             int                     `json:"maxEnvelopeBytes"`
 	AllowedMessageTypes          []string                `json:"allowedMessageTypes"`
 	RequiredWorkgroupMemberships []string                `json:"requiredWorkgroupMemberships"`
 	MaturityRequirements         OptMaturityRequirements `json:"maturityRequirements"`
@@ -1181,6 +1195,11 @@ func (s *Contract) GetMaxDurationSeconds() int {
 // GetMaxEnvelopeCount returns the value of MaxEnvelopeCount.
 func (s *Contract) GetMaxEnvelopeCount() int {
 	return s.MaxEnvelopeCount
+}
+
+// GetMaxEnvelopeBytes returns the value of MaxEnvelopeBytes.
+func (s *Contract) GetMaxEnvelopeBytes() int {
+	return s.MaxEnvelopeBytes
 }
 
 // GetAllowedMessageTypes returns the value of AllowedMessageTypes.
@@ -1251,6 +1270,11 @@ func (s *Contract) SetMaxDurationSeconds(val int) {
 // SetMaxEnvelopeCount sets the value of MaxEnvelopeCount.
 func (s *Contract) SetMaxEnvelopeCount(val int) {
 	s.MaxEnvelopeCount = val
+}
+
+// SetMaxEnvelopeBytes sets the value of MaxEnvelopeBytes.
+func (s *Contract) SetMaxEnvelopeBytes(val int) {
+	s.MaxEnvelopeBytes = val
 }
 
 // SetAllowedMessageTypes sets the value of AllowedMessageTypes.
@@ -1337,6 +1361,7 @@ type ContractSnapshot struct {
 	SchemaVersion                int                     `json:"schemaVersion"`
 	MaxDurationSeconds           int                     `json:"maxDurationSeconds"`
 	MaxEnvelopeCount             int                     `json:"maxEnvelopeCount"`
+	MaxEnvelopeBytes             int                     `json:"maxEnvelopeBytes"`
 	AllowedMessageTypes          []string                `json:"allowedMessageTypes"`
 	RequiredWorkgroupMemberships []string                `json:"requiredWorkgroupMemberships"`
 	MaturityRequirements         OptMaturityRequirements `json:"maturityRequirements"`
@@ -1372,6 +1397,11 @@ func (s *ContractSnapshot) GetMaxDurationSeconds() int {
 // GetMaxEnvelopeCount returns the value of MaxEnvelopeCount.
 func (s *ContractSnapshot) GetMaxEnvelopeCount() int {
 	return s.MaxEnvelopeCount
+}
+
+// GetMaxEnvelopeBytes returns the value of MaxEnvelopeBytes.
+func (s *ContractSnapshot) GetMaxEnvelopeBytes() int {
+	return s.MaxEnvelopeBytes
 }
 
 // GetAllowedMessageTypes returns the value of AllowedMessageTypes.
@@ -1427,6 +1457,11 @@ func (s *ContractSnapshot) SetMaxDurationSeconds(val int) {
 // SetMaxEnvelopeCount sets the value of MaxEnvelopeCount.
 func (s *ContractSnapshot) SetMaxEnvelopeCount(val int) {
 	s.MaxEnvelopeCount = val
+}
+
+// SetMaxEnvelopeBytes sets the value of MaxEnvelopeBytes.
+func (s *ContractSnapshot) SetMaxEnvelopeBytes(val int) {
+	s.MaxEnvelopeBytes = val
 }
 
 // SetAllowedMessageTypes sets the value of AllowedMessageTypes.
@@ -1633,6 +1668,7 @@ type CreateContractRequest struct {
 	Description                  OptString               `json:"description"`
 	MaxDurationSeconds           OptInt                  `json:"maxDurationSeconds"`
 	MaxEnvelopeCount             OptInt                  `json:"maxEnvelopeCount"`
+	MaxEnvelopeBytes             OptInt                  `json:"maxEnvelopeBytes"`
 	AllowedMessageTypes          []string                `json:"allowedMessageTypes"`
 	RequiredWorkgroupMemberships []string                `json:"requiredWorkgroupMemberships"`
 	MaturityRequirements         OptMaturityRequirements `json:"maturityRequirements"`
@@ -1657,6 +1693,11 @@ func (s *CreateContractRequest) GetMaxDurationSeconds() OptInt {
 // GetMaxEnvelopeCount returns the value of MaxEnvelopeCount.
 func (s *CreateContractRequest) GetMaxEnvelopeCount() OptInt {
 	return s.MaxEnvelopeCount
+}
+
+// GetMaxEnvelopeBytes returns the value of MaxEnvelopeBytes.
+func (s *CreateContractRequest) GetMaxEnvelopeBytes() OptInt {
+	return s.MaxEnvelopeBytes
 }
 
 // GetAllowedMessageTypes returns the value of AllowedMessageTypes.
@@ -1697,6 +1738,11 @@ func (s *CreateContractRequest) SetMaxDurationSeconds(val OptInt) {
 // SetMaxEnvelopeCount sets the value of MaxEnvelopeCount.
 func (s *CreateContractRequest) SetMaxEnvelopeCount(val OptInt) {
 	s.MaxEnvelopeCount = val
+}
+
+// SetMaxEnvelopeBytes sets the value of MaxEnvelopeBytes.
+func (s *CreateContractRequest) SetMaxEnvelopeBytes(val OptInt) {
+	s.MaxEnvelopeBytes = val
 }
 
 // SetAllowedMessageTypes sets the value of AllowedMessageTypes.
@@ -4059,6 +4105,57 @@ type RemoveWorkgroupMemberUnauthorized Error
 
 func (*RemoveWorkgroupMemberUnauthorized) removeWorkgroupMemberRes() {}
 
+// Ref: #/reportEnvelopeCountRequest
+type ReportEnvelopeCountRequest struct {
+	Count      int       `json:"count"`
+	ObservedAt time.Time `json:"observedAt"`
+}
+
+// GetCount returns the value of Count.
+func (s *ReportEnvelopeCountRequest) GetCount() int {
+	return s.Count
+}
+
+// GetObservedAt returns the value of ObservedAt.
+func (s *ReportEnvelopeCountRequest) GetObservedAt() time.Time {
+	return s.ObservedAt
+}
+
+// SetCount sets the value of Count.
+func (s *ReportEnvelopeCountRequest) SetCount(val int) {
+	s.Count = val
+}
+
+// SetObservedAt sets the value of ObservedAt.
+func (s *ReportEnvelopeCountRequest) SetObservedAt(val time.Time) {
+	s.ObservedAt = val
+}
+
+type ReportSessionEnvelopeCountBadRequest Error
+
+func (*ReportSessionEnvelopeCountBadRequest) reportSessionEnvelopeCountRes() {}
+
+type ReportSessionEnvelopeCountForbidden Error
+
+func (*ReportSessionEnvelopeCountForbidden) reportSessionEnvelopeCountRes() {}
+
+type ReportSessionEnvelopeCountInternalServerError Error
+
+func (*ReportSessionEnvelopeCountInternalServerError) reportSessionEnvelopeCountRes() {}
+
+// ReportSessionEnvelopeCountNoContent is response for ReportSessionEnvelopeCount operation.
+type ReportSessionEnvelopeCountNoContent struct{}
+
+func (*ReportSessionEnvelopeCountNoContent) reportSessionEnvelopeCountRes() {}
+
+type ReportSessionEnvelopeCountNotFound Error
+
+func (*ReportSessionEnvelopeCountNotFound) reportSessionEnvelopeCountRes() {}
+
+type ReportSessionEnvelopeCountUnauthorized Error
+
+func (*ReportSessionEnvelopeCountUnauthorized) reportSessionEnvelopeCountRes() {}
+
 type RetractAdvertisementForbidden Error
 
 func (*RetractAdvertisementForbidden) retractAdvertisementRes() {}
@@ -4111,6 +4208,7 @@ type Session struct {
 	AcceptedAt             OptDateTime             `json:"acceptedAt"`
 	ClosedAt               OptDateTime             `json:"closedAt"`
 	ContractSnapshot       OptContractSnapshot     `json:"contractSnapshot"`
+	EnvelopeCount          OptInt                  `json:"envelopeCount"`
 }
 
 // GetID returns the value of ID.
@@ -4198,6 +4296,11 @@ func (s *Session) GetContractSnapshot() OptContractSnapshot {
 	return s.ContractSnapshot
 }
 
+// GetEnvelopeCount returns the value of EnvelopeCount.
+func (s *Session) GetEnvelopeCount() OptInt {
+	return s.EnvelopeCount
+}
+
 // SetID sets the value of ID.
 func (s *Session) SetID(val string) {
 	s.ID = val
@@ -4281,6 +4384,11 @@ func (s *Session) SetClosedAt(val OptDateTime) {
 // SetContractSnapshot sets the value of ContractSnapshot.
 func (s *Session) SetContractSnapshot(val OptContractSnapshot) {
 	s.ContractSnapshot = val
+}
+
+// SetEnvelopeCount sets the value of EnvelopeCount.
+func (s *Session) SetEnvelopeCount(val OptInt) {
+	s.EnvelopeCount = val
 }
 
 func (*Session) acceptSessionRes()  {}
@@ -5301,6 +5409,7 @@ type UpdateContractRequest struct {
 	Description                  OptString               `json:"description"`
 	MaxDurationSeconds           OptInt                  `json:"maxDurationSeconds"`
 	MaxEnvelopeCount             OptInt                  `json:"maxEnvelopeCount"`
+	MaxEnvelopeBytes             OptInt                  `json:"maxEnvelopeBytes"`
 	AllowedMessageTypes          []string                `json:"allowedMessageTypes"`
 	RequiredWorkgroupMemberships []string                `json:"requiredWorkgroupMemberships"`
 	MaturityRequirements         OptMaturityRequirements `json:"maturityRequirements"`
@@ -5325,6 +5434,11 @@ func (s *UpdateContractRequest) GetMaxDurationSeconds() OptInt {
 // GetMaxEnvelopeCount returns the value of MaxEnvelopeCount.
 func (s *UpdateContractRequest) GetMaxEnvelopeCount() OptInt {
 	return s.MaxEnvelopeCount
+}
+
+// GetMaxEnvelopeBytes returns the value of MaxEnvelopeBytes.
+func (s *UpdateContractRequest) GetMaxEnvelopeBytes() OptInt {
+	return s.MaxEnvelopeBytes
 }
 
 // GetAllowedMessageTypes returns the value of AllowedMessageTypes.
@@ -5365,6 +5479,11 @@ func (s *UpdateContractRequest) SetMaxDurationSeconds(val OptInt) {
 // SetMaxEnvelopeCount sets the value of MaxEnvelopeCount.
 func (s *UpdateContractRequest) SetMaxEnvelopeCount(val OptInt) {
 	s.MaxEnvelopeCount = val
+}
+
+// SetMaxEnvelopeBytes sets the value of MaxEnvelopeBytes.
+func (s *UpdateContractRequest) SetMaxEnvelopeBytes(val OptInt) {
+	s.MaxEnvelopeBytes = val
 }
 
 // SetAllowedMessageTypes sets the value of AllowedMessageTypes.

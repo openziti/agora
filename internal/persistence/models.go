@@ -344,6 +344,7 @@ type Session struct {
 	TunnelMode             TunnelMode          `db:"tunnel_mode"`
 	TunnelID               *string             `db:"tunnel_id"`
 	ContractSnapshotJSON   []byte              `db:"contract_snapshot"`
+	EnvelopeCount          *int                `db:"envelope_count"`
 	State                  SessionState        `db:"state"`
 	CloseReason            *SessionCloseReason `db:"close_reason"`
 	CloseDetail            *string             `db:"close_detail"`
@@ -404,6 +405,7 @@ type Contract struct {
 	SchemaVersion                int                      `db:"schema_version"`
 	MaxDurationSeconds           int                      `db:"max_duration_seconds"`
 	MaxEnvelopeCount             int                      `db:"max_envelope_count"`
+	MaxEnvelopeBytes             int                      `db:"max_envelope_bytes"`
 	AllowedMessageTypes          pq.StringArray           `db:"allowed_message_types"`
 	RequiredWorkgroupMemberships pq.StringArray           `db:"required_workgroup_memberships"`
 	MaturityRequirements         MaturityRequirementsJSON `db:"maturity_requirements"`
@@ -421,6 +423,7 @@ type ContractSnapshot struct {
 	SchemaVersion                int                  `json:"schemaVersion"`
 	MaxDurationSeconds           int                  `json:"maxDurationSeconds"`
 	MaxEnvelopeCount             int                  `json:"maxEnvelopeCount"`
+	MaxEnvelopeBytes             int                  `json:"maxEnvelopeBytes"`
 	AllowedMessageTypes          []string             `json:"allowedMessageTypes"`
 	RequiredWorkgroupMemberships []string             `json:"requiredWorkgroupMemberships"`
 	MaturityRequirements         MaturityRequirements `json:"maturityRequirements"`

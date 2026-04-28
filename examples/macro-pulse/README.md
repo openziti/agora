@@ -123,8 +123,9 @@ Macro Pulse is rolled out incrementally, one increment per Layer 2 slice landing
 - **`bootstrap/` program**: shipped (workgroup slice)
 - **Provider/tool agents publish-on-startup** (catalog/advertisements slice): shipped
 - **Provider/tool agents accept sessions** (sessions slice): shipped — each agent registers a logging session handler
-- **Provider/tool agents attach a contract** (contracts slice): shipped — each agent ensures a shared `macro-pulse-provider-default` contract (`max_duration_seconds=60`) and attaches it to its advertisement
-- **`pulse-agent` orchestrator**: catalog discovery + session propose/close + contract snapshot observation shipped; byte-level ping exchange deferred to envelopes slice
+- **Provider/tool agents attach a contract** (contracts slice): shipped — each agent ensures a shared `macro-pulse-provider-default` contract (`max_duration_seconds=60`, `allowed_message_types=["*"]`) and attaches it to its advertisement
+- **Provider/tool agents exchange real envelopes** (envelopes slice): shipped — each agent runs `EchoSessionHandler` that reads one inbound envelope and writes a `.request` → `.response` reply
+- **`pulse-agent` orchestrator**: catalog discovery + session propose/close + contract snapshot observation + per-advertisement envelope ping all shipped; richer narrative-brief aggregation across feeds is post-MVP demo polish
 
 Each slice's PR includes the corresponding advancement of this demo.
 

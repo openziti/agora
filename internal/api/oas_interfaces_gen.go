@@ -217,6 +217,10 @@ type RemoveWorkgroupMemberRes interface {
 	removeWorkgroupMemberRes()
 }
 
+type ReportSessionEnvelopeCountRes interface {
+	reportSessionEnvelopeCountRes()
+}
+
 type RetractAdvertisementRes interface {
 	retractAdvertisementRes()
 }

@@ -108,6 +108,10 @@ func (s *Service) AcceptSession(ctx context.Context, req *api.AcceptSessionReque
 		return &api.AcceptSessionInternalServerError{Code: "tunnel_provisioning_failed", Message: err.Error()}, nil
 	}
 
+	backendTarget := fmt.Sprintf("session:%s", sess.ID)
+	if req.BackendAddress.Set && req.BackendAddress.Value != "" {
+		backendTarget = req.BackendAddress.Value
+	}
 	tunnel := persistence.Tunnel{
 		ID:                        tunnelID,
 		OrganizationID:            principal.OrganizationID,
@@ -115,7 +119,7 @@ func (s *Service) AcceptSession(ctx context.Context, req *api.AcceptSessionReque
 		EnvironmentID:             env.ID,
 		Name:                      tunnelName,
 		Mode:                      sess.TunnelMode,
-		BackendTarget:             fmt.Sprintf("session:%s", sess.ID),
+		BackendTarget:             backendTarget,
 		ZitiServiceID:             &provisioned.ServiceID,
 		BindPolicyID:              &provisioned.BindPolicyID,
 		ServiceEdgeRouterPolicyID: &provisioned.ServiceEdgeRouterPolicyID,

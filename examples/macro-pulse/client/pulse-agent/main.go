@@ -33,15 +33,17 @@ func main() {
 		}
 		a.Log().With("count", len(resp.Items)).Infof("discovered advertisements via catalog")
 
-		propose := func(ad api.Advertisement) {
+		ping := func(ad api.Advertisement) {
 			if len(ad.WorkgroupScopes) == 0 {
 				a.Log().With("advertisement_id", ad.ID).Warnf("advertisement has no visible workgroup; skipping propose")
 				return
 			}
-			sess, err := session.Propose(ctx, a, ad.ID, session.ProposeOptions{
+			sessCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
+			defer cancel()
+			sess, err := session.Propose(sessCtx, a, ad.ID, session.ProposeOptions{
 				WorkgroupID: ad.WorkgroupScopes[0],
 				Message:     "macro-pulse morning brief",
-				Timeout:     15 * time.Second,
+				Timeout:     10 * time.Second,
 			})
 			if err != nil {
 				a.Log().
@@ -58,9 +60,32 @@ func main() {
 				logger = logger.
 					With("contract_id", sess.ContractSnapshot.ContractId).
 					With("contract_max_duration_seconds", sess.ContractSnapshot.MaxDurationSeconds).
+					With("contract_max_envelope_bytes", sess.ContractSnapshot.MaxEnvelopeBytes).
 					With("contract_access_mode", sess.ContractSnapshot.AccessMode)
 			}
-			logger.Infof("session active; closing")
+			logger.Infof("session active; sending ping envelope")
+
+			messageType := firstCapabilityName(ad) + ".request"
+			req := session.Envelope{
+				MessageType: messageType,
+				ContentType: "application/json",
+				Payload:     []byte(`{"greeting":"good morning","source":"pulse-agent"}`),
+			}
+			if err := sess.Send(sessCtx, req); err != nil {
+				logger.Warnf("send failed: %v", err)
+				_ = sess.Close(ctx, "send failed")
+				return
+			}
+			reply, err := sess.Receive(sessCtx)
+			if err != nil {
+				logger.Warnf("receive failed: %v", err)
+				_ = sess.Close(ctx, "receive failed")
+				return
+			}
+			logger.
+				With("reply_message_type", reply.MessageType).
+				With("reply_bytes", len(reply.Payload)).
+				Infof("received reply envelope")
 			if err := sess.Close(ctx, "brief complete"); err != nil {
 				a.Log().With("session_id", sess.ID).Warnf("close session failed: %v", err)
 			}
@@ -77,7 +102,7 @@ func main() {
 				With("owner_account_id", ad.AccountId).
 				With("capabilities", capNames).
 				Infof("catalog entry")
-			propose(ad)
+			ping(ad)
 		}
 
 		<-ctx.Done()
@@ -85,4 +110,11 @@ func main() {
 	}); err != nil {
 		os.Exit(1)
 	}
+}
+
+func firstCapabilityName(ad api.Advertisement) string {
+	if len(ad.Capabilities) == 0 {
+		return "unknown"
+	}
+	return ad.Capabilities[0].Name
 }

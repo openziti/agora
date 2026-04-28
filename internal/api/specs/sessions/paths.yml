@@ -308,6 +308,60 @@
             schema:
               $ref: "../agora.yml#/components/schemas/error"
 
+/sessions/{sessionId}/envelope-count:
+  post:
+    tags:
+      - sessions
+    operationId: reportSessionEnvelopeCount
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: sessionId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^ses_[a-z0-9]{12}$'
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../agora.yml#/components/schemas/reportEnvelopeCountRequest"
+    responses:
+      204:
+        description: ok
+      400:
+        description: bad request
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      403:
+        description: forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
 /admin/sessions/{sessionId}/close:
   post:
     tags:

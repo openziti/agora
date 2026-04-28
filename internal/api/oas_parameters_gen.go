@@ -3888,6 +3888,87 @@ func decodeRemoveWorkgroupMemberParams(args [2]string, argsEscaped bool, r *http
 	return params, nil
 }
 
+// ReportSessionEnvelopeCountParams is parameters of reportSessionEnvelopeCount operation.
+type ReportSessionEnvelopeCountParams struct {
+	SessionId string
+}
+
+func unpackReportSessionEnvelopeCountParams(packed middleware.Parameters) (params ReportSessionEnvelopeCountParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "sessionId",
+			In:   "path",
+		}
+		params.SessionId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeReportSessionEnvelopeCountParams(args [1]string, argsEscaped bool, r *http.Request) (params ReportSessionEnvelopeCountParams, _ error) {
+	// Decode path: sessionId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "sessionId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.SessionId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^ses_[a-z0-9]{12}$"],
+				}).Validate(string(params.SessionId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "sessionId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // RetractAdvertisementParams is parameters of retractAdvertisement operation.
 type RetractAdvertisementParams struct {
 	AdvertisementId string
