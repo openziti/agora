@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -80,26 +81,45 @@ func (s *Service) isTunnelAccessibleToAccount(ctx context.Context, tunnel *persi
 }
 
 func (s *Service) lookupTunnelByName(ctx context.Context, principal *accountPrincipal, name string) (*persistence.Tunnel, error) {
-	tunnel, err := s.store.Tunnels.GetByName(ctx, s.store.DB(), principal.OrganizationID, trimTunnelName(name))
-	if err != nil {
+	trimmed := trimTunnelName(name)
+	// Same-org lookup first.
+	if tunnel, err := s.store.Tunnels.GetByName(ctx, s.store.DB(), principal.OrganizationID, trimmed); err == nil {
+		if tunnel.OrganizationID == principal.OrganizationID {
+			return tunnel, nil
+		}
+	} else if !errors.Is(err, persistence.ErrNotFound) {
 		return nil, err
 	}
-	if tunnel.OrganizationID != principal.OrganizationID {
-		return nil, persistence.ErrNotFound
+	// Cross-org fallback: surface tunnels granted to the caller's
+	// account regardless of which org owns them. Used by inter-org
+	// sessions where the consumer dials a tunnel owned by the
+	// provider's organization. canConnectToTunnel still gates the
+	// access decision.
+	if tunnel, err := s.store.Tunnels.GetByNameGrantedToAccount(ctx, s.store.DB(), trimmed, principal.AccountID); err == nil {
+		return tunnel, nil
+	} else if !errors.Is(err, persistence.ErrNotFound) {
+		return nil, err
 	}
-	return tunnel, nil
+	return nil, persistence.ErrNotFound
 }
 
 func (s *Service) canConnectToTunnel(ctx context.Context, tunnel *persistence.Tunnel, env *persistence.Environment, principal *accountPrincipal) (bool, error) {
-	if tunnel.OrganizationID != principal.OrganizationID || env.OrganizationID != principal.OrganizationID {
+	// The caller's environment must always belong to the caller's
+	// organization (each account enrolls envs only in its own org).
+	if env.OrganizationID != principal.OrganizationID {
 		return false, nil
 	}
-	if tunnel.EnvironmentID == env.ID && tunnel.AccountID == principal.AccountID {
+	// Same-org caller is the tunnel owner: full access.
+	if tunnel.OrganizationID == principal.OrganizationID &&
+		tunnel.EnvironmentID == env.ID &&
+		tunnel.AccountID == principal.AccountID {
 		return true, nil
 	}
-	if principal.AccountID == tunnel.AccountID {
+	// Same-org caller, same account but different env: not allowed.
+	if tunnel.OrganizationID == principal.OrganizationID && principal.AccountID == tunnel.AccountID {
 		return false, nil
 	}
+	// Same- or cross-org: grants table is authoritative.
 	return s.store.TunnelGrants.IsGranted(ctx, s.store.DB(), tunnel.ID, principal.AccountID)
 }
 

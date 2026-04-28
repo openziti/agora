@@ -116,7 +116,7 @@ Workgroup implementation surfaces:
 - API: `internal/api/specs/workgroups/` (account-token) plus admin endpoints under `internal/api/specs/admin/`
 - controller: per-handler files (`createWorkgroup.go`, `acceptWorkgroupInvitation.go`, etc.) + `workgroup_helpers.go` for auth and state aggregation
 - CLI: `cmd/agora/workgroup*.go` and `cmd/agora/adminWorkgroup*.go`
-- demo bootstrap: `examples/macro-pulse/bootstrap/main.go` provisions the full Macro Pulse topology against the workgroup admin endpoints
+- demo bootstrap: `examples/macro-pulse/cmd/macro-pulse-bootstrap/main.go` provisions the full Macro Pulse topology (5 orgs, 9 accounts, 7 workgroups, plus same-org workgroup memberships) against the admin and account-token endpoints
 
 Catalog + advertisements implementation surfaces (slice 2):
 

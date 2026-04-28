@@ -474,6 +474,31 @@ where organization_id = $1 and lower(name) = lower($2) and not deleted`
 	return &tunnel, nil
 }
 
+// GetByNameGrantedToAccount returns a tunnel matching name where the
+// caller's account holds an explicit tunnel_account_grants row,
+// regardless of tunnel ownership organization. Used by the
+// inter-organization session-connect path: the consumer's account is
+// granted access to a tunnel owned by the provider's organization.
+func (r *TunnelsRepository) GetByNameGrantedToAccount(ctx context.Context, db Queryer, name, accountID string) (*Tunnel, error) {
+	const query = `
+select t.id, t.organization_id, t.account_id, t.environment_id, t.name, t.mode, t.backend_target,
+       t.ziti_service_id, t.bind_policy_id, t.service_edge_router_policy_id, t.state, t.deleted,
+       t.created_at, t.updated_at
+from tunnels t
+join tunnel_account_grants g on g.tunnel_id = t.id
+where lower(t.name) = lower($1) and g.account_id = $2 and not t.deleted
+limit 1`
+
+	var tunnel Tunnel
+	if err := db.GetContext(ctx, &tunnel, query, strings.TrimSpace(name), accountID); err != nil {
+		if isNotFound(err) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("get tunnel by name granted to account: %w", err)
+	}
+	return &tunnel, nil
+}
+
 func (r *TunnelsRepository) ListByOrganization(ctx context.Context, db Queryer, organizationID string) ([]Tunnel, error) {
 	const query = `
 select id, organization_id, account_id, environment_id, name, mode, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at

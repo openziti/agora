@@ -20,16 +20,16 @@ node_modules/
 # Prefer `go build -o /dev/null ./...` or `go vet ./...` for verification so
 # these never land on disk — see AGENTS.md "Build verification".
 /agora
-/bootstrap
-/commodities-feed
-/correlator
-/equity-feed
-/fx-feed
-/narrator
-/news-pulse
-/pulse-agent
-/search-trends
-/weather-feed
+/macro-pulse-bootstrap
+/macro-pulse-commodities-feed
+/macro-pulse-correlator
+/macro-pulse-equity-feed
+/macro-pulse-fx-feed
+/macro-pulse-narrator
+/macro-pulse-news-pulse
+/macro-pulse-pulse-agent
+/macro-pulse-search-trends
+/macro-pulse-weather-feed
 
 # Generated files
 .docusaurus

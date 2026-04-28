@@ -140,27 +140,28 @@ No API keys required for any data source. All sources are free and public.
 
 ## Running the demo
 
-*(Will be populated as slices ship. At the time of this document, the demo is not yet runnable end-to-end.)*
+Macro Pulse runs end-to-end against a live Agora controller and an OpenZiti fabric. The full step-by-step procedure (postgres → controller → admin bootstrap → macro-pulse bootstrap → 9 enrolled environments → 8 providers + pulse-agent → validation) lives in [SMOKE.md](SMOKE.md). A successful run produces 8 envelope round-trips: pulse-agent sends `<capability>.request` to each provider and receives a `<capability>.response` reply, all over real ziti tunnels.
 
-Future structure, after all Layer 2 slices ship:
+Sketch of a run (the full procedure, with environment isolation, lives in [SMOKE.md](SMOKE.md)):
 
 ```bash
 # 1. start a controller (see main README)
 # 2. bootstrap the five orgs, accounts, environments, workgroups
-examples/macro-pulse/bootstrap/bootstrap
+macro-pulse-bootstrap -controller http://127.0.0.1:18081
 
-# 3. start each provider and tool agent in its own shell
-examples/macro-pulse/markets/equity-feed/equity-feed
-examples/macro-pulse/markets/fx-feed/fx-feed
-examples/macro-pulse/markets/commodities-feed/commodities-feed
-examples/macro-pulse/weather/weather-feed/weather-feed
-examples/macro-pulse/signals/search-trends/search-trends
-examples/macro-pulse/signals/news-pulse/news-pulse
-examples/macro-pulse/analytics/correlator/correlator
-examples/macro-pulse/analytics/narrator/narrator
+# 3. start each provider and tool agent in its own shell, each
+#    pointing at its own enrolled environment root
+AGORA_ENV_ROOT=/tmp/mp-roots/equity-feed/.agora       macro-pulse-equity-feed
+AGORA_ENV_ROOT=/tmp/mp-roots/fx-feed/.agora           macro-pulse-fx-feed
+AGORA_ENV_ROOT=/tmp/mp-roots/commodities-feed/.agora  macro-pulse-commodities-feed
+AGORA_ENV_ROOT=/tmp/mp-roots/weather-feed/.agora      macro-pulse-weather-feed
+AGORA_ENV_ROOT=/tmp/mp-roots/search-trends/.agora     macro-pulse-search-trends
+AGORA_ENV_ROOT=/tmp/mp-roots/news-pulse/.agora        macro-pulse-news-pulse
+AGORA_ENV_ROOT=/tmp/mp-roots/correlator/.agora        macro-pulse-correlator
+AGORA_ENV_ROOT=/tmp/mp-roots/narrator/.agora          macro-pulse-narrator
 
 # 4. run the orchestrator
-examples/macro-pulse/client/pulse-agent/pulse-agent
+AGORA_ENV_ROOT=/tmp/mp-roots/pulse-agent/.agora       macro-pulse-pulse-agent
 ```
 
 ## Directory layout
@@ -168,24 +169,21 @@ examples/macro-pulse/client/pulse-agent/pulse-agent
 ```
 examples/macro-pulse/
 ├── README.md                           this file
-├── bootstrap/                          sets up orgs, accounts, workgroups (gated on workgroup slice)
-├── markets/
-│   ├── equity-feed/
-│   ├── fx-feed/
-│   └── commodities-feed/
-├── weather/
-│   └── weather-feed/
-├── signals/
-│   ├── search-trends/
-│   └── news-pulse/
-├── analytics/
-│   ├── correlator/
-│   └── narrator/
-├── client/
-│   └── pulse-agent/
+├── SMOKE.md                            end-to-end smoke procedure
+├── cmd/                                top-level commands; each Go subdir is a binary
+│   ├── macro-pulse-bootstrap/          provisions orgs / accounts / workgroups / memberships
+│   ├── macro-pulse-equity-feed/        provider: markets.equity
+│   ├── macro-pulse-fx-feed/            provider: markets.fx
+│   ├── macro-pulse-commodities-feed/   provider: markets.commodities
+│   ├── macro-pulse-weather-feed/       provider: weather.current/forecast
+│   ├── macro-pulse-search-trends/      provider: signals.search
+│   ├── macro-pulse-news-pulse/         provider: signals.news
+│   ├── macro-pulse-correlator/         tool: analytics.correlate
+│   ├── macro-pulse-narrator/           tool: analytics.narrate
+│   └── macro-pulse-pulse-agent/        orchestrator: catalog → propose → ping → close
+├── internal/
+│   └── agentutil/                      shared agent scaffolding (advertise + sessions + handlers)
 └── snapshots/                          canned external-API data for offline runs
 ```
 
-Each agent subdirectory has its own `README.md` describing that agent's capability, expected envelope shapes, workgroup participation, and behavior in each run mode.
-
-Shared agent scaffolding lives in [`sdk/agent`](../../sdk/agent) at the repo root — the Agora SDK — and is imported by every Macro Pulse agent.
+Each binary is one `main.go` in its `cmd/macro-pulse-<name>/` directory. Shared agent scaffolding lives in [`sdk/agent`](../../sdk/agent) at the repo root — the Agora SDK — and is imported by every Macro Pulse agent.

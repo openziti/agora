@@ -63,6 +63,33 @@ var intraOrgWorkgroups = []intraOrgWorkgroup{
 	{Name: "signals-internal", Org: orgSignals, AdminAcct: "search-trends@signals-co"},
 }
 
+// extraMembers maps each workgroup name to the agent emails that need
+// to be added as members beyond the InitialAdminAccount that the
+// workgroup is created with. The admin account is implicitly a member
+// already; the listed emails are added via AddWorkgroupMember calls
+// authenticated with the admin's account token.
+var extraMembers = map[string][]string{
+	"markets-internal":  {"fx-feed@markets-co", "commodities-feed@markets-co"},
+	"signals-internal":  {"news-pulse@signals-co"},
+	"markets-channel":   {"fx-feed@markets-co", "commodities-feed@markets-co"},
+	"signals-channel":   {"news-pulse@signals-co"},
+	"analytics-channel": {"narrator@analytics-co"},
+}
+
+// adminEmailByWorkgroup maps each workgroup name to the email of the
+// account that owns it (the InitialAdminAccount the workgroup was
+// created with). That account's token is used to authenticate
+// AddWorkgroupMember calls.
+var adminEmailByWorkgroup = map[string]string{
+	"markets-internal":  "equity-feed@markets-co",
+	"weather-internal":  "weather-feed@weather-co",
+	"signals-internal":  "search-trends@signals-co",
+	"markets-channel":   "equity-feed@markets-co",
+	"weather-channel":   "weather-feed@weather-co",
+	"signals-channel":   "search-trends@signals-co",
+	"analytics-channel": "correlator@analytics-co",
+}
+
 func main() {
 	controllerURL := flag.String("controller", "http://127.0.0.1:8080", "Controller URL")
 	flag.Parse()
@@ -142,6 +169,42 @@ func main() {
 		fmt.Printf("inv   %-20s accepted by %s\n", ch.Name, ch.InvitedAdmin)
 	}
 
+	tokenByEmail := map[string]string{}
+	for _, a := range accounts {
+		if a.Token != "" {
+			tokenByEmail[a.Email] = a.Token
+		}
+	}
+	for _, wgName := range workgroupNames() {
+		extras, ok := extraMembers[wgName]
+		if !ok {
+			continue
+		}
+		adminEmail := adminEmailByWorkgroup[wgName]
+		adminToken := tokenByEmail[adminEmail]
+		if adminToken == "" {
+			fmt.Fprintf(os.Stderr, "skip member-add for %s: admin %s token not in this run\n", wgName, adminEmail)
+			continue
+		}
+		adminClient, err := api.NewClient(strings.TrimRight(*controllerURL, "/")+"/v1", staticAccount{token: adminToken}, api.WithClient(http.DefaultClient))
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "build admin-of-wg client:", err)
+			os.Exit(1)
+		}
+		wgID, err := lookupWorkgroupIDForAccount(ctx, adminClient, wgName)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "lookup workgroup", wgName, ":", err)
+			os.Exit(1)
+		}
+		for _, memberEmail := range extras {
+			if err := addMember(ctx, adminClient, wgID, memberEmail); err != nil {
+				fmt.Fprintln(os.Stderr, "add member", memberEmail, "->", wgName, ":", err)
+				os.Exit(1)
+			}
+			fmt.Printf("memb  %-20s + %s\n", wgName, memberEmail)
+		}
+	}
+
 	fmt.Println()
 	fmt.Println("bootstrap complete.")
 	fmt.Println("agent account tokens (distribute these to the corresponding environment roots):")
@@ -151,6 +214,64 @@ func main() {
 			token = "(existing — token not retrievable; rotate via 'agora account regenerate-token' if needed)"
 		}
 		fmt.Printf("  %-30s %s\n", a.Email, token)
+	}
+}
+
+func workgroupNames() []string {
+	names := make([]string, 0, len(intraOrgWorkgroups)+len(interOrgChannels))
+	for _, wg := range intraOrgWorkgroups {
+		names = append(names, wg.Name)
+	}
+	for _, ch := range interOrgChannels {
+		names = append(names, ch.Name)
+	}
+	return names
+}
+
+type staticAccount struct{ token string }
+
+func (s staticAccount) AccountTokenAuth(context.Context, api.OperationName) (api.AccountTokenAuth, error) {
+	return api.AccountTokenAuth{APIKey: s.token}, nil
+}
+func (s staticAccount) AdminTokenAuth(context.Context, api.OperationName) (api.AdminTokenAuth, error) {
+	return api.AdminTokenAuth{}, nil
+}
+
+func lookupWorkgroupIDForAccount(ctx context.Context, c *api.Client, name string) (string, error) {
+	res, err := c.ListWorkgroups(ctx)
+	if err != nil {
+		return "", err
+	}
+	listing, ok := res.(*api.ListWorkgroupsResponse)
+	if !ok {
+		return "", fmt.Errorf("unexpected list workgroups response: %T", res)
+	}
+	for _, wg := range *listing {
+		if strings.EqualFold(wg.Name, name) {
+			return wg.ID, nil
+		}
+	}
+	return "", fmt.Errorf("workgroup %q not visible to admin account", name)
+}
+
+func addMember(ctx context.Context, c *api.Client, wgID, email string) error {
+	res, err := c.AddWorkgroupMember(ctx, &api.AddWorkgroupMemberRequest{AccountEmail: email}, api.AddWorkgroupMemberParams{WorkgroupId: wgID})
+	if err != nil {
+		return err
+	}
+	switch typed := res.(type) {
+	case *api.WorkgroupMembership:
+		return nil
+	case *api.AddWorkgroupMemberConflict:
+		return nil // already a member
+	case *api.AddWorkgroupMemberBadRequest:
+		return fmt.Errorf("bad request: %s", typed.Message)
+	case *api.AddWorkgroupMemberNotFound:
+		return fmt.Errorf("not found: %s", typed.Message)
+	case *api.AddWorkgroupMemberForbidden:
+		return fmt.Errorf("forbidden: %s", typed.Message)
+	default:
+		return fmt.Errorf("unexpected add member response: %T", res)
 	}
 }
 

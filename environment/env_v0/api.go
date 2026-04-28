@@ -41,6 +41,16 @@ func (r *Root) Client() (*api.Client, error) {
 		return nil, fmt.Errorf("api endpoint is not configured")
 	}
 	baseURL := strings.TrimRight(apiEndpoint, "/") + "/v1"
+	// When the environment is enabled, attach the account token so
+	// the resulting client can call account-scoped endpoints. Without
+	// this, every authenticated call returns 401 and ogen mis-decodes
+	// the controller's `{error_message}` shape against the standard
+	// `Error{code,message}` schema, producing confusing decode errors.
+	if r.IsEnabled() {
+		if env := r.Environment(); env != nil && env.AccountToken != "" {
+			return api.NewClient(baseURL, accountTokenSecuritySource{accountToken: env.AccountToken})
+		}
+	}
 	return api.NewClient(baseURL, noAuthSecuritySource{})
 }
 
@@ -163,6 +173,21 @@ func (noAuthSecuritySource) AccountTokenAuth(context.Context, api.OperationName)
 }
 
 func (noAuthSecuritySource) AdminTokenAuth(context.Context, api.OperationName) (api.AdminTokenAuth, error) {
+	return api.AdminTokenAuth{}, nil
+}
+
+type accountTokenSecuritySource struct {
+	accountToken string
+}
+
+func (s accountTokenSecuritySource) AccountTokenAuth(context.Context, api.OperationName) (api.AccountTokenAuth, error) {
+	if s.accountToken == "" {
+		return api.AccountTokenAuth{}, fmt.Errorf("account token auth not configured")
+	}
+	return api.AccountTokenAuth{APIKey: s.accountToken}, nil
+}
+
+func (accountTokenSecuritySource) AdminTokenAuth(context.Context, api.OperationName) (api.AdminTokenAuth, error) {
 	return api.AdminTokenAuth{}, nil
 }
 
