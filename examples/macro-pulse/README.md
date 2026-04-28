@@ -124,8 +124,9 @@ Macro Pulse is rolled out incrementally, one increment per Layer 2 slice landing
 - **Provider/tool agents publish-on-startup** (catalog/advertisements slice): shipped
 - **Provider/tool agents accept sessions** (sessions slice): shipped — each agent registers a logging session handler
 - **Provider/tool agents attach a contract** (contracts slice): shipped — each agent ensures a shared `macro-pulse-provider-default` contract (`max_duration_seconds=60`, `allowed_message_types=["*"]`) and attaches it to its advertisement
-- **Provider/tool agents exchange real envelopes** (envelopes slice): shipped — each agent runs `EchoSessionHandler` that reads one inbound envelope and writes a `.request` → `.response` reply
-- **`pulse-agent` orchestrator**: catalog discovery + session propose/close + contract snapshot observation + per-advertisement envelope ping all shipped; richer narrative-brief aggregation across feeds is post-MVP demo polish
+- **Provider/tool agents serve real data** (envelopes slice + reporting polish): shipped — each agent decodes a typed JSON request envelope, loads from the embedded snapshot data (or hits a public API when launched with `--live`), returns a typed JSON response. `correlator` computes Pearson r over two aligned series; `narrator` emits a deterministic prose summary.
+- **`pulse-agent` orchestrator**: shipped end-to-end — discovers the catalog, queries every provider with a typed request, asks `correlator` for cross-domain Pearson r over selected series pairs, asks `narrator` to summarize, and prints a formatted morning brief on stdout (or the same data as JSON via `--json`).
+- **Live data path**: shipped — the four data domains (markets / weather / signals / news) each have an HTTP adapter against a free public API (Yahoo Finance, Open-Meteo, Wikipedia Pageviews, GDELT). Launch the providers with `--live` to pull real numbers; on any upstream failure the provider transparently falls back to its embedded snapshot. See [SMOKE.md](SMOKE.md) for an annotated live-mode run.
 
 Each slice's PR includes the corresponding advancement of this demo.
 
@@ -140,7 +141,7 @@ No API keys required for any data source. All sources are free and public.
 
 ## Running the demo
 
-Macro Pulse runs end-to-end against a live Agora controller and an OpenZiti fabric. The full step-by-step procedure (postgres → controller → admin bootstrap → macro-pulse bootstrap → 9 enrolled environments → 8 providers + pulse-agent → validation) lives in [SMOKE.md](SMOKE.md). A successful run produces 8 envelope round-trips: pulse-agent sends `<capability>.request` to each provider and receives a `<capability>.response` reply, all over real ziti tunnels.
+Macro Pulse runs end-to-end against a live Agora controller and an OpenZiti fabric. The full step-by-step procedure (postgres → controller → admin bootstrap → macro-pulse bootstrap → 9 enrolled environments → 8 providers + pulse-agent → validation) lives in [SMOKE.md](SMOKE.md). A successful run prints a formatted morning brief on `pulse-agent`'s stdout — markets / weather / signals sections, two cross-domain correlations, a deterministic prose summary, and the catalog of advertisements that were composed. SMOKE.md includes an annotated example of the brief.
 
 Sketch of a run (the full procedure, with environment isolation, lives in [SMOKE.md](SMOKE.md)):
 
@@ -182,8 +183,9 @@ examples/macro-pulse/
 │   ├── macro-pulse-narrator/           tool: analytics.narrate
 │   └── macro-pulse-pulse-agent/        orchestrator: catalog → propose → ping → close
 ├── internal/
-│   └── agentutil/                      shared agent scaffolding (advertise + sessions + handlers)
-└── snapshots/                          canned external-API data for offline runs
+│   ├── agentutil/                      shared agent scaffolding (advertise + sessions + handlers)
+│   └── payloads/                       per-capability JSON request/response Go types
+└── snapshots/                          canned external-API data + go:embed loader (package snapshots)
 ```
 
 Each binary is one `main.go` in its `cmd/macro-pulse-<name>/` directory. Shared agent scaffolding lives in [`sdk/agent`](../../sdk/agent) at the repo root — the Agora SDK — and is imported by every Macro Pulse agent.

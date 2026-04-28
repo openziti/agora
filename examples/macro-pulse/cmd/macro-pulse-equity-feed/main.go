@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/openziti/agora/examples/macro-pulse/internal/agentutil"
+	"github.com/openziti/agora/examples/macro-pulse/internal/payloads"
 	"github.com/openziti/agora/internal/api"
 	"github.com/openziti/agora/sdk/agent"
 	"github.com/openziti/agora/sdk/agent/session"
@@ -41,7 +42,11 @@ func main() {
 			return err
 		}
 		a.Log().With("advertisement_id", ad.ID).Infof("alive; advertisement published")
-		handler := &agentutil.EchoSessionHandler{Agent: a}
+		handler := &agentutil.RequestResponseHandler[payloads.EquityRequest, payloads.EquityResponse]{
+			Agent:               a,
+			ResponseMessageType: "markets.equity.response",
+			Handle:              agentutil.EquityHandleFor(a, a.Live()),
+		}
 		go func() {
 			if err := session.RegisterHandler(ctx, a, ad.ID, handler); err != nil {
 				a.Log().With("advertisement_id", ad.ID).Warnf("session handler exited: %v", err)

@@ -42,7 +42,7 @@ func main() {
 			return err
 		}
 		a.Log().With("advertisement_id", ad.ID).Infof("alive; advertisement published")
-		handler := &agentutil.EchoSessionHandler{Agent: a}
+		handler := &agentutil.WeatherRouterHandler{Agent: a, Live: a.Live()}
 		go func() {
 			if err := session.RegisterHandler(ctx, a, ad.ID, handler); err != nil {
 				a.Log().With("advertisement_id", ad.ID).Warnf("session handler exited: %v", err)

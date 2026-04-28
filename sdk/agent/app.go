@@ -122,7 +122,10 @@ func (app *App) Run(fn func(context.Context, *Agent) error) error {
 	}
 
 	level := parseLogLevel(fLogLevel)
-	dl.Init(dl.DefaultOptions().SetLevel(level).SetTrimPrefix("github.com/openziti/"))
+	// Operational logs go to stderr by convention so an agent's stdout
+	// can be used cleanly for the program's own output (e.g. the macro
+	// pulse orchestrator's brief).
+	dl.Init(dl.DefaultOptions().SetOutput(os.Stderr).SetLevel(level).SetTrimPrefix("github.com/openziti/"))
 
 	effectiveEnvRoot := fEnvRoot
 	if effectiveEnvRoot == "" {

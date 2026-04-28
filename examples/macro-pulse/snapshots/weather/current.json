@@ -1,0 +1,25 @@
+{
+  "as_of": "2026-04-22T08:00:00Z",
+  "cities": {
+    "new-york": {
+      "temp_f": 41.2,
+      "condition": "clear, cold snap",
+      "anomaly_f": -8.4
+    },
+    "houston": {
+      "temp_f": 78.6,
+      "condition": "tropical depression forming, Gulf coast",
+      "anomaly_f": 2.1
+    },
+    "frankfurt": {
+      "temp_f": 73.8,
+      "condition": "above-average heat, low humidity",
+      "anomaly_f": 11.6
+    },
+    "singapore": {
+      "temp_f": 84.5,
+      "condition": "partly cloudy, seasonal",
+      "anomaly_f": 0.2
+    }
+  }
+}
