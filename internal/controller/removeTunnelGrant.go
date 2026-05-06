@@ -53,7 +53,9 @@ func (s *Service) RemoveTunnelGrant(ctx context.Context, params api.RemoveTunnel
 				return &api.RemoveTunnelGrantInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 			}
 		}
-		if err := s.store.TunnelAttachments.UpdateState(ctx, s.store.DB(), attachment.ID, persistence.TunnelAttachmentStateDisconnected, &disconnectedAt); err != nil {
+		if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+			return s.detachTunnel(ctx, tx, attachment, persistence.TunnelAttachmentStateDisconnected, &disconnectedAt)
+		}); err != nil {
 			return &api.RemoveTunnelGrantInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 		}
 	}

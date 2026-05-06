@@ -101,6 +101,40 @@ where id = $1`
 	return nil
 }
 
+// RecordEnvelopeCountDelta stores the reported envelope count with
+// max-seen semantics and returns the delta from the previously stored
+// high-water mark. The row is selected FOR UPDATE so concurrent reports
+// for the same session linearize before the audit event is emitted.
+func (r *SessionsRepository) RecordEnvelopeCountDelta(ctx context.Context, db Queryer, sessionID string, count int) (*Session, int, error) {
+	current, err := r.GetByIDForUpdate(ctx, db, sessionID)
+	if err != nil {
+		return nil, 0, err
+	}
+	previousMax := 0
+	if current.EnvelopeCount != nil {
+		previousMax = *current.EnvelopeCount
+	}
+	countDelta := count - previousMax
+	if countDelta < 0 {
+		countDelta = 0
+	}
+
+	query := fmt.Sprintf(`
+update sessions
+set envelope_count = greatest(coalesce(envelope_count, 0), $2)
+where id = $1
+returning %s`, sessionColumns)
+
+	var updated Session
+	if err := db.GetContext(ctx, &updated, query, sessionID, count); err != nil {
+		if isNotFound(err) {
+			return nil, 0, ErrNotFound
+		}
+		return nil, 0, fmt.Errorf("record envelope count delta: %w", err)
+	}
+	return &updated, countDelta, nil
+}
+
 // ListActiveWithDurationCap returns every active session whose
 // snapshot contains a positive max_duration_seconds value. The reaper
 // uses this to evaluate duration bounds on a periodic tick.
@@ -127,6 +161,30 @@ func (r *SessionsRepository) GetByID(ctx context.Context, db Queryer, id string)
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("get session: %w", err)
+	}
+	return &sess, nil
+}
+
+func (r *SessionsRepository) GetByIDForUpdate(ctx context.Context, db Queryer, id string) (*Session, error) {
+	query := fmt.Sprintf(`select %s from sessions where id = $1 for update`, sessionColumns)
+	var sess Session
+	if err := db.GetContext(ctx, &sess, query, id); err != nil {
+		if isNotFound(err) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("get session for update: %w", err)
+	}
+	return &sess, nil
+}
+
+func (r *SessionsRepository) GetByTunnelID(ctx context.Context, db Queryer, tunnelID string) (*Session, error) {
+	query := fmt.Sprintf(`select %s from sessions where tunnel_id = $1 order by proposed_at desc limit 1`, sessionColumns)
+	var sess Session
+	if err := db.GetContext(ctx, &sess, query, tunnelID); err != nil {
+		if isNotFound(err) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("get session by tunnel: %w", err)
 	}
 	return &sess, nil
 }
@@ -285,4 +343,3 @@ where id = $1 and state in (%s)`, detailIdx, nowIdx, strings.Join(placeholders, 
 	}
 	return r.GetByID(ctx, db, id)
 }
-

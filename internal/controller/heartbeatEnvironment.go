@@ -17,7 +17,8 @@ func (s *Service) HeartbeatEnvironment(ctx context.Context, params api.Heartbeat
 		return &api.HeartbeatEnvironmentUnauthorized{Code: "unauthorized", Message: "unauthorized"}, nil
 	}
 
-	if _, err := s.requireOwnedEnvironment(ctx, principal, params.EnvironmentId); err != nil {
+	env, err := s.requireOwnedEnvironment(ctx, principal, params.EnvironmentId)
+	if err != nil {
 		if errors.Is(err, persistence.ErrNotFound) {
 			dl.Debugf("environment heartbeat not found environment_id='%s' %s", params.EnvironmentId, principalLogFields(principal))
 			return &api.HeartbeatEnvironmentNotFound{Code: "not_found", Message: "environment not found"}, nil
@@ -26,7 +27,12 @@ func (s *Service) HeartbeatEnvironment(ctx context.Context, params api.Heartbeat
 		return &api.HeartbeatEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
 
-	if err := s.store.Environments.UpdateLastSeen(ctx, s.store.DB(), params.EnvironmentId, time.Now().UTC()); err != nil {
+	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+		if err := s.store.Environments.UpdateLastSeen(ctx, tx, params.EnvironmentId, time.Now().UTC()); err != nil {
+			return err
+		}
+		return s.recordEnvironmentHeartbeat(ctx, tx, env, 0)
+	}); err != nil {
 		if errors.Is(err, persistence.ErrNotFound) {
 			dl.Debugf("environment heartbeat update not found environment_id='%s' %s", params.EnvironmentId, principalLogFields(principal))
 			return &api.HeartbeatEnvironmentNotFound{Code: "not_found", Message: "environment not found"}, nil

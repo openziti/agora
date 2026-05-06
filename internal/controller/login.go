@@ -28,8 +28,10 @@ func (s *Service) Login(ctx context.Context, req *api.LoginRequest) (api.LoginRe
 		} else {
 			dl.Warnf("login rejected email='%s': invalid credentials", email)
 		}
+		s.recordAccountLoginFailedFailOpen(ctx, acct, email)
 		return &api.LoginUnauthorized{Code: "unauthorized", Message: "invalid credentials"}, nil
 	}
 	dl.Infof("login succeeded email='%s' account_id='%s' organization_id='%s'", acct.Email, acct.ID, acct.OrganizationID)
+	s.recordAccountLoginFailOpen(ctx, acct)
 	return &api.AccountTokenResponse{AccountToken: acct.AccountToken}, nil
 }

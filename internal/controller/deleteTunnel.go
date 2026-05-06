@@ -75,7 +75,7 @@ func (s *Service) DeleteTunnel(ctx context.Context, params api.DeleteTunnelParam
 			return err
 		}
 		for i := range attachments {
-			if err := s.store.TunnelAttachments.UpdateState(ctx, tx, attachments[i].ID, persistence.TunnelAttachmentStateDisconnected, &disconnectedAt); err != nil {
+			if err := s.detachTunnel(ctx, tx, attachments[i].TunnelAttachment, persistence.TunnelAttachmentStateDisconnected, &disconnectedAt); err != nil {
 				return err
 			}
 		}

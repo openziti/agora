@@ -60,7 +60,9 @@ func (s *Service) DeleteTunnelAttachment(ctx context.Context, params api.DeleteT
 	}
 
 	disconnectedAt := time.Now().UTC()
-	if err := s.store.TunnelAttachments.UpdateState(ctx, s.store.DB(), attachment.ID, persistence.TunnelAttachmentStateDisconnected, &disconnectedAt); err != nil {
+	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+		return s.detachTunnel(ctx, tx, *attachment, persistence.TunnelAttachmentStateDisconnected, &disconnectedAt)
+	}); err != nil {
 		if errors.Is(err, persistence.ErrNotFound) {
 			return &api.DeleteTunnelAttachmentNotFound{Code: "not_found", Message: "attachment not found"}, nil
 		}

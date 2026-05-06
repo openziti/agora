@@ -62,7 +62,12 @@ func (s *Service) AcceptSession(ctx context.Context, req *api.AcceptSessionReque
 		}
 		if err := s.evaluateContractAdmission(ctx, consumer, contract); err != nil {
 			detail := err.Error()
-			_, _ = s.store.Sessions.MarkClosed(ctx, s.store.DB(), sess.ID, persistence.SessionCloseReasonContractViolation, detail)
+			if closeErr := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+				_, err := s.markSessionClosedWithAudit(ctx, tx, sess.ID, persistence.SessionCloseReasonContractViolation, detail)
+				return err
+			}); closeErr != nil {
+				return &api.AcceptSessionInternalServerError{Code: "internal_error", Message: closeErr.Error()}, nil
+			}
 			dl.Warnf("contract admission failed session_id='%s' contract_id='%s' reason='%v' %s", sess.ID, contract.ID, err, principalLogFields(principal))
 			switch {
 			case errors.Is(err, errContractViolationMemb):
@@ -89,8 +94,14 @@ func (s *Service) AcceptSession(ctx context.Context, req *api.AcceptSessionReque
 
 	_, tunnelLifecycle, err := s.lifecycleFactory(ctx)
 	if err != nil {
-		_, _ = s.store.Sessions.MarkClosed(ctx, s.store.DB(), sess.ID, persistence.SessionCloseReasonTunnelFailed, err.Error())
-		return &api.AcceptSessionInternalServerError{Code: "tunnel_provisioning_failed", Message: err.Error()}, nil
+		detail := err.Error()
+		if closeErr := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+			_, markErr := s.markSessionClosedWithAudit(ctx, tx, sess.ID, persistence.SessionCloseReasonTunnelFailed, detail)
+			return markErr
+		}); closeErr != nil {
+			return &api.AcceptSessionInternalServerError{Code: "internal_error", Message: closeErr.Error()}, nil
+		}
+		return &api.AcceptSessionInternalServerError{Code: "tunnel_provisioning_failed", Message: detail}, nil
 	}
 
 	provisioned, err := tunnelLifecycle.Provision(ctx, automation.TunnelSpec{
@@ -104,7 +115,12 @@ func (s *Service) AcceptSession(ctx context.Context, req *api.AcceptSessionReque
 		Version:               automation.DefaultAgoraVersion,
 	})
 	if err != nil {
-		_, _ = s.store.Sessions.MarkClosed(ctx, s.store.DB(), sess.ID, persistence.SessionCloseReasonTunnelFailed, err.Error())
+		if closeErr := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+			_, markErr := s.markSessionClosedWithAudit(ctx, tx, sess.ID, persistence.SessionCloseReasonTunnelFailed, err.Error())
+			return markErr
+		}); closeErr != nil {
+			return &api.AcceptSessionInternalServerError{Code: "internal_error", Message: closeErr.Error()}, nil
+		}
 		return &api.AcceptSessionInternalServerError{Code: "tunnel_provisioning_failed", Message: err.Error()}, nil
 	}
 
@@ -150,14 +166,19 @@ func (s *Service) AcceptSession(ctx context.Context, req *api.AcceptSessionReque
 			return err
 		}
 		activeSess = out
-		return nil
+		return s.recordSessionAccepted(ctx, tx, activeSess, ad.ContractID)
 	}); err != nil {
 		_ = tunnelLifecycle.Deprovision(ctx, automation.DeprovisionTunnelSpec{
 			ServiceID:                 provisioned.ServiceID,
 			BindPolicyID:              provisioned.BindPolicyID,
 			ServiceEdgeRouterPolicyID: provisioned.ServiceEdgeRouterPolicyID,
 		})
-		_, _ = s.store.Sessions.MarkClosed(ctx, s.store.DB(), sess.ID, persistence.SessionCloseReasonTunnelFailed, err.Error())
+		if closeErr := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+			_, markErr := s.markSessionClosedWithAudit(ctx, tx, sess.ID, persistence.SessionCloseReasonTunnelFailed, err.Error())
+			return markErr
+		}); closeErr != nil {
+			return &api.AcceptSessionInternalServerError{Code: "internal_error", Message: closeErr.Error()}, nil
+		}
 		dl.Errorf("accept session persistence failed session_id='%s' %s: %v", sess.ID, principalLogFields(principal), err)
 		return &api.AcceptSessionInternalServerError{Code: "tunnel_provisioning_failed", Message: err.Error()}, nil
 	}

@@ -52,7 +52,9 @@ func (s *Service) ReapStaleTunnelAttachments(ctx context.Context, now time.Time)
 			}
 		}
 		disconnectedAt := now
-		if err := s.store.TunnelAttachments.UpdateState(ctx, s.store.DB(), attachment.ID, persistence.TunnelAttachmentStateStale, &disconnectedAt); err != nil {
+		if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+			return s.detachTunnel(ctx, tx, attachment, persistence.TunnelAttachmentStateStale, &disconnectedAt)
+		}); err != nil {
 			return err
 		}
 		dl.Infof("reaped stale tunnel attachment attachment_id='%s' tunnel_id='%s' account_id='%s' environment_id='%s'", attachment.ID, attachment.TunnelID, attachment.AccountID, attachment.EnvironmentID)

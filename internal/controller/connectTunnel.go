@@ -70,18 +70,22 @@ func (s *Service) ConnectTunnel(ctx context.Context, req *api.ConnectTunnelReque
 		return &api.ConnectTunnelInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
 
-	attachment, err := s.store.TunnelAttachments.Create(ctx, s.store.DB(), persistence.TunnelAttachment{
-		ID:              attachmentID,
-		TunnelID:        tunnel.ID,
-		OrganizationID:  principal.OrganizationID,
-		AccountID:       principal.AccountID,
-		EnvironmentID:   env.ID,
-		ListenAddress:   req.ListenAddress,
-		DialPolicyID:    &dialPolicyID,
-		State:           persistence.TunnelAttachmentStateActive,
-		LastHeartbeatAt: time.Now().UTC(),
-	})
-	if err != nil {
+	var attachment *persistence.TunnelAttachment
+	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+		var err error
+		attachment, err = s.attachTunnel(ctx, tx, persistence.TunnelAttachment{
+			ID:              attachmentID,
+			TunnelID:        tunnel.ID,
+			OrganizationID:  principal.OrganizationID,
+			AccountID:       principal.AccountID,
+			EnvironmentID:   env.ID,
+			ListenAddress:   req.ListenAddress,
+			DialPolicyID:    &dialPolicyID,
+			State:           persistence.TunnelAttachmentStateActive,
+			LastHeartbeatAt: time.Now().UTC(),
+		})
+		return err
+	}); err != nil {
 		_ = tunnelLifecycle.Deprovision(ctx, automation.DeprovisionTunnelSpec{DialPolicyID: dialPolicyID})
 		return &api.ConnectTunnelConflict{Code: "conflict", Message: err.Error()}, nil
 	}

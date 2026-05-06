@@ -37,7 +37,13 @@ func (s *Service) RejectSession(ctx context.Context, req api.OptCloseSessionRequ
 	if req.Set && req.Value.Reason.Set {
 		detail = req.Value.Reason.Value
 	}
-	if _, err := s.store.Sessions.MarkRejected(ctx, s.store.DB(), sess.ID, detail); err != nil {
+	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+		rejected, err := s.store.Sessions.MarkRejected(ctx, tx, sess.ID, detail)
+		if err != nil {
+			return err
+		}
+		return s.recordSessionRejected(ctx, tx, rejected, detail)
+	}); err != nil {
 		return &api.RejectSessionInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
 	dl.Infof("rejected session id='%s' %s", sess.ID, principalLogFields(principal))

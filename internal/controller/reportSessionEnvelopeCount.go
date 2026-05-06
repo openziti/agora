@@ -30,7 +30,13 @@ func (s *Service) ReportSessionEnvelopeCount(ctx context.Context, req *api.Repor
 	if req.Count < 0 {
 		return &api.ReportSessionEnvelopeCountBadRequest{Code: "invalid_request", Message: "count must be non-negative"}, nil
 	}
-	if err := s.store.Sessions.RecordEnvelopeCount(ctx, s.store.DB(), sess.ID, req.Count); err != nil {
+	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+		updated, countDelta, err := s.store.Sessions.RecordEnvelopeCountDelta(ctx, tx, sess.ID, req.Count)
+		if err != nil {
+			return err
+		}
+		return s.recordEnvelopeFlowed(ctx, tx, updated, countDelta, req.Count)
+	}); err != nil {
 		dl.Errorf("record envelope count failed session_id='%s' count=%d %s: %v", sess.ID, req.Count, principalLogFields(principal), err)
 		return &api.ReportSessionEnvelopeCountInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}

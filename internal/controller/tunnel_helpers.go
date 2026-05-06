@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/openziti/agora/internal/persistence"
 )
@@ -39,6 +40,28 @@ func environmentRoleSelector(environmentID string) string {
 
 func tunnelServiceName(tunnelID string) string {
 	return tunnelID
+}
+
+func (s *Service) attachTunnel(ctx context.Context, q persistence.Queryer, attachment persistence.TunnelAttachment) (*persistence.TunnelAttachment, error) {
+	created, err := s.store.TunnelAttachments.Create(ctx, q, attachment)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.recordTunnelAttached(ctx, q, created); err != nil {
+		return nil, err
+	}
+	return created, nil
+}
+
+func (s *Service) detachTunnel(ctx context.Context, q persistence.Queryer, attachment persistence.TunnelAttachment, state persistence.TunnelAttachmentState, disconnectedAt *time.Time) error {
+	wasActive := attachment.State == persistence.TunnelAttachmentStateActive
+	if err := s.store.TunnelAttachments.UpdateState(ctx, q, attachment.ID, state, disconnectedAt); err != nil {
+		return err
+	}
+	if !wasActive {
+		return nil
+	}
+	return s.recordTunnelDetached(ctx, q, attachment, state)
 }
 
 func optionalStringValue(v *string) string {

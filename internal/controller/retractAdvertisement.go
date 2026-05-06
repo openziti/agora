@@ -23,7 +23,15 @@ func (s *Service) RetractAdvertisement(ctx context.Context, params api.RetractAd
 		return &api.RetractAdvertisementInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
 
-	if err := s.store.Advertisements.MarkRetracted(ctx, s.store.DB(), ad.ID); err != nil {
+	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+		if err := s.store.Advertisements.MarkRetracted(ctx, tx, ad.ID); err != nil {
+			return err
+		}
+		if ad.Status == persistence.AdvertisementStatusRetracted {
+			return nil
+		}
+		return s.recordAdvertisementRetracted(ctx, tx, ad, "owner_retracted")
+	}); err != nil {
 		dl.Errorf("retract advertisement failed id='%s' %s: %v", ad.ID, principalLogFields(principal), err)
 		return &api.RetractAdvertisementInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}

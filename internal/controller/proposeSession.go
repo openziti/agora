@@ -53,8 +53,15 @@ func (s *Service) ProposeSession(ctx context.Context, req *api.ProposeSessionReq
 		sess.ProposerMessage = &v
 	}
 
-	created, err := s.store.Sessions.Create(ctx, s.store.DB(), sess)
-	if err != nil {
+	var created *persistence.Session
+	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+		var err error
+		created, err = s.store.Sessions.Create(ctx, tx, sess)
+		if err != nil {
+			return err
+		}
+		return s.recordSessionProposed(ctx, tx, created)
+	}); err != nil {
 		dl.Errorf("propose session persistence failed advertisement_id='%s' %s: %v", ad.ID, principalLogFields(principal), err)
 		return &api.ProposeSessionInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}

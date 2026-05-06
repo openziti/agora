@@ -70,8 +70,15 @@ func (s *Service) PublishAdvertisement(ctx context.Context, req *api.PublishAdve
 		ad.ContractID = &v
 	}
 
-	created, err := s.store.Advertisements.Create(ctx, s.store.DB(), ad)
-	if err != nil {
+	var created *persistence.Advertisement
+	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+		var err error
+		created, err = s.store.Advertisements.Create(ctx, tx, ad)
+		if err != nil {
+			return err
+		}
+		return s.recordAdvertisementPublished(ctx, tx, created)
+	}); err != nil {
 		dl.Errorf("publish advertisement persistence failed name='%s' %s: %v", req.Name, principalLogFields(principal), err)
 		return &api.PublishAdvertisementInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}

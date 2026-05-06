@@ -101,7 +101,7 @@ func (s *Service) DisableEnvironment(ctx context.Context, params api.DisableEnvi
 				return err
 			}
 			for j := range attachments {
-				if err := s.store.TunnelAttachments.UpdateState(ctx, tx, attachments[j].ID, persistence.TunnelAttachmentStateDisconnected, &disconnectedAt); err != nil {
+				if err := s.detachTunnel(ctx, tx, attachments[j].TunnelAttachment, persistence.TunnelAttachmentStateDisconnected, &disconnectedAt); err != nil {
 					return err
 				}
 			}

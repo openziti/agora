@@ -51,13 +51,21 @@ func (s *Service) teardownSession(ctx context.Context, sess *persistence.Session
 	if sess.State == persistence.SessionStateClosed {
 		return nil
 	}
-	if _, err := s.store.Sessions.MarkClosed(ctx, s.store.DB(), sess.ID, reason, detail); err != nil {
+	closedSess := sess
+	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+		closed, err := s.store.Sessions.MarkClosed(ctx, tx, sess.ID, reason, detail)
+		if err != nil {
+			return err
+		}
+		closedSess = closed
+		return s.recordSessionClosed(ctx, tx, closed, reason, detail)
+	}); err != nil {
 		return err
 	}
-	if sess.TunnelID == nil {
+	if closedSess.TunnelID == nil {
 		return nil
 	}
-	tunnel, err := s.store.Tunnels.GetByID(ctx, s.store.DB(), *sess.TunnelID)
+	tunnel, err := s.store.Tunnels.GetByID(ctx, s.store.DB(), *closedSess.TunnelID)
 	if err != nil {
 		if errors.Is(err, persistence.ErrNotFound) {
 			return nil
