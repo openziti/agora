@@ -36,6 +36,13 @@ This repository is in early-stage development. Favor simple, explicit structure 
 - Persistence integration tests use PostgreSQL containers via `testcontainers-go`
 - Before finishing a change, run the narrowest relevant tests first, then `go test ./...` when the change touches shared code or project wiring
 
+### Test Process Cleanup
+- Any process started only for verification or manual testing must be stopped before handing the work back for review or moving to the next work unit. This includes Vite dev servers, mock HTTP controllers, `go run` controller processes, demo agents, background scripts, and ad hoc local listeners.
+- When starting a long-running process, keep track of how it will be stopped: prefer an exec session that can be interrupted, or capture the PID/port immediately after startup.
+- After stopping a process, verify the relevant port or PID is gone before reporting the step complete. For local listeners, `ss -ltnp sport = :<port>` is an appropriate check.
+- Do not leave a review server running by default. If a user explicitly asks for a live URL, mention the process and port in the handoff, then stop it before beginning the next chunk unless the user asks to keep it running.
+- Temporary mock services used for proxy or integration checks should be shut down even if the main verification command fails; cleanup is part of the verification task.
+
 ## Architecture Overview
 
 ### Core Components
