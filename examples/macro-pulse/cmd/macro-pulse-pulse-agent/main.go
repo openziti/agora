@@ -28,6 +28,7 @@ func main() {
 	loop := fs.Bool("loop", envBool("AGORA_PULSE_LOOP"), "Run continuously until interrupted")
 	loopPauseMin := fs.Duration("loop-pause-min", 20*time.Second, "Minimum pause between loop iterations")
 	loopPauseMax := fs.Duration("loop-pause-max", 60*time.Second, "Maximum pause between loop iterations")
+	profilePath := fs.String("profile", "", "Load loop activity profile YAML")
 
 	app := agent.New("pulse-agent",
 		agent.WithDescription("Macro Pulse orchestrator: composes across providers and tools to produce the morning brief"),
@@ -40,9 +41,18 @@ func main() {
 			markdownPath: *markdownPath,
 		}
 		if *loop {
+			var profile *activityProfile
+			if *profilePath != "" {
+				loaded, err := loadActivityProfile(*profilePath)
+				if err != nil {
+					return err
+				}
+				profile = loaded
+			}
 			return runner.runLoop(ctx, a, loopOptions{
 				pauseMin: *loopPauseMin,
 				pauseMax: *loopPauseMax,
+				profile:  profile,
 				rand:     rand.New(rand.NewSource(time.Now().UnixNano())),
 			})
 		}
@@ -65,6 +75,7 @@ type briefRunner struct {
 type loopOptions struct {
 	pauseMin time.Duration
 	pauseMax time.Duration
+	profile  *activityProfile
 	rand     *rand.Rand
 }
 
@@ -105,6 +116,8 @@ type queryOptions struct {
 
 type loopOutcomeSelector struct {
 	rand                      *rand.Rand
+	profile                   *activityProfile
+	workgroups                map[string]struct{}
 	tightAdvertisementID      string
 	contractByAdvertisementID map[string]*api.Contract
 }
@@ -151,28 +164,40 @@ func (s *loopSummary) String() string {
 }
 
 func (r briefRunner) runLoop(ctx context.Context, a *agent.Agent, opts loopOptions) error {
-	if opts.pauseMin <= 0 {
-		opts.pauseMin = 20 * time.Second
-	}
-	if opts.pauseMax <= 0 {
-		opts.pauseMax = 60 * time.Second
-	}
-	if opts.pauseMax < opts.pauseMin {
-		return fmt.Errorf("loop-pause-max must be >= loop-pause-min")
-	}
 	if opts.rand == nil {
 		opts.rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+	}
+	if opts.profile == nil {
+		if opts.pauseMin <= 0 {
+			opts.pauseMin = 20 * time.Second
+		}
+		if opts.pauseMax <= 0 {
+			opts.pauseMax = 60 * time.Second
+		}
+		if opts.pauseMax < opts.pauseMin {
+			return fmt.Errorf("loop-pause-max must be >= loop-pause-min")
+		}
+		opts.profile = defaultActivityProfile(opts.pauseMin, opts.pauseMax)
+	}
+	if err := opts.profile.validate(); err != nil {
+		return err
 	}
 
 	summary := newLoopSummary()
 	defer fmt.Fprintf(os.Stderr, "macro-pulse loop summary: %s\n", summary)
 
-	outcomeCatalog, err := r.runWarmup(ctx, a, summary)
+	workgroups, err := resolveProfileWorkgroups(ctx, a, opts.profile)
+	if err != nil {
+		return err
+	}
+	outcomeCatalog, err := r.runWarmup(ctx, a, summary, workgroups)
 	if err != nil {
 		return err
 	}
 	selector := &loopOutcomeSelector{
 		rand:                      opts.rand,
+		profile:                   opts.profile,
+		workgroups:                workgroups,
 		tightAdvertisementID:      outcomeCatalog.tightAd.ID,
 		contractByAdvertisementID: outcomeCatalog.contractByAdvertisementID,
 	}
@@ -202,7 +227,7 @@ func (r briefRunner) runLoop(ctx context.Context, a *agent.Agent, opts loopOptio
 			atomic.AddInt64(&summary.iterationsSucceeded, 1)
 		}
 
-		pause := randomPause(opts.rand, opts.pauseMin, opts.pauseMax)
+		pause := sampleDurationDistribution(opts.rand, opts.profile.Pause)
 		a.Log().With("iteration", iteration).With("pause", pause.String()).Infof("macro-pulse loop iteration complete")
 		if err := sleepContext(ctx, pause); err != nil {
 			if errors.Is(err, context.Canceled) {
@@ -220,8 +245,8 @@ type outcomeCatalog struct {
 	contractByAdvertisementID map[string]*api.Contract
 }
 
-func (r briefRunner) runWarmup(ctx context.Context, a *agent.Agent, summary *loopSummary) (*outcomeCatalog, error) {
-	catalog, err := loadOutcomeCatalog(ctx, a)
+func (r briefRunner) runWarmup(ctx context.Context, a *agent.Agent, summary *loopSummary, workgroups map[string]struct{}) (*outcomeCatalog, error) {
+	catalog, err := loadOutcomeCatalog(ctx, a, workgroups)
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +290,7 @@ func (r briefRunner) runWarmup(ctx context.Context, a *agent.Agent, summary *loo
 	return catalog, nil
 }
 
-func loadOutcomeCatalog(ctx context.Context, a *agent.Agent) (*outcomeCatalog, error) {
+func loadOutcomeCatalog(ctx context.Context, a *agent.Agent, workgroups map[string]struct{}) (*outcomeCatalog, error) {
 	res, err := a.Controller().SearchCatalog(ctx, api.SearchCatalogParams{})
 	if err != nil {
 		return nil, fmt.Errorf("catalog search: %w", err)
@@ -279,6 +304,9 @@ func loadOutcomeCatalog(ctx context.Context, a *agent.Agent) (*outcomeCatalog, e
 		contractByAdvertisementID: map[string]*api.Contract{},
 	}
 	for _, ad := range listing.Items {
+		if !advertisementInWorkgroups(ad, workgroups) {
+			continue
+		}
 		var contract *api.Contract
 		if ad.ContractId.Set && ad.ContractId.Value != "" {
 			contract, err = getVisibleContract(ctx, a, ad.ContractId.Value)
@@ -428,16 +456,7 @@ func randomPause(r *rand.Rand, min, max time.Duration) time.Duration {
 }
 
 func classifySessionOutcome(p float64) sessionOutcome {
-	switch {
-	case p < 0.025:
-		return sessionOutcomeRuntimeViolation
-	case p < 0.05:
-		return sessionOutcomeReaperViolation
-	case p < 0.20:
-		return sessionOutcomeLongTail
-	default:
-		return sessionOutcomeNormal
-	}
+	return classifySessionOutcomeForProfile(p, defaultOutcomeProbabilities())
 }
 
 func randomLongTailHold(r *rand.Rand, contract *api.Contract) time.Duration {
@@ -492,7 +511,11 @@ func (s *loopOutcomeSelector) queryOptionsFor(ad api.Advertisement) queryOptions
 		return queryOptions{outcome: sessionOutcomeNormal, closeDetail: briefNormalCloseDetail}
 	}
 	contract := s.contractByAdvertisementID[ad.ID]
-	outcome := classifySessionOutcome(s.rand.Float64())
+	probabilities := defaultOutcomeProbabilities()
+	if s.profile != nil {
+		probabilities = s.profile.Outcomes
+	}
+	outcome := classifySessionOutcomeForProfile(s.rand.Float64(), probabilities)
 	return queryOptionsForOutcome(ad.ID, s.tightAdvertisementID, outcome, contract, s.rand)
 }
 
@@ -801,9 +824,13 @@ func buildBrief(ctx context.Context, a *agent.Agent, summary *loopSummary, outco
 	}
 	a.Log().With("count", len(listing.Items)).Infof("discovered advertisements via catalog")
 
+	items := listing.Items
+	if outcomes != nil {
+		items = outcomes.selectAdvertisements(items)
+	}
 	adByCapability := map[string]api.Advertisement{}
-	catalog := make([]catalogEntry, 0, len(listing.Items))
-	for _, ad := range listing.Items {
+	catalog := make([]catalogEntry, 0, len(items))
+	for _, ad := range items {
 		caps := make([]string, 0, len(ad.Capabilities))
 		for _, c := range ad.Capabilities {
 			adByCapability[c.Name] = ad

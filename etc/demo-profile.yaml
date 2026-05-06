@@ -1,0 +1,16 @@
+pause:
+  distribution: uniform
+  min: 30s
+  max: 60s
+
+advertisement_count:
+  distribution: uniform
+  min: 2
+  max: 4
+
+outcomes:
+  runtime_violation: 0.025
+  reaper_violation: 0.025
+  long_tail: 0.15
+
+workgroups: []
