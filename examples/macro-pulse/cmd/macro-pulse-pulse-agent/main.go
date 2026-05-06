@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"math"
+	"math/rand"
 	"os"
 	"sort"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/openziti/agora/examples/macro-pulse/internal/payloads"
@@ -21,6 +24,9 @@ func main() {
 	fs := flag.NewFlagSet("pulse-agent", flag.ExitOnError)
 	jsonOut := fs.Bool("json", false, "Emit the brief as a JSON document instead of formatted text")
 	markdownPath := fs.String("markdown", "", "Also write the brief as a Markdown document to the given path")
+	loop := fs.Bool("loop", envBool("AGORA_PULSE_LOOP"), "Run continuously until interrupted")
+	loopPauseMin := fs.Duration("loop-pause-min", 20*time.Second, "Minimum pause between loop iterations")
+	loopPauseMax := fs.Duration("loop-pause-max", 60*time.Second, "Maximum pause between loop iterations")
 
 	app := agent.New("pulse-agent",
 		agent.WithDescription("Macro Pulse orchestrator: composes across providers and tools to produce the morning brief"),
@@ -28,28 +34,180 @@ func main() {
 		agent.WithRuntime(),
 	)
 	if err := app.Run(func(ctx context.Context, a *agent.Agent) error {
-		brief, err := buildBrief(ctx, a)
+		runner := briefRunner{
+			jsonOut:      *jsonOut,
+			markdownPath: *markdownPath,
+		}
+		if *loop {
+			return runner.runLoop(ctx, a, loopOptions{
+				pauseMin: *loopPauseMin,
+				pauseMax: *loopPauseMax,
+				rand:     rand.New(rand.NewSource(time.Now().UnixNano())),
+			})
+		}
+		brief, err := buildBrief(ctx, a, nil)
 		if err != nil {
 			a.Log().Errorf("build brief: %v", err)
 			return err
 		}
-
-		if *markdownPath != "" {
-			if err := os.WriteFile(*markdownPath, []byte(formatBriefMarkdown(brief)), 0o644); err != nil {
-				return fmt.Errorf("write markdown brief: %w", err)
-			}
-			a.Log().With("path", *markdownPath).Infof("wrote markdown brief")
-		}
-
-		if *jsonOut {
-			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent("", "  ")
-			return enc.Encode(brief)
-		}
-		fmt.Print(formatBrief(brief))
-		return nil
+		return runner.emit(a, brief)
 	}); err != nil {
 		os.Exit(1)
+	}
+}
+
+type briefRunner struct {
+	jsonOut      bool
+	markdownPath string
+}
+
+type loopOptions struct {
+	pauseMin time.Duration
+	pauseMax time.Duration
+	rand     *rand.Rand
+}
+
+type loopSummary struct {
+	startedAt           time.Time
+	iterations          int64
+	iterationsSucceeded int64
+	iterationsFailed    int64
+	sessionsProposed    int64
+	sessionsCompleted   int64
+}
+
+func newLoopSummary() *loopSummary {
+	return &loopSummary{startedAt: time.Now().UTC()}
+}
+
+func (s *loopSummary) recordSessionProposed() {
+	if s != nil {
+		atomic.AddInt64(&s.sessionsProposed, 1)
+	}
+}
+
+func (s *loopSummary) recordSessionCompleted() {
+	if s != nil {
+		atomic.AddInt64(&s.sessionsCompleted, 1)
+	}
+}
+
+func (s *loopSummary) String() string {
+	if s == nil {
+		return "iterations=0 sessions_proposed=0 sessions_completed=0"
+	}
+	elapsed := time.Since(s.startedAt).Round(time.Second)
+	return fmt.Sprintf(
+		"iterations=%d iterations_succeeded=%d iterations_failed=%d sessions_proposed=%d sessions_completed=%d elapsed=%s",
+		atomic.LoadInt64(&s.iterations),
+		atomic.LoadInt64(&s.iterationsSucceeded),
+		atomic.LoadInt64(&s.iterationsFailed),
+		atomic.LoadInt64(&s.sessionsProposed),
+		atomic.LoadInt64(&s.sessionsCompleted),
+		elapsed,
+	)
+}
+
+func (r briefRunner) runLoop(ctx context.Context, a *agent.Agent, opts loopOptions) error {
+	if opts.pauseMin <= 0 {
+		opts.pauseMin = 20 * time.Second
+	}
+	if opts.pauseMax <= 0 {
+		opts.pauseMax = 60 * time.Second
+	}
+	if opts.pauseMax < opts.pauseMin {
+		return fmt.Errorf("loop-pause-max must be >= loop-pause-min")
+	}
+	if opts.rand == nil {
+		opts.rand = rand.New(rand.NewSource(time.Now().UnixNano()))
+	}
+
+	summary := newLoopSummary()
+	defer fmt.Fprintf(os.Stderr, "macro-pulse loop summary: %s\n", summary)
+
+	for {
+		if err := ctx.Err(); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
+			return err
+		}
+
+		iteration := atomic.AddInt64(&summary.iterations, 1)
+		a.Log().With("iteration", iteration).Infof("starting macro-pulse loop iteration")
+		brief, err := buildBrief(ctx, a, summary)
+		if err != nil {
+			if ctx.Err() != nil {
+				return nil
+			}
+			atomic.AddInt64(&summary.iterationsFailed, 1)
+			a.Log().With("iteration", iteration).Warnf("macro-pulse loop iteration failed: %v", err)
+		} else {
+			if err := r.emit(a, brief); err != nil {
+				atomic.AddInt64(&summary.iterationsFailed, 1)
+				return err
+			}
+			atomic.AddInt64(&summary.iterationsSucceeded, 1)
+		}
+
+		pause := randomPause(opts.rand, opts.pauseMin, opts.pauseMax)
+		a.Log().With("iteration", iteration).With("pause", pause.String()).Infof("macro-pulse loop iteration complete")
+		if err := sleepContext(ctx, pause); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
+			return err
+		}
+	}
+}
+
+func (r briefRunner) emit(a *agent.Agent, brief *brief) error {
+	if r.markdownPath != "" {
+		if err := os.WriteFile(r.markdownPath, []byte(formatBriefMarkdown(brief)), 0o644); err != nil {
+			return fmt.Errorf("write markdown brief: %w", err)
+		}
+		a.Log().With("path", r.markdownPath).Infof("wrote markdown brief")
+	}
+
+	if r.jsonOut {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(brief)
+	}
+	fmt.Print(formatBrief(brief))
+	return nil
+}
+
+func randomPause(r *rand.Rand, min, max time.Duration) time.Duration {
+	if max <= min {
+		return min
+	}
+	if r == nil {
+		r = rand.New(rand.NewSource(time.Now().UnixNano()))
+	}
+	return min + time.Duration(r.Int63n(int64(max-min)+1))
+}
+
+func sleepContext(ctx context.Context, d time.Duration) error {
+	if d <= 0 {
+		return ctx.Err()
+	}
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
+func envBool(name string) bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(name))) {
+	case "1", "true", "t", "yes", "y", "on":
+		return true
+	default:
+		return false
 	}
 }
 
@@ -104,7 +262,7 @@ type catalogEntry struct {
 // query against three topics serially takes ~20-25s before the
 // snapshot fallback even starts. Snapshot-only runs return well
 // under a second per query.
-func query[Req any, Resp any](ctx context.Context, a *agent.Agent, ad api.Advertisement, msgType string, req Req, out *Resp) error {
+func query[Req any, Resp any](ctx context.Context, a *agent.Agent, ad api.Advertisement, msgType string, req Req, out *Resp, summary *loopSummary) error {
 	if len(ad.WorkgroupScopes) == 0 {
 		return fmt.Errorf("advertisement %s has no visible workgroup", ad.ID)
 	}
@@ -119,8 +277,11 @@ func query[Req any, Resp any](ctx context.Context, a *agent.Agent, ad api.Advert
 	if err != nil {
 		return fmt.Errorf("propose %s: %w", msgType, err)
 	}
+	summary.recordSessionProposed()
 	defer func() {
-		_ = sess.Close(ctx, "brief complete")
+		if err := sess.Close(ctx, "brief complete"); err == nil {
+			summary.recordSessionCompleted()
+		}
 	}()
 
 	body, err := json.Marshal(req)
@@ -147,7 +308,7 @@ func query[Req any, Resp any](ctx context.Context, a *agent.Agent, ad api.Advert
 	return nil
 }
 
-func buildBrief(ctx context.Context, a *agent.Agent) (*brief, error) {
+func buildBrief(ctx context.Context, a *agent.Agent, summary *loopSummary) (*brief, error) {
 	res, err := a.Controller().SearchCatalog(ctx, api.SearchCatalogParams{})
 	if err != nil {
 		return nil, fmt.Errorf("catalog search: %w", err)
@@ -185,7 +346,7 @@ func buildBrief(ctx context.Context, a *agent.Agent) (*brief, error) {
 	if ad, ok := adByCapability["markets.equity"]; ok {
 		req := payloads.EquityRequest{Tickers: []string{"SPY", "XLK", "XLE", "XLF"}, WindowDays: 7}
 		var resp payloads.EquityResponse
-		if err := query(ctx, a, ad, "markets.equity.request", req, &resp); err != nil {
+		if err := query(ctx, a, ad, "markets.equity.request", req, &resp, summary); err != nil {
 			a.Log().Warnf("markets.equity: %v", err)
 		} else {
 			b.AsOf = newer(b.AsOf, resp.AsOf)
@@ -209,7 +370,7 @@ func buildBrief(ctx context.Context, a *agent.Agent) (*brief, error) {
 	if ad, ok := adByCapability["markets.fx"]; ok {
 		req := payloads.FXRequest{Pairs: []string{"USD-EUR", "USD-JPY"}, WindowDays: 7}
 		var resp payloads.FXResponse
-		if err := query(ctx, a, ad, "markets.fx.request", req, &resp); err != nil {
+		if err := query(ctx, a, ad, "markets.fx.request", req, &resp, summary); err != nil {
 			a.Log().Warnf("markets.fx: %v", err)
 		} else {
 			if d, ok := resp.Pairs["USD-EUR"]; ok {
@@ -225,7 +386,7 @@ func buildBrief(ctx context.Context, a *agent.Agent) (*brief, error) {
 	if ad, ok := adByCapability["markets.commodities"]; ok {
 		req := payloads.CommoditiesRequest{Symbols: []string{"CL_F", "GC_F", "NG_F"}, WindowDays: 7}
 		var resp payloads.CommoditiesResponse
-		if err := query(ctx, a, ad, "markets.commodities.request", req, &resp); err != nil {
+		if err := query(ctx, a, ad, "markets.commodities.request", req, &resp, summary); err != nil {
 			a.Log().Warnf("markets.commodities: %v", err)
 		} else {
 			if d, ok := resp.Symbols["CL_F"]; ok {
@@ -245,7 +406,7 @@ func buildBrief(ctx context.Context, a *agent.Agent) (*brief, error) {
 	if ad, ok := adByCapability["weather.current"]; ok {
 		req := payloads.WeatherCurrentRequest{Cities: []string{"new-york", "houston", "frankfurt", "singapore"}}
 		var resp payloads.WeatherCurrentResponse
-		if err := query(ctx, a, ad, "weather.current.request", req, &resp); err != nil {
+		if err := query(ctx, a, ad, "weather.current.request", req, &resp, summary); err != nil {
 			a.Log().Warnf("weather.current: %v", err)
 		} else {
 			for _, c := range []string{"new-york", "houston", "frankfurt", "singapore"} {
@@ -267,7 +428,7 @@ func buildBrief(ctx context.Context, a *agent.Agent) (*brief, error) {
 	if ad, ok := adByCapability["weather.forecast"]; ok {
 		req := payloads.WeatherForecastRequest{Cities: []string{"houston"}, HorizonHours: 72}
 		var resp payloads.WeatherForecastResponse
-		if err := query(ctx, a, ad, "weather.forecast.request", req, &resp); err != nil {
+		if err := query(ctx, a, ad, "weather.forecast.request", req, &resp, summary); err != nil {
 			a.Log().Warnf("weather.forecast: %v", err)
 		} else if d, ok := resp.Cities["houston"]; ok && len(d.Daily) > 0 {
 			summaries := make([]string, 0, len(d.Daily))
@@ -285,7 +446,7 @@ func buildBrief(ctx context.Context, a *agent.Agent) (*brief, error) {
 	if ad, ok := adByCapability["signals.search"]; ok {
 		req := payloads.SearchRequest{Terms: []string{"layoffs", "gulf-storm", "housing-market"}, WindowDays: 30}
 		var resp payloads.SearchResponse
-		if err := query(ctx, a, ad, "signals.search.request", req, &resp); err != nil {
+		if err := query(ctx, a, ad, "signals.search.request", req, &resp, summary); err != nil {
 			a.Log().Warnf("signals.search: %v", err)
 		} else {
 			if d, ok := resp.Terms["layoffs"]; ok {
@@ -306,7 +467,7 @@ func buildBrief(ctx context.Context, a *agent.Agent) (*brief, error) {
 	if ad, ok := adByCapability["signals.news"]; ok {
 		req := payloads.NewsRequest{Topics: []string{"financial", "energy", "supply-chain"}, WindowDays: 7}
 		var resp payloads.NewsResponse
-		if err := query(ctx, a, ad, "signals.news.request", req, &resp); err != nil {
+		if err := query(ctx, a, ad, "signals.news.request", req, &resp, summary); err != nil {
 			a.Log().Warnf("signals.news: %v", err)
 		} else {
 			if d, ok := resp.Topics["financial"]; ok {
@@ -339,7 +500,7 @@ func buildBrief(ctx context.Context, a *agent.Agent) (*brief, error) {
 				SeriesB: payloads.CorrelateLabeledSeries{Label: p.lb, Points: seriesB},
 			}
 			var resp payloads.CorrelateResponse
-			if err := query(ctx, a, ad, "analytics.correlate.request", req, &resp); err != nil {
+			if err := query(ctx, a, ad, "analytics.correlate.request", req, &resp, summary); err != nil {
 				a.Log().Warnf("analytics.correlate %s: %v", p.label, err)
 				continue
 			}
@@ -369,7 +530,7 @@ func buildBrief(ctx context.Context, a *agent.Agent) (*brief, error) {
 		}
 		req := payloads.NarrateRequest{Template: "macro-pulse-default", Inputs: inputs}
 		var resp payloads.NarrateResponse
-		if err := query(ctx, a, ad, "analytics.narrate.request", req, &resp); err != nil {
+		if err := query(ctx, a, ad, "analytics.narrate.request", req, &resp, summary); err != nil {
 			a.Log().Warnf("analytics.narrate: %v", err)
 		} else {
 			b.Narrative = resp.Text
