@@ -31,8 +31,26 @@
   --font-sans: 'Inter Variable', Inter, ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 
+  --spacing-card-gap: 8px;
+  --spacing-card-padding: 12px;
+  --spacing-section-gap-min: 16px;
+  --spacing-section-gap-max: 24px;
+  --spacing-page-gutter: 32px;
+
+  --text-stat: 2rem;
+  --text-stat--line-height: 2.25rem;
+  --text-section: 1.25rem;
+  --text-section--line-height: 1.75rem;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.5rem;
+  --text-label: 0.75rem;
+  --text-label--line-height: 1rem;
+  --text-table: 0.8125rem;
+  --text-table--line-height: 1.25rem;
+
   --radius-card: 8px;
   --radius-pill: 6px;
+  --radius-status: 9999px;
 }
 
 :root {
