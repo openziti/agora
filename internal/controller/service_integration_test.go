@@ -1722,7 +1722,7 @@ func TestSessionRejectFlow(t *testing.T) {
 	proposeRes, _ := bob.ProposeSession(env.ctx, &api.ProposeSessionRequest{AdvertisementId: adID, WorkgroupId: wgID})
 	sess := proposeRes.(*api.Session)
 
-	rejectRes, err := alice.RejectSession(env.ctx, api.NewOptCloseSessionRequest(api.CloseSessionRequest{Reason: api.NewOptString("not taking new")}), api.RejectSessionParams{SessionId: sess.ID})
+	rejectRes, err := alice.RejectSession(env.ctx, api.NewOptCloseSessionRequest(api.CloseSessionRequest{Detail: api.NewOptString("not taking new")}), api.RejectSessionParams{SessionId: sess.ID})
 	if err != nil {
 		t.Fatalf("reject: %v", err)
 	}
@@ -1795,6 +1795,122 @@ func TestSessionCloseByConsumer(t *testing.T) {
 	}
 	if !d.CloseReason.Set || d.CloseReason.Value != api.SessionCloseReasonConsumerClose {
 		t.Fatalf("expected consumer_close, got %v", d.CloseReason)
+	}
+}
+
+func TestSessionCloseReasonValidation(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	bobID, bobToken := env.addAccountToOrg(t, orgA, "bob@example.com")
+	wgID, adID := seedSharedWorkgroupAd(t, env, orgA, aliceID, "shared", "ad")
+
+	alice := env.accountClient(t, aliceToken)
+	if _, err := alice.AddWorkgroupMember(env.ctx, &api.AddWorkgroupMemberRequest{AccountEmail: "bob@example.com"}, api.AddWorkgroupMemberParams{WorkgroupId: wgID}); err != nil {
+		t.Fatalf("add bob: %v", err)
+	}
+	bob := env.accountClient(t, bobToken)
+
+	newActiveSession := func() string {
+		t.Helper()
+		return seedSessionListSession(t, env, orgA, orgA, aliceID, bobID, wgID, adID, persistence.SessionStateActive, time.Now().UTC(), nil)
+	}
+	closeBody := func(reason api.SessionCloseReason, detail string) api.OptCloseSessionRequest {
+		t.Helper()
+		req := api.CloseSessionRequest{Reason: api.NewOptSessionCloseReason(reason)}
+		if detail != "" {
+			req.Detail.SetTo(detail)
+		}
+		return api.NewOptCloseSessionRequest(req)
+	}
+	assertClosed := func(sessionID string, reason api.SessionCloseReason, detail string) {
+		t.Helper()
+		descRes, err := bob.GetSession(env.ctx, api.GetSessionParams{SessionId: sessionID})
+		if err != nil {
+			t.Fatalf("describe %s: %v", sessionID, err)
+		}
+		d := descRes.(*api.Session)
+		if d.State != api.SessionStateClosed {
+			t.Fatalf("expected closed session %s, got %s", sessionID, d.State)
+		}
+		if !d.CloseReason.Set || d.CloseReason.Value != reason {
+			t.Fatalf("expected close reason %s, got %v", reason, d.CloseReason)
+		}
+		if detail != "" && (!d.CloseDetail.Set || d.CloseDetail.Value != detail) {
+			t.Fatalf("expected close detail %q, got %v", detail, d.CloseDetail)
+		}
+	}
+
+	defaultProviderID := newActiveSession()
+	defaultProviderRes, err := alice.CloseSession(env.ctx, api.OptCloseSessionRequest{}, api.CloseSessionParams{SessionId: defaultProviderID})
+	if err != nil {
+		t.Fatalf("default provider close: %v", err)
+	}
+	if _, ok := defaultProviderRes.(*api.CloseSessionNoContent); !ok {
+		t.Fatalf("expected 204 default provider close, got %T", defaultProviderRes)
+	}
+	assertClosed(defaultProviderID, api.SessionCloseReasonProviderClose, "")
+
+	providerID := newActiveSession()
+	providerRes, err := alice.CloseSession(env.ctx, closeBody(api.SessionCloseReasonProviderClose, "provider maintenance"), api.CloseSessionParams{SessionId: providerID})
+	if err != nil {
+		t.Fatalf("provider reason close: %v", err)
+	}
+	if _, ok := providerRes.(*api.CloseSessionNoContent); !ok {
+		t.Fatalf("expected 204 provider reason close, got %T", providerRes)
+	}
+	assertClosed(providerID, api.SessionCloseReasonProviderClose, "provider maintenance")
+
+	consumerID := newActiveSession()
+	consumerRes, err := bob.CloseSession(env.ctx, closeBody(api.SessionCloseReasonConsumerClose, "consumer done"), api.CloseSessionParams{SessionId: consumerID})
+	if err != nil {
+		t.Fatalf("consumer reason close: %v", err)
+	}
+	if _, ok := consumerRes.(*api.CloseSessionNoContent); !ok {
+		t.Fatalf("expected 204 consumer reason close, got %T", consumerRes)
+	}
+	assertClosed(consumerID, api.SessionCloseReasonConsumerClose, "consumer done")
+
+	violationID := newActiveSession()
+	violationDetail := "outbound envelope size 4096 exceeds contract max 1024"
+	violationRes, err := alice.CloseSession(env.ctx, closeBody(api.SessionCloseReasonContractViolation, violationDetail), api.CloseSessionParams{SessionId: violationID})
+	if err != nil {
+		t.Fatalf("contract violation close: %v", err)
+	}
+	if _, ok := violationRes.(*api.CloseSessionNoContent); !ok {
+		t.Fatalf("expected 204 contract violation close, got %T", violationRes)
+	}
+	assertClosed(violationID, api.SessionCloseReasonContractViolation, violationDetail)
+
+	rejectedID := newActiveSession()
+	forbiddenProvider, err := bob.CloseSession(env.ctx, closeBody(api.SessionCloseReasonProviderClose, ""), api.CloseSessionParams{SessionId: rejectedID})
+	if err != nil {
+		t.Fatalf("consumer claims provider close: %v", err)
+	}
+	if res, ok := forbiddenProvider.(*api.CloseSessionForbidden); !ok || res.Code != "not_provider" {
+		t.Fatalf("expected not_provider forbidden, got %T %+v", forbiddenProvider, forbiddenProvider)
+	}
+	forbiddenConsumer, err := alice.CloseSession(env.ctx, closeBody(api.SessionCloseReasonConsumerClose, ""), api.CloseSessionParams{SessionId: rejectedID})
+	if err != nil {
+		t.Fatalf("provider claims consumer close: %v", err)
+	}
+	if res, ok := forbiddenConsumer.(*api.CloseSessionForbidden); !ok || res.Code != "not_consumer" {
+		t.Fatalf("expected not_consumer forbidden, got %T %+v", forbiddenConsumer, forbiddenConsumer)
+	}
+	forbiddenViolation, err := bob.CloseSession(env.ctx, closeBody(api.SessionCloseReasonContractViolation, ""), api.CloseSessionParams{SessionId: rejectedID})
+	if err != nil {
+		t.Fatalf("consumer claims contract violation: %v", err)
+	}
+	if res, ok := forbiddenViolation.(*api.CloseSessionForbidden); !ok || res.Code != "not_provider" {
+		t.Fatalf("expected not_provider forbidden, got %T %+v", forbiddenViolation, forbiddenViolation)
+	}
+	unsupported, err := alice.CloseSession(env.ctx, closeBody(api.SessionCloseReasonAdminClose, ""), api.CloseSessionParams{SessionId: rejectedID})
+	if err != nil {
+		t.Fatalf("unsupported reason close: %v", err)
+	}
+	if res, ok := unsupported.(*api.CloseSessionBadRequest); !ok || res.Code != "invalid_request" {
+		t.Fatalf("expected invalid_request bad request, got %T %+v", unsupported, unsupported)
 	}
 }
 
@@ -2143,7 +2259,7 @@ func TestSessionAdminClose(t *testing.T) {
 	sess := proposeRes.(*api.Session)
 
 	admin := env.adminClient(t)
-	res, err := admin.AdminCloseSession(env.ctx, api.NewOptCloseSessionRequest(api.CloseSessionRequest{Reason: api.NewOptString("violation")}), api.AdminCloseSessionParams{SessionId: sess.ID})
+	res, err := admin.AdminCloseSession(env.ctx, api.NewOptCloseSessionRequest(api.CloseSessionRequest{Detail: api.NewOptString("violation")}), api.AdminCloseSessionParams{SessionId: sess.ID})
 	if err != nil {
 		t.Fatalf("admin close: %v", err)
 	}

@@ -33,9 +33,30 @@ func (s *Service) CloseSession(ctx context.Context, req api.OptCloseSessionReque
 	if isConsumer && !isProvider {
 		reason = persistence.SessionCloseReasonConsumerClose
 	}
-	detail := ""
 	if req.Set && req.Value.Reason.Set {
-		detail = req.Value.Reason.Value
+		switch req.Value.Reason.Value {
+		case api.SessionCloseReasonProviderClose:
+			if !isProvider {
+				return &api.CloseSessionForbidden{Code: "not_provider", Message: "only the provider may close with reason 'provider_close'"}, nil
+			}
+			reason = persistence.SessionCloseReasonProviderClose
+		case api.SessionCloseReasonConsumerClose:
+			if !isConsumer {
+				return &api.CloseSessionForbidden{Code: "not_consumer", Message: "only the consumer may close with reason 'consumer_close'"}, nil
+			}
+			reason = persistence.SessionCloseReasonConsumerClose
+		case api.SessionCloseReasonContractViolation:
+			if !isProvider {
+				return &api.CloseSessionForbidden{Code: "not_provider", Message: "only the provider may close with reason 'contract_violation'"}, nil
+			}
+			reason = persistence.SessionCloseReasonContractViolation
+		default:
+			return &api.CloseSessionBadRequest{Code: "invalid_request", Message: "reason must be provider_close, consumer_close, or contract_violation"}, nil
+		}
+	}
+	detail := ""
+	if req.Set && req.Value.Detail.Set {
+		detail = req.Value.Detail.Value
 	}
 
 	if err := s.teardownSession(ctx, sess, reason, detail); err != nil {

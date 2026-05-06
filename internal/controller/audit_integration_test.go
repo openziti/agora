@@ -150,7 +150,7 @@ func TestAuditEventsControllerSessionAttachmentAndCatalogFlow(t *testing.T) {
 		t.Fatalf("propose for reject: %v", err)
 	}
 	rejectSess := rejectProp.(*api.Session)
-	if rejectRes, err := alice.RejectSession(env.ctx, api.NewOptCloseSessionRequest(api.CloseSessionRequest{Reason: api.NewOptString("not taking new")}), api.RejectSessionParams{SessionId: rejectSess.ID}); err != nil {
+	if rejectRes, err := alice.RejectSession(env.ctx, api.NewOptCloseSessionRequest(api.CloseSessionRequest{Detail: api.NewOptString("not taking new")}), api.RejectSessionParams{SessionId: rejectSess.ID}); err != nil {
 		t.Fatalf("reject session: %v", err)
 	} else if _, ok := rejectRes.(*api.RejectSessionNoContent); !ok {
 		t.Fatalf("expected reject 204, got %T", rejectRes)

@@ -1021,6 +1021,10 @@ type ChangeWorkgroupMembershipRoleUnauthorized Error
 
 func (*ChangeWorkgroupMembershipRoleUnauthorized) changeWorkgroupMembershipRoleRes() {}
 
+type CloseSessionBadRequest Error
+
+func (*CloseSessionBadRequest) closeSessionRes() {}
+
 type CloseSessionForbidden Error
 
 func (*CloseSessionForbidden) closeSessionRes() {}
@@ -1040,16 +1044,27 @@ func (*CloseSessionNotFound) closeSessionRes() {}
 
 // Ref: #/closeSessionRequest
 type CloseSessionRequest struct {
-	Reason OptString `json:"reason"`
+	Detail OptString             `json:"detail"`
+	Reason OptSessionCloseReason `json:"reason"`
+}
+
+// GetDetail returns the value of Detail.
+func (s *CloseSessionRequest) GetDetail() OptString {
+	return s.Detail
 }
 
 // GetReason returns the value of Reason.
-func (s *CloseSessionRequest) GetReason() OptString {
+func (s *CloseSessionRequest) GetReason() OptSessionCloseReason {
 	return s.Reason
 }
 
+// SetDetail sets the value of Detail.
+func (s *CloseSessionRequest) SetDetail(val OptString) {
+	s.Detail = val
+}
+
 // SetReason sets the value of Reason.
-func (s *CloseSessionRequest) SetReason(val OptString) {
+func (s *CloseSessionRequest) SetReason(val OptSessionCloseReason) {
 	s.Reason = val
 }
 

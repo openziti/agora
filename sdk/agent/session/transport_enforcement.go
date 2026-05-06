@@ -39,11 +39,13 @@ func (s *Session) Send(ctx context.Context, env Envelope) error {
 		env.EnvelopeID = "evp_" + newRandomSuffix()
 	}
 	env.SessionID = s.ID
-	env.SenderAccountID = s.agent.AccountID()
-	if s.agent.Environment() != nil {
-		// The agent currently exposes account/org through env metadata;
-		// sender_organization_id can be unset if not wired through the
-		// agent. Callers may override.
+	if s.agent != nil {
+		env.SenderAccountID = s.agent.AccountID()
+		if s.agent.Environment() != nil {
+			// The agent currently exposes account/org through env metadata;
+			// sender_organization_id can be unset if not wired through the
+			// agent. Callers may override.
+		}
 	}
 	if env.SenderAccountID == "" {
 		env.SenderAccountID = s.ProviderAccountID // provider side default
@@ -59,26 +61,26 @@ func (s *Session) Send(ctx context.Context, env Envelope) error {
 	if s.ContractSnapshot != nil {
 		snap := s.ContractSnapshot
 		if !messageTypeAllowed(env.MessageType, snap.AllowedMessageTypes) {
-			return s.violate(ctx, "message_type_disallowed")
+			return s.violate(ctx, fmt.Sprintf("outbound message type '%s' not in contract allowlist", env.MessageType))
 		}
 		if snap.MaxEnvelopeCount > 0 {
-			if atomic.LoadInt64(&s.sentCount) >= int64(snap.MaxEnvelopeCount) {
-				return s.violate(ctx, "envelope_count_exceeded")
+			if current := atomic.LoadInt64(&s.sentCount); current >= int64(snap.MaxEnvelopeCount) {
+				return s.violate(ctx, fmt.Sprintf("outbound envelope count %d exceeds contract max %d", current+1, snap.MaxEnvelopeCount))
 			}
 		}
 	}
 
 	s.streamMu.Lock()
-	defer s.streamMu.Unlock()
 	size, err := EncodeFrame(s.conn, env)
+	s.streamMu.Unlock()
 	if err != nil {
 		if errors.Is(err, ErrFrameTooLarge) {
-			return s.violate(ctx, "envelope_size_exceeded_platform_ceiling")
+			return s.violate(ctx, "outbound envelope exceeds platform frame ceiling")
 		}
 		return err
 	}
 	if s.ContractSnapshot != nil && s.ContractSnapshot.MaxEnvelopeBytes > 0 && size > s.ContractSnapshot.MaxEnvelopeBytes {
-		return s.violate(ctx, "envelope_size_exceeded")
+		return s.violate(ctx, fmt.Sprintf("outbound envelope size %d exceeds contract max %d", size, s.ContractSnapshot.MaxEnvelopeBytes))
 	}
 	atomic.AddInt64(&s.sentCount, 1)
 	return nil
@@ -98,15 +100,15 @@ func (s *Session) Receive(ctx context.Context) (Envelope, error) {
 	env, size, err := DecodeFrame(s.conn)
 	if err != nil {
 		if errors.Is(err, ErrUnknownFrameVersion) {
-			_ = s.violate(ctx, "unknown_frame_version")
+			_ = s.violate(ctx, "inbound envelope uses an unknown frame version")
 			return Envelope{}, err
 		}
 		if errors.Is(err, ErrFrameTooLarge) {
-			_ = s.violate(ctx, "envelope_size_exceeded_platform_ceiling")
+			_ = s.violate(ctx, "inbound envelope exceeds platform frame ceiling")
 			return Envelope{}, err
 		}
 		if errors.Is(err, ErrMalformedHeader) {
-			_ = s.violate(ctx, "malformed_envelope_header")
+			_ = s.violate(ctx, "inbound envelope has a malformed header")
 			return Envelope{}, err
 		}
 		if errors.Is(err, io.EOF) {
@@ -117,11 +119,11 @@ func (s *Session) Receive(ctx context.Context) (Envelope, error) {
 	if s.ContractSnapshot != nil {
 		snap := s.ContractSnapshot
 		if snap.MaxEnvelopeBytes > 0 && size > snap.MaxEnvelopeBytes {
-			_ = s.violate(ctx, "envelope_size_exceeded")
+			_ = s.violate(ctx, fmt.Sprintf("inbound envelope size %d exceeds contract max %d", size, snap.MaxEnvelopeBytes))
 			return Envelope{}, fmt.Errorf("inbound envelope size %d > max %d", size, snap.MaxEnvelopeBytes)
 		}
 		if !messageTypeAllowed(env.MessageType, snap.AllowedMessageTypes) {
-			_ = s.violate(ctx, "message_type_disallowed")
+			_ = s.violate(ctx, fmt.Sprintf("inbound message type '%s' not in contract allowlist", env.MessageType))
 			return Envelope{}, fmt.Errorf("inbound message_type %q not allowed", env.MessageType)
 		}
 	}
@@ -131,9 +133,14 @@ func (s *Session) Receive(ctx context.Context) (Envelope, error) {
 
 func (s *Session) violate(ctx context.Context, detail string) error {
 	body := api.OptCloseSessionRequest{}
-	body.SetTo(api.CloseSessionRequest{Reason: api.NewOptString(detail)})
+	body.SetTo(api.CloseSessionRequest{
+		Detail: api.NewOptString(detail),
+		Reason: api.NewOptSessionCloseReason(api.SessionCloseReasonContractViolation),
+	})
 	// best-effort; server may have already closed for another reason
-	_, _ = s.agent.Controller().CloseSession(ctx, body, api.CloseSessionParams{SessionId: s.ID})
+	if controller := s.controllerClient(); controller != nil {
+		_, _ = controller.CloseSession(ctx, body, api.CloseSessionParams{SessionId: s.ID})
+	}
 	teardownTransport(s)
 	return &ErrContractViolation{Detail: detail}
 }

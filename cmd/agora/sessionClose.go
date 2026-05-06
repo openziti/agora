@@ -35,13 +35,15 @@ func (cmd *sessionCloseCommand) run(_ *cobra.Command, args []string) {
 
 	body := api.OptCloseSessionRequest{}
 	if cmd.reason != "" {
-		body.SetTo(api.CloseSessionRequest{Reason: api.NewOptString(cmd.reason)})
+		body.SetTo(api.CloseSessionRequest{Detail: api.NewOptString(cmd.reason)})
 	}
 	res, err := client.CloseSession(context.Background(), body, api.CloseSessionParams{SessionId: args[0]})
 	panicIfErr(err)
 	switch typed := res.(type) {
 	case *api.CloseSessionNoContent:
 		fmt.Printf("closed session '%s'\n", args[0])
+	case *api.CloseSessionBadRequest:
+		panic(typed.Message)
 	case *api.CloseSessionForbidden:
 		panic(typed.Message)
 	case *api.CloseSessionNotFound:

@@ -137,8 +137,10 @@ reportEnvelopeCountRequest:
 closeSessionRequest:
   type: object
   properties:
-    reason:
+    detail:
       type: string
+    reason:
+      $ref: "#/sessionCloseReason"
 
 listSessionsResponse:
   type: array

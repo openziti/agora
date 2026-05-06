@@ -744,6 +744,22 @@ func (c *Client) AdminCloseSession(ctx context.Context, request OptCloseSessionR
 }
 
 func (c *Client) sendAdminCloseSession(ctx context.Context, request OptCloseSessionRequest, params AdminCloseSessionParams) (res AdminCloseSessionRes, err error) {
+	// Validate request before sending.
+	if err := func() error {
+		if value, ok := request.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return res, errors.Wrap(err, "validate")
+	}
 
 	u := uri.Clone(c.requestURL(ctx))
 	var pathParts [3]string
@@ -1028,6 +1044,22 @@ func (c *Client) CloseSession(ctx context.Context, request OptCloseSessionReques
 }
 
 func (c *Client) sendCloseSession(ctx context.Context, request OptCloseSessionRequest, params CloseSessionParams) (res CloseSessionRes, err error) {
+	// Validate request before sending.
+	if err := func() error {
+		if value, ok := request.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return res, errors.Wrap(err, "validate")
+	}
 
 	u := uri.Clone(c.requestURL(ctx))
 	var pathParts [3]string
@@ -5117,6 +5149,22 @@ func (c *Client) RejectSession(ctx context.Context, request OptCloseSessionReque
 }
 
 func (c *Client) sendRejectSession(ctx context.Context, request OptCloseSessionRequest, params RejectSessionParams) (res RejectSessionRes, err error) {
+	// Validate request before sending.
+	if err := func() error {
+		if value, ok := request.Get(); ok {
+			if err := func() error {
+				if err := value.Validate(); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return res, errors.Wrap(err, "validate")
+	}
 
 	u := uri.Clone(c.requestURL(ctx))
 	var pathParts [3]string

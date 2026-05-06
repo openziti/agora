@@ -35,7 +35,7 @@ func (cmd *sessionRejectCommand) run(_ *cobra.Command, args []string) {
 
 	body := api.OptCloseSessionRequest{}
 	if cmd.reason != "" {
-		body.SetTo(api.CloseSessionRequest{Reason: api.NewOptString(cmd.reason)})
+		body.SetTo(api.CloseSessionRequest{Detail: api.NewOptString(cmd.reason)})
 	}
 	res, err := client.RejectSession(context.Background(), body, api.RejectSessionParams{SessionId: args[0]})
 	panicIfErr(err)

@@ -295,6 +295,12 @@
     responses:
       204:
         description: closed
+      400:
+        description: bad request
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
       401:
         description: unauthorized
         content:

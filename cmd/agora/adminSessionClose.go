@@ -33,7 +33,7 @@ func (cmd *adminSessionCloseCommand) run(_ *cobra.Command, args []string) {
 	client := openAdminAPIClient()
 	body := api.OptCloseSessionRequest{}
 	if cmd.reason != "" {
-		body.SetTo(api.CloseSessionRequest{Reason: api.NewOptString(cmd.reason)})
+		body.SetTo(api.CloseSessionRequest{Detail: api.NewOptString(cmd.reason)})
 	}
 	res, err := client.AdminCloseSession(context.Background(), body, api.AdminCloseSessionParams{SessionId: args[0]})
 	panicIfErr(err)

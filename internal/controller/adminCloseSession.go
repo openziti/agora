@@ -23,8 +23,8 @@ func (s *Service) AdminCloseSession(ctx context.Context, req api.OptCloseSession
 	}
 
 	detail := ""
-	if req.Set && req.Value.Reason.Set {
-		detail = req.Value.Reason.Value
+	if req.Set && req.Value.Detail.Set {
+		detail = req.Value.Detail.Value
 	}
 	if err := s.teardownSession(ctx, sess, persistence.SessionCloseReasonAdminClose, detail); err != nil {
 		return &api.AdminCloseSessionInternalServerError{Code: "internal_error", Message: err.Error()}, nil

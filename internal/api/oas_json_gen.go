@@ -3492,6 +3492,44 @@ func (s *ChangeWorkgroupMembershipRoleUnauthorized) UnmarshalJSON(data []byte) e
 	return s.Decode(d)
 }
 
+// Encode encodes CloseSessionBadRequest as json.
+func (s *CloseSessionBadRequest) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes CloseSessionBadRequest from json.
+func (s *CloseSessionBadRequest) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode CloseSessionBadRequest to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = CloseSessionBadRequest(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *CloseSessionBadRequest) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *CloseSessionBadRequest) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes CloseSessionForbidden as json.
 func (s *CloseSessionForbidden) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -3616,6 +3654,12 @@ func (s *CloseSessionRequest) Encode(e *jx.Encoder) {
 // encodeFields encodes fields.
 func (s *CloseSessionRequest) encodeFields(e *jx.Encoder) {
 	{
+		if s.Detail.Set {
+			e.FieldStart("detail")
+			s.Detail.Encode(e)
+		}
+	}
+	{
 		if s.Reason.Set {
 			e.FieldStart("reason")
 			s.Reason.Encode(e)
@@ -3623,8 +3667,9 @@ func (s *CloseSessionRequest) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfCloseSessionRequest = [1]string{
-	0: "reason",
+var jsonFieldsNameOfCloseSessionRequest = [2]string{
+	0: "detail",
+	1: "reason",
 }
 
 // Decode decodes CloseSessionRequest from json.
@@ -3635,6 +3680,16 @@ func (s *CloseSessionRequest) Decode(d *jx.Decoder) error {
 
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
+		case "detail":
+			if err := func() error {
+				s.Detail.Reset()
+				if err := s.Detail.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"detail\"")
+			}
 		case "reason":
 			if err := func() error {
 				s.Reason.Reset()

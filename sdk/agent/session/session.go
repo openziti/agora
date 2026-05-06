@@ -22,6 +22,10 @@ import (
 const defaultProposeTimeout = 30 * time.Second
 const pollInterval = time.Second
 
+type closeSessionController interface {
+	CloseSession(context.Context, api.OptCloseSessionRequest, api.CloseSessionParams) (api.CloseSessionRes, error)
+}
+
 // Session is the handle returned once a proposal has reached the
 // `active` state. Close terminates the session on the controller.
 type Session struct {
@@ -39,7 +43,8 @@ type Session struct {
 	// contract attached; nil otherwise.
 	ContractSnapshot *api.ContractSnapshot
 
-	agent *agent.Agent
+	agent                  *agent.Agent
+	closeSessionController closeSessionController
 
 	// transport state — populated when the envelopes-slice transport
 	// is wired up (consumer side after Propose, provider side in
@@ -62,15 +67,21 @@ func (s *Session) Close(ctx context.Context, reason string) error {
 	teardownTransport(s)
 	body := api.OptCloseSessionRequest{}
 	if reason != "" {
-		body.SetTo(api.CloseSessionRequest{Reason: api.NewOptString(reason)})
+		body.SetTo(api.CloseSessionRequest{Detail: api.NewOptString(reason)})
 	}
-	res, err := s.agent.Controller().CloseSession(ctx, body, api.CloseSessionParams{SessionId: s.ID})
+	controller := s.controllerClient()
+	if controller == nil {
+		return errors.New("close session: controller client is not configured")
+	}
+	res, err := controller.CloseSession(ctx, body, api.CloseSessionParams{SessionId: s.ID})
 	if err != nil {
 		return err
 	}
 	switch typed := res.(type) {
 	case *api.CloseSessionNoContent:
 		return nil
+	case *api.CloseSessionBadRequest:
+		return fmt.Errorf("close session: %s", typed.Message)
 	case *api.CloseSessionForbidden:
 		return fmt.Errorf("close session: %s", typed.Message)
 	case *api.CloseSessionNotFound:
@@ -223,7 +234,7 @@ func handleProposal(ctx context.Context, a *agent.Agent, envID string, s api.Ses
 	if acceptErr := handler.Accept(ctx, proposal); acceptErr != nil {
 		rejectReason := acceptErr.Error()
 		body := api.OptCloseSessionRequest{}
-		body.SetTo(api.CloseSessionRequest{Reason: api.NewOptString(rejectReason)})
+		body.SetTo(api.CloseSessionRequest{Detail: api.NewOptString(rejectReason)})
 		if _, err := a.Controller().RejectSession(ctx, body, api.RejectSessionParams{SessionId: s.ID}); err != nil {
 			a.Log().With("session_id", s.ID).Warnf("reject session failed: %v", err)
 		}
@@ -323,6 +334,16 @@ func sessionFromAPI(a *agent.Agent, s *api.Session) *Session {
 		out.ContractSnapshot = &snap
 	}
 	return out
+}
+
+func (s *Session) controllerClient() closeSessionController {
+	if s.closeSessionController != nil {
+		return s.closeSessionController
+	}
+	if s.agent == nil {
+		return nil
+	}
+	return s.agent.Controller()
 }
 
 // describeError extracts a short message from generated error responses.

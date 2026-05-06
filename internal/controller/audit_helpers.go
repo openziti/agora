@@ -141,13 +141,13 @@ func sessionViolationDimension(reason persistence.SessionCloseReason, detail str
 	}
 	normalized := strings.ToLower(detail)
 	switch {
-	case strings.Contains(normalized, "max_duration"):
+	case strings.Contains(normalized, "max_duration") || strings.Contains(normalized, "max duration"):
 		return "max_duration"
-	case strings.Contains(normalized, "envelope_count"):
+	case strings.Contains(normalized, "envelope_count") || strings.Contains(normalized, "envelope count"):
 		return "envelope_count"
-	case strings.Contains(normalized, "envelope_bytes"):
+	case strings.Contains(normalized, "envelope_bytes") || strings.Contains(normalized, "envelope_size") || strings.Contains(normalized, "envelope size"):
 		return "envelope_bytes"
-	case strings.Contains(normalized, "message_type"):
+	case strings.Contains(normalized, "message_type") || strings.Contains(normalized, "message type"):
 		return "message_type"
 	default:
 		return ""

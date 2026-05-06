@@ -34,8 +34,8 @@ func (s *Service) RejectSession(ctx context.Context, req api.OptCloseSessionRequ
 	}
 
 	detail := ""
-	if req.Set && req.Value.Reason.Set {
-		detail = req.Value.Reason.Value
+	if req.Set && req.Value.Detail.Set {
+		detail = req.Value.Detail.Value
 	}
 	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
 		rejected, err := s.store.Sessions.MarkRejected(ctx, tx, sess.ID, detail)
