@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Activity, Boxes, FileText, GitBranch, Server, ShieldCheck, Users, Wifi } from 'lucide-react';
 
 import {
@@ -14,6 +15,7 @@ import {
   type Product,
   type StatusPillStatus,
 } from '../components';
+import { ApiError, getDashboardSummary } from '../lib/api';
 
 type ColorToken = {
   name: string;
@@ -150,6 +152,81 @@ const sessionColumns: DataTableColumn<SessionRow>[] = [
   { id: 'envelopes', header: 'Envelopes', accessor: (row) => row.envelopes, sortable: true, align: 'right' },
   { id: 'updated', header: 'Updated', accessor: (row) => row.updated, align: 'right' },
 ];
+
+type ApiProbeState =
+  | { status: 'loading' }
+  | { status: 'ok'; organizationName: string; email: string; activeSessions: number }
+  | { status: 'error'; statusCode?: number; code?: string; message: string };
+
+function ApiProbe() {
+  const [probe, setProbe] = useState<ApiProbeState>({ status: 'loading' });
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    getDashboardSummary(controller.signal)
+      .then((summary) => {
+        setProbe({
+          status: 'ok',
+          organizationName: summary.account.organizationName,
+          email: summary.account.email,
+          activeSessions: summary.stats.activeSessions,
+        });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+
+        if (error instanceof ApiError) {
+          setProbe({
+            status: 'error',
+            statusCode: error.status,
+            code: error.code,
+            message: error.message,
+          });
+          return;
+        }
+
+        setProbe({
+          status: 'error',
+          message: error instanceof Error ? error.message : 'request failed',
+        });
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  if (probe.status === 'loading') {
+    return <StatusPill status="info" label="Dashboard summary loading" />;
+  }
+
+  if (probe.status === 'ok') {
+    return (
+      <div className="grid gap-3 sm:grid-cols-3">
+        <KeyValueGrid
+          entries={[
+            { key: 'organization', value: probe.organizationName },
+            { key: 'account', value: probe.email },
+            { key: 'active sessions', value: probe.activeSessions },
+          ]}
+          className="sm:col-span-3"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-card border border-border bg-panel-subtle p-4">
+      <StatusPill status={probe.statusCode === 401 ? 'warning' : 'danger'} label="Dashboard summary unavailable" />
+      <p className="mt-3 text-body text-text-mute">
+        {probe.statusCode ? `${probe.statusCode} ` : ''}
+        {probe.code ? `${probe.code}: ` : ''}
+        {probe.message}
+      </p>
+    </div>
+  );
+}
 
 export default function Kit() {
   return (
@@ -306,6 +383,10 @@ export default function Kit() {
                 Headerless sections keep compact details framed without adding another title row.
               </p>
             </div>
+          </SectionPanel>
+
+          <SectionPanel title="API Probe">
+            <ApiProbe />
           </SectionPanel>
         </section>
 
