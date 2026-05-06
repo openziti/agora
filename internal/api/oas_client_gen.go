@@ -125,6 +125,18 @@ type Invoker interface {
 	//
 	// GET /contracts/{contractId}
 	GetContract(ctx context.Context, params GetContractParams) (GetContractRes, error)
+	// GetDashboardActivity invokes getDashboardActivity operation.
+	//
+	// GET /dashboard/activity
+	GetDashboardActivity(ctx context.Context, params GetDashboardActivityParams) (GetDashboardActivityRes, error)
+	// GetDashboardEnvironments invokes getDashboardEnvironments operation.
+	//
+	// GET /dashboard/environments
+	GetDashboardEnvironments(ctx context.Context) (GetDashboardEnvironmentsRes, error)
+	// GetDashboardSummary invokes getDashboardSummary operation.
+	//
+	// GET /dashboard/summary
+	GetDashboardSummary(ctx context.Context) (GetDashboardSummaryRes, error)
 	// GetEnvironment invokes getEnvironment operation.
 	//
 	// GET /environments/{environmentId}
@@ -145,6 +157,10 @@ type Invoker interface {
 	//
 	// GET /workgroups/{workgroupId}
 	GetWorkgroup(ctx context.Context, params GetWorkgroupParams) (GetWorkgroupRes, error)
+	// GetWorkgroupsActivity invokes getWorkgroupsActivity operation.
+	//
+	// GET /dashboard/workgroups-activity
+	GetWorkgroupsActivity(ctx context.Context, params GetWorkgroupsActivityParams) (GetWorkgroupsActivityRes, error)
 	// HeartbeatEnvironment invokes heartbeatEnvironment operation.
 	//
 	// POST /environments/{environmentId}/heartbeat
@@ -2642,6 +2658,244 @@ func (c *Client) sendGetContract(ctx context.Context, params GetContractParams) 
 	return result, nil
 }
 
+// GetDashboardActivity invokes getDashboardActivity operation.
+//
+// GET /dashboard/activity
+func (c *Client) GetDashboardActivity(ctx context.Context, params GetDashboardActivityParams) (GetDashboardActivityRes, error) {
+	res, err := c.sendGetDashboardActivity(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetDashboardActivity(ctx context.Context, params GetDashboardActivityParams) (res GetDashboardActivityRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/dashboard/activity"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "window" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "window",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Window.Get(); ok {
+				return e.EncodeValue(conv.StringToString(string(val)))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "bucket" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "bucket",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Bucket.Get(); ok {
+				return e.EncodeValue(conv.StringToString(string(val)))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, GetDashboardActivityOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeGetDashboardActivityResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetDashboardEnvironments invokes getDashboardEnvironments operation.
+//
+// GET /dashboard/environments
+func (c *Client) GetDashboardEnvironments(ctx context.Context) (GetDashboardEnvironmentsRes, error) {
+	res, err := c.sendGetDashboardEnvironments(ctx)
+	return res, err
+}
+
+func (c *Client) sendGetDashboardEnvironments(ctx context.Context) (res GetDashboardEnvironmentsRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/dashboard/environments"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, GetDashboardEnvironmentsOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeGetDashboardEnvironmentsResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetDashboardSummary invokes getDashboardSummary operation.
+//
+// GET /dashboard/summary
+func (c *Client) GetDashboardSummary(ctx context.Context) (GetDashboardSummaryRes, error) {
+	res, err := c.sendGetDashboardSummary(ctx)
+	return res, err
+}
+
+func (c *Client) sendGetDashboardSummary(ctx context.Context) (res GetDashboardSummaryRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/dashboard/summary"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, GetDashboardSummaryOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeGetDashboardSummaryResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // GetEnvironment invokes getEnvironment operation.
 //
 // GET /environments/{environmentId}
@@ -3061,6 +3315,93 @@ func (c *Client) sendGetWorkgroup(ctx context.Context, params GetWorkgroupParams
 	defer resp.Body.Close()
 
 	result, err := decodeGetWorkgroupResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetWorkgroupsActivity invokes getWorkgroupsActivity operation.
+//
+// GET /dashboard/workgroups-activity
+func (c *Client) GetWorkgroupsActivity(ctx context.Context, params GetWorkgroupsActivityParams) (GetWorkgroupsActivityRes, error) {
+	res, err := c.sendGetWorkgroupsActivity(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetWorkgroupsActivity(ctx context.Context, params GetWorkgroupsActivityParams) (res GetWorkgroupsActivityRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/dashboard/workgroups-activity"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "window" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "window",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			if val, ok := params.Window.Get(); ok {
+				return e.EncodeValue(conv.StringToString(string(val)))
+			}
+			return nil
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, GetWorkgroupsActivityOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeGetWorkgroupsActivityResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

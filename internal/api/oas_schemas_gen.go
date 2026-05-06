@@ -2026,6 +2026,582 @@ type CreateWorkgroupUnauthorized Error
 
 func (*CreateWorkgroupUnauthorized) createWorkgroupRes() {}
 
+// Ref: #/dashboardAccount
+type DashboardAccount struct {
+	AccountId        string               `json:"accountId"`
+	Email            string               `json:"email"`
+	OrganizationId   string               `json:"organizationId"`
+	OrganizationName string               `json:"organizationName"`
+	Role             DashboardAccountRole `json:"role"`
+}
+
+// GetAccountId returns the value of AccountId.
+func (s *DashboardAccount) GetAccountId() string {
+	return s.AccountId
+}
+
+// GetEmail returns the value of Email.
+func (s *DashboardAccount) GetEmail() string {
+	return s.Email
+}
+
+// GetOrganizationId returns the value of OrganizationId.
+func (s *DashboardAccount) GetOrganizationId() string {
+	return s.OrganizationId
+}
+
+// GetOrganizationName returns the value of OrganizationName.
+func (s *DashboardAccount) GetOrganizationName() string {
+	return s.OrganizationName
+}
+
+// GetRole returns the value of Role.
+func (s *DashboardAccount) GetRole() DashboardAccountRole {
+	return s.Role
+}
+
+// SetAccountId sets the value of AccountId.
+func (s *DashboardAccount) SetAccountId(val string) {
+	s.AccountId = val
+}
+
+// SetEmail sets the value of Email.
+func (s *DashboardAccount) SetEmail(val string) {
+	s.Email = val
+}
+
+// SetOrganizationId sets the value of OrganizationId.
+func (s *DashboardAccount) SetOrganizationId(val string) {
+	s.OrganizationId = val
+}
+
+// SetOrganizationName sets the value of OrganizationName.
+func (s *DashboardAccount) SetOrganizationName(val string) {
+	s.OrganizationName = val
+}
+
+// SetRole sets the value of Role.
+func (s *DashboardAccount) SetRole(val DashboardAccountRole) {
+	s.Role = val
+}
+
+type DashboardAccountRole string
+
+const (
+	DashboardAccountRoleAdmin  DashboardAccountRole = "admin"
+	DashboardAccountRoleMember DashboardAccountRole = "member"
+)
+
+// AllValues returns all DashboardAccountRole values.
+func (DashboardAccountRole) AllValues() []DashboardAccountRole {
+	return []DashboardAccountRole{
+		DashboardAccountRoleAdmin,
+		DashboardAccountRoleMember,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DashboardAccountRole) MarshalText() ([]byte, error) {
+	switch s {
+	case DashboardAccountRoleAdmin:
+		return []byte(s), nil
+	case DashboardAccountRoleMember:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DashboardAccountRole) UnmarshalText(data []byte) error {
+	switch DashboardAccountRole(data) {
+	case DashboardAccountRoleAdmin:
+		*s = DashboardAccountRoleAdmin
+		return nil
+	case DashboardAccountRoleMember:
+		*s = DashboardAccountRoleMember
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/dashboardActivityBucket
+type DashboardActivityBucket struct {
+	Start     time.Time `json:"start"`
+	Envelopes int       `json:"envelopes"`
+	Sessions  int       `json:"sessions"`
+}
+
+// GetStart returns the value of Start.
+func (s *DashboardActivityBucket) GetStart() time.Time {
+	return s.Start
+}
+
+// GetEnvelopes returns the value of Envelopes.
+func (s *DashboardActivityBucket) GetEnvelopes() int {
+	return s.Envelopes
+}
+
+// GetSessions returns the value of Sessions.
+func (s *DashboardActivityBucket) GetSessions() int {
+	return s.Sessions
+}
+
+// SetStart sets the value of Start.
+func (s *DashboardActivityBucket) SetStart(val time.Time) {
+	s.Start = val
+}
+
+// SetEnvelopes sets the value of Envelopes.
+func (s *DashboardActivityBucket) SetEnvelopes(val int) {
+	s.Envelopes = val
+}
+
+// SetSessions sets the value of Sessions.
+func (s *DashboardActivityBucket) SetSessions(val int) {
+	s.Sessions = val
+}
+
+// Ref: #/dashboardActivityResponse
+type DashboardActivityResponse struct {
+	Buckets     []DashboardActivityBucket    `json:"buckets"`
+	ByWorkgroup []DashboardWorkgroupActivity `json:"byWorkgroup"`
+}
+
+// GetBuckets returns the value of Buckets.
+func (s *DashboardActivityResponse) GetBuckets() []DashboardActivityBucket {
+	return s.Buckets
+}
+
+// GetByWorkgroup returns the value of ByWorkgroup.
+func (s *DashboardActivityResponse) GetByWorkgroup() []DashboardWorkgroupActivity {
+	return s.ByWorkgroup
+}
+
+// SetBuckets sets the value of Buckets.
+func (s *DashboardActivityResponse) SetBuckets(val []DashboardActivityBucket) {
+	s.Buckets = val
+}
+
+// SetByWorkgroup sets the value of ByWorkgroup.
+func (s *DashboardActivityResponse) SetByWorkgroup(val []DashboardWorkgroupActivity) {
+	s.ByWorkgroup = val
+}
+
+func (*DashboardActivityResponse) getDashboardActivityRes() {}
+
+// Ref: #/dashboardBucket
+type DashboardBucket string
+
+const (
+	DashboardBucket1h DashboardBucket = "1h"
+	DashboardBucket6h DashboardBucket = "6h"
+	DashboardBucket1d DashboardBucket = "1d"
+)
+
+// AllValues returns all DashboardBucket values.
+func (DashboardBucket) AllValues() []DashboardBucket {
+	return []DashboardBucket{
+		DashboardBucket1h,
+		DashboardBucket6h,
+		DashboardBucket1d,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DashboardBucket) MarshalText() ([]byte, error) {
+	switch s {
+	case DashboardBucket1h:
+		return []byte(s), nil
+	case DashboardBucket6h:
+		return []byte(s), nil
+	case DashboardBucket1d:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DashboardBucket) UnmarshalText(data []byte) error {
+	switch DashboardBucket(data) {
+	case DashboardBucket1h:
+		*s = DashboardBucket1h
+		return nil
+	case DashboardBucket6h:
+		*s = DashboardBucket6h
+		return nil
+	case DashboardBucket1d:
+		*s = DashboardBucket1d
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/dashboardEnvironment
+type DashboardEnvironment struct {
+	ID              string                     `json:"id"`
+	Name            string                     `json:"name"`
+	AccountId       string                     `json:"accountId"`
+	Status          DashboardEnvironmentStatus `json:"status"`
+	LastHeartbeatAt OptDateTime                `json:"lastHeartbeatAt"`
+}
+
+// GetID returns the value of ID.
+func (s *DashboardEnvironment) GetID() string {
+	return s.ID
+}
+
+// GetName returns the value of Name.
+func (s *DashboardEnvironment) GetName() string {
+	return s.Name
+}
+
+// GetAccountId returns the value of AccountId.
+func (s *DashboardEnvironment) GetAccountId() string {
+	return s.AccountId
+}
+
+// GetStatus returns the value of Status.
+func (s *DashboardEnvironment) GetStatus() DashboardEnvironmentStatus {
+	return s.Status
+}
+
+// GetLastHeartbeatAt returns the value of LastHeartbeatAt.
+func (s *DashboardEnvironment) GetLastHeartbeatAt() OptDateTime {
+	return s.LastHeartbeatAt
+}
+
+// SetID sets the value of ID.
+func (s *DashboardEnvironment) SetID(val string) {
+	s.ID = val
+}
+
+// SetName sets the value of Name.
+func (s *DashboardEnvironment) SetName(val string) {
+	s.Name = val
+}
+
+// SetAccountId sets the value of AccountId.
+func (s *DashboardEnvironment) SetAccountId(val string) {
+	s.AccountId = val
+}
+
+// SetStatus sets the value of Status.
+func (s *DashboardEnvironment) SetStatus(val DashboardEnvironmentStatus) {
+	s.Status = val
+}
+
+// SetLastHeartbeatAt sets the value of LastHeartbeatAt.
+func (s *DashboardEnvironment) SetLastHeartbeatAt(val OptDateTime) {
+	s.LastHeartbeatAt = val
+}
+
+// Ref: #/dashboardEnvironmentStatus
+type DashboardEnvironmentStatus string
+
+const (
+	DashboardEnvironmentStatusOnline   DashboardEnvironmentStatus = "online"
+	DashboardEnvironmentStatusStale    DashboardEnvironmentStatus = "stale"
+	DashboardEnvironmentStatusUnknown  DashboardEnvironmentStatus = "unknown"
+	DashboardEnvironmentStatusDisabled DashboardEnvironmentStatus = "disabled"
+)
+
+// AllValues returns all DashboardEnvironmentStatus values.
+func (DashboardEnvironmentStatus) AllValues() []DashboardEnvironmentStatus {
+	return []DashboardEnvironmentStatus{
+		DashboardEnvironmentStatusOnline,
+		DashboardEnvironmentStatusStale,
+		DashboardEnvironmentStatusUnknown,
+		DashboardEnvironmentStatusDisabled,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DashboardEnvironmentStatus) MarshalText() ([]byte, error) {
+	switch s {
+	case DashboardEnvironmentStatusOnline:
+		return []byte(s), nil
+	case DashboardEnvironmentStatusStale:
+		return []byte(s), nil
+	case DashboardEnvironmentStatusUnknown:
+		return []byte(s), nil
+	case DashboardEnvironmentStatusDisabled:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DashboardEnvironmentStatus) UnmarshalText(data []byte) error {
+	switch DashboardEnvironmentStatus(data) {
+	case DashboardEnvironmentStatusOnline:
+		*s = DashboardEnvironmentStatusOnline
+		return nil
+	case DashboardEnvironmentStatusStale:
+		*s = DashboardEnvironmentStatusStale
+		return nil
+	case DashboardEnvironmentStatusUnknown:
+		*s = DashboardEnvironmentStatusUnknown
+		return nil
+	case DashboardEnvironmentStatusDisabled:
+		*s = DashboardEnvironmentStatusDisabled
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+type DashboardEnvironmentsResponse []DashboardEnvironment
+
+func (*DashboardEnvironmentsResponse) getDashboardEnvironmentsRes() {}
+
+// Ref: #/dashboardRibbon
+type DashboardRibbon struct {
+	WorkgroupCount     int `json:"workgroupCount"`
+	AdvertisementCount int `json:"advertisementCount"`
+	SessionsToday      int `json:"sessionsToday"`
+	EnvironmentCount   int `json:"environmentCount"`
+}
+
+// GetWorkgroupCount returns the value of WorkgroupCount.
+func (s *DashboardRibbon) GetWorkgroupCount() int {
+	return s.WorkgroupCount
+}
+
+// GetAdvertisementCount returns the value of AdvertisementCount.
+func (s *DashboardRibbon) GetAdvertisementCount() int {
+	return s.AdvertisementCount
+}
+
+// GetSessionsToday returns the value of SessionsToday.
+func (s *DashboardRibbon) GetSessionsToday() int {
+	return s.SessionsToday
+}
+
+// GetEnvironmentCount returns the value of EnvironmentCount.
+func (s *DashboardRibbon) GetEnvironmentCount() int {
+	return s.EnvironmentCount
+}
+
+// SetWorkgroupCount sets the value of WorkgroupCount.
+func (s *DashboardRibbon) SetWorkgroupCount(val int) {
+	s.WorkgroupCount = val
+}
+
+// SetAdvertisementCount sets the value of AdvertisementCount.
+func (s *DashboardRibbon) SetAdvertisementCount(val int) {
+	s.AdvertisementCount = val
+}
+
+// SetSessionsToday sets the value of SessionsToday.
+func (s *DashboardRibbon) SetSessionsToday(val int) {
+	s.SessionsToday = val
+}
+
+// SetEnvironmentCount sets the value of EnvironmentCount.
+func (s *DashboardRibbon) SetEnvironmentCount(val int) {
+	s.EnvironmentCount = val
+}
+
+// Ref: #/dashboardStats
+type DashboardStats struct {
+	ActiveSessions        int `json:"activeSessions"`
+	ActiveSessionsDelta7d int `json:"activeSessionsDelta7d"`
+	EnvelopesToday        int `json:"envelopesToday"`
+	EnvelopesYesterday    int `json:"envelopesYesterday"`
+	ActiveWorkgroups      int `json:"activeWorkgroups"`
+	ActiveTunnels         int `json:"activeTunnels"`
+}
+
+// GetActiveSessions returns the value of ActiveSessions.
+func (s *DashboardStats) GetActiveSessions() int {
+	return s.ActiveSessions
+}
+
+// GetActiveSessionsDelta7d returns the value of ActiveSessionsDelta7d.
+func (s *DashboardStats) GetActiveSessionsDelta7d() int {
+	return s.ActiveSessionsDelta7d
+}
+
+// GetEnvelopesToday returns the value of EnvelopesToday.
+func (s *DashboardStats) GetEnvelopesToday() int {
+	return s.EnvelopesToday
+}
+
+// GetEnvelopesYesterday returns the value of EnvelopesYesterday.
+func (s *DashboardStats) GetEnvelopesYesterday() int {
+	return s.EnvelopesYesterday
+}
+
+// GetActiveWorkgroups returns the value of ActiveWorkgroups.
+func (s *DashboardStats) GetActiveWorkgroups() int {
+	return s.ActiveWorkgroups
+}
+
+// GetActiveTunnels returns the value of ActiveTunnels.
+func (s *DashboardStats) GetActiveTunnels() int {
+	return s.ActiveTunnels
+}
+
+// SetActiveSessions sets the value of ActiveSessions.
+func (s *DashboardStats) SetActiveSessions(val int) {
+	s.ActiveSessions = val
+}
+
+// SetActiveSessionsDelta7d sets the value of ActiveSessionsDelta7d.
+func (s *DashboardStats) SetActiveSessionsDelta7d(val int) {
+	s.ActiveSessionsDelta7d = val
+}
+
+// SetEnvelopesToday sets the value of EnvelopesToday.
+func (s *DashboardStats) SetEnvelopesToday(val int) {
+	s.EnvelopesToday = val
+}
+
+// SetEnvelopesYesterday sets the value of EnvelopesYesterday.
+func (s *DashboardStats) SetEnvelopesYesterday(val int) {
+	s.EnvelopesYesterday = val
+}
+
+// SetActiveWorkgroups sets the value of ActiveWorkgroups.
+func (s *DashboardStats) SetActiveWorkgroups(val int) {
+	s.ActiveWorkgroups = val
+}
+
+// SetActiveTunnels sets the value of ActiveTunnels.
+func (s *DashboardStats) SetActiveTunnels(val int) {
+	s.ActiveTunnels = val
+}
+
+// Ref: #/dashboardSummaryResponse
+type DashboardSummaryResponse struct {
+	Account DashboardAccount `json:"account"`
+	Stats   DashboardStats   `json:"stats"`
+	Ribbon  DashboardRibbon  `json:"ribbon"`
+}
+
+// GetAccount returns the value of Account.
+func (s *DashboardSummaryResponse) GetAccount() DashboardAccount {
+	return s.Account
+}
+
+// GetStats returns the value of Stats.
+func (s *DashboardSummaryResponse) GetStats() DashboardStats {
+	return s.Stats
+}
+
+// GetRibbon returns the value of Ribbon.
+func (s *DashboardSummaryResponse) GetRibbon() DashboardRibbon {
+	return s.Ribbon
+}
+
+// SetAccount sets the value of Account.
+func (s *DashboardSummaryResponse) SetAccount(val DashboardAccount) {
+	s.Account = val
+}
+
+// SetStats sets the value of Stats.
+func (s *DashboardSummaryResponse) SetStats(val DashboardStats) {
+	s.Stats = val
+}
+
+// SetRibbon sets the value of Ribbon.
+func (s *DashboardSummaryResponse) SetRibbon(val DashboardRibbon) {
+	s.Ribbon = val
+}
+
+func (*DashboardSummaryResponse) getDashboardSummaryRes() {}
+
+// Ref: #/dashboardWindow
+type DashboardWindow string
+
+const (
+	DashboardWindow24h DashboardWindow = "24h"
+	DashboardWindow7d  DashboardWindow = "7d"
+	DashboardWindow30d DashboardWindow = "30d"
+)
+
+// AllValues returns all DashboardWindow values.
+func (DashboardWindow) AllValues() []DashboardWindow {
+	return []DashboardWindow{
+		DashboardWindow24h,
+		DashboardWindow7d,
+		DashboardWindow30d,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s DashboardWindow) MarshalText() ([]byte, error) {
+	switch s {
+	case DashboardWindow24h:
+		return []byte(s), nil
+	case DashboardWindow7d:
+		return []byte(s), nil
+	case DashboardWindow30d:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *DashboardWindow) UnmarshalText(data []byte) error {
+	switch DashboardWindow(data) {
+	case DashboardWindow24h:
+		*s = DashboardWindow24h
+		return nil
+	case DashboardWindow7d:
+		*s = DashboardWindow7d
+		return nil
+	case DashboardWindow30d:
+		*s = DashboardWindow30d
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/dashboardWorkgroupActivity
+type DashboardWorkgroupActivity struct {
+	WorkgroupId   string `json:"workgroupId"`
+	WorkgroupName string `json:"workgroupName"`
+	Envelopes     int    `json:"envelopes"`
+}
+
+// GetWorkgroupId returns the value of WorkgroupId.
+func (s *DashboardWorkgroupActivity) GetWorkgroupId() string {
+	return s.WorkgroupId
+}
+
+// GetWorkgroupName returns the value of WorkgroupName.
+func (s *DashboardWorkgroupActivity) GetWorkgroupName() string {
+	return s.WorkgroupName
+}
+
+// GetEnvelopes returns the value of Envelopes.
+func (s *DashboardWorkgroupActivity) GetEnvelopes() int {
+	return s.Envelopes
+}
+
+// SetWorkgroupId sets the value of WorkgroupId.
+func (s *DashboardWorkgroupActivity) SetWorkgroupId(val string) {
+	s.WorkgroupId = val
+}
+
+// SetWorkgroupName sets the value of WorkgroupName.
+func (s *DashboardWorkgroupActivity) SetWorkgroupName(val string) {
+	s.WorkgroupName = val
+}
+
+// SetEnvelopes sets the value of Envelopes.
+func (s *DashboardWorkgroupActivity) SetEnvelopes(val int) {
+	s.Envelopes = val
+}
+
 type DeclineWorkgroupInvitationBadRequest Error
 
 func (*DeclineWorkgroupInvitationBadRequest) declineWorkgroupInvitationRes() {}
@@ -2490,6 +3066,34 @@ type GetContractUnauthorized Error
 
 func (*GetContractUnauthorized) getContractRes() {}
 
+type GetDashboardActivityBadRequest Error
+
+func (*GetDashboardActivityBadRequest) getDashboardActivityRes() {}
+
+type GetDashboardActivityInternalServerError Error
+
+func (*GetDashboardActivityInternalServerError) getDashboardActivityRes() {}
+
+type GetDashboardActivityUnauthorized Error
+
+func (*GetDashboardActivityUnauthorized) getDashboardActivityRes() {}
+
+type GetDashboardEnvironmentsInternalServerError Error
+
+func (*GetDashboardEnvironmentsInternalServerError) getDashboardEnvironmentsRes() {}
+
+type GetDashboardEnvironmentsUnauthorized Error
+
+func (*GetDashboardEnvironmentsUnauthorized) getDashboardEnvironmentsRes() {}
+
+type GetDashboardSummaryInternalServerError Error
+
+func (*GetDashboardSummaryInternalServerError) getDashboardSummaryRes() {}
+
+type GetDashboardSummaryUnauthorized Error
+
+func (*GetDashboardSummaryUnauthorized) getDashboardSummaryRes() {}
+
 type GetEnvironmentInternalServerError Error
 
 func (*GetEnvironmentInternalServerError) getEnvironmentRes() {}
@@ -2549,6 +3153,18 @@ func (*GetWorkgroupNotFound) getWorkgroupRes() {}
 type GetWorkgroupUnauthorized Error
 
 func (*GetWorkgroupUnauthorized) getWorkgroupRes() {}
+
+type GetWorkgroupsActivityBadRequest Error
+
+func (*GetWorkgroupsActivityBadRequest) getWorkgroupsActivityRes() {}
+
+type GetWorkgroupsActivityInternalServerError Error
+
+func (*GetWorkgroupsActivityInternalServerError) getWorkgroupsActivityRes() {}
+
+type GetWorkgroupsActivityUnauthorized Error
+
+func (*GetWorkgroupsActivityUnauthorized) getWorkgroupsActivityRes() {}
 
 type HeartbeatEnvironmentInternalServerError Error
 
@@ -3337,6 +3953,98 @@ func (o OptCreateAccountRequestStatus) Get() (v CreateAccountRequestStatus, ok b
 
 // Or returns value if set, or given parameter if does not.
 func (o OptCreateAccountRequestStatus) Or(d CreateAccountRequestStatus) CreateAccountRequestStatus {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptDashboardBucket returns new OptDashboardBucket with value set to v.
+func NewOptDashboardBucket(v DashboardBucket) OptDashboardBucket {
+	return OptDashboardBucket{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptDashboardBucket is optional DashboardBucket.
+type OptDashboardBucket struct {
+	Value DashboardBucket
+	Set   bool
+}
+
+// IsSet returns true if OptDashboardBucket was set.
+func (o OptDashboardBucket) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptDashboardBucket) Reset() {
+	var v DashboardBucket
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptDashboardBucket) SetTo(v DashboardBucket) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptDashboardBucket) Get() (v DashboardBucket, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptDashboardBucket) Or(d DashboardBucket) DashboardBucket {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptDashboardWindow returns new OptDashboardWindow with value set to v.
+func NewOptDashboardWindow(v DashboardWindow) OptDashboardWindow {
+	return OptDashboardWindow{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptDashboardWindow is optional DashboardWindow.
+type OptDashboardWindow struct {
+	Value DashboardWindow
+	Set   bool
+}
+
+// IsSet returns true if OptDashboardWindow was set.
+func (o OptDashboardWindow) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptDashboardWindow) Reset() {
+	var v DashboardWindow
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptDashboardWindow) SetTo(v DashboardWindow) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptDashboardWindow) Get() (v DashboardWindow, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptDashboardWindow) Or(d DashboardWindow) DashboardWindow {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -5971,3 +6679,20 @@ func (s *WorkgroupState) UnmarshalText(data []byte) error {
 		return errors.Errorf("invalid value: %q", data)
 	}
 }
+
+// Ref: #/workgroupsActivityResponse
+type WorkgroupsActivityResponse struct {
+	ByWorkgroup []DashboardWorkgroupActivity `json:"byWorkgroup"`
+}
+
+// GetByWorkgroup returns the value of ByWorkgroup.
+func (s *WorkgroupsActivityResponse) GetByWorkgroup() []DashboardWorkgroupActivity {
+	return s.ByWorkgroup
+}
+
+// SetByWorkgroup sets the value of ByWorkgroup.
+func (s *WorkgroupsActivityResponse) SetByWorkgroup(val []DashboardWorkgroupActivity) {
+	s.ByWorkgroup = val
+}
+
+func (*WorkgroupsActivityResponse) getWorkgroupsActivityRes() {}

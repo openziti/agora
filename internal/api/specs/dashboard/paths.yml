@@ -1,0 +1,136 @@
+/dashboard/summary:
+  get:
+    tags:
+      - dashboard
+    operationId: getDashboardSummary
+    security:
+      - accountTokenAuth: []
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/dashboardSummaryResponse"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/dashboard/activity:
+  get:
+    tags:
+      - dashboard
+    operationId: getDashboardActivity
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: window
+        in: query
+        required: false
+        schema:
+          $ref: "../agora.yml#/components/schemas/dashboardWindow"
+      - name: bucket
+        in: query
+        required: false
+        schema:
+          $ref: "../agora.yml#/components/schemas/dashboardBucket"
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/dashboardActivityResponse"
+      400:
+        description: bad request
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/dashboard/environments:
+  get:
+    tags:
+      - dashboard
+    operationId: getDashboardEnvironments
+    security:
+      - accountTokenAuth: []
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/dashboardEnvironmentsResponse"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
+/dashboard/workgroups-activity:
+  get:
+    tags:
+      - dashboard
+    operationId: getWorkgroupsActivity
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: window
+        in: query
+        required: false
+        schema:
+          $ref: "../agora.yml#/components/schemas/dashboardWindow"
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/workgroupsActivityResponse"
+      400:
+        description: bad request
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"

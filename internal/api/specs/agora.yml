@@ -80,6 +80,15 @@ paths:
   /catalog/advertisements:
     $ref: "catalog/paths.yml#/~1catalog~1advertisements"
 
+  /dashboard/summary:
+    $ref: "dashboard/paths.yml#/~1dashboard~1summary"
+  /dashboard/activity:
+    $ref: "dashboard/paths.yml#/~1dashboard~1activity"
+  /dashboard/environments:
+    $ref: "dashboard/paths.yml#/~1dashboard~1environments"
+  /dashboard/workgroups-activity:
+    $ref: "dashboard/paths.yml#/~1dashboard~1workgroups-activity"
+
   /sessions:
     $ref: "sessions/paths.yml#/~1sessions"
   /sessions/{sessionId}:
@@ -212,6 +221,32 @@ components:
       $ref: "advertisements/schemas.yml#/listAdvertisementsResponse"
     catalogSearchResponse:
       $ref: "catalog/schemas.yml#/catalogSearchResponse"
+    dashboardWindow:
+      $ref: "dashboard/schemas.yml#/dashboardWindow"
+    dashboardBucket:
+      $ref: "dashboard/schemas.yml#/dashboardBucket"
+    dashboardAccount:
+      $ref: "dashboard/schemas.yml#/dashboardAccount"
+    dashboardStats:
+      $ref: "dashboard/schemas.yml#/dashboardStats"
+    dashboardRibbon:
+      $ref: "dashboard/schemas.yml#/dashboardRibbon"
+    dashboardSummaryResponse:
+      $ref: "dashboard/schemas.yml#/dashboardSummaryResponse"
+    dashboardActivityBucket:
+      $ref: "dashboard/schemas.yml#/dashboardActivityBucket"
+    dashboardWorkgroupActivity:
+      $ref: "dashboard/schemas.yml#/dashboardWorkgroupActivity"
+    dashboardActivityResponse:
+      $ref: "dashboard/schemas.yml#/dashboardActivityResponse"
+    dashboardEnvironmentStatus:
+      $ref: "dashboard/schemas.yml#/dashboardEnvironmentStatus"
+    dashboardEnvironment:
+      $ref: "dashboard/schemas.yml#/dashboardEnvironment"
+    dashboardEnvironmentsResponse:
+      $ref: "dashboard/schemas.yml#/dashboardEnvironmentsResponse"
+    workgroupsActivityResponse:
+      $ref: "dashboard/schemas.yml#/workgroupsActivityResponse"
     session:
       $ref: "sessions/schemas.yml#/session"
     sessionState:

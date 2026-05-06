@@ -105,6 +105,18 @@ type GetContractRes interface {
 	getContractRes()
 }
 
+type GetDashboardActivityRes interface {
+	getDashboardActivityRes()
+}
+
+type GetDashboardEnvironmentsRes interface {
+	getDashboardEnvironmentsRes()
+}
+
+type GetDashboardSummaryRes interface {
+	getDashboardSummaryRes()
+}
+
 type GetEnvironmentRes interface {
 	getEnvironmentRes()
 }
@@ -123,6 +135,10 @@ type GetTunnelServeRes interface {
 
 type GetWorkgroupRes interface {
 	getWorkgroupRes()
+}
+
+type GetWorkgroupsActivityRes interface {
+	getWorkgroupsActivityRes()
 }
 
 type HeartbeatEnvironmentRes interface {

@@ -1,0 +1,183 @@
+dashboardWindow:
+  type: string
+  enum: [24h, 7d, 30d]
+
+dashboardBucket:
+  type: string
+  enum: [1h, 6h, 1d]
+
+dashboardAccount:
+  type: object
+  required:
+    - accountId
+    - email
+    - organizationId
+    - organizationName
+    - role
+  properties:
+    accountId:
+      type: string
+      pattern: '^ac_[a-z0-9]{12}$'
+    email:
+      type: string
+      format: email
+    organizationId:
+      type: string
+      pattern: '^org_[a-z0-9]{12}$'
+    organizationName:
+      type: string
+    role:
+      type: string
+      enum: [admin, member]
+
+dashboardStats:
+  type: object
+  required:
+    - activeSessions
+    - activeSessionsDelta7d
+    - envelopesToday
+    - envelopesYesterday
+    - activeWorkgroups
+    - activeTunnels
+  properties:
+    activeSessions:
+      type: integer
+      minimum: 0
+    activeSessionsDelta7d:
+      type: integer
+    envelopesToday:
+      type: integer
+      minimum: 0
+    envelopesYesterday:
+      type: integer
+      minimum: 0
+    activeWorkgroups:
+      type: integer
+      minimum: 0
+    activeTunnels:
+      type: integer
+      minimum: 0
+
+dashboardRibbon:
+  type: object
+  required:
+    - workgroupCount
+    - advertisementCount
+    - sessionsToday
+    - environmentCount
+  properties:
+    workgroupCount:
+      type: integer
+      minimum: 0
+    advertisementCount:
+      type: integer
+      minimum: 0
+    sessionsToday:
+      type: integer
+      minimum: 0
+    environmentCount:
+      type: integer
+      minimum: 0
+
+dashboardSummaryResponse:
+  type: object
+  required:
+    - account
+    - stats
+    - ribbon
+  properties:
+    account:
+      $ref: "#/dashboardAccount"
+    stats:
+      $ref: "#/dashboardStats"
+    ribbon:
+      $ref: "#/dashboardRibbon"
+
+dashboardActivityBucket:
+  type: object
+  required:
+    - start
+    - envelopes
+    - sessions
+  properties:
+    start:
+      type: string
+      format: date-time
+    envelopes:
+      type: integer
+      minimum: 0
+    sessions:
+      type: integer
+      minimum: 0
+
+dashboardWorkgroupActivity:
+  type: object
+  required:
+    - workgroupId
+    - workgroupName
+    - envelopes
+  properties:
+    workgroupId:
+      type: string
+      pattern: '^wg_[a-z0-9]{12}$'
+    workgroupName:
+      type: string
+    envelopes:
+      type: integer
+      minimum: 0
+
+dashboardActivityResponse:
+  type: object
+  required:
+    - buckets
+    - byWorkgroup
+  properties:
+    buckets:
+      type: array
+      items:
+        $ref: "#/dashboardActivityBucket"
+    byWorkgroup:
+      type: array
+      items:
+        $ref: "#/dashboardWorkgroupActivity"
+
+dashboardEnvironmentStatus:
+  type: string
+  enum: [online, stale, unknown, disabled]
+
+dashboardEnvironment:
+  type: object
+  required:
+    - id
+    - name
+    - accountId
+    - status
+  properties:
+    id:
+      type: string
+      pattern: '^ev_[a-z0-9]{12}$'
+    name:
+      type: string
+    accountId:
+      type: string
+      pattern: '^ac_[a-z0-9]{12}$'
+    status:
+      $ref: "#/dashboardEnvironmentStatus"
+    lastHeartbeatAt:
+      type: string
+      format: date-time
+
+dashboardEnvironmentsResponse:
+  type: array
+  items:
+    $ref: "#/dashboardEnvironment"
+
+workgroupsActivityResponse:
+  type: object
+  required:
+    - byWorkgroup
+  properties:
+    byWorkgroup:
+      type: array
+      items:
+        $ref: "#/dashboardWorkgroupActivity"

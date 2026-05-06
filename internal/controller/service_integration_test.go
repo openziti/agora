@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -1205,6 +1206,364 @@ func (e *workgroupTestEnv) enableEnvironment(t *testing.T, token string) string 
 		t.Fatalf("enable env unexpected: %T", res)
 	}
 	return resp.Environment.ID
+}
+
+func TestDashboardSummaryEndpoint(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgAlpha, alphaID, alphaToken := env.createOrgWithAccount(t, "Alpha Co", "alpha@example.com")
+	orgBeta, betaID, betaToken := env.createOrgWithAccount(t, "Beta Co", "beta@example.com")
+
+	wgAlpha := env.seedIntraOrgWorkgroup(t, orgAlpha, "alpha-shared", alphaID)
+	wgBeta := env.seedIntraOrgWorkgroup(t, orgBeta, "beta-shared", betaID)
+	alphaAdID := env.publishDashboardAdvertisement(t, alphaToken, "alpha-ad", wgAlpha)
+	env.publishDashboardAdvertisement(t, betaToken, "beta-ad-one", wgBeta)
+	env.publishDashboardAdvertisement(t, betaToken, "beta-ad-two", wgBeta)
+
+	now := time.Now().UTC()
+	seedDashboardEnvironment(t, env, orgAlpha, alphaID, "alpha-host", persistence.EnvironmentStateEnabled, &now)
+	seedDashboardEnvironment(t, env, orgBeta, betaID, "beta-host-one", persistence.EnvironmentStateEnabled, &now)
+	seedDashboardEnvironment(t, env, orgBeta, betaID, "beta-host-two", persistence.EnvironmentStateEnabled, &now)
+	seedDashboardSession(t, env, orgAlpha, alphaID, wgAlpha, alphaAdID, persistence.SessionStateActive, now.Add(-time.Hour))
+	recordDashboardEnvelopeEvent(t, env, orgAlpha, alphaID, wgAlpha, 7, now.Add(-time.Hour))
+	recordDashboardSessionProposedEvent(t, env, orgAlpha, alphaID, wgAlpha, now.Add(-time.Hour))
+
+	assertDashboardUnauthorized(t, env, "/dashboard/summary")
+
+	alpha := env.accountClient(t, alphaToken)
+	alphaRes, err := alpha.GetDashboardSummary(env.ctx)
+	if err != nil {
+		t.Fatalf("get alpha summary: %v", err)
+	}
+	alphaSummary, ok := alphaRes.(*api.DashboardSummaryResponse)
+	if !ok {
+		t.Fatalf("alpha summary unexpected response: %T", alphaRes)
+	}
+	if alphaSummary.Account.OrganizationName != "Alpha Co" {
+		t.Fatalf("expected Alpha Co organization name, got %q", alphaSummary.Account.OrganizationName)
+	}
+	if alphaSummary.Account.AccountId != alphaID || alphaSummary.Account.OrganizationId != orgAlpha {
+		t.Fatalf("summary account mismatch: %#v", alphaSummary.Account)
+	}
+	if alphaSummary.Stats.ActiveSessions != 1 || alphaSummary.Stats.ActiveSessionsDelta7d != 1 {
+		t.Fatalf("expected alpha active sessions 1 delta 1, got %+v", alphaSummary.Stats)
+	}
+	if alphaSummary.Stats.EnvelopesToday != 7 || alphaSummary.Stats.EnvelopesYesterday != 0 {
+		t.Fatalf("expected alpha envelopes 7/0, got %+v", alphaSummary.Stats)
+	}
+	if alphaSummary.Ribbon.AdvertisementCount != 1 || alphaSummary.Ribbon.EnvironmentCount != 1 || alphaSummary.Ribbon.SessionsToday != 1 {
+		t.Fatalf("expected alpha scoped ribbon counts, got %+v", alphaSummary.Ribbon)
+	}
+
+	beta := env.accountClient(t, betaToken)
+	betaRes, err := beta.GetDashboardSummary(env.ctx)
+	if err != nil {
+		t.Fatalf("get beta summary: %v", err)
+	}
+	betaSummary, ok := betaRes.(*api.DashboardSummaryResponse)
+	if !ok {
+		t.Fatalf("beta summary unexpected response: %T", betaRes)
+	}
+	if betaSummary.Account.OrganizationName != "Beta Co" {
+		t.Fatalf("expected Beta Co organization name, got %q", betaSummary.Account.OrganizationName)
+	}
+	if betaSummary.Stats.ActiveSessions != 0 || betaSummary.Stats.EnvelopesToday != 0 {
+		t.Fatalf("expected beta to exclude alpha stats, got %+v", betaSummary.Stats)
+	}
+	if betaSummary.Ribbon.AdvertisementCount != 2 || betaSummary.Ribbon.EnvironmentCount != 2 || betaSummary.Ribbon.SessionsToday != 0 {
+		t.Fatalf("expected beta scoped ribbon counts, got %+v", betaSummary.Ribbon)
+	}
+}
+
+func TestDashboardActivityEndpoint(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgAlpha, alphaID, alphaToken := env.createOrgWithAccount(t, "Alpha Co", "alpha-activity@example.com")
+	orgBeta, betaID, _ := env.createOrgWithAccount(t, "Beta Co", "beta-activity@example.com")
+	wgAlpha := env.seedIntraOrgWorkgroup(t, orgAlpha, "alpha-activity", alphaID)
+	wgBeta := env.seedIntraOrgWorkgroup(t, orgBeta, "beta-activity", betaID)
+
+	now := time.Now().UTC()
+	recordDashboardEnvelopeEvent(t, env, orgAlpha, alphaID, wgAlpha, 50, now.Add(-time.Hour))
+	recordDashboardSessionProposedEvent(t, env, orgAlpha, alphaID, wgAlpha, now.Add(-time.Hour))
+	recordDashboardEnvelopeEvent(t, env, orgBeta, betaID, wgBeta, 30, now.Add(-time.Hour))
+	recordDashboardSessionProposedEvent(t, env, orgBeta, betaID, wgBeta, now.Add(-time.Hour))
+
+	assertDashboardUnauthorized(t, env, "/dashboard/activity")
+
+	alpha := env.accountClient(t, alphaToken)
+	res, err := alpha.GetDashboardActivity(env.ctx, api.GetDashboardActivityParams{
+		Window: api.NewOptDashboardWindow(api.DashboardWindow24h),
+		Bucket: api.NewOptDashboardBucket(api.DashboardBucket1h),
+	})
+	if err != nil {
+		t.Fatalf("get dashboard activity: %v", err)
+	}
+	activity, ok := res.(*api.DashboardActivityResponse)
+	if !ok {
+		t.Fatalf("activity unexpected response: %T", res)
+	}
+	if got := sumDashboardBucketEnvelopes(activity.Buckets); got != 50 {
+		t.Fatalf("expected 50 alpha envelopes, got %d", got)
+	}
+	if got := sumDashboardBucketSessions(activity.Buckets); got != 1 {
+		t.Fatalf("expected 1 alpha session, got %d", got)
+	}
+	if len(activity.ByWorkgroup) != 1 {
+		t.Fatalf("expected 1 alpha workgroup row, got %d", len(activity.ByWorkgroup))
+	}
+	if activity.ByWorkgroup[0].WorkgroupId != wgAlpha || activity.ByWorkgroup[0].Envelopes != 50 {
+		t.Fatalf("unexpected alpha workgroup breakdown: %+v", activity.ByWorkgroup)
+	}
+
+	bad, err := alpha.GetDashboardActivity(env.ctx, api.GetDashboardActivityParams{
+		Window: api.NewOptDashboardWindow(api.DashboardWindow24h),
+		Bucket: api.NewOptDashboardBucket(api.DashboardBucket1d),
+	})
+	if err != nil {
+		t.Fatalf("get dashboard activity bad request: %v", err)
+	}
+	if _, ok := bad.(*api.GetDashboardActivityBadRequest); !ok {
+		t.Fatalf("expected bad request for bucket >= window, got %T", bad)
+	}
+}
+
+func TestDashboardEnvironmentsEndpoint(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgAlpha, alphaID, alphaToken := env.createOrgWithAccount(t, "Alpha Co", "alpha-env@example.com")
+	orgBeta, betaID, _ := env.createOrgWithAccount(t, "Beta Co", "beta-env@example.com")
+	now := time.Now().UTC()
+	alphaEnvID := seedDashboardEnvironment(t, env, orgAlpha, alphaID, "alpha-host", persistence.EnvironmentStateEnabled, &now)
+	seedDashboardEnvironment(t, env, orgBeta, betaID, "beta-host", persistence.EnvironmentStateEnabled, &now)
+
+	assertDashboardUnauthorized(t, env, "/dashboard/environments")
+
+	alpha := env.accountClient(t, alphaToken)
+	res, err := alpha.GetDashboardEnvironments(env.ctx)
+	if err != nil {
+		t.Fatalf("get dashboard environments: %v", err)
+	}
+	environments, ok := res.(*api.DashboardEnvironmentsResponse)
+	if !ok {
+		t.Fatalf("environments unexpected response: %T", res)
+	}
+	if len(*environments) != 1 {
+		t.Fatalf("expected 1 alpha environment, got %d", len(*environments))
+	}
+	got := (*environments)[0]
+	if got.ID != alphaEnvID || got.Name != "alpha-host" || got.AccountId != alphaID {
+		t.Fatalf("unexpected alpha environment row: %+v", got)
+	}
+	if got.Status != api.DashboardEnvironmentStatusOnline || !got.LastHeartbeatAt.Set {
+		t.Fatalf("expected online status with heartbeat, got %+v", got)
+	}
+}
+
+func TestWorkgroupsActivityEndpoint(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgID, accountAID, tokenA := env.createOrgWithAccount(t, "Activity Org", "a-workgroups@example.com")
+	accountBID, tokenB := env.addAccountToOrg(t, orgID, "b-workgroups@example.com")
+	accountOtherID, _ := env.addAccountToOrg(t, orgID, "other-workgroups@example.com")
+
+	wgA1 := env.seedIntraOrgWorkgroup(t, orgID, "a-one", accountAID)
+	wgA2 := env.seedIntraOrgWorkgroup(t, orgID, "a-zero", accountAID)
+	wgB1 := env.seedIntraOrgWorkgroup(t, orgID, "b-one", accountBID)
+	wgB2 := env.seedIntraOrgWorkgroup(t, orgID, "b-zero", accountBID)
+	wgShared := env.seedIntraOrgWorkgroup(t, orgID, "shared", accountAID)
+	wgOther := env.seedIntraOrgWorkgroup(t, orgID, "other", accountOtherID)
+	seedDashboardMembership(t, env, orgID, wgShared, accountBID)
+
+	now := time.Now().UTC()
+	recordDashboardEnvelopeEvent(t, env, orgID, accountAID, wgA1, 50, now.Add(-time.Hour))
+	recordDashboardEnvelopeEvent(t, env, orgID, accountBID, wgB1, 30, now.Add(-time.Hour))
+	recordDashboardEnvelopeEvent(t, env, orgID, accountAID, wgShared, 100, now.Add(-time.Hour))
+	recordDashboardEnvelopeEvent(t, env, orgID, accountOtherID, wgOther, 200, now.Add(-time.Hour))
+
+	assertDashboardUnauthorized(t, env, "/dashboard/workgroups-activity")
+
+	clientA := env.accountClient(t, tokenA)
+	resA, err := clientA.GetWorkgroupsActivity(env.ctx, api.GetWorkgroupsActivityParams{Window: api.NewOptDashboardWindow(api.DashboardWindow24h)})
+	if err != nil {
+		t.Fatalf("get workgroups activity for A: %v", err)
+	}
+	aActivity, ok := resA.(*api.WorkgroupsActivityResponse)
+	if !ok {
+		t.Fatalf("workgroups activity A unexpected response: %T", resA)
+	}
+	assertDashboardWorkgroupRows(t, aActivity.ByWorkgroup, []api.DashboardWorkgroupActivity{
+		{WorkgroupId: wgA1, WorkgroupName: "a-one", Envelopes: 50},
+		{WorkgroupId: wgA2, WorkgroupName: "a-zero", Envelopes: 0},
+		{WorkgroupId: wgShared, WorkgroupName: "shared", Envelopes: 100},
+	})
+
+	clientB := env.accountClient(t, tokenB)
+	resB, err := clientB.GetWorkgroupsActivity(env.ctx, api.GetWorkgroupsActivityParams{Window: api.NewOptDashboardWindow(api.DashboardWindow24h)})
+	if err != nil {
+		t.Fatalf("get workgroups activity for B: %v", err)
+	}
+	bActivity, ok := resB.(*api.WorkgroupsActivityResponse)
+	if !ok {
+		t.Fatalf("workgroups activity B unexpected response: %T", resB)
+	}
+	assertDashboardWorkgroupRows(t, bActivity.ByWorkgroup, []api.DashboardWorkgroupActivity{
+		{WorkgroupId: wgB1, WorkgroupName: "b-one", Envelopes: 30},
+		{WorkgroupId: wgB2, WorkgroupName: "b-zero", Envelopes: 0},
+		{WorkgroupId: wgShared, WorkgroupName: "shared", Envelopes: 100},
+	})
+}
+
+func (e *workgroupTestEnv) publishDashboardAdvertisement(t *testing.T, token, name, workgroupID string) string {
+	t.Helper()
+	client := e.accountClient(t, token)
+	res, err := client.PublishAdvertisement(e.ctx, &api.PublishAdvertisementRequest{
+		Name:                name,
+		Capabilities:        []api.AdvertisementCapability{{Name: "dashboard"}},
+		InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{workgroupID},
+		TunnelMode:          api.NewOptAdvertisementTunnelMode(api.AdvertisementTunnelModeTCP),
+	})
+	if err != nil {
+		t.Fatalf("publish dashboard advertisement %q: %v", name, err)
+	}
+	ad, ok := res.(*api.Advertisement)
+	if !ok {
+		t.Fatalf("publish dashboard advertisement %q unexpected response: %T", name, res)
+	}
+	return ad.ID
+}
+
+func assertDashboardUnauthorized(t *testing.T, env *workgroupTestEnv, path string) {
+	t.Helper()
+	resp, err := env.ts.Client().Get(env.baseURL + path)
+	if err != nil {
+		t.Fatalf("unauthorized dashboard request %s: %v", path, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("expected %s to return 401 without account token, got %d", path, resp.StatusCode)
+	}
+}
+
+func seedDashboardEnvironment(t *testing.T, env *workgroupTestEnv, orgID, accountID, host string, state persistence.EnvironmentState, lastSeenAt *time.Time) string {
+	t.Helper()
+	created, err := env.store.Environments.Create(env.ctx, env.store.DB(), persistence.Environment{
+		OrganizationID: orgID,
+		AccountID:      accountID,
+		Host:           dashboardStringPtr(host),
+		ZitiIdentityID: "ziti-" + persistence.NewResourceID(persistence.PrefixEnvironment),
+		State:          state,
+		LastSeenAt:     lastSeenAt,
+	})
+	if err != nil {
+		t.Fatalf("seed dashboard environment %q: %v", host, err)
+	}
+	return created.ID
+}
+
+func seedDashboardSession(t *testing.T, env *workgroupTestEnv, orgID, accountID, workgroupID, advertisementID string, state persistence.SessionState, proposedAt time.Time) string {
+	t.Helper()
+	created, err := env.store.Sessions.Create(env.ctx, env.store.DB(), persistence.Session{
+		AdvertisementID:        advertisementID,
+		WorkgroupID:            workgroupID,
+		ProviderAccountID:      accountID,
+		ProviderOrganizationID: orgID,
+		ConsumerAccountID:      accountID,
+		ConsumerOrganizationID: orgID,
+		TunnelMode:             persistence.TunnelModeTCP,
+		State:                  state,
+		ProposedAt:             proposedAt,
+	})
+	if err != nil {
+		t.Fatalf("seed dashboard session: %v", err)
+	}
+	return created.ID
+}
+
+func seedDashboardMembership(t *testing.T, env *workgroupTestEnv, orgID, workgroupID, accountID string) {
+	t.Helper()
+	if _, err := env.store.WorkgroupMemberships.Create(env.ctx, env.store.DB(), persistence.WorkgroupMembership{
+		WorkgroupID:    workgroupID,
+		OrganizationID: orgID,
+		AccountID:      accountID,
+		Role:           persistence.WorkgroupMembershipRoleMember,
+	}); err != nil {
+		t.Fatalf("seed dashboard membership: %v", err)
+	}
+}
+
+func recordDashboardEnvelopeEvent(t *testing.T, env *workgroupTestEnv, orgID, accountID, workgroupID string, count int, occurredAt time.Time) {
+	t.Helper()
+	sess := dashboardAuditSession(orgID, accountID, workgroupID)
+	event := persistence.NewEnvelopeFlowedEvent(sess, orgID, accountID, count, count)
+	event.OccurredAt = occurredAt
+	if err := env.store.AuditEvents.Record(env.ctx, env.store.DB(), event); err != nil {
+		t.Fatalf("record dashboard envelope event: %v", err)
+	}
+}
+
+func recordDashboardSessionProposedEvent(t *testing.T, env *workgroupTestEnv, orgID, accountID, workgroupID string, occurredAt time.Time) {
+	t.Helper()
+	sess := dashboardAuditSession(orgID, accountID, workgroupID)
+	event := persistence.NewSessionProposedEvent(sess, orgID, accountID)
+	event.OccurredAt = occurredAt
+	if err := env.store.AuditEvents.Record(env.ctx, env.store.DB(), event); err != nil {
+		t.Fatalf("record dashboard session proposed event: %v", err)
+	}
+}
+
+func dashboardAuditSession(orgID, accountID, workgroupID string) persistence.Session {
+	return persistence.Session{
+		ID:                     persistence.NewResourceID(persistence.PrefixSession),
+		AdvertisementID:        persistence.NewResourceID(persistence.PrefixAdvertisement),
+		WorkgroupID:            workgroupID,
+		ProviderAccountID:      accountID,
+		ProviderOrganizationID: orgID,
+		ConsumerAccountID:      accountID,
+		ConsumerOrganizationID: orgID,
+		TunnelMode:             persistence.TunnelModeTCP,
+	}
+}
+
+func dashboardStringPtr(v string) *string {
+	return &v
+}
+
+func sumDashboardBucketEnvelopes(buckets []api.DashboardActivityBucket) int {
+	total := 0
+	for _, bucket := range buckets {
+		total += bucket.Envelopes
+	}
+	return total
+}
+
+func sumDashboardBucketSessions(buckets []api.DashboardActivityBucket) int {
+	total := 0
+	for _, bucket := range buckets {
+		total += bucket.Sessions
+	}
+	return total
+}
+
+func assertDashboardWorkgroupRows(t *testing.T, got, want []api.DashboardWorkgroupActivity) {
+	t.Helper()
+	if len(got) != len(want) {
+		t.Fatalf("expected %d workgroup activity rows, got %d: %+v", len(want), len(got), got)
+	}
+	for i := range want {
+		if got[i].WorkgroupId != want[i].WorkgroupId || got[i].WorkgroupName != want[i].WorkgroupName || got[i].Envelopes != want[i].Envelopes {
+			t.Fatalf("workgroup row %d mismatch: got %+v want %+v", i, got[i], want[i])
+		}
+	}
 }
 
 func TestSessionProposeVisibility(t *testing.T) {

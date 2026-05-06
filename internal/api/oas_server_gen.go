@@ -112,6 +112,18 @@ type Handler interface {
 	//
 	// GET /contracts/{contractId}
 	GetContract(ctx context.Context, params GetContractParams) (GetContractRes, error)
+	// GetDashboardActivity implements getDashboardActivity operation.
+	//
+	// GET /dashboard/activity
+	GetDashboardActivity(ctx context.Context, params GetDashboardActivityParams) (GetDashboardActivityRes, error)
+	// GetDashboardEnvironments implements getDashboardEnvironments operation.
+	//
+	// GET /dashboard/environments
+	GetDashboardEnvironments(ctx context.Context) (GetDashboardEnvironmentsRes, error)
+	// GetDashboardSummary implements getDashboardSummary operation.
+	//
+	// GET /dashboard/summary
+	GetDashboardSummary(ctx context.Context) (GetDashboardSummaryRes, error)
 	// GetEnvironment implements getEnvironment operation.
 	//
 	// GET /environments/{environmentId}
@@ -132,6 +144,10 @@ type Handler interface {
 	//
 	// GET /workgroups/{workgroupId}
 	GetWorkgroup(ctx context.Context, params GetWorkgroupParams) (GetWorkgroupRes, error)
+	// GetWorkgroupsActivity implements getWorkgroupsActivity operation.
+	//
+	// GET /dashboard/workgroups-activity
+	GetWorkgroupsActivity(ctx context.Context, params GetWorkgroupsActivityParams) (GetWorkgroupsActivityRes, error)
 	// HeartbeatEnvironment implements heartbeatEnvironment operation.
 	//
 	// POST /environments/{environmentId}/heartbeat

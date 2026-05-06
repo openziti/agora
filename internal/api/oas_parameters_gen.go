@@ -1830,6 +1830,151 @@ func decodeGetContractParams(args [1]string, argsEscaped bool, r *http.Request) 
 	return params, nil
 }
 
+// GetDashboardActivityParams is parameters of getDashboardActivity operation.
+type GetDashboardActivityParams struct {
+	Window OptDashboardWindow
+	Bucket OptDashboardBucket
+}
+
+func unpackGetDashboardActivityParams(packed middleware.Parameters) (params GetDashboardActivityParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "window",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Window = v.(OptDashboardWindow)
+		}
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "bucket",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Bucket = v.(OptDashboardBucket)
+		}
+	}
+	return params
+}
+
+func decodeGetDashboardActivityParams(args [0]string, argsEscaped bool, r *http.Request) (params GetDashboardActivityParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode query: window.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "window",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotWindowVal DashboardWindow
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotWindowVal = DashboardWindow(c)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Window.SetTo(paramsDotWindowVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Window.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "window",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: bucket.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "bucket",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotBucketVal DashboardBucket
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotBucketVal = DashboardBucket(c)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Bucket.SetTo(paramsDotBucketVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Bucket.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "bucket",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // GetEnvironmentParams is parameters of getEnvironment operation.
 type GetEnvironmentParams struct {
 	EnvironmentId string
@@ -2229,6 +2374,85 @@ func decodeGetWorkgroupParams(args [1]string, argsEscaped bool, r *http.Request)
 		return params, &ogenerrors.DecodeParamError{
 			Name: "workgroupId",
 			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// GetWorkgroupsActivityParams is parameters of getWorkgroupsActivity operation.
+type GetWorkgroupsActivityParams struct {
+	Window OptDashboardWindow
+}
+
+func unpackGetWorkgroupsActivityParams(packed middleware.Parameters) (params GetWorkgroupsActivityParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "window",
+			In:   "query",
+		}
+		if v, ok := packed[key]; ok {
+			params.Window = v.(OptDashboardWindow)
+		}
+	}
+	return params
+}
+
+func decodeGetWorkgroupsActivityParams(args [0]string, argsEscaped bool, r *http.Request) (params GetWorkgroupsActivityParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode query: window.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "window",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				var paramsDotWindowVal DashboardWindow
+				if err := func() error {
+					val, err := d.DecodeValue()
+					if err != nil {
+						return err
+					}
+
+					c, err := conv.ToString(val)
+					if err != nil {
+						return err
+					}
+
+					paramsDotWindowVal = DashboardWindow(c)
+					return nil
+				}(); err != nil {
+					return err
+				}
+				params.Window.SetTo(paramsDotWindowVal)
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if value, ok := params.Window.Get(); ok {
+					if err := func() error {
+						if err := value.Validate(); err != nil {
+							return err
+						}
+						return nil
+					}(); err != nil {
+						return err
+					}
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "window",
+			In:   "query",
 			Err:  err,
 		}
 	}
