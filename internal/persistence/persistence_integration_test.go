@@ -24,8 +24,8 @@ func TestMigrateUpAndCompatibilityCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}
-	if applied != 8 {
-		t.Fatalf("expected 8 migrations applied, got %d", applied)
+	if applied != 9 {
+		t.Fatalf("expected 9 migrations applied, got %d", applied)
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); err != nil {
@@ -51,8 +51,8 @@ func TestCheckSchemaCompatibilityBehindBinary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migration status: %v", err)
 	}
-	if len(statuses) != 8 {
-		t.Fatalf("expected 8 migration statuses, got %d", len(statuses))
+	if len(statuses) != 9 {
+		t.Fatalf("expected 9 migration statuses, got %d", len(statuses))
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); !errors.Is(err, ErrSchemaBehindBinary) {
@@ -68,6 +68,38 @@ func TestCheckSchemaCompatibilityMissingMigrationsTable(t *testing.T) {
 
 	if err := CheckSchemaCompatibility(ctx, store); !errors.Is(err, ErrNoMigrationsTable) {
 		t.Fatalf("expected missing migrations table error, got %v", err)
+	}
+}
+
+func TestAuditEventsMigrationDownDropsTable(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := newTestStore(t)
+
+	if _, err := MigrateUp(ctx, store); err != nil {
+		t.Fatalf("migrate up: %v", err)
+	}
+	if !tableExists(t, ctx, store, "audit_events") {
+		t.Fatal("expected audit_events table after migrate up")
+	}
+
+	if applied, err := MigrateDown(ctx, store, 1); err != nil {
+		t.Fatalf("migrate down: %v", err)
+	} else if applied != 1 {
+		t.Fatalf("expected 1 down migration applied, got %d", applied)
+	}
+	if tableExists(t, ctx, store, "audit_events") {
+		t.Fatal("expected audit_events table to be dropped")
+	}
+
+	if applied, err := MigrateUp(ctx, store); err != nil {
+		t.Fatalf("migrate up again: %v", err)
+	} else if applied != 1 {
+		t.Fatalf("expected 1 migration reapplied, got %d", applied)
+	}
+	if !tableExists(t, ctx, store, "audit_events") {
+		t.Fatal("expected audit_events table after reapply")
 	}
 }
 
@@ -205,6 +237,181 @@ func TestWithTxRollsBackOnFailure(t *testing.T) {
 
 	if _, err := store.Organizations.GetByID(ctx, store.DB(), orgID); err == nil {
 		t.Fatal("expected organization insert to be rolled back")
+	}
+}
+
+func TestAuditEventsSchemaRoundtrip(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	org, acct, _ := createOrgAccountEnvironment(t, ctx, store)
+
+	ptr := func(v string) *string { return &v }
+	base := time.Date(2026, 5, 6, 12, 0, 0, 0, time.UTC)
+	workgroupID := NewResourceID(PrefixWorkgroup)
+	sessionID := NewResourceID(PrefixSession)
+	advertisementID := NewResourceID(PrefixAdvertisement)
+	contractID := NewResourceID(PrefixContract)
+	envelopeID := "env_000000000001"
+
+	cases := []struct {
+		name  string
+		event AuditEvent
+	}{
+		{
+			name: "session proposed",
+			event: AuditEvent{
+				EventType:       AuditEventSessionProposed,
+				AccountID:       ptr(acct.ID),
+				WorkgroupID:     ptr(workgroupID),
+				SessionID:       ptr(sessionID),
+				AdvertisementID: ptr(advertisementID),
+			},
+		},
+		{
+			name: "session accepted",
+			event: AuditEvent{
+				EventType:       AuditEventSessionAccepted,
+				AccountID:       ptr(acct.ID),
+				WorkgroupID:     ptr(workgroupID),
+				SessionID:       ptr(sessionID),
+				AdvertisementID: ptr(advertisementID),
+				ContractID:      ptr(contractID),
+			},
+		},
+		{
+			name: "session rejected",
+			event: AuditEvent{
+				EventType:       AuditEventSessionRejected,
+				AccountID:       ptr(acct.ID),
+				WorkgroupID:     ptr(workgroupID),
+				SessionID:       ptr(sessionID),
+				AdvertisementID: ptr(advertisementID),
+			},
+		},
+		{
+			name: "session closed",
+			event: AuditEvent{
+				EventType:   AuditEventSessionClosed,
+				AccountID:   ptr(acct.ID),
+				WorkgroupID: ptr(workgroupID),
+				SessionID:   ptr(sessionID),
+			},
+		},
+		{
+			name: "envelope flowed",
+			event: AuditEvent{
+				EventType:       AuditEventEnvelopeFlowed,
+				AccountID:       ptr(acct.ID),
+				WorkgroupID:     ptr(workgroupID),
+				SessionID:       ptr(sessionID),
+				AdvertisementID: ptr(advertisementID),
+				EnvelopeID:      ptr(envelopeID),
+			},
+		},
+		{
+			name: "tunnel attached",
+			event: AuditEvent{
+				EventType: AuditEventTunnelAttached,
+				AccountID: ptr(acct.ID),
+				SessionID: ptr(sessionID),
+			},
+		},
+		{
+			name: "tunnel detached",
+			event: AuditEvent{
+				EventType: AuditEventTunnelDetached,
+				AccountID: ptr(acct.ID),
+				SessionID: ptr(sessionID),
+			},
+		},
+		{
+			name: "advertisement published",
+			event: AuditEvent{
+				EventType:       AuditEventAdvertisementPublished,
+				AccountID:       ptr(acct.ID),
+				AdvertisementID: ptr(advertisementID),
+			},
+		},
+		{
+			name: "advertisement retracted",
+			event: AuditEvent{
+				EventType:       AuditEventAdvertisementRetracted,
+				AccountID:       ptr(acct.ID),
+				AdvertisementID: ptr(advertisementID),
+			},
+		},
+		{
+			name: "environment heartbeat",
+			event: AuditEvent{
+				EventType: AuditEventEnvironmentHeartbeat,
+				AccountID: ptr(acct.ID),
+			},
+		},
+		{
+			name: "account login",
+			event: AuditEvent{
+				EventType: AuditEventAccountLogin,
+				AccountID: ptr(acct.ID),
+			},
+		},
+		{
+			name: "account login failed",
+			event: AuditEvent{
+				EventType: AuditEventAccountLoginFailed,
+				AccountID: ptr(acct.ID),
+			},
+		},
+		{
+			name: "account logout",
+			event: AuditEvent{
+				EventType: AuditEventAccountLogout,
+				AccountID: ptr(acct.ID),
+			},
+		},
+	}
+
+	insertQuery := fmt.Sprintf(`
+insert into audit_events (%s)
+values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+returning id`, auditEventInsertColumns())
+
+	for i, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			event := tc.event
+			event.OccurredAt = base.Add(time.Duration(i) * time.Second)
+			event.OrganizationID = org.ID
+			event.Data = AuditEventData{
+				"event_type": string(event.EventType),
+				"test_case":  tc.name,
+			}
+
+			var id int64
+			if err := store.DB().GetContext(ctx, &id, insertQuery, auditEventInsertArgs(event)...); err != nil {
+				t.Fatalf("insert audit event: %v", err)
+			}
+
+			reloaded, err := store.AuditEvents.GetByID(ctx, store.DB(), id)
+			if err != nil {
+				t.Fatalf("get audit event: %v", err)
+			}
+			if reloaded.EventType != event.EventType {
+				t.Fatalf("expected event type %s, got %s", event.EventType, reloaded.EventType)
+			}
+			if reloaded.OrganizationID != org.ID {
+				t.Fatalf("expected organization %s, got %s", org.ID, reloaded.OrganizationID)
+			}
+			if !reloaded.OccurredAt.Equal(event.OccurredAt) {
+				t.Fatalf("expected occurred_at %v, got %v", event.OccurredAt, reloaded.OccurredAt)
+			}
+			if got := reloaded.Data["event_type"]; got != string(event.EventType) {
+				t.Fatalf("expected data event_type %s, got %v", event.EventType, got)
+			}
+			if got := reloaded.Data["test_case"]; got != tc.name {
+				t.Fatalf("expected data test_case %s, got %v", tc.name, got)
+			}
+		})
 	}
 }
 
@@ -405,6 +612,16 @@ func createOrgAccountEnvironment(t *testing.T, ctx context.Context, store *Store
 	}
 
 	return org, acct, env
+}
+
+func tableExists(t *testing.T, ctx context.Context, store *Store, name string) bool {
+	t.Helper()
+
+	var result *string
+	if err := store.DB().GetContext(ctx, &result, "select to_regclass($1)", name); err != nil {
+		t.Fatalf("check table exists: %v", err)
+	}
+	return result != nil
 }
 
 func isUniqueViolation(err error) bool {
@@ -702,11 +919,11 @@ func TestAdvertisementNameUniquenessWithinAccount(t *testing.T) {
 	org, acct, wg := newAdvertisementTestFixture(t, ctx, store)
 
 	first, err := store.Advertisements.Create(ctx, store.DB(), Advertisement{
-		OrganizationID:  org.ID,
-		AccountID:       acct.ID,
-		Name:            "Sum-Service",
-		WorkgroupScopes: []string{wg.ID},
-		Capabilities:    CapabilitiesJSON{{Name: "summarize"}},
+		OrganizationID:      org.ID,
+		AccountID:           acct.ID,
+		Name:                "Sum-Service",
+		WorkgroupScopes:     []string{wg.ID},
+		Capabilities:        CapabilitiesJSON{{Name: "summarize"}},
 		InteractionPatterns: InteractionPatternsJSON{{Kind: InteractionPatternKindRequestResponse}},
 	})
 	if err != nil {
@@ -714,11 +931,11 @@ func TestAdvertisementNameUniquenessWithinAccount(t *testing.T) {
 	}
 
 	if _, err := store.Advertisements.Create(ctx, store.DB(), Advertisement{
-		OrganizationID:  org.ID,
-		AccountID:       acct.ID,
-		Name:            "sum-service",
-		WorkgroupScopes: []string{wg.ID},
-		Capabilities:    CapabilitiesJSON{{Name: "summarize"}},
+		OrganizationID:      org.ID,
+		AccountID:           acct.ID,
+		Name:                "sum-service",
+		WorkgroupScopes:     []string{wg.ID},
+		Capabilities:        CapabilitiesJSON{{Name: "summarize"}},
 		InteractionPatterns: InteractionPatternsJSON{{Kind: InteractionPatternKindRequestResponse}},
 	}); !isUniqueViolation(err) {
 		t.Fatalf("expected unique violation on case-insensitive name reuse, got %v", err)
@@ -729,11 +946,11 @@ func TestAdvertisementNameUniquenessWithinAccount(t *testing.T) {
 	}
 
 	if _, err := store.Advertisements.Create(ctx, store.DB(), Advertisement{
-		OrganizationID:  org.ID,
-		AccountID:       acct.ID,
-		Name:            "Sum-Service",
-		WorkgroupScopes: []string{wg.ID},
-		Capabilities:    CapabilitiesJSON{{Name: "summarize"}},
+		OrganizationID:      org.ID,
+		AccountID:           acct.ID,
+		Name:                "Sum-Service",
+		WorkgroupScopes:     []string{wg.ID},
+		Capabilities:        CapabilitiesJSON{{Name: "summarize"}},
 		InteractionPatterns: InteractionPatternsJSON{{Kind: InteractionPatternKindRequestResponse}},
 	}); err != nil {
 		t.Fatalf("expected name reuse after retract to succeed, got %v", err)

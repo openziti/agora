@@ -16,6 +16,48 @@ type Organization struct {
 	UpdatedAt time.Time `db:"updated_at"`
 }
 
+type AuditEventType string
+
+const (
+	AuditEventSessionProposed        AuditEventType = "session.proposed"
+	AuditEventSessionAccepted        AuditEventType = "session.accepted"
+	AuditEventSessionRejected        AuditEventType = "session.rejected"
+	AuditEventSessionClosed          AuditEventType = "session.closed"
+	AuditEventEnvelopeFlowed         AuditEventType = "envelope.flowed"
+	AuditEventTunnelAttached         AuditEventType = "tunnel.attached"
+	AuditEventTunnelDetached         AuditEventType = "tunnel.detached"
+	AuditEventAdvertisementPublished AuditEventType = "advertisement.published"
+	AuditEventAdvertisementRetracted AuditEventType = "advertisement.retracted"
+	AuditEventEnvironmentHeartbeat   AuditEventType = "environment.heartbeat"
+	AuditEventAccountLogin           AuditEventType = "account.login"
+	AuditEventAccountLoginFailed     AuditEventType = "account.login_failed"
+	AuditEventAccountLogout          AuditEventType = "account.logout"
+)
+
+type AuditEventData map[string]any
+
+func (d *AuditEventData) Scan(src any) error { return scanJSONB(src, d) }
+func (d AuditEventData) Value() (driver.Value, error) {
+	if d == nil {
+		return []byte("{}"), nil
+	}
+	return marshalJSONB(d)
+}
+
+type AuditEvent struct {
+	ID              int64          `db:"id"`
+	OccurredAt      time.Time      `db:"occurred_at"`
+	EventType       AuditEventType `db:"event_type"`
+	OrganizationID  string         `db:"organization_id"`
+	AccountID       *string        `db:"account_id"`
+	WorkgroupID     *string        `db:"workgroup_id"`
+	SessionID       *string        `db:"session_id"`
+	AdvertisementID *string        `db:"advertisement_id"`
+	ContractID      *string        `db:"contract_id"`
+	EnvelopeID      *string        `db:"envelope_id"`
+	Data            AuditEventData `db:"data"`
+}
+
 type AccountRole string
 
 const (
@@ -323,14 +365,14 @@ const (
 type SessionCloseReason string
 
 const (
-	SessionCloseReasonRejected             SessionCloseReason = "rejected"
-	SessionCloseReasonConsumerClose        SessionCloseReason = "consumer_close"
-	SessionCloseReasonProviderClose        SessionCloseReason = "provider_close"
-	SessionCloseReasonContractViolation    SessionCloseReason = "contract_violation"
-	SessionCloseReasonTunnelFailed         SessionCloseReason = "tunnel_failed"
-	SessionCloseReasonAdminClose           SessionCloseReason = "admin_close"
-	SessionCloseReasonWorkgroupDeleted     SessionCloseReason = "workgroup_deleted"
-	SessionCloseReasonEnvironmentDisabled  SessionCloseReason = "environment_disabled"
+	SessionCloseReasonRejected            SessionCloseReason = "rejected"
+	SessionCloseReasonConsumerClose       SessionCloseReason = "consumer_close"
+	SessionCloseReasonProviderClose       SessionCloseReason = "provider_close"
+	SessionCloseReasonContractViolation   SessionCloseReason = "contract_violation"
+	SessionCloseReasonTunnelFailed        SessionCloseReason = "tunnel_failed"
+	SessionCloseReasonAdminClose          SessionCloseReason = "admin_close"
+	SessionCloseReasonWorkgroupDeleted    SessionCloseReason = "workgroup_deleted"
+	SessionCloseReasonEnvironmentDisabled SessionCloseReason = "environment_disabled"
 )
 
 type Session struct {

@@ -33,6 +33,7 @@ type Store struct {
 	Advertisements       *AdvertisementsRepository
 	Sessions             *SessionsRepository
 	Contracts            *ContractsRepository
+	AuditEvents          *AuditEventsRepository
 }
 
 func Open(ctx context.Context, cfg Config) (*Store, error) {
@@ -75,6 +76,7 @@ func Open(ctx context.Context, cfg Config) (*Store, error) {
 	store.Advertisements = &AdvertisementsRepository{}
 	store.Sessions = &SessionsRepository{}
 	store.Contracts = &ContractsRepository{}
+	store.AuditEvents = &AuditEventsRepository{}
 
 	return store, nil
 }
