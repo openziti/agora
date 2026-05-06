@@ -1,6 +1,19 @@
-import { Activity, Boxes, Server } from 'lucide-react';
+import { Activity, Boxes, FileText, GitBranch, Server, ShieldCheck, Users, Wifi } from 'lucide-react';
 
-import { AppShell, type Product } from '../components';
+import {
+  AppShell,
+  BarChart,
+  DataTable,
+  EmptyState,
+  KeyValueGrid,
+  SectionPanel,
+  SidebarBreakdown,
+  StatCard,
+  StatusPill,
+  type DataTableColumn,
+  type Product,
+  type StatusPillStatus,
+} from '../components';
 
 type ColorToken = {
   name: string;
@@ -71,6 +84,73 @@ const typeRows = [
 
 const shellProducts: Product[] = ['agora', 'llm', 'mcp'];
 
+const activityData = [
+  { label: '06', value: 42 },
+  { label: '08', value: 68 },
+  { label: '10', value: 124 },
+  { label: '12', value: 96 },
+  { label: '14', value: 148 },
+  { label: '16', value: 132 },
+  { label: '18', value: 174 },
+  { label: '20', value: 118 },
+];
+
+const workgroupBreakdown = [
+  { label: 'Enterprise Client', value: 1248, accent: 'agora' as const },
+  { label: 'Macro Pulse Equities', value: 982, accent: 'llm' as const },
+  { label: 'Gateway Services', value: 618, accent: 'mcp' as const },
+  { label: 'Risk Review', value: 312, accent: 'info' as const },
+];
+
+type SessionRow = {
+  id: string;
+  workgroup: string;
+  provider: string;
+  state: string;
+  status: StatusPillStatus;
+  envelopes: number;
+  updated: string;
+};
+
+const sessionRows: SessionRow[] = [
+  {
+    id: 'ses_9x2e8p31wqz',
+    workgroup: 'Enterprise Client',
+    provider: 'equity-feed',
+    state: 'active',
+    status: 'active',
+    envelopes: 1482,
+    updated: '18s ago',
+  },
+  {
+    id: 'ses_j7p4k2m0cva',
+    workgroup: 'Gateway Services',
+    provider: 'llm-gateway',
+    state: 'online',
+    status: 'online',
+    envelopes: 836,
+    updated: '41s ago',
+  },
+  {
+    id: 'ses_2m6rvp8d4na',
+    workgroup: 'Risk Review',
+    provider: 'fx-feed',
+    state: 'stale',
+    status: 'stale',
+    envelopes: 224,
+    updated: '3m ago',
+  },
+];
+
+const sessionColumns: DataTableColumn<SessionRow>[] = [
+  { id: 'id', header: 'Session', accessor: (row) => row.id, kind: 'mono', sortable: true },
+  { id: 'workgroup', header: 'Workgroup', accessor: (row) => row.workgroup, sortable: true },
+  { id: 'provider', header: 'Provider', accessor: (row) => row.provider },
+  { id: 'state', header: 'State', accessor: (row) => ({ status: row.status, label: row.state }), kind: 'pill', sortable: true },
+  { id: 'envelopes', header: 'Envelopes', accessor: (row) => row.envelopes, sortable: true, align: 'right' },
+  { id: 'updated', header: 'Updated', accessor: (row) => row.updated, align: 'right' },
+];
+
 export default function Kit() {
   return (
     <main className="min-h-screen bg-page px-8 py-10 text-text">
@@ -115,18 +195,9 @@ export default function Kit() {
                       <h3 className="text-section font-semibold text-text">Governed Activity</h3>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-card border border-border bg-panel-subtle p-3">
-                        <p className="text-stat font-bold text-text">248</p>
-                        <p className="text-label font-medium uppercase text-text-mute">events</p>
-                      </div>
-                      <div className="rounded-card border border-border bg-panel-subtle p-3">
-                        <p className="text-stat font-bold text-text">18</p>
-                        <p className="text-label font-medium uppercase text-text-mute">sessions</p>
-                      </div>
-                      <div className="rounded-card border border-border bg-panel-subtle p-3">
-                        <p className="text-stat font-bold text-text">6</p>
-                        <p className="text-label font-medium uppercase text-text-mute">workgroups</p>
-                      </div>
+                      <StatCard label="events" value="248" accent={product} />
+                      <StatCard label="sessions" value="18" accent={product} />
+                      <StatCard label="workgroups" value="6" accent={product} />
                     </div>
                   </section>
                   <section className="rounded-card border border-border bg-panel p-5">
@@ -143,6 +214,99 @@ export default function Kit() {
               </AppShell>
             </div>
           ))}
+        </section>
+
+        <section className="flex flex-col gap-4">
+          <div>
+            <h2 className="text-section font-semibold text-text">Surface Primitives</h2>
+            <p className="mt-1 text-body text-text-mute">Reusable panels, charts, tables, and resource surfaces.</p>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              label="Active Sessions"
+              value="18"
+              icon={Activity}
+              accent="agora"
+              delta={{ direction: 'up', value: '+12%', label: 'from 7d avg' }}
+            />
+            <StatCard
+              label="Envelopes Today"
+              value="4,288"
+              icon={Wifi}
+              accent="success"
+              delta={{ direction: 'up', value: '+824', label: 'since yesterday' }}
+            />
+            <StatCard label="Active Workgroups" value="6" icon={Users} accent="info" />
+            <StatCard
+              label="Contract Flags"
+              value="2"
+              icon={ShieldCheck}
+              accent="warning"
+              delta={{ direction: 'flat', value: 'steady', label: 'last hour' }}
+            />
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[1fr_20rem]">
+            <SectionPanel
+              title="Envelope Flow"
+              actions={
+                <div className="flex rounded-pill border border-border bg-panel-subtle p-1">
+                  <button type="button" className="rounded-pill bg-panel px-3 py-1 text-table font-medium text-text">
+                    24h
+                  </button>
+                  <button type="button" className="rounded-pill px-3 py-1 text-table font-medium text-text-mute">
+                    7d
+                  </button>
+                </div>
+              }
+            >
+              <BarChart data={activityData} accent="agora" />
+            </SectionPanel>
+            <SectionPanel title="By Workgroup">
+              <SidebarBreakdown items={workgroupBreakdown} />
+            </SectionPanel>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[1fr_22rem]">
+            <SectionPanel title="Live Sessions" bodyClassName="p-0">
+              <DataTable
+                columns={sessionColumns}
+                rows={sessionRows}
+                getRowKey={(row) => row.id}
+                className="rounded-none border-0"
+                actions={() => undefined}
+              />
+            </SectionPanel>
+            <div className="flex flex-col gap-4">
+              <SectionPanel title="Resource Detail">
+                <KeyValueGrid
+                  entries={[
+                    { key: 'workgroup', value: 'Enterprise Client' },
+                    { key: 'contract', value: <span className="font-mono">con_gateway_default</span> },
+                    { key: 'mode', value: <StatusPill status="online" label="tunnel active" /> },
+                    { key: 'owner', value: 'demo@agora.local' },
+                  ]}
+                />
+              </SectionPanel>
+              <SectionPanel>
+                <EmptyState
+                  icon={FileText}
+                  title="No audit events match"
+                  description="The selected filters do not include any governed collaboration activity."
+                />
+              </SectionPanel>
+            </div>
+          </div>
+
+          <SectionPanel title="Headerless Panel">
+            <div className="flex items-center gap-3">
+              <GitBranch size={20} aria-hidden="true" className="text-brand-agora" />
+              <p className="text-body text-text-mute">
+                Headerless sections keep compact details framed without adding another title row.
+              </p>
+            </div>
+          </SectionPanel>
         </section>
 
         <section className="rounded-card border border-border bg-panel p-6">
