@@ -14,6 +14,7 @@ import (
 	"github.com/michaelquigley/df/dl"
 	"github.com/openziti/agora/internal/controller/config"
 	"github.com/openziti/agora/internal/persistence"
+	"github.com/openziti/agora/ui"
 )
 
 const (
@@ -69,7 +70,7 @@ func Run(cfg *config.Config) error {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/", apiHandler)
+	mux.Handle("/", ui.Middleware(apiHandler))
 	mux.HandleFunc("/health", healthHandler)
 	mux.HandleFunc("/ready", readinessHandler(controller.store))
 
