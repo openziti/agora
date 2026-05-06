@@ -1866,6 +1866,239 @@ func TestSessionListFiltersAndRoles(t *testing.T) {
 	}
 }
 
+func TestSessionListSortLimitAndClosedFilter(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgA, aliceID, aliceToken := env.createOrgWithAccount(t, "session-sort-org", "alice-sort@example.com")
+	bobID, _ := env.addAccountToOrg(t, orgA, "bob-sort@example.com")
+	wgID := env.seedIntraOrgWorkgroup(t, orgA, "sort-workgroup", aliceID)
+	seedDashboardMembership(t, env, orgA, wgID, bobID)
+	adID := seedSessionListAdvertisement(t, env, orgA, aliceID, "sort-ad", wgID)
+
+	base := time.Now().UTC().Truncate(time.Second)
+	openID := seedSessionListSession(t, env, orgA, orgA, aliceID, bobID, wgID, adID, persistence.SessionStateProposed, base.Add(-10*time.Minute), nil)
+	oldClosedID := seedSessionListSession(t, env, orgA, orgA, aliceID, bobID, wgID, adID, persistence.SessionStateClosed, base.Add(-9*time.Minute), controllerTimePtr(base.Add(-7*time.Minute)))
+	newClosedID := seedSessionListSession(t, env, orgA, orgA, aliceID, bobID, wgID, adID, persistence.SessionStateClosed, base.Add(-8*time.Minute), controllerTimePtr(base.Add(-1*time.Minute)))
+	midClosedID := seedSessionListSession(t, env, orgA, orgA, aliceID, bobID, wgID, adID, persistence.SessionStateClosed, base.Add(-7*time.Minute), controllerTimePtr(base.Add(-3*time.Minute)))
+
+	alice := env.accountClient(t, aliceToken)
+	defaultRes, err := alice.ListSessions(env.ctx, api.ListSessionsParams{Role: api.NewOptListSessionsRole(api.ListSessionsRoleProvider)})
+	if err != nil {
+		t.Fatalf("list default sessions: %v", err)
+	}
+	defaultRows := defaultRes.(*api.ListSessionsResponse)
+	assertSessionIDOrder(t, *defaultRows, []string{midClosedID, newClosedID, oldClosedID, openID})
+
+	recentRes, err := alice.ListSessions(env.ctx, api.ListSessionsParams{
+		Role:  api.NewOptListSessionsRole(api.ListSessionsRoleProvider),
+		Sort:  api.NewOptListSessionsSort(api.ListSessionsSortClosedAtDesc),
+		Limit: api.NewOptInt(2),
+	})
+	if err != nil {
+		t.Fatalf("list recent closed sessions: %v", err)
+	}
+	recentRows := recentRes.(*api.ListSessionsResponse)
+	assertSessionIDOrder(t, *recentRows, []string{newClosedID, midClosedID})
+	for _, row := range *recentRows {
+		if !row.ClosedAt.Set {
+			t.Fatalf("expected closed_at on recent closed row %+v", row)
+		}
+	}
+
+	openWithClosedSort, err := alice.ListSessions(env.ctx, api.ListSessionsParams{
+		State: []api.SessionState{
+			api.SessionStateProposed,
+			api.SessionStateAccepting,
+			api.SessionStateActive,
+			api.SessionStateClosing,
+		},
+		Role: api.NewOptListSessionsRole(api.ListSessionsRoleProvider),
+		Sort: api.NewOptListSessionsSort(api.ListSessionsSortClosedAtDesc),
+	})
+	if err != nil {
+		t.Fatalf("list open states with closed sort: %v", err)
+	}
+	if rows := openWithClosedSort.(*api.ListSessionsResponse); len(*rows) != 0 {
+		t.Fatalf("expected closed sort to exclude open rows, got %d", len(*rows))
+	}
+
+	tooLarge, err := alice.ListSessions(env.ctx, api.ListSessionsParams{Limit: api.NewOptInt(201)})
+	if err != nil {
+		t.Fatalf("list with excessive limit: %v", err)
+	}
+	if _, ok := tooLarge.(*api.ListSessionsBadRequest); !ok {
+		t.Fatalf("expected bad request for limit > 200, got %T", tooLarge)
+	}
+}
+
+func TestSessionListDisplayFieldsAndEmailRedaction(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	providerOrgID, providerAccountID, providerToken := env.createOrgWithAccount(t, "Provider Org", "provider-display@example.com")
+	sameOrgConsumerID, _ := env.addAccountToOrg(t, providerOrgID, "consumer-same-org@example.com")
+	consumerOrgID, consumerAccountID, consumerToken := env.createOrgWithAccount(t, "Consumer Org", "consumer-cross-org@example.com")
+
+	intraWG := env.seedIntraOrgWorkgroup(t, providerOrgID, "intra-display", providerAccountID)
+	seedDashboardMembership(t, env, providerOrgID, intraWG, sameOrgConsumerID)
+	intraAd := seedSessionListAdvertisement(t, env, providerOrgID, providerAccountID, "intra-ad", intraWG)
+
+	interWG := seedSessionListWorkgroup(t, env, providerOrgID, "inter-display")
+	seedDashboardMembership(t, env, providerOrgID, interWG, providerAccountID)
+	seedDashboardMembership(t, env, consumerOrgID, interWG, consumerAccountID)
+	interAd := seedSessionListAdvertisement(t, env, providerOrgID, providerAccountID, "inter-ad", interWG)
+
+	base := time.Now().UTC().Truncate(time.Second)
+	intraID := seedSessionListSession(t, env, providerOrgID, providerOrgID, providerAccountID, sameOrgConsumerID, intraWG, intraAd, persistence.SessionStateProposed, base.Add(-2*time.Minute), nil)
+	interID := seedSessionListSession(t, env, providerOrgID, consumerOrgID, providerAccountID, consumerAccountID, interWG, interAd, persistence.SessionStateProposed, base.Add(-time.Minute), nil)
+
+	provider := env.accountClient(t, providerToken)
+	providerRes, err := provider.ListSessions(env.ctx, api.ListSessionsParams{Role: api.NewOptListSessionsRole(api.ListSessionsRoleProvider)})
+	if err != nil {
+		t.Fatalf("provider list sessions: %v", err)
+	}
+	providerRows := *providerRes.(*api.ListSessionsResponse)
+
+	intra := findSessionRow(t, providerRows, intraID)
+	assertSessionDisplayNames(t, intra, "intra-ad", "intra-display", "Provider Org", "Provider Org")
+	if !intra.ProviderAccountEmail.Set || intra.ProviderAccountEmail.Value != "provider-display@example.com" {
+		t.Fatalf("expected same-org provider email, got %+v", intra.ProviderAccountEmail)
+	}
+	if !intra.ConsumerAccountEmail.Set || intra.ConsumerAccountEmail.Value != "consumer-same-org@example.com" {
+		t.Fatalf("expected same-org consumer email, got %+v", intra.ConsumerAccountEmail)
+	}
+
+	interAsProvider := findSessionRow(t, providerRows, interID)
+	assertSessionDisplayNames(t, interAsProvider, "inter-ad", "inter-display", "Provider Org", "Consumer Org")
+	if !interAsProvider.ProviderAccountEmail.Set || interAsProvider.ProviderAccountEmail.Value != "provider-display@example.com" {
+		t.Fatalf("expected provider-side email, got %+v", interAsProvider.ProviderAccountEmail)
+	}
+	if interAsProvider.ConsumerAccountEmail.Set {
+		t.Fatalf("expected cross-org consumer email to be omitted, got %+v", interAsProvider.ConsumerAccountEmail)
+	}
+
+	consumer := env.accountClient(t, consumerToken)
+	consumerRes, err := consumer.ListSessions(env.ctx, api.ListSessionsParams{Role: api.NewOptListSessionsRole(api.ListSessionsRoleConsumer)})
+	if err != nil {
+		t.Fatalf("consumer list sessions: %v", err)
+	}
+	interAsConsumer := findSessionRow(t, *consumerRes.(*api.ListSessionsResponse), interID)
+	assertSessionDisplayNames(t, interAsConsumer, "inter-ad", "inter-display", "Provider Org", "Consumer Org")
+	if interAsConsumer.ProviderAccountEmail.Set {
+		t.Fatalf("expected cross-org provider email to be omitted, got %+v", interAsConsumer.ProviderAccountEmail)
+	}
+	if !interAsConsumer.ConsumerAccountEmail.Set || interAsConsumer.ConsumerAccountEmail.Value != "consumer-cross-org@example.com" {
+		t.Fatalf("expected consumer-side email, got %+v", interAsConsumer.ConsumerAccountEmail)
+	}
+}
+
+func seedSessionListWorkgroup(t *testing.T, env *workgroupTestEnv, ownerOrgID, name string) string {
+	t.Helper()
+	wg, err := env.store.Workgroups.Create(env.ctx, env.store.DB(), persistence.Workgroup{
+		OwnerOrganizationID: ownerOrgID,
+		Name:                name,
+		Scope:               persistence.WorkgroupScopeInterOrg,
+		State:               persistence.WorkgroupStateActive,
+	})
+	if err != nil {
+		t.Fatalf("seed session list workgroup %q: %v", name, err)
+	}
+	return wg.ID
+}
+
+func seedSessionListAdvertisement(t *testing.T, env *workgroupTestEnv, orgID, accountID, name, workgroupID string) string {
+	t.Helper()
+	ad, err := env.store.Advertisements.Create(env.ctx, env.store.DB(), persistence.Advertisement{
+		OrganizationID:      orgID,
+		AccountID:           accountID,
+		Name:                name,
+		Capabilities:        persistence.CapabilitiesJSON{{Name: "sessions"}},
+		InteractionPatterns: persistence.InteractionPatternsJSON{{Kind: persistence.InteractionPatternKindRequestResponse}},
+		WorkgroupScopes:     []string{workgroupID},
+		TunnelMode:          persistence.TunnelModeTCP,
+	})
+	if err != nil {
+		t.Fatalf("seed session list advertisement %q: %v", name, err)
+	}
+	return ad.ID
+}
+
+func seedSessionListSession(t *testing.T, env *workgroupTestEnv, providerOrgID, consumerOrgID, providerAccountID, consumerAccountID, workgroupID, advertisementID string, state persistence.SessionState, proposedAt time.Time, closedAt *time.Time) string {
+	t.Helper()
+	var reason *persistence.SessionCloseReason
+	if state == persistence.SessionStateClosed {
+		v := persistence.SessionCloseReasonConsumerClose
+		reason = &v
+	}
+	sess, err := env.store.Sessions.Create(env.ctx, env.store.DB(), persistence.Session{
+		AdvertisementID:        advertisementID,
+		WorkgroupID:            workgroupID,
+		ProviderAccountID:      providerAccountID,
+		ProviderOrganizationID: providerOrgID,
+		ConsumerAccountID:      consumerAccountID,
+		ConsumerOrganizationID: consumerOrgID,
+		TunnelMode:             persistence.TunnelModeTCP,
+		State:                  state,
+		CloseReason:            reason,
+		ProposedAt:             proposedAt,
+		ClosedAt:               closedAt,
+	})
+	if err != nil {
+		t.Fatalf("seed session list session: %v", err)
+	}
+	return sess.ID
+}
+
+func controllerTimePtr(v time.Time) *time.Time {
+	return &v
+}
+
+func assertSessionIDOrder(t *testing.T, rows api.ListSessionsResponse, want []string) {
+	t.Helper()
+	if len(rows) != len(want) {
+		t.Fatalf("expected %d session rows, got %d", len(want), len(rows))
+	}
+	got := make([]string, 0, len(rows))
+	for _, row := range rows {
+		got = append(got, row.ID)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("session order mismatch: got %v want %v", got, want)
+		}
+	}
+}
+
+func findSessionRow(t *testing.T, rows api.ListSessionsResponse, sessionID string) api.Session {
+	t.Helper()
+	for _, row := range rows {
+		if row.ID == sessionID {
+			return row
+		}
+	}
+	t.Fatalf("session row %q not found in %+v", sessionID, rows)
+	return api.Session{}
+}
+
+func assertSessionDisplayNames(t *testing.T, row api.Session, advertisementName, workgroupName, providerOrgName, consumerOrgName string) {
+	t.Helper()
+	if row.AdvertisementName != advertisementName {
+		t.Fatalf("expected advertisementName %q, got %q", advertisementName, row.AdvertisementName)
+	}
+	if row.WorkgroupName != workgroupName {
+		t.Fatalf("expected workgroupName %q, got %q", workgroupName, row.WorkgroupName)
+	}
+	if row.ProviderOrganizationName != providerOrgName {
+		t.Fatalf("expected providerOrganizationName %q, got %q", providerOrgName, row.ProviderOrganizationName)
+	}
+	if row.ConsumerOrganizationName != consumerOrgName {
+		t.Fatalf("expected consumerOrganizationName %q, got %q", consumerOrgName, row.ConsumerOrganizationName)
+	}
+}
+
 func TestSessionDescribeByNonParticipant(t *testing.T) {
 	t.Parallel()
 	env, cleanup := newWorkgroupTestEnv(t)

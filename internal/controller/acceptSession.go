@@ -185,5 +185,10 @@ func (s *Service) AcceptSession(ctx context.Context, req *api.AcceptSessionReque
 
 	dl.Infof("accepted session id='%s' tunnel_id='%s' environment_id='%s' %s",
 		activeSess.ID, tunnel.ID, env.ID, principalLogFields(principal))
-	return mapSession(activeSess), nil
+	activeWithDisplay, err := s.store.Sessions.GetByIDWithDisplay(ctx, s.store.DB(), activeSess.ID)
+	if err != nil {
+		dl.Errorf("accept session display lookup failed session_id='%s' %s: %v", activeSess.ID, principalLogFields(principal), err)
+		return &api.AcceptSessionInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+	}
+	return mapSession(activeWithDisplay, principal.OrganizationID), nil
 }

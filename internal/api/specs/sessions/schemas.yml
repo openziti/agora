@@ -8,6 +8,10 @@ session:
     - providerOrganizationId
     - consumerAccountId
     - consumerOrganizationId
+    - advertisementName
+    - workgroupName
+    - providerOrganizationName
+    - consumerOrganizationName
     - tunnelMode
     - state
     - proposedAt
@@ -33,6 +37,20 @@ session:
     consumerOrganizationId:
       type: string
       pattern: '^org_[a-z0-9]{12}$'
+    advertisementName:
+      type: string
+    workgroupName:
+      type: string
+    providerOrganizationName:
+      type: string
+    consumerOrganizationName:
+      type: string
+    providerAccountEmail:
+      type: string
+      format: email
+    consumerAccountEmail:
+      type: string
+      format: email
     tunnelMode:
       $ref: "../agora.yml#/components/schemas/advertisementTunnelMode"
     tunnelId:

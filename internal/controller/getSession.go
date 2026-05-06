@@ -21,5 +21,5 @@ func (s *Service) GetSession(ctx context.Context, params api.GetSessionParams) (
 		}
 		return &api.GetSessionInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
-	return mapSession(sess), nil
+	return mapSession(sess, principal.OrganizationID), nil
 }

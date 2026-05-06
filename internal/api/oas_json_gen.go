@@ -16345,6 +16345,34 @@ func (s *Session) encodeFields(e *jx.Encoder) {
 		e.Str(s.ConsumerOrganizationId)
 	}
 	{
+		e.FieldStart("advertisementName")
+		e.Str(s.AdvertisementName)
+	}
+	{
+		e.FieldStart("workgroupName")
+		e.Str(s.WorkgroupName)
+	}
+	{
+		e.FieldStart("providerOrganizationName")
+		e.Str(s.ProviderOrganizationName)
+	}
+	{
+		e.FieldStart("consumerOrganizationName")
+		e.Str(s.ConsumerOrganizationName)
+	}
+	{
+		if s.ProviderAccountEmail.Set {
+			e.FieldStart("providerAccountEmail")
+			s.ProviderAccountEmail.Encode(e)
+		}
+	}
+	{
+		if s.ConsumerAccountEmail.Set {
+			e.FieldStart("consumerAccountEmail")
+			s.ConsumerAccountEmail.Encode(e)
+		}
+	}
+	{
 		e.FieldStart("tunnelMode")
 		s.TunnelMode.Encode(e)
 	}
@@ -16406,7 +16434,7 @@ func (s *Session) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfSession = [18]string{
+var jsonFieldsNameOfSession = [24]string{
 	0:  "id",
 	1:  "advertisementId",
 	2:  "workgroupId",
@@ -16414,17 +16442,23 @@ var jsonFieldsNameOfSession = [18]string{
 	4:  "providerOrganizationId",
 	5:  "consumerAccountId",
 	6:  "consumerOrganizationId",
-	7:  "tunnelMode",
-	8:  "tunnelId",
-	9:  "state",
-	10: "closeReason",
-	11: "closeDetail",
-	12: "proposerMessage",
-	13: "proposedAt",
-	14: "acceptedAt",
-	15: "closedAt",
-	16: "contractSnapshot",
-	17: "envelopeCount",
+	7:  "advertisementName",
+	8:  "workgroupName",
+	9:  "providerOrganizationName",
+	10: "consumerOrganizationName",
+	11: "providerAccountEmail",
+	12: "consumerAccountEmail",
+	13: "tunnelMode",
+	14: "tunnelId",
+	15: "state",
+	16: "closeReason",
+	17: "closeDetail",
+	18: "proposerMessage",
+	19: "proposedAt",
+	20: "acceptedAt",
+	21: "closedAt",
+	22: "contractSnapshot",
+	23: "envelopeCount",
 }
 
 // Decode decodes Session from json.
@@ -16520,8 +16554,76 @@ func (s *Session) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"consumerOrganizationId\"")
 			}
-		case "tunnelMode":
+		case "advertisementName":
 			requiredBitSet[0] |= 1 << 7
+			if err := func() error {
+				v, err := d.Str()
+				s.AdvertisementName = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"advertisementName\"")
+			}
+		case "workgroupName":
+			requiredBitSet[1] |= 1 << 0
+			if err := func() error {
+				v, err := d.Str()
+				s.WorkgroupName = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"workgroupName\"")
+			}
+		case "providerOrganizationName":
+			requiredBitSet[1] |= 1 << 1
+			if err := func() error {
+				v, err := d.Str()
+				s.ProviderOrganizationName = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"providerOrganizationName\"")
+			}
+		case "consumerOrganizationName":
+			requiredBitSet[1] |= 1 << 2
+			if err := func() error {
+				v, err := d.Str()
+				s.ConsumerOrganizationName = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"consumerOrganizationName\"")
+			}
+		case "providerAccountEmail":
+			if err := func() error {
+				s.ProviderAccountEmail.Reset()
+				if err := s.ProviderAccountEmail.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"providerAccountEmail\"")
+			}
+		case "consumerAccountEmail":
+			if err := func() error {
+				s.ConsumerAccountEmail.Reset()
+				if err := s.ConsumerAccountEmail.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"consumerAccountEmail\"")
+			}
+		case "tunnelMode":
+			requiredBitSet[1] |= 1 << 5
 			if err := func() error {
 				if err := s.TunnelMode.Decode(d); err != nil {
 					return err
@@ -16541,7 +16643,7 @@ func (s *Session) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"tunnelId\"")
 			}
 		case "state":
-			requiredBitSet[1] |= 1 << 1
+			requiredBitSet[1] |= 1 << 7
 			if err := func() error {
 				if err := s.State.Decode(d); err != nil {
 					return err
@@ -16581,7 +16683,7 @@ func (s *Session) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"proposerMessage\"")
 			}
 		case "proposedAt":
-			requiredBitSet[1] |= 1 << 5
+			requiredBitSet[2] |= 1 << 3
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.ProposedAt = v
@@ -16643,8 +16745,8 @@ func (s *Session) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [3]uint8{
 		0b11111111,
-		0b00100010,
-		0b00000000,
+		0b10100111,
+		0b00001000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

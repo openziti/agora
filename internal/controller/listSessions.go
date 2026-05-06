@@ -35,6 +35,22 @@ func (s *Service) ListSessions(ctx context.Context, params api.ListSessionsParam
 	if params.AdvertisementId.Set {
 		lp.AdvertisementID = params.AdvertisementId.Value
 	}
+	if params.Sort.Set {
+		switch params.Sort.Value {
+		case api.ListSessionsSortProposedAtDesc:
+			lp.OrderBy = persistence.SessionListOrderProposedAtDesc
+		case api.ListSessionsSortClosedAtDesc:
+			lp.OrderBy = persistence.SessionListOrderClosedAtDesc
+		default:
+			return &api.ListSessionsBadRequest{Code: "invalid_request", Message: "sort must be proposedAtDesc or closedAtDesc"}, nil
+		}
+	}
+	if params.Limit.Set {
+		if params.Limit.Value > 200 {
+			return &api.ListSessionsBadRequest{Code: "invalid_request", Message: "limit must be 200 or less"}, nil
+		}
+		lp.Limit = params.Limit.Value
+	}
 
 	rows, err := s.store.Sessions.List(ctx, s.store.DB(), lp)
 	if err != nil {
@@ -44,7 +60,7 @@ func (s *Service) ListSessions(ctx context.Context, params api.ListSessionsParam
 
 	resp := make(api.ListSessionsResponse, 0, len(rows))
 	for i := range rows {
-		resp = append(resp, *mapSession(&rows[i]))
+		resp = append(resp, *mapSession(&rows[i], principal.OrganizationID))
 	}
 	return &resp, nil
 }

@@ -5750,6 +5750,14 @@ func (s *Server) handleListSessionsRequest(args [0]string, argsEscaped bool, w h
 					Name: "advertisementId",
 					In:   "query",
 				}: params.AdvertisementId,
+				{
+					Name: "sort",
+					In:   "query",
+				}: params.Sort,
+				{
+					Name: "limit",
+					In:   "query",
+				}: params.Limit,
 			},
 			Raw: r,
 		}

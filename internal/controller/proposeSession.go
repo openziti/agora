@@ -67,5 +67,10 @@ func (s *Service) ProposeSession(ctx context.Context, req *api.ProposeSessionReq
 	}
 	dl.Infof("proposed session id='%s' advertisement_id='%s' workgroup_id='%s' %s",
 		created.ID, created.AdvertisementID, created.WorkgroupID, principalLogFields(principal))
-	return mapSession(created), nil
+	createdWithDisplay, err := s.store.Sessions.GetByIDWithDisplay(ctx, s.store.DB(), created.ID)
+	if err != nil {
+		dl.Errorf("propose session display lookup failed session_id='%s' %s: %v", created.ID, principalLogFields(principal), err)
+		return &api.ProposeSessionInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+	}
+	return mapSession(createdWithDisplay, principal.OrganizationID), nil
 }

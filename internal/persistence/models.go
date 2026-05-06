@@ -376,24 +376,30 @@ const (
 )
 
 type Session struct {
-	ID                     string              `db:"id"`
-	AdvertisementID        string              `db:"advertisement_id"`
-	WorkgroupID            string              `db:"workgroup_id"`
-	ProviderAccountID      string              `db:"provider_account_id"`
-	ProviderOrganizationID string              `db:"provider_organization_id"`
-	ConsumerAccountID      string              `db:"consumer_account_id"`
-	ConsumerOrganizationID string              `db:"consumer_organization_id"`
-	TunnelMode             TunnelMode          `db:"tunnel_mode"`
-	TunnelID               *string             `db:"tunnel_id"`
-	ContractSnapshotJSON   []byte              `db:"contract_snapshot"`
-	EnvelopeCount          *int                `db:"envelope_count"`
-	State                  SessionState        `db:"state"`
-	CloseReason            *SessionCloseReason `db:"close_reason"`
-	CloseDetail            *string             `db:"close_detail"`
-	ProposerMessage        *string             `db:"proposer_message"`
-	ProposedAt             time.Time           `db:"proposed_at"`
-	AcceptedAt             *time.Time          `db:"accepted_at"`
-	ClosedAt               *time.Time          `db:"closed_at"`
+	ID                       string              `db:"id"`
+	AdvertisementID          string              `db:"advertisement_id"`
+	WorkgroupID              string              `db:"workgroup_id"`
+	ProviderAccountID        string              `db:"provider_account_id"`
+	ProviderOrganizationID   string              `db:"provider_organization_id"`
+	ConsumerAccountID        string              `db:"consumer_account_id"`
+	ConsumerOrganizationID   string              `db:"consumer_organization_id"`
+	AdvertisementName        string              `db:"advertisement_name"`
+	WorkgroupName            string              `db:"workgroup_name"`
+	ProviderOrganizationName string              `db:"provider_organization_name"`
+	ConsumerOrganizationName string              `db:"consumer_organization_name"`
+	ProviderAccountEmail     *string             `db:"provider_account_email"`
+	ConsumerAccountEmail     *string             `db:"consumer_account_email"`
+	TunnelMode               TunnelMode          `db:"tunnel_mode"`
+	TunnelID                 *string             `db:"tunnel_id"`
+	ContractSnapshotJSON     []byte              `db:"contract_snapshot"`
+	EnvelopeCount            *int                `db:"envelope_count"`
+	State                    SessionState        `db:"state"`
+	CloseReason              *SessionCloseReason `db:"close_reason"`
+	CloseDetail              *string             `db:"close_detail"`
+	ProposerMessage          *string             `db:"proposer_message"`
+	ProposedAt               time.Time           `db:"proposed_at"`
+	AcceptedAt               *time.Time          `db:"accepted_at"`
+	ClosedAt                 *time.Time          `db:"closed_at"`
 }
 
 type Advertisement struct {

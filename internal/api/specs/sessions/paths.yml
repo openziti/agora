@@ -76,6 +76,18 @@
         schema:
           type: string
           pattern: '^adv_[a-z0-9]{12}$'
+      - name: sort
+        in: query
+        required: false
+        schema:
+          type: string
+          enum: [proposedAtDesc, closedAtDesc]
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
     responses:
       200:
         description: ok

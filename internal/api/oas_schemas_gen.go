@@ -3406,6 +3406,47 @@ func (s *ListSessionsRole) UnmarshalText(data []byte) error {
 	}
 }
 
+type ListSessionsSort string
+
+const (
+	ListSessionsSortProposedAtDesc ListSessionsSort = "proposedAtDesc"
+	ListSessionsSortClosedAtDesc   ListSessionsSort = "closedAtDesc"
+)
+
+// AllValues returns all ListSessionsSort values.
+func (ListSessionsSort) AllValues() []ListSessionsSort {
+	return []ListSessionsSort{
+		ListSessionsSortProposedAtDesc,
+		ListSessionsSortClosedAtDesc,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s ListSessionsSort) MarshalText() ([]byte, error) {
+	switch s {
+	case ListSessionsSortProposedAtDesc:
+		return []byte(s), nil
+	case ListSessionsSortClosedAtDesc:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *ListSessionsSort) UnmarshalText(data []byte) error {
+	switch ListSessionsSort(data) {
+	case ListSessionsSortProposedAtDesc:
+		*s = ListSessionsSortProposedAtDesc
+		return nil
+	case ListSessionsSortClosedAtDesc:
+		*s = ListSessionsSortClosedAtDesc
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type ListSessionsUnauthorized Error
 
 func (*ListSessionsUnauthorized) listSessionsRes() {}
@@ -4235,6 +4276,52 @@ func (o OptListSessionsRole) Or(d ListSessionsRole) ListSessionsRole {
 	return d
 }
 
+// NewOptListSessionsSort returns new OptListSessionsSort with value set to v.
+func NewOptListSessionsSort(v ListSessionsSort) OptListSessionsSort {
+	return OptListSessionsSort{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptListSessionsSort is optional ListSessionsSort.
+type OptListSessionsSort struct {
+	Value ListSessionsSort
+	Set   bool
+}
+
+// IsSet returns true if OptListSessionsSort was set.
+func (o OptListSessionsSort) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptListSessionsSort) Reset() {
+	var v ListSessionsSort
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptListSessionsSort) SetTo(v ListSessionsSort) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptListSessionsSort) Get() (v ListSessionsSort, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptListSessionsSort) Or(d ListSessionsSort) ListSessionsSort {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
 // NewOptListTunnelsScope returns new OptListTunnelsScope with value set to v.
 func NewOptListTunnelsScope(v ListTunnelsScope) OptListTunnelsScope {
 	return OptListTunnelsScope{
@@ -4899,24 +4986,30 @@ func (*SearchCatalogUnauthorized) searchCatalogRes() {}
 
 // Ref: #/session
 type Session struct {
-	ID                     string                  `json:"id"`
-	AdvertisementId        string                  `json:"advertisementId"`
-	WorkgroupId            string                  `json:"workgroupId"`
-	ProviderAccountId      string                  `json:"providerAccountId"`
-	ProviderOrganizationId string                  `json:"providerOrganizationId"`
-	ConsumerAccountId      string                  `json:"consumerAccountId"`
-	ConsumerOrganizationId string                  `json:"consumerOrganizationId"`
-	TunnelMode             AdvertisementTunnelMode `json:"tunnelMode"`
-	TunnelId               OptString               `json:"tunnelId"`
-	State                  SessionState            `json:"state"`
-	CloseReason            OptSessionCloseReason   `json:"closeReason"`
-	CloseDetail            OptString               `json:"closeDetail"`
-	ProposerMessage        OptString               `json:"proposerMessage"`
-	ProposedAt             time.Time               `json:"proposedAt"`
-	AcceptedAt             OptDateTime             `json:"acceptedAt"`
-	ClosedAt               OptDateTime             `json:"closedAt"`
-	ContractSnapshot       OptContractSnapshot     `json:"contractSnapshot"`
-	EnvelopeCount          OptInt                  `json:"envelopeCount"`
+	ID                       string                  `json:"id"`
+	AdvertisementId          string                  `json:"advertisementId"`
+	WorkgroupId              string                  `json:"workgroupId"`
+	ProviderAccountId        string                  `json:"providerAccountId"`
+	ProviderOrganizationId   string                  `json:"providerOrganizationId"`
+	ConsumerAccountId        string                  `json:"consumerAccountId"`
+	ConsumerOrganizationId   string                  `json:"consumerOrganizationId"`
+	AdvertisementName        string                  `json:"advertisementName"`
+	WorkgroupName            string                  `json:"workgroupName"`
+	ProviderOrganizationName string                  `json:"providerOrganizationName"`
+	ConsumerOrganizationName string                  `json:"consumerOrganizationName"`
+	ProviderAccountEmail     OptString               `json:"providerAccountEmail"`
+	ConsumerAccountEmail     OptString               `json:"consumerAccountEmail"`
+	TunnelMode               AdvertisementTunnelMode `json:"tunnelMode"`
+	TunnelId                 OptString               `json:"tunnelId"`
+	State                    SessionState            `json:"state"`
+	CloseReason              OptSessionCloseReason   `json:"closeReason"`
+	CloseDetail              OptString               `json:"closeDetail"`
+	ProposerMessage          OptString               `json:"proposerMessage"`
+	ProposedAt               time.Time               `json:"proposedAt"`
+	AcceptedAt               OptDateTime             `json:"acceptedAt"`
+	ClosedAt                 OptDateTime             `json:"closedAt"`
+	ContractSnapshot         OptContractSnapshot     `json:"contractSnapshot"`
+	EnvelopeCount            OptInt                  `json:"envelopeCount"`
 }
 
 // GetID returns the value of ID.
@@ -4952,6 +5045,36 @@ func (s *Session) GetConsumerAccountId() string {
 // GetConsumerOrganizationId returns the value of ConsumerOrganizationId.
 func (s *Session) GetConsumerOrganizationId() string {
 	return s.ConsumerOrganizationId
+}
+
+// GetAdvertisementName returns the value of AdvertisementName.
+func (s *Session) GetAdvertisementName() string {
+	return s.AdvertisementName
+}
+
+// GetWorkgroupName returns the value of WorkgroupName.
+func (s *Session) GetWorkgroupName() string {
+	return s.WorkgroupName
+}
+
+// GetProviderOrganizationName returns the value of ProviderOrganizationName.
+func (s *Session) GetProviderOrganizationName() string {
+	return s.ProviderOrganizationName
+}
+
+// GetConsumerOrganizationName returns the value of ConsumerOrganizationName.
+func (s *Session) GetConsumerOrganizationName() string {
+	return s.ConsumerOrganizationName
+}
+
+// GetProviderAccountEmail returns the value of ProviderAccountEmail.
+func (s *Session) GetProviderAccountEmail() OptString {
+	return s.ProviderAccountEmail
+}
+
+// GetConsumerAccountEmail returns the value of ConsumerAccountEmail.
+func (s *Session) GetConsumerAccountEmail() OptString {
+	return s.ConsumerAccountEmail
 }
 
 // GetTunnelMode returns the value of TunnelMode.
@@ -5042,6 +5165,36 @@ func (s *Session) SetConsumerAccountId(val string) {
 // SetConsumerOrganizationId sets the value of ConsumerOrganizationId.
 func (s *Session) SetConsumerOrganizationId(val string) {
 	s.ConsumerOrganizationId = val
+}
+
+// SetAdvertisementName sets the value of AdvertisementName.
+func (s *Session) SetAdvertisementName(val string) {
+	s.AdvertisementName = val
+}
+
+// SetWorkgroupName sets the value of WorkgroupName.
+func (s *Session) SetWorkgroupName(val string) {
+	s.WorkgroupName = val
+}
+
+// SetProviderOrganizationName sets the value of ProviderOrganizationName.
+func (s *Session) SetProviderOrganizationName(val string) {
+	s.ProviderOrganizationName = val
+}
+
+// SetConsumerOrganizationName sets the value of ConsumerOrganizationName.
+func (s *Session) SetConsumerOrganizationName(val string) {
+	s.ConsumerOrganizationName = val
+}
+
+// SetProviderAccountEmail sets the value of ProviderAccountEmail.
+func (s *Session) SetProviderAccountEmail(val OptString) {
+	s.ProviderAccountEmail = val
+}
+
+// SetConsumerAccountEmail sets the value of ConsumerAccountEmail.
+func (s *Session) SetConsumerAccountEmail(val OptString) {
+	s.ConsumerAccountEmail = val
 }
 
 // SetTunnelMode sets the value of TunnelMode.

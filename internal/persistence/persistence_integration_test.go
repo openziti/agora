@@ -1606,6 +1606,112 @@ func TestSessionListFilters(t *testing.T) {
 	_ = a
 }
 
+func TestSessionListOrderingLimitAndDisplayFields(t *testing.T) {
+	t.Parallel()
+	ctx := context.Background()
+	store := migratedTestStore(t)
+	providerOrg, consumerOrg, providerAcct, consumerAcct, _, wg, ad := newSessionTestFixture(t, ctx, store)
+
+	base := time.Now().UTC().Truncate(time.Second)
+	openSession := mustCreateSessionForList(t, ctx, store, providerOrg, consumerOrg, providerAcct, consumerAcct, wg, ad, SessionStateProposed, base.Add(-10*time.Minute), nil)
+	oldClosed := mustCreateSessionForList(t, ctx, store, providerOrg, consumerOrg, providerAcct, consumerAcct, wg, ad, SessionStateClosed, base.Add(-9*time.Minute), timePtr(base.Add(-7*time.Minute)))
+	newClosed := mustCreateSessionForList(t, ctx, store, providerOrg, consumerOrg, providerAcct, consumerAcct, wg, ad, SessionStateClosed, base.Add(-8*time.Minute), timePtr(base.Add(-1*time.Minute)))
+	midClosed := mustCreateSessionForList(t, ctx, store, providerOrg, consumerOrg, providerAcct, consumerAcct, wg, ad, SessionStateClosed, base.Add(-7*time.Minute), timePtr(base.Add(-3*time.Minute)))
+	_ = openSession
+
+	defaultOrder, err := store.Sessions.List(ctx, store.DB(), SessionListParams{
+		ParticipantAccountID: providerAcct.ID,
+		RoleFilter:           "provider",
+	})
+	if err != nil {
+		t.Fatalf("list default order: %v", err)
+	}
+	if len(defaultOrder) != 4 {
+		t.Fatalf("expected 4 sessions by default, got %d", len(defaultOrder))
+	}
+	if got, want := []string{defaultOrder[0].ID, defaultOrder[1].ID, defaultOrder[2].ID, defaultOrder[3].ID}, []string{midClosed.ID, newClosed.ID, oldClosed.ID, openSession.ID}; strings.Join(got, ",") != strings.Join(want, ",") {
+		t.Fatalf("default order mismatch: got %v want %v", got, want)
+	}
+
+	recentClosed, err := store.Sessions.List(ctx, store.DB(), SessionListParams{
+		ParticipantAccountID: providerAcct.ID,
+		RoleFilter:           "provider",
+		OrderBy:              SessionListOrderClosedAtDesc,
+		Limit:                2,
+	})
+	if err != nil {
+		t.Fatalf("list recent closed: %v", err)
+	}
+	if len(recentClosed) != 2 {
+		t.Fatalf("expected 2 recent closed sessions, got %d", len(recentClosed))
+	}
+	if recentClosed[0].ID != newClosed.ID || recentClosed[1].ID != midClosed.ID {
+		t.Fatalf("closed order mismatch: got [%s %s]", recentClosed[0].ID, recentClosed[1].ID)
+	}
+	assertSessionDisplayFields(t, recentClosed[0], ad.Name, wg.Name, providerOrg.Name, consumerOrg.Name, providerAcct.Email, consumerAcct.Email)
+
+	openWithClosedSort, err := store.Sessions.List(ctx, store.DB(), SessionListParams{
+		ParticipantAccountID: providerAcct.ID,
+		RoleFilter:           "provider",
+		States:               []SessionState{SessionStateProposed, SessionStateAccepting, SessionStateActive, SessionStateClosing},
+		OrderBy:              SessionListOrderClosedAtDesc,
+	})
+	if err != nil {
+		t.Fatalf("list open with closed sort: %v", err)
+	}
+	if len(openWithClosedSort) != 0 {
+		t.Fatalf("expected closed sort to exclude open sessions, got %d", len(openWithClosedSort))
+	}
+}
+
+func mustCreateSessionForList(t *testing.T, ctx context.Context, store *Store, providerOrg, consumerOrg *Organization, providerAcct, consumerAcct *Account, wg *Workgroup, ad *Advertisement, state SessionState, proposedAt time.Time, closedAt *time.Time) *Session {
+	t.Helper()
+	var reason *SessionCloseReason
+	if state == SessionStateClosed {
+		v := SessionCloseReasonConsumerClose
+		reason = &v
+	}
+	sess, err := store.Sessions.Create(ctx, store.DB(), Session{
+		AdvertisementID:        ad.ID,
+		WorkgroupID:            wg.ID,
+		ProviderAccountID:      providerAcct.ID,
+		ProviderOrganizationID: providerOrg.ID,
+		ConsumerAccountID:      consumerAcct.ID,
+		ConsumerOrganizationID: consumerOrg.ID,
+		TunnelMode:             ad.TunnelMode,
+		State:                  state,
+		CloseReason:            reason,
+		ProposedAt:             proposedAt,
+		ClosedAt:               closedAt,
+	})
+	if err != nil {
+		t.Fatalf("create session for list: %v", err)
+	}
+	return sess
+}
+
+func assertSessionDisplayFields(t *testing.T, sess Session, adName, wgName, providerOrgName, consumerOrgName, providerEmail, consumerEmail string) {
+	t.Helper()
+	if sess.AdvertisementName != adName {
+		t.Fatalf("expected advertisement name %q, got %q", adName, sess.AdvertisementName)
+	}
+	if sess.WorkgroupName != wgName {
+		t.Fatalf("expected workgroup name %q, got %q", wgName, sess.WorkgroupName)
+	}
+	if sess.ProviderOrganizationName != providerOrgName {
+		t.Fatalf("expected provider organization name %q, got %q", providerOrgName, sess.ProviderOrganizationName)
+	}
+	if sess.ConsumerOrganizationName != consumerOrgName {
+		t.Fatalf("expected consumer organization name %q, got %q", consumerOrgName, sess.ConsumerOrganizationName)
+	}
+	if sess.ProviderAccountEmail == nil || *sess.ProviderAccountEmail != providerEmail {
+		t.Fatalf("expected provider account email %q, got %v", providerEmail, sess.ProviderAccountEmail)
+	}
+	if sess.ConsumerAccountEmail == nil || *sess.ConsumerAccountEmail != consumerEmail {
+		t.Fatalf("expected consumer account email %q, got %v", consumerEmail, sess.ConsumerAccountEmail)
+	}
+}
+
 // --- contract tests ---
 
 func newContractTestFixture(t *testing.T, ctx context.Context, store *Store) (*Organization, *Account, *Workgroup) {
