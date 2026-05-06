@@ -14,6 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/openziti/agora/examples/macro-pulse/internal/agentutil"
 	"github.com/openziti/agora/examples/macro-pulse/internal/payloads"
 	"github.com/openziti/agora/internal/api"
 	"github.com/openziti/agora/sdk/agent"
@@ -45,7 +46,7 @@ func main() {
 				rand:     rand.New(rand.NewSource(time.Now().UnixNano())),
 			})
 		}
-		brief, err := buildBrief(ctx, a, nil)
+		brief, err := buildBrief(ctx, a, nil, nil)
 		if err != nil {
 			a.Log().Errorf("build brief: %v", err)
 			return err
@@ -65,6 +66,47 @@ type loopOptions struct {
 	pauseMin time.Duration
 	pauseMax time.Duration
 	rand     *rand.Rand
+}
+
+const (
+	tightContractName        = "demo-contract-tight"
+	warmupReaperWait         = 45 * time.Second
+	warmupNormalCloseDetail  = "D.2 warm-up normal close"
+	briefNormalCloseDetail   = "brief complete"
+	sessionClosePollInterval = 2 * time.Second
+)
+
+type sessionOutcome string
+
+const (
+	sessionOutcomeNormal           sessionOutcome = "normal"
+	sessionOutcomeRuntimeViolation sessionOutcome = "runtime_violation"
+	sessionOutcomeReaperViolation  sessionOutcome = "reaper_violation"
+	sessionOutcomeLongTail         sessionOutcome = "long_tail"
+)
+
+type runtimeViolationKind string
+
+const (
+	runtimeViolationOversize   runtimeViolationKind = "oversize"
+	runtimeViolationDisallowed runtimeViolationKind = "disallowed_message_type"
+)
+
+type queryOptions struct {
+	outcome              sessionOutcome
+	closeDetail          string
+	holdAfterReply       time.Duration
+	reaperHold           time.Duration
+	reaperWait           time.Duration
+	runtimeViolation     runtimeViolationKind
+	oversizePayloadBytes int
+	disallowedMessage    string
+}
+
+type loopOutcomeSelector struct {
+	rand                      *rand.Rand
+	tightAdvertisementID      string
+	contractByAdvertisementID map[string]*api.Contract
 }
 
 type loopSummary struct {
@@ -125,6 +167,16 @@ func (r briefRunner) runLoop(ctx context.Context, a *agent.Agent, opts loopOptio
 	summary := newLoopSummary()
 	defer fmt.Fprintf(os.Stderr, "macro-pulse loop summary: %s\n", summary)
 
+	outcomeCatalog, err := r.runWarmup(ctx, a, summary)
+	if err != nil {
+		return err
+	}
+	selector := &loopOutcomeSelector{
+		rand:                      opts.rand,
+		tightAdvertisementID:      outcomeCatalog.tightAd.ID,
+		contractByAdvertisementID: outcomeCatalog.contractByAdvertisementID,
+	}
+
 	for {
 		if err := ctx.Err(); err != nil {
 			if errors.Is(err, context.Canceled) {
@@ -135,7 +187,7 @@ func (r briefRunner) runLoop(ctx context.Context, a *agent.Agent, opts loopOptio
 
 		iteration := atomic.AddInt64(&summary.iterations, 1)
 		a.Log().With("iteration", iteration).Infof("starting macro-pulse loop iteration")
-		brief, err := buildBrief(ctx, a, summary)
+		brief, err := buildBrief(ctx, a, summary, selector)
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil
@@ -158,6 +210,193 @@ func (r briefRunner) runLoop(ctx context.Context, a *agent.Agent, opts loopOptio
 			}
 			return err
 		}
+	}
+}
+
+type outcomeCatalog struct {
+	tightAd                   api.Advertisement
+	tightContract             *api.Contract
+	defaultAdByCapability     map[string]api.Advertisement
+	contractByAdvertisementID map[string]*api.Contract
+}
+
+func (r briefRunner) runWarmup(ctx context.Context, a *agent.Agent, summary *loopSummary) (*outcomeCatalog, error) {
+	catalog, err := loadOutcomeCatalog(ctx, a)
+	if err != nil {
+		return nil, err
+	}
+	a.Log().
+		With("advertisement_id", catalog.tightAd.ID).
+		With("contract", tightContractName).
+		Infof("starting D.2 deterministic warm-up")
+
+	if err := runReaperOutcome(ctx, a, catalog.tightAd, catalog.tightContract, summary, queryOptions{
+		outcome:     sessionOutcomeReaperViolation,
+		closeDetail: "D.2 warm-up reaper contract-violation hold",
+		reaperHold:  holdPastDurationCap(catalog.tightContract),
+		reaperWait:  warmupReaperWait,
+	}); err != nil {
+		return nil, fmt.Errorf("D.2 warm-up reaper contract violation: %w", err)
+	}
+
+	ad, capability, contract, ok := catalog.defaultWarmupAdvertisement()
+	if !ok {
+		return nil, fmt.Errorf("D.2 warm-up requires at least one visible default-contract Macro Pulse advertisement; run F.1 demo bootstrap/topology before starting the loop")
+	}
+	hold := warmupLongTailHold(contract)
+	if hold <= 0 {
+		return nil, fmt.Errorf("D.2 warm-up default-contract advertisement %q has no safe long-tail hold below its duration cap", ad.ID)
+	}
+	if err := runWarmupCapabilityQuery(ctx, a, ad, capability, summary, queryOptions{
+		outcome:        sessionOutcomeLongTail,
+		closeDetail:    "D.2 warm-up long-tail close",
+		holdAfterReply: hold,
+	}); err != nil {
+		return nil, fmt.Errorf("D.2 warm-up long-tail close: %w", err)
+	}
+	if err := runWarmupCapabilityQuery(ctx, a, ad, capability, summary, queryOptions{
+		outcome:     sessionOutcomeNormal,
+		closeDetail: warmupNormalCloseDetail,
+	}); err != nil {
+		return nil, fmt.Errorf("D.2 warm-up normal close: %w", err)
+	}
+
+	a.Log().Infof("completed D.2 deterministic warm-up")
+	return catalog, nil
+}
+
+func loadOutcomeCatalog(ctx context.Context, a *agent.Agent) (*outcomeCatalog, error) {
+	res, err := a.Controller().SearchCatalog(ctx, api.SearchCatalogParams{})
+	if err != nil {
+		return nil, fmt.Errorf("catalog search: %w", err)
+	}
+	listing, ok := res.(*api.CatalogSearchResponse)
+	if !ok {
+		return nil, fmt.Errorf("unexpected catalog search response: %T", res)
+	}
+	catalog := &outcomeCatalog{
+		defaultAdByCapability:     map[string]api.Advertisement{},
+		contractByAdvertisementID: map[string]*api.Contract{},
+	}
+	for _, ad := range listing.Items {
+		var contract *api.Contract
+		if ad.ContractId.Set && ad.ContractId.Value != "" {
+			contract, err = getVisibleContract(ctx, a, ad.ContractId.Value)
+			if err != nil {
+				return nil, fmt.Errorf("get contract %q for advertisement %q: %w", ad.ContractId.Value, ad.ID, err)
+			}
+			catalog.contractByAdvertisementID[ad.ID] = contract
+		}
+		if contract != nil && contract.Name == tightContractName {
+			catalog.tightAd = ad
+			catalog.tightContract = contract
+			continue
+		}
+		for _, capability := range ad.Capabilities {
+			if _, exists := catalog.defaultAdByCapability[capability.Name]; !exists {
+				catalog.defaultAdByCapability[capability.Name] = ad
+			}
+		}
+	}
+	if catalog.tightAd.ID == "" {
+		return nil, fmt.Errorf("D.2 warm-up requires a visible advertisement using contract %q; run F.1 demo bootstrap/topology so news-pulse@signals-co publishes with the tight-contract assignment", tightContractName)
+	}
+	return catalog, nil
+}
+
+func getVisibleContract(ctx context.Context, a *agent.Agent, contractID string) (*api.Contract, error) {
+	res, err := a.Controller().GetContract(ctx, api.GetContractParams{ContractId: contractID})
+	if err != nil {
+		return nil, err
+	}
+	contract, ok := res.(*api.Contract)
+	if !ok {
+		return nil, fmt.Errorf("unexpected get contract response: %T", res)
+	}
+	return contract, nil
+}
+
+var warmupCapabilityOrder = []string{
+	"markets.fx",
+	"signals.search",
+	"weather.current",
+	"markets.equity",
+	"markets.commodities",
+	"weather.forecast",
+	"signals.news",
+	"analytics.narrate",
+	"analytics.correlate",
+}
+
+func (c *outcomeCatalog) defaultWarmupAdvertisement() (api.Advertisement, string, *api.Contract, bool) {
+	for _, capability := range warmupCapabilityOrder {
+		ad, ok := c.defaultAdByCapability[capability]
+		if !ok {
+			continue
+		}
+		return ad, capability, c.contractByAdvertisementID[ad.ID], true
+	}
+	return api.Advertisement{}, "", nil, false
+}
+
+func warmupLongTailHold(contract *api.Contract) time.Duration {
+	hold := time.Minute
+	if contract == nil || contract.MaxDurationSeconds <= 0 {
+		return hold
+	}
+	ceiling := time.Duration(contract.MaxDurationSeconds)*time.Second - 15*time.Second
+	if ceiling <= 0 {
+		return 0
+	}
+	if ceiling < hold {
+		return ceiling
+	}
+	return hold
+}
+
+func runWarmupCapabilityQuery(ctx context.Context, a *agent.Agent, ad api.Advertisement, capability string, summary *loopSummary, opts queryOptions) error {
+	switch capability {
+	case "markets.equity":
+		req := payloads.EquityRequest{Tickers: []string{"SPY", "XLK"}, WindowDays: 7}
+		var resp payloads.EquityResponse
+		return query(ctx, a, ad, "markets.equity.request", req, &resp, summary, opts)
+	case "markets.fx":
+		req := payloads.FXRequest{Pairs: []string{"USD-EUR", "USD-JPY"}, WindowDays: 7}
+		var resp payloads.FXResponse
+		return query(ctx, a, ad, "markets.fx.request", req, &resp, summary, opts)
+	case "markets.commodities":
+		req := payloads.CommoditiesRequest{Symbols: []string{"CL_F", "GC_F"}, WindowDays: 7}
+		var resp payloads.CommoditiesResponse
+		return query(ctx, a, ad, "markets.commodities.request", req, &resp, summary, opts)
+	case "weather.current":
+		req := payloads.WeatherCurrentRequest{Cities: []string{"new-york", "houston"}}
+		var resp payloads.WeatherCurrentResponse
+		return query(ctx, a, ad, "weather.current.request", req, &resp, summary, opts)
+	case "weather.forecast":
+		req := payloads.WeatherForecastRequest{Cities: []string{"houston"}, HorizonHours: 72}
+		var resp payloads.WeatherForecastResponse
+		return query(ctx, a, ad, "weather.forecast.request", req, &resp, summary, opts)
+	case "signals.search":
+		req := payloads.SearchRequest{Terms: []string{"layoffs", "gulf-storm"}, WindowDays: 30}
+		var resp payloads.SearchResponse
+		return query(ctx, a, ad, "signals.search.request", req, &resp, summary, opts)
+	case "signals.news":
+		req := payloads.NewsRequest{Topics: []string{"financial", "energy"}, WindowDays: 7}
+		var resp payloads.NewsResponse
+		return query(ctx, a, ad, "signals.news.request", req, &resp, summary, opts)
+	case "analytics.correlate":
+		req := payloads.CorrelateRequest{
+			SeriesA: payloads.CorrelateLabeledSeries{Label: "warm-up A", Points: []payloads.SeriesPoint{{T: "2026-01-01", V: 1}, {T: "2026-01-02", V: 2}, {T: "2026-01-03", V: 3}}},
+			SeriesB: payloads.CorrelateLabeledSeries{Label: "warm-up B", Points: []payloads.SeriesPoint{{T: "2026-01-01", V: 1}, {T: "2026-01-02", V: 2}, {T: "2026-01-03", V: 4}}},
+		}
+		var resp payloads.CorrelateResponse
+		return query(ctx, a, ad, "analytics.correlate.request", req, &resp, summary, opts)
+	case "analytics.narrate":
+		req := payloads.NarrateRequest{Template: "macro-pulse-default", Inputs: payloads.NarrateInputs{}}
+		var resp payloads.NarrateResponse
+		return query(ctx, a, ad, "analytics.narrate.request", req, &resp, summary, opts)
+	default:
+		return fmt.Errorf("unsupported warm-up capability %q", capability)
 	}
 }
 
@@ -186,6 +425,114 @@ func randomPause(r *rand.Rand, min, max time.Duration) time.Duration {
 		r = rand.New(rand.NewSource(time.Now().UnixNano()))
 	}
 	return min + time.Duration(r.Int63n(int64(max-min)+1))
+}
+
+func classifySessionOutcome(p float64) sessionOutcome {
+	switch {
+	case p < 0.025:
+		return sessionOutcomeRuntimeViolation
+	case p < 0.05:
+		return sessionOutcomeReaperViolation
+	case p < 0.20:
+		return sessionOutcomeLongTail
+	default:
+		return sessionOutcomeNormal
+	}
+}
+
+func randomLongTailHold(r *rand.Rand, contract *api.Contract) time.Duration {
+	minHold := time.Minute
+	maxHold := 5 * time.Minute
+	if contract != nil && contract.MaxDurationSeconds > 0 {
+		ceiling := time.Duration(contract.MaxDurationSeconds)*time.Second - 15*time.Second
+		if ceiling <= 0 {
+			return 0
+		}
+		if ceiling < minHold {
+			if ceiling < 5*time.Second {
+				return ceiling
+			}
+			minHold = ceiling / 2
+			if minHold < 5*time.Second {
+				minHold = 5 * time.Second
+			}
+			maxHold = ceiling
+		} else if ceiling < maxHold {
+			maxHold = ceiling
+		}
+	}
+	return randomPause(r, minHold, maxHold)
+}
+
+func holdPastDurationCap(contract *api.Contract) time.Duration {
+	if contract == nil || contract.MaxDurationSeconds <= 0 {
+		return time.Minute
+	}
+	capDuration := time.Duration(contract.MaxDurationSeconds) * time.Second
+	hold := capDuration + 20*time.Second
+	if hold < time.Minute {
+		return time.Minute
+	}
+	return hold
+}
+
+func oversizePayloadBytes(contract *api.Contract) int {
+	if contract == nil || contract.MaxEnvelopeBytes <= 0 {
+		return 4096
+	}
+	size := contract.MaxEnvelopeBytes * 4
+	if size < 4096 {
+		return 4096
+	}
+	return size
+}
+
+func (s *loopOutcomeSelector) queryOptionsFor(ad api.Advertisement) queryOptions {
+	if s == nil || s.rand == nil {
+		return queryOptions{outcome: sessionOutcomeNormal, closeDetail: briefNormalCloseDetail}
+	}
+	contract := s.contractByAdvertisementID[ad.ID]
+	outcome := classifySessionOutcome(s.rand.Float64())
+	return queryOptionsForOutcome(ad.ID, s.tightAdvertisementID, outcome, contract, s.rand)
+}
+
+func queryOptionsForOutcome(adID, tightAdvertisementID string, outcome sessionOutcome, contract *api.Contract, r *rand.Rand) queryOptions {
+	if adID == tightAdvertisementID {
+		switch outcome {
+		case sessionOutcomeRuntimeViolation:
+			kind := runtimeViolationOversize
+			if r != nil && r.Intn(2) == 1 {
+				kind = runtimeViolationDisallowed
+			}
+			return queryOptions{
+				outcome:              sessionOutcomeRuntimeViolation,
+				closeDetail:          "D.2 random runtime contract-violation attempt",
+				runtimeViolation:     kind,
+				oversizePayloadBytes: oversizePayloadBytes(contract),
+				disallowedMessage:    "macro-pulse.contract-violation.request",
+			}
+		case sessionOutcomeReaperViolation:
+			return queryOptions{
+				outcome:     sessionOutcomeReaperViolation,
+				closeDetail: "D.2 random reaper contract-violation hold",
+				reaperHold:  holdPastDurationCap(contract),
+				reaperWait:  warmupReaperWait,
+			}
+		default:
+			return queryOptions{outcome: sessionOutcomeNormal, closeDetail: briefNormalCloseDetail}
+		}
+	}
+	if outcome == sessionOutcomeLongTail {
+		hold := randomLongTailHold(r, contract)
+		if hold > 0 {
+			return queryOptions{
+				outcome:        sessionOutcomeLongTail,
+				closeDetail:    "D.2 random long-tail close",
+				holdAfterReply: hold,
+			}
+		}
+	}
+	return queryOptions{outcome: sessionOutcomeNormal, closeDetail: briefNormalCloseDetail}
 }
 
 func sleepContext(ctx context.Context, d time.Duration) error {
@@ -254,35 +601,160 @@ type catalogEntry struct {
 	OwnerAccountID  string   `json:"owner_account_id"`
 }
 
+func proposeBriefSession(ctx context.Context, a *agent.Agent, ad api.Advertisement, message string) (*session.Session, error) {
+	if len(ad.WorkgroupScopes) == 0 {
+		return nil, fmt.Errorf("advertisement %s has no visible workgroup", ad.ID)
+	}
+	if message == "" {
+		message = "macro-pulse morning brief"
+	}
+	return session.Propose(ctx, a, ad.ID, session.ProposeOptions{
+		WorkgroupID: ad.WorkgroupScopes[0],
+		Message:     message,
+		Timeout:     20 * time.Second,
+	})
+}
+
+func runReaperOutcome(ctx context.Context, a *agent.Agent, ad api.Advertisement, contract *api.Contract, summary *loopSummary, opts queryOptions) error {
+	proposeCtx, cancel := context.WithTimeout(ctx, 90*time.Second)
+	sess, err := proposeBriefSession(proposeCtx, a, ad, opts.closeDetail)
+	cancel()
+	if err != nil {
+		return fmt.Errorf("propose reaper outcome: %w", err)
+	}
+	summary.recordSessionProposed()
+
+	hold := opts.reaperHold
+	if hold <= 0 {
+		hold = holdPastDurationCap(contract)
+	}
+	a.Log().
+		With("session_id", sess.ID).
+		With("advertisement_id", ad.ID).
+		With("hold", hold.String()).
+		Infof("holding session past contract duration cap")
+	if err := agentutil.HoldPastDurationCap(ctx, sess, hold); err != nil {
+		_ = sess.Close(ctx, "D.2 reaper hold interrupted")
+		return err
+	}
+
+	wait := opts.reaperWait
+	if wait <= 0 {
+		wait = warmupReaperWait
+	}
+	closed, err := waitSessionClosed(ctx, a, sess.ID, wait)
+	if err != nil {
+		_ = sess.Close(ctx, "D.2 reaper hold cleanup")
+		return err
+	}
+	if !closed.CloseReason.Set || closed.CloseReason.Value != api.SessionCloseReasonContractViolation {
+		reason := "<unset>"
+		if closed.CloseReason.Set {
+			reason = string(closed.CloseReason.Value)
+		}
+		return fmt.Errorf("session %q closed with close_reason=%q, expected %q", sess.ID, reason, api.SessionCloseReasonContractViolation)
+	}
+	_ = sess.Close(ctx, "D.2 reaper observed closed")
+	summary.recordSessionCompleted()
+	return nil
+}
+
+func waitSessionClosed(ctx context.Context, a *agent.Agent, sessionID string, wait time.Duration) (*api.Session, error) {
+	if wait <= 0 {
+		wait = sessionClosePollInterval
+	}
+	deadline := time.Now().Add(wait)
+	for {
+		current, err := getAPISession(ctx, a, sessionID)
+		if err != nil {
+			return nil, err
+		}
+		if current.State == api.SessionStateClosed {
+			return current, nil
+		}
+		if time.Now().After(deadline) {
+			return nil, fmt.Errorf("session %q did not close within %s; state=%q", sessionID, wait, current.State)
+		}
+		if err := sleepContext(ctx, sessionClosePollInterval); err != nil {
+			return nil, err
+		}
+	}
+}
+
+func getAPISession(ctx context.Context, a *agent.Agent, sessionID string) (*api.Session, error) {
+	res, err := a.Controller().GetSession(ctx, api.GetSessionParams{SessionId: sessionID})
+	if err != nil {
+		return nil, err
+	}
+	sess, ok := res.(*api.Session)
+	if !ok {
+		return nil, fmt.Errorf("unexpected get session response: %T", res)
+	}
+	return sess, nil
+}
+
+func attemptRuntimeViolation(ctx context.Context, sess *session.Session, msgType string, opts queryOptions) error {
+	var err error
+	switch opts.runtimeViolation {
+	case runtimeViolationDisallowed:
+		messageType := opts.disallowedMessage
+		if messageType == "" {
+			messageType = "macro-pulse.contract-violation.request"
+		}
+		err = agentutil.SendDisallowedMessageType(ctx, sess, messageType)
+	default:
+		payloadBytes := opts.oversizePayloadBytes
+		if payloadBytes <= 0 {
+			payloadBytes = 4096
+		}
+		err = agentutil.SendOversizeEnvelope(ctx, sess, msgType, payloadBytes)
+	}
+	if err != nil && !agentutil.IsContractViolation(err) {
+		return err
+	}
+	return nil
+}
+
 // query opens a session against ad, sends one envelope of msgType
 // carrying req as JSON, decodes the reply into out, and closes.
 //
 // The 90s timeout here is sized for the slowest --live path: GDELT's
 // public API throttles to ~1 request per 5 seconds, so a single news
 // query against three topics serially takes ~20-25s before the
-// snapshot fallback even starts. Snapshot-only runs return well
-// under a second per query.
-func query[Req any, Resp any](ctx context.Context, a *agent.Agent, ad api.Advertisement, msgType string, req Req, out *Resp, summary *loopSummary) error {
-	if len(ad.WorkgroupScopes) == 0 {
-		return fmt.Errorf("advertisement %s has no visible workgroup", ad.ID)
+// snapshot fallback even starts. Snapshot-only runs return well under
+// a second per query; D.2 long-tail options intentionally hold the
+// session after the reply and before normal close.
+func query[Req any, Resp any](ctx context.Context, a *agent.Agent, ad api.Advertisement, msgType string, req Req, out *Resp, summary *loopSummary, opts queryOptions) error {
+	if opts.outcome == sessionOutcomeReaperViolation {
+		return runReaperOutcome(ctx, a, ad, nil, summary, opts)
+	}
+	closeDetail := opts.closeDetail
+	if closeDetail == "" {
+		closeDetail = briefNormalCloseDetail
 	}
 	sessCtx, cancel := context.WithTimeout(ctx, 90*time.Second)
 	defer cancel()
 
-	sess, err := session.Propose(sessCtx, a, ad.ID, session.ProposeOptions{
-		WorkgroupID: ad.WorkgroupScopes[0],
-		Message:     "macro-pulse morning brief",
-		Timeout:     20 * time.Second,
-	})
+	sess, err := proposeBriefSession(sessCtx, a, ad, "macro-pulse morning brief")
 	if err != nil {
 		return fmt.Errorf("propose %s: %w", msgType, err)
 	}
 	summary.recordSessionProposed()
 	defer func() {
-		if err := sess.Close(ctx, "brief complete"); err == nil {
+		if sess.Close(ctx, closeDetail) == nil {
 			summary.recordSessionCompleted()
 		}
 	}()
+
+	if opts.outcome == sessionOutcomeRuntimeViolation {
+		if err := attemptRuntimeViolation(sessCtx, sess, msgType, opts); err != nil {
+			return fmt.Errorf("runtime violation attempt %s: %w", msgType, err)
+		}
+		if _, err := waitSessionClosed(ctx, a, sess.ID, 10*time.Second); err != nil {
+			a.Log().With("session_id", sess.ID).Warnf("runtime violation attempt did not close before cleanup: %v", err)
+		}
+		return nil
+	}
 
 	body, err := json.Marshal(req)
 	if err != nil {
@@ -305,10 +777,20 @@ func query[Req any, Resp any](ctx context.Context, a *agent.Agent, ad api.Advert
 	if err := json.Unmarshal(reply.Payload, out); err != nil {
 		return fmt.Errorf("decode %s reply: %w", msgType, err)
 	}
+	if opts.holdAfterReply > 0 {
+		a.Log().
+			With("session_id", sess.ID).
+			With("advertisement_id", ad.ID).
+			With("hold", opts.holdAfterReply.String()).
+			Infof("holding session before normal close")
+		if err := sleepContext(ctx, opts.holdAfterReply); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
-func buildBrief(ctx context.Context, a *agent.Agent, summary *loopSummary) (*brief, error) {
+func buildBrief(ctx context.Context, a *agent.Agent, summary *loopSummary, outcomes *loopOutcomeSelector) (*brief, error) {
 	res, err := a.Controller().SearchCatalog(ctx, api.SearchCatalogParams{})
 	if err != nil {
 		return nil, fmt.Errorf("catalog search: %w", err)
@@ -346,7 +828,7 @@ func buildBrief(ctx context.Context, a *agent.Agent, summary *loopSummary) (*bri
 	if ad, ok := adByCapability["markets.equity"]; ok {
 		req := payloads.EquityRequest{Tickers: []string{"SPY", "XLK", "XLE", "XLF"}, WindowDays: 7}
 		var resp payloads.EquityResponse
-		if err := query(ctx, a, ad, "markets.equity.request", req, &resp, summary); err != nil {
+		if err := query(ctx, a, ad, "markets.equity.request", req, &resp, summary, outcomes.queryOptionsFor(ad)); err != nil {
 			a.Log().Warnf("markets.equity: %v", err)
 		} else {
 			b.AsOf = newer(b.AsOf, resp.AsOf)
@@ -370,7 +852,7 @@ func buildBrief(ctx context.Context, a *agent.Agent, summary *loopSummary) (*bri
 	if ad, ok := adByCapability["markets.fx"]; ok {
 		req := payloads.FXRequest{Pairs: []string{"USD-EUR", "USD-JPY"}, WindowDays: 7}
 		var resp payloads.FXResponse
-		if err := query(ctx, a, ad, "markets.fx.request", req, &resp, summary); err != nil {
+		if err := query(ctx, a, ad, "markets.fx.request", req, &resp, summary, outcomes.queryOptionsFor(ad)); err != nil {
 			a.Log().Warnf("markets.fx: %v", err)
 		} else {
 			if d, ok := resp.Pairs["USD-EUR"]; ok {
@@ -386,7 +868,7 @@ func buildBrief(ctx context.Context, a *agent.Agent, summary *loopSummary) (*bri
 	if ad, ok := adByCapability["markets.commodities"]; ok {
 		req := payloads.CommoditiesRequest{Symbols: []string{"CL_F", "GC_F", "NG_F"}, WindowDays: 7}
 		var resp payloads.CommoditiesResponse
-		if err := query(ctx, a, ad, "markets.commodities.request", req, &resp, summary); err != nil {
+		if err := query(ctx, a, ad, "markets.commodities.request", req, &resp, summary, outcomes.queryOptionsFor(ad)); err != nil {
 			a.Log().Warnf("markets.commodities: %v", err)
 		} else {
 			if d, ok := resp.Symbols["CL_F"]; ok {
@@ -406,7 +888,7 @@ func buildBrief(ctx context.Context, a *agent.Agent, summary *loopSummary) (*bri
 	if ad, ok := adByCapability["weather.current"]; ok {
 		req := payloads.WeatherCurrentRequest{Cities: []string{"new-york", "houston", "frankfurt", "singapore"}}
 		var resp payloads.WeatherCurrentResponse
-		if err := query(ctx, a, ad, "weather.current.request", req, &resp, summary); err != nil {
+		if err := query(ctx, a, ad, "weather.current.request", req, &resp, summary, outcomes.queryOptionsFor(ad)); err != nil {
 			a.Log().Warnf("weather.current: %v", err)
 		} else {
 			for _, c := range []string{"new-york", "houston", "frankfurt", "singapore"} {
@@ -428,7 +910,7 @@ func buildBrief(ctx context.Context, a *agent.Agent, summary *loopSummary) (*bri
 	if ad, ok := adByCapability["weather.forecast"]; ok {
 		req := payloads.WeatherForecastRequest{Cities: []string{"houston"}, HorizonHours: 72}
 		var resp payloads.WeatherForecastResponse
-		if err := query(ctx, a, ad, "weather.forecast.request", req, &resp, summary); err != nil {
+		if err := query(ctx, a, ad, "weather.forecast.request", req, &resp, summary, outcomes.queryOptionsFor(ad)); err != nil {
 			a.Log().Warnf("weather.forecast: %v", err)
 		} else if d, ok := resp.Cities["houston"]; ok && len(d.Daily) > 0 {
 			summaries := make([]string, 0, len(d.Daily))
@@ -446,7 +928,7 @@ func buildBrief(ctx context.Context, a *agent.Agent, summary *loopSummary) (*bri
 	if ad, ok := adByCapability["signals.search"]; ok {
 		req := payloads.SearchRequest{Terms: []string{"layoffs", "gulf-storm", "housing-market"}, WindowDays: 30}
 		var resp payloads.SearchResponse
-		if err := query(ctx, a, ad, "signals.search.request", req, &resp, summary); err != nil {
+		if err := query(ctx, a, ad, "signals.search.request", req, &resp, summary, outcomes.queryOptionsFor(ad)); err != nil {
 			a.Log().Warnf("signals.search: %v", err)
 		} else {
 			if d, ok := resp.Terms["layoffs"]; ok {
@@ -467,7 +949,7 @@ func buildBrief(ctx context.Context, a *agent.Agent, summary *loopSummary) (*bri
 	if ad, ok := adByCapability["signals.news"]; ok {
 		req := payloads.NewsRequest{Topics: []string{"financial", "energy", "supply-chain"}, WindowDays: 7}
 		var resp payloads.NewsResponse
-		if err := query(ctx, a, ad, "signals.news.request", req, &resp, summary); err != nil {
+		if err := query(ctx, a, ad, "signals.news.request", req, &resp, summary, outcomes.queryOptionsFor(ad)); err != nil {
 			a.Log().Warnf("signals.news: %v", err)
 		} else {
 			if d, ok := resp.Topics["financial"]; ok {
@@ -500,7 +982,7 @@ func buildBrief(ctx context.Context, a *agent.Agent, summary *loopSummary) (*bri
 				SeriesB: payloads.CorrelateLabeledSeries{Label: p.lb, Points: seriesB},
 			}
 			var resp payloads.CorrelateResponse
-			if err := query(ctx, a, ad, "analytics.correlate.request", req, &resp, summary); err != nil {
+			if err := query(ctx, a, ad, "analytics.correlate.request", req, &resp, summary, outcomes.queryOptionsFor(ad)); err != nil {
 				a.Log().Warnf("analytics.correlate %s: %v", p.label, err)
 				continue
 			}
@@ -530,7 +1012,7 @@ func buildBrief(ctx context.Context, a *agent.Agent, summary *loopSummary) (*bri
 		}
 		req := payloads.NarrateRequest{Template: "macro-pulse-default", Inputs: inputs}
 		var resp payloads.NarrateResponse
-		if err := query(ctx, a, ad, "analytics.narrate.request", req, &resp, summary); err != nil {
+		if err := query(ctx, a, ad, "analytics.narrate.request", req, &resp, summary, outcomes.queryOptionsFor(ad)); err != nil {
 			a.Log().Warnf("analytics.narrate: %v", err)
 		} else {
 			b.Narrative = resp.Text
