@@ -1,3 +1,7 @@
+import { Activity, Boxes, Server } from 'lucide-react';
+
+import { AppShell, type Product } from '../components';
+
 type ColorToken = {
   name: string;
   className: string;
@@ -65,6 +69,8 @@ const typeRows = [
   },
 ];
 
+const shellProducts: Product[] = ['agora', 'llm', 'mcp'];
+
 export default function Kit() {
   return (
     <main className="min-h-screen bg-page px-8 py-10 text-text">
@@ -85,6 +91,58 @@ export default function Kit() {
               </div>
             ))}
           </div>
+        </section>
+
+        <section className="flex flex-col gap-4">
+          <div>
+            <h2 className="text-section font-semibold text-text">Chrome</h2>
+            <p className="mt-1 text-body text-text-mute">AppShell product variants with shared structure.</p>
+          </div>
+          {shellProducts.map((product) => (
+            <div key={product} className="overflow-hidden rounded-card border border-border bg-page">
+              <AppShell
+                product={product}
+                organizationName="Agora Demo Corp"
+                activeTab="dashboard"
+                userInitials="AD"
+                userLabel="demo@agora.local"
+                fullHeight={false}
+              >
+                <div className="grid gap-4 md:grid-cols-[1fr_18rem]">
+                  <section className="rounded-card border border-border bg-panel p-5">
+                    <div className="mb-4 flex items-center gap-3">
+                      <Activity size={20} aria-hidden="true" className="text-info" />
+                      <h3 className="text-section font-semibold text-text">Governed Activity</h3>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-card border border-border bg-panel-subtle p-3">
+                        <p className="text-stat font-bold text-text">248</p>
+                        <p className="text-label font-medium uppercase text-text-mute">events</p>
+                      </div>
+                      <div className="rounded-card border border-border bg-panel-subtle p-3">
+                        <p className="text-stat font-bold text-text">18</p>
+                        <p className="text-label font-medium uppercase text-text-mute">sessions</p>
+                      </div>
+                      <div className="rounded-card border border-border bg-panel-subtle p-3">
+                        <p className="text-stat font-bold text-text">6</p>
+                        <p className="text-label font-medium uppercase text-text-mute">workgroups</p>
+                      </div>
+                    </div>
+                  </section>
+                  <section className="rounded-card border border-border bg-panel p-5">
+                    <div className="mb-4 flex items-center gap-3">
+                      <Boxes size={20} aria-hidden="true" className="text-text-mute" />
+                      <h3 className="text-section font-semibold text-text">Catalog</h3>
+                    </div>
+                    <div className="flex items-center gap-3 rounded-card border border-border bg-panel-subtle p-3">
+                      <Server size={18} aria-hidden="true" className="shrink-0 text-text-mute" />
+                      <p className="text-body text-text-mute">10 advertisements visible to this organization.</p>
+                    </div>
+                  </section>
+                </div>
+              </AppShell>
+            </div>
+          ))}
         </section>
 
         <section className="rounded-card border border-border bg-panel p-6">
