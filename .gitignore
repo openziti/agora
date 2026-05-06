@@ -5,6 +5,7 @@
 .contexts
 .codex
 .claude
+.mercurius
 *.db
 /automated-release-build/
 etc/dev*

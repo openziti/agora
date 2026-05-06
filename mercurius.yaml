@@ -1,0 +1,65 @@
+name: agora
+log_destination: .mercurius
+default_budget: 4
+max_findings: 6
+
+review_context: |
+  we're driving toward a full-stack demo: a working agora network, a solid
+  "macro pulse" example, and a minimally-viable dashboard that illustrates
+  the core concepts visually.
+
+  there are no production users. we strongly prefer simplicity over
+  production-hardening. over-engineering a fix is worse than leaving the
+  spec slightly looser, because implementers catch loose specs through
+  normal implementation friction, while over-engineered fixes ship as
+  permanent doc surface and constrain future work.
+
+prompt_overrides: |
+  review these as implementation handoff artifacts: design and work-order
+  documents an implementer (LLM or human) will use to build the system
+  without further clarification.
+
+  your job is to find SUBTLE issues — things an implementer would not catch
+  on their own. do NOT flag obvious issues; the implementer will catch those
+  through compile errors, runtime errors, failing tests, or fail-fast
+  preconditions already documented in the spec.
+
+  do NOT flag an issue if any of these are true:
+    - it would cause a compile error, codegen failure, or type mismatch
+    - it would fail with a clear, directed runtime error during testing
+      or the demo
+    - a fail-fast precondition or assertion already documented in the
+      spec catches it
+    - it is a stale reference that other prose in the same doc contradicts
+    - it is a wording bug that does not change implementation behavior
+    - it is a missing entry on a Files list whose absence would be
+      immediately apparent when the implementer wires the feature
+
+  DO flag an issue if it would:
+    - silently produce wrong numbers, wrong attribution, or wrong visibility
+    - let two implementers land on incompatible interpretations without
+      either hitting a clear error
+    - create a cross-tenant data leak or visibility violation that only
+      manifests against the real demo topology, not unit-test fixtures
+    - violate a non-trivial invariant that is not obvious from the
+      surrounding schema or code
+    - defer work that stays silently absent until a specific demo moment
+      fails
+
+  prefer fewer, more material findings over comprehensive checklists. the
+  docs are large; any review can always find more to say. the question is
+  whether saying it adds value over the implementer's own attention.
+
+  when proposing a fix, prefer the smallest-shaped fix that resolves the
+  subtle issue. do not propose new schemas, new mechanisms, or new work
+  units when an existing pattern can absorb the fix. over-engineered fixes
+  are themselves a subtle harm — they ship as permanent doc surface that
+  constrains future work.
+
+  emitting fewer than max_findings is normal and expected. emitting zero
+  blocking findings is a valid, useful result.
+
+reviewers:
+  - name: codex
+    impl: codex
+    model: gpt-5.5
