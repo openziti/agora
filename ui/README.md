@@ -11,6 +11,32 @@ npm run dev
 
 The dev server proxies `/v1` to `http://localhost:18080`, matching the local controller default used by the dashboard work order.
 
+Point the proxy at a different controller by setting `AGORA_CONTROLLER_URL`:
+
+```sh
+AGORA_CONTROLLER_URL=http://localhost:28080 npm run dev
+```
+
+The proxy preserves the `/v1` prefix on both sides. A browser request to
+`http://localhost:5173/v1/sessions` is forwarded to
+`http://localhost:18080/v1/sessions` by default.
+
+## Runtime Config
+
+`index.html` defines `window.__AGORA_CONFIG__` before the React entrypoint runs.
+Read it through `src/lib/config.ts` instead of reading the global directly.
+
+The config is for non-sensitive deployment metadata only:
+
+- `apiBasePath`: same-origin API prefix, default `/v1`
+- `version`: display/build version string, default `dev`
+- `demoFlags`: optional demo display flags
+
+Future fields should follow the same rule: values that vary by deployment and
+are safe for every browser user to inspect can live here. Credentials, secrets,
+session material, and account identity belong in the cookie-based auth flow, not
+runtime config.
+
 ## Verification
 
 ```sh
