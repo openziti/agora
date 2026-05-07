@@ -38,6 +38,33 @@
       200:
         description: ok
 
+/account/whoami:
+  get:
+    tags:
+      - account
+    operationId: whoami
+    security:
+      - accountTokenAuth: []
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/whoamiResponse"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
 /account/change-password:
   post:
     tags:

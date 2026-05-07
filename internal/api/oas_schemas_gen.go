@@ -2111,6 +2111,8 @@ func (s *DashboardAccount) SetRole(val DashboardAccountRole) {
 	s.Role = val
 }
 
+func (*DashboardAccount) whoamiRes() {}
+
 type DashboardAccountRole string
 
 const (
@@ -6399,6 +6401,14 @@ func (s *UpdateContractRequest) SetAccessMode(val OptContractAccessMode) {
 type UpdateContractUnauthorized Error
 
 func (*UpdateContractUnauthorized) updateContractRes() {}
+
+type WhoamiInternalServerError Error
+
+func (*WhoamiInternalServerError) whoamiRes() {}
+
+type WhoamiUnauthorized Error
+
+func (*WhoamiUnauthorized) whoamiRes() {}
 
 // Ref: #/workgroup
 type Workgroup struct {

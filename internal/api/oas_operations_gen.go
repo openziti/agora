@@ -71,4 +71,5 @@ const (
 	StartTunnelServeOperation              OperationName = "StartTunnelServe"
 	UpdateAdvertisementOperation           OperationName = "UpdateAdvertisement"
 	UpdateContractOperation                OperationName = "UpdateContract"
+	WhoamiOperation                        OperationName = "Whoami"
 )

@@ -281,6 +281,10 @@ type Invoker interface {
 	//
 	// PATCH /contracts/{contractId}
 	UpdateContract(ctx context.Context, request *UpdateContractRequest, params UpdateContractParams) (UpdateContractRes, error)
+	// Whoami invokes whoami operation.
+	//
+	// GET /account/whoami
+	Whoami(ctx context.Context) (WhoamiRes, error)
 }
 
 // Client implements OAS client.
@@ -6149,6 +6153,73 @@ func (c *Client) sendUpdateContract(ctx context.Context, request *UpdateContract
 	defer resp.Body.Close()
 
 	result, err := decodeUpdateContractResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// Whoami invokes whoami operation.
+//
+// GET /account/whoami
+func (c *Client) Whoami(ctx context.Context) (WhoamiRes, error) {
+	res, err := c.sendWhoami(ctx)
+	return res, err
+}
+
+func (c *Client) sendWhoami(ctx context.Context) (res WhoamiRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/account/whoami"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, WhoamiOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeWhoamiResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

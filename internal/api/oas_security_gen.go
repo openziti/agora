@@ -86,6 +86,7 @@ var operationRolesAccountTokenAuth = map[string][]string{
 	StartTunnelServeOperation:              []string{},
 	UpdateAdvertisementOperation:           []string{},
 	UpdateContractOperation:                []string{},
+	WhoamiOperation:                        []string{},
 }
 
 func (s *Server) securityAccountTokenAuth(ctx context.Context, operationName OperationName, req *http.Request) (context.Context, bool, error) {

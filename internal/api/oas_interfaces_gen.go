@@ -256,3 +256,7 @@ type UpdateAdvertisementRes interface {
 type UpdateContractRes interface {
 	updateContractRes()
 }
+
+type WhoamiRes interface {
+	whoamiRes()
+}

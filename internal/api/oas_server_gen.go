@@ -268,6 +268,10 @@ type Handler interface {
 	//
 	// PATCH /contracts/{contractId}
 	UpdateContract(ctx context.Context, req *UpdateContractRequest, params UpdateContractParams) (UpdateContractRes, error)
+	// Whoami implements whoami operation.
+	//
+	// GET /account/whoami
+	Whoami(ctx context.Context) (WhoamiRes, error)
 }
 
 // Server implements http server based on OpenAPI v3 specification and

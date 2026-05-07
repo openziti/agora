@@ -191,6 +191,26 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								return
 							}
 
+						case 'w': // Prefix: "whoami"
+
+							if l := len("whoami"); len(elem) >= l && elem[0:l] == "whoami" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "GET":
+									s.handleWhoamiRequest([0]string{}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, "GET")
+								}
+
+								return
+							}
+
 						}
 
 					case 's': // Prefix: "s"
@@ -1718,6 +1738,30 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 									r.summary = ""
 									r.operationID = "regenerateAccountToken"
 									r.pathPattern = "/account/regenerate-token"
+									r.args = args
+									r.count = 0
+									return r, true
+								default:
+									return
+								}
+							}
+
+						case 'w': // Prefix: "whoami"
+
+							if l := len("whoami"); len(elem) >= l && elem[0:l] == "whoami" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "GET":
+									r.name = WhoamiOperation
+									r.summary = ""
+									r.operationID = "whoami"
+									r.pathPattern = "/account/whoami"
 									r.args = args
 									r.count = 0
 									return r, true

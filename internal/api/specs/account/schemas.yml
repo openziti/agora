@@ -6,6 +6,9 @@ accountTokenResponse:
     accountToken:
       type: string
 
+whoamiResponse:
+  $ref: "../dashboard/schemas.yml#/dashboardAccount"
+
 loginRequest:
   type: object
   required:

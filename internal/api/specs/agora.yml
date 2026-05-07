@@ -23,6 +23,8 @@ paths:
     $ref: "account/paths.yml#/~1account~1login"
   /account/logout:
     $ref: "account/paths.yml#/~1account~1logout"
+  /account/whoami:
+    $ref: "account/paths.yml#/~1account~1whoami"
   /account/change-password:
     $ref: "account/paths.yml#/~1account~1change-password"
   /account/regenerate-token:
@@ -139,6 +141,8 @@ components:
       $ref: "admin/schemas.yml#/listAccountsResponse"
     accountTokenResponse:
       $ref: "account/schemas.yml#/accountTokenResponse"
+    whoamiResponse:
+      $ref: "account/schemas.yml#/whoamiResponse"
     loginRequest:
       $ref: "account/schemas.yml#/loginRequest"
     changePasswordRequest:

@@ -27,14 +27,8 @@ func (s *Service) GetDashboardSummary(ctx context.Context) (api.GetDashboardSumm
 	}
 
 	return &api.DashboardSummaryResponse{
-		Account: api.DashboardAccount{
-			AccountId:        principal.AccountID,
-			Email:            principal.Email,
-			OrganizationId:   principal.OrganizationID,
-			OrganizationName: org.Name,
-			Role:             api.DashboardAccountRole(principal.Role),
-		},
-		Stats:  mapDashboardStats(counts.Stats),
-		Ribbon: mapDashboardRibbon(counts.Ribbon),
+		Account: mapDashboardAccount(principal, org),
+		Stats:   mapDashboardStats(counts.Stats),
+		Ribbon:  mapDashboardRibbon(counts.Ribbon),
 	}, nil
 }
