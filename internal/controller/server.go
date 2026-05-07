@@ -64,15 +64,10 @@ func Run(cfg *config.Config) error {
 	dl.Info("schema compatibility check passed")
 
 	dl.Info("building controller http handler")
-	apiHandler, err := NewHandler(controller.service)
+	handler, err := newControllerHTTPHandler(controller)
 	if err != nil {
 		return fmt.Errorf("build handler: %w", err)
 	}
-
-	mux := http.NewServeMux()
-	mux.Handle("/", ui.Middleware(apiHandler))
-	mux.HandleFunc("/health", healthHandler)
-	mux.HandleFunc("/ready", readinessHandler(controller.store))
 
 	rootCtx, cancelRoot := context.WithCancel(context.Background())
 	defer cancelRoot()
@@ -94,7 +89,7 @@ func Run(cfg *config.Config) error {
 
 	srv := &http.Server{
 		Addr:              controller.cfg.BindAddress,
-		Handler:           mux,
+		Handler:           handler,
 		ReadHeaderTimeout: defaultHTTPReadHeader,
 		IdleTimeout:       defaultHTTPIdleTimeout,
 	}
@@ -140,6 +135,32 @@ func Run(cfg *config.Config) error {
 		return fmt.Errorf("http listen: %w", err)
 	}
 	return nil
+}
+
+func newControllerHTTPHandler(controller *Controller) (http.Handler, error) {
+	apiHandler, err := NewHandler(controller.service)
+	if err != nil {
+		return nil, err
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle("/", ui.Middleware(authMiddlewareStack(controller.service, authCookieSecure(controller.cfg), apiHandler)))
+	mux.HandleFunc("/health", healthHandler)
+	mux.HandleFunc("/ready", readinessHandler(controller.store))
+	return mux, nil
+}
+
+func authMiddlewareStack(svc *Service, secureCookies bool, apiHandler http.Handler) http.Handler {
+	handler := logoutCookieClearMiddleware(secureCookies)(apiHandler)
+	handler = loginCookieEmitMiddleware(secureCookies)(handler)
+	handler = csrfMiddleware(csrfSkipPaths)(handler)
+	handler = principalAttachMiddleware(svc, optionalPrincipalAttachPaths)(handler)
+	handler = cookieToHeaderMiddleware(handler)
+	return handler
+}
+
+func authCookieSecure(_ *config.Config) bool {
+	return false
 }
 
 func healthHandler(w http.ResponseWriter, _ *http.Request) {
