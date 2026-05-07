@@ -253,3 +253,126 @@ func TestCSRFMiddleware(t *testing.T) {
 		})
 	}
 }
+
+func TestLoginCookieEmitMiddleware(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		method      string
+		path        string
+		status      int
+		body        string
+		secure      bool
+		wantCookies bool
+	}{
+		{
+			name:        "login 200 with token sets cookies",
+			method:      http.MethodPost,
+			path:        "/v1/account/login",
+			status:      http.StatusOK,
+			body:        `{"accountToken":"session-token"}`,
+			wantCookies: true,
+		},
+		{
+			name:        "regenerate 200 with token sets secure cookies",
+			method:      http.MethodPost,
+			path:        "/v1/account/regenerate-token",
+			status:      http.StatusOK,
+			body:        `{"accountToken":"rotated-token"}`,
+			secure:      true,
+			wantCookies: true,
+		},
+		{
+			name:   "non-200 response sets no cookies",
+			method: http.MethodPost,
+			path:   "/v1/account/login",
+			status: http.StatusUnauthorized,
+			body:   `{"code":"unauthorized","message":"invalid credentials"}`,
+		},
+		{
+			name:   "missing account token sets no cookies",
+			method: http.MethodPost,
+			path:   "/v1/account/login",
+			status: http.StatusOK,
+			body:   `{"message":"ok"}`,
+		},
+		{
+			name:   "other path sets no cookies",
+			method: http.MethodPost,
+			path:   "/v1/sessions",
+			status: http.StatusOK,
+			body:   `{"accountToken":"not-for-this-path"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.status)
+				_, _ = w.Write([]byte(tt.body))
+			})
+
+			req := httptest.NewRequest(tt.method, tt.path, nil)
+			rr := httptest.NewRecorder()
+
+			loginCookieEmitMiddleware(tt.secure)(next).ServeHTTP(rr, req)
+
+			if rr.Code != tt.status {
+				t.Fatalf("expected status %d, got %d", tt.status, rr.Code)
+			}
+			if rr.Body.String() != tt.body {
+				t.Fatalf("expected body %q, got %q", tt.body, rr.Body.String())
+			}
+			if rr.Header().Get("Content-Type") != "application/json" {
+				t.Fatalf("expected content type to be preserved, got %q", rr.Header().Get("Content-Type"))
+			}
+
+			cookies := cookiesByName(rr.Result().Cookies())
+			sessionCookie := cookies[sessionCookieName]
+			csrfCookie := cookies[csrfCookieName]
+			if !tt.wantCookies {
+				if sessionCookie != nil || csrfCookie != nil {
+					t.Fatalf("expected no auth cookies, got session=%#v csrf=%#v", sessionCookie, csrfCookie)
+				}
+				return
+			}
+
+			if sessionCookie == nil || csrfCookie == nil {
+				t.Fatalf("expected both auth cookies, got session=%#v csrf=%#v", sessionCookie, csrfCookie)
+			}
+			if sessionCookie.Value != accountTokenFromBody([]byte(tt.body)) {
+				t.Fatalf("expected session cookie value to match account token, got %q", sessionCookie.Value)
+			}
+			if !sessionCookie.HttpOnly {
+				t.Fatalf("expected session cookie to be httpOnly")
+			}
+			if sessionCookie.Secure != tt.secure || csrfCookie.Secure != tt.secure {
+				t.Fatalf("expected secure=%v, got session=%v csrf=%v", tt.secure, sessionCookie.Secure, csrfCookie.Secure)
+			}
+			if sessionCookie.Path != "/" || csrfCookie.Path != "/" {
+				t.Fatalf("expected cookie path '/', got session=%q csrf=%q", sessionCookie.Path, csrfCookie.Path)
+			}
+			if sessionCookie.SameSite != http.SameSiteStrictMode || csrfCookie.SameSite != http.SameSiteStrictMode {
+				t.Fatalf("expected SameSite=Strict, got session=%v csrf=%v", sessionCookie.SameSite, csrfCookie.SameSite)
+			}
+			if csrfCookie.HttpOnly {
+				t.Fatalf("expected csrf cookie to be readable by JavaScript")
+			}
+			if csrfCookie.Value == "" || csrfCookie.Value == sessionCookie.Value {
+				t.Fatalf("unexpected csrf cookie value %q", csrfCookie.Value)
+			}
+		})
+	}
+}
+
+func cookiesByName(cookies []*http.Cookie) map[string]*http.Cookie {
+	byName := make(map[string]*http.Cookie, len(cookies))
+	for _, cookie := range cookies {
+		byName[cookie.Name] = cookie
+	}
+	return byName
+}

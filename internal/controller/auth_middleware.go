@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"bytes"
 	"crypto/subtle"
+	"encoding/json"
 	"net/http"
 
 	"github.com/michaelquigley/df/dl"
@@ -21,6 +23,11 @@ var optionalPrincipalAttachPaths = map[string]bool{
 var csrfSkipPaths = map[string]bool{
 	"/v1/account/login":  true,
 	"/v1/account/logout": true,
+}
+
+var loginCookieEmitPaths = map[string]bool{
+	"/v1/account/login":            true,
+	"/v1/account/regenerate-token": true,
 }
 
 func cookieToHeaderMiddleware(next http.Handler) http.Handler {
@@ -109,4 +116,99 @@ func csrfTokensMatch(cookieValue, headerValue string) bool {
 		return false
 	}
 	return subtle.ConstantTimeCompare([]byte(cookieValue), []byte(headerValue)) == 1
+}
+
+func loginCookieEmitMiddleware(secure bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost || !loginCookieEmitPaths[r.URL.Path] {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			recorder := newBufferedResponseWriter()
+			next.ServeHTTP(recorder, r)
+
+			copyHeaders(w.Header(), recorder.Header())
+			if recorder.StatusCode() == http.StatusOK {
+				if token := accountTokenFromBody(recorder.Body()); token != "" {
+					setSessionCookies(w, token, secure)
+				}
+			}
+			w.WriteHeader(recorder.StatusCode())
+			_, _ = w.Write(recorder.Body())
+		})
+	}
+}
+
+func setSessionCookies(w http.ResponseWriter, token string, secure bool) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    token,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     csrfCookieName,
+		Value:    newToken(),
+		Path:     "/",
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+	})
+}
+
+func accountTokenFromBody(body []byte) string {
+	var parsed struct {
+		AccountToken string `json:"accountToken"`
+	}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return ""
+	}
+	return parsed.AccountToken
+}
+
+type bufferedResponseWriter struct {
+	header     http.Header
+	statusCode int
+	body       bytes.Buffer
+}
+
+func newBufferedResponseWriter() *bufferedResponseWriter {
+	return &bufferedResponseWriter{header: http.Header{}}
+}
+
+func (w *bufferedResponseWriter) Header() http.Header {
+	return w.header
+}
+
+func (w *bufferedResponseWriter) WriteHeader(statusCode int) {
+	if w.statusCode == 0 {
+		w.statusCode = statusCode
+	}
+}
+
+func (w *bufferedResponseWriter) Write(body []byte) (int, error) {
+	if w.statusCode == 0 {
+		w.statusCode = http.StatusOK
+	}
+	return w.body.Write(body)
+}
+
+func (w *bufferedResponseWriter) StatusCode() int {
+	if w.statusCode == 0 {
+		return http.StatusOK
+	}
+	return w.statusCode
+}
+
+func (w *bufferedResponseWriter) Body() []byte {
+	return w.body.Bytes()
+}
+
+func copyHeaders(dst, src http.Header) {
+	for key, values := range src {
+		dst[key] = append([]string(nil), values...)
+	}
 }
