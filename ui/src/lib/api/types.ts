@@ -7,6 +7,15 @@ export type ApiErrorBody = {
 
 export type AccountRole = 'admin' | 'member';
 
+export type AccountTokenResponse = {
+  accountToken: string;
+};
+
+export type LoginRequest = {
+  email: string;
+  password: string;
+};
+
 export type DashboardWindow = '24h' | '7d' | '30d';
 export type DashboardBucket = '1h' | '6h' | '1d';
 
