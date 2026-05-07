@@ -135,3 +135,121 @@ func TestPrincipalAttachMiddleware(t *testing.T) {
 		})
 	}
 }
+
+func TestCSRFMiddleware(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name          string
+		method        string
+		path          string
+		sessionCookie string
+		csrfCookie    string
+		csrfHeader    string
+		wantStatus    int
+		wantForwarded bool
+	}{
+		{
+			name:          "safe method passes through",
+			method:        http.MethodGet,
+			path:          "/v1/sessions/ses_123/close",
+			sessionCookie: "session-token",
+			wantStatus:    http.StatusNoContent,
+			wantForwarded: true,
+		},
+		{
+			name:          "login path passes through",
+			method:        http.MethodPost,
+			path:          "/v1/account/login",
+			sessionCookie: "session-token",
+			wantStatus:    http.StatusNoContent,
+			wantForwarded: true,
+		},
+		{
+			name:          "logout path passes through",
+			method:        http.MethodPost,
+			path:          "/v1/account/logout",
+			sessionCookie: "session-token",
+			wantStatus:    http.StatusNoContent,
+			wantForwarded: true,
+		},
+		{
+			name:          "no session cookie passes through",
+			method:        http.MethodPost,
+			path:          "/v1/sessions/ses_123/close",
+			wantStatus:    http.StatusNoContent,
+			wantForwarded: true,
+		},
+		{
+			name:          "matching csrf passes through",
+			method:        http.MethodPost,
+			path:          "/v1/sessions/ses_123/close",
+			sessionCookie: "session-token",
+			csrfCookie:    "csrf-token",
+			csrfHeader:    "csrf-token",
+			wantStatus:    http.StatusNoContent,
+			wantForwarded: true,
+		},
+		{
+			name:          "mismatched csrf rejects",
+			method:        http.MethodPost,
+			path:          "/v1/sessions/ses_123/close",
+			sessionCookie: "session-token",
+			csrfCookie:    "csrf-token",
+			csrfHeader:    "wrong-token",
+			wantStatus:    http.StatusForbidden,
+		},
+		{
+			name:          "missing csrf cookie rejects",
+			method:        http.MethodPost,
+			path:          "/v1/sessions/ses_123/close",
+			sessionCookie: "session-token",
+			csrfHeader:    "csrf-token",
+			wantStatus:    http.StatusForbidden,
+		},
+		{
+			name:          "missing csrf header rejects",
+			method:        http.MethodPost,
+			path:          "/v1/sessions/ses_123/close",
+			sessionCookie: "session-token",
+			csrfCookie:    "csrf-token",
+			wantStatus:    http.StatusForbidden,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var forwarded bool
+			next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				forwarded = true
+				w.WriteHeader(http.StatusNoContent)
+			})
+
+			req := httptest.NewRequest(tt.method, tt.path, nil)
+			if tt.sessionCookie != "" {
+				req.AddCookie(&http.Cookie{Name: sessionCookieName, Value: tt.sessionCookie})
+			}
+			if tt.csrfCookie != "" {
+				req.AddCookie(&http.Cookie{Name: csrfCookieName, Value: tt.csrfCookie})
+			}
+			if tt.csrfHeader != "" {
+				req.Header.Set(csrfHeader, tt.csrfHeader)
+			}
+			rr := httptest.NewRecorder()
+
+			csrfMiddleware(csrfSkipPaths)(next).ServeHTTP(rr, req)
+
+			if rr.Code != tt.wantStatus {
+				t.Fatalf("expected status %d, got %d", tt.wantStatus, rr.Code)
+			}
+			if forwarded != tt.wantForwarded {
+				t.Fatalf("expected forwarded=%v, got %v", tt.wantForwarded, forwarded)
+			}
+			if tt.wantStatus == http.StatusForbidden && rr.Body.String() != `{"error":"csrf_mismatch"}` {
+				t.Fatalf("unexpected csrf response body: %q", rr.Body.String())
+			}
+		})
+	}
+}
