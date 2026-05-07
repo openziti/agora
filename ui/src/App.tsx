@@ -1,6 +1,7 @@
 import { createBrowserRouter, RouterProvider, type RouteObject } from 'react-router';
 
 import Dashboard from './screens/Dashboard';
+import Sessions from './screens/Sessions';
 
 export function App() {
   return <RouterProvider router={router} />;
@@ -8,6 +9,7 @@ export function App() {
 
 const routes: RouteObject[] = [
   { path: '/', Component: Dashboard },
+  { path: '/sessions', Component: Sessions },
   ...(import.meta.env.DEV
     ? [
         {

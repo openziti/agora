@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router';
 import {
   Activity,
   AlertTriangle,
@@ -48,6 +49,10 @@ const activityWindowOptions: ActivityWindowOption[] = [
   { value: '7d', label: 'Last 7 days', bucket: '1d' },
   { value: '30d', label: 'Last 30 days', bucket: '1d' },
 ];
+const routeByTab: Record<string, string> = {
+  dashboard: '/',
+  sessions: '/sessions',
+};
 
 const environmentColumns: DataTableColumn<DashboardEnvironment>[] = [
   {
@@ -82,6 +87,7 @@ const environmentColumns: DataTableColumn<DashboardEnvironment>[] = [
 const numberFormatter = new Intl.NumberFormat();
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [activityWindow, setActivityWindow] = useState<DashboardWindow>('24h');
   const summary = useApiResource(getDashboardSummary);
   const activityLoad = useCallback(
@@ -110,6 +116,14 @@ export default function Dashboard() {
     [activity.data],
   );
 
+  function handleTabChange(tabId: string) {
+    const route = routeByTab[tabId];
+
+    if (route) {
+      navigate(route);
+    }
+  }
+
   return (
     <AppShell
       product="agora"
@@ -119,6 +133,7 @@ export default function Dashboard() {
       statusLabel={hasError ? 'Data refresh issue' : isLoading ? 'Loading data' : 'All systems operational'}
       userInitials={account ? initialsForEmail(account.email) : '--'}
       userLabel={account?.email ?? 'Account loading'}
+      onTabChange={handleTabChange}
     >
       <div className="flex flex-col gap-6">
         {summary.error ? (
