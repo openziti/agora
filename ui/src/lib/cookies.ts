@@ -25,3 +25,19 @@ export function clearLocalUser() {
 
   localStorage.removeItem(localUserKey);
 }
+
+export function setLocalUserEmail(email: string) {
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+
+  localStorage.setItem(localUserKey, email);
+}
+
+export function getLocalUserEmail(): string | undefined {
+  if (typeof localStorage === 'undefined') {
+    return undefined;
+  }
+
+  return localStorage.getItem(localUserKey) ?? undefined;
+}

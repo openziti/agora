@@ -1,5 +1,5 @@
 import { apiRequest } from './client';
-import type { AccountTokenResponse, DashboardAccount, LoginRequest } from './types';
+import type { AccountTokenResponse, LoginRequest } from './types';
 
 export type LoginCredentials = LoginRequest;
 
@@ -16,8 +16,4 @@ export function logout(signal?: AbortSignal): Promise<void> {
     method: 'POST',
     signal,
   });
-}
-
-export function getWhoami(signal?: AbortSignal): Promise<DashboardAccount> {
-  return apiRequest<DashboardAccount>('/account/whoami', { signal });
 }

@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 
 import type { DashboardAccount } from './api';
+import { clearLocalUser, setLocalUserEmail } from './cookies';
 
 export type AuthState = {
   status: 'unknown' | 'authenticated' | 'unauthenticated';
@@ -23,6 +24,7 @@ export function setAuthenticatedAccount(account: DashboardAccount) {
     status: 'authenticated',
     account,
   };
+  setLocalUserEmail(account.email);
   emitAuthState();
 }
 
@@ -31,6 +33,7 @@ export function clearAuthState() {
     status: 'unauthenticated',
     account: null,
   };
+  clearLocalUser();
   emitAuthState();
 }
 

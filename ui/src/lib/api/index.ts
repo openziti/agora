@@ -1,7 +1,9 @@
 export { ApiError, apiRequest, buildApiURL, setUnauthorizedHandler } from './client';
 export type { ApiParams, ApiRequestOptions, UnauthorizedHandler } from './client';
-export { getWhoami, login, logout } from './auth';
+export { login, logout } from './auth';
 export type { LoginCredentials } from './auth';
+export { getWhoami } from './whoami';
+export type { WhoamiOptions } from './whoami';
 export { getDashboardActivity, getDashboardEnvironments, getDashboardSummary, getWorkgroupsActivity } from './dashboard';
 export type { DashboardActivityParams, WorkgroupsActivityParams } from './dashboard';
 export { getAdvertisement, listAdvertisements, searchCatalogAdvertisements } from './advertisements';

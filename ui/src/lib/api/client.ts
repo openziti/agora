@@ -11,6 +11,7 @@ export type ApiRequestOptions = {
   body?: unknown;
   signal?: AbortSignal;
   headers?: HeadersInit;
+  suppressUnauthorizedHandler?: boolean;
 };
 
 export type UnauthorizedHandler = (error: ApiError) => void;
@@ -77,7 +78,7 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
   if (!response.ok) {
     const error = new ApiError(response.status, response.statusText, responseBody);
 
-    if (response.status === 401) {
+    if (response.status === 401 && !options.suppressUnauthorizedHandler) {
       if (unauthorizedHandler) {
         unauthorizedHandler(error);
       } else {
