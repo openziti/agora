@@ -99,6 +99,7 @@ insert into advertisements (
     $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
 )
 returning id, organization_id, account_id, name, description, capabilities, interaction_patterns,
+    (select name from organizations where id = organization_id) as organization_name,
     workgroup_scopes, tunnel_mode, contract_id, schema_version, status, retracted_at, created_at, updated_at`
 
 	var created Advertisement
@@ -129,10 +130,11 @@ returning id, organization_id, account_id, name, description, capabilities, inte
 
 func (r *AdvertisementsRepository) GetByID(ctx context.Context, db Queryer, id string) (*Advertisement, error) {
 	const query = `
-select id, organization_id, account_id, name, description, capabilities, interaction_patterns,
-    workgroup_scopes, tunnel_mode, contract_id, schema_version, status, retracted_at, created_at, updated_at
-from advertisements
-where id = $1`
+select a.id, a.organization_id, o.name as organization_name, a.account_id, a.name, a.description, a.capabilities, a.interaction_patterns,
+    a.workgroup_scopes, a.tunnel_mode, a.contract_id, a.schema_version, a.status, a.retracted_at, a.created_at, a.updated_at
+from advertisements a
+left join organizations o on o.id = a.organization_id
+where a.id = $1`
 
 	var ad Advertisement
 	if err := db.GetContext(ctx, &ad, query, id); err != nil {
@@ -146,10 +148,11 @@ where id = $1`
 
 func (r *AdvertisementsRepository) GetByAccountAndName(ctx context.Context, db Queryer, accountID, name string) (*Advertisement, error) {
 	const query = `
-select id, organization_id, account_id, name, description, capabilities, interaction_patterns,
-    workgroup_scopes, tunnel_mode, contract_id, schema_version, status, retracted_at, created_at, updated_at
-from advertisements
-where account_id = $1 and lower(name) = lower($2) and status = 'active'`
+select a.id, a.organization_id, o.name as organization_name, a.account_id, a.name, a.description, a.capabilities, a.interaction_patterns,
+    a.workgroup_scopes, a.tunnel_mode, a.contract_id, a.schema_version, a.status, a.retracted_at, a.created_at, a.updated_at
+from advertisements a
+left join organizations o on o.id = a.organization_id
+where a.account_id = $1 and lower(a.name) = lower($2) and a.status = 'active'`
 
 	var ad Advertisement
 	if err := db.GetContext(ctx, &ad, query, accountID, strings.TrimSpace(name)); err != nil {
@@ -162,18 +165,19 @@ where account_id = $1 and lower(name) = lower($2) and status = 'active'`
 }
 
 func (r *AdvertisementsRepository) ListByAccount(ctx context.Context, db Queryer, accountID string, statusFilter AdvertisementStatus) ([]Advertisement, error) {
-	clauses := []string{"account_id = $1"}
+	clauses := []string{"a.account_id = $1"}
 	args := []any{accountID}
 	if statusFilter != "" {
 		args = append(args, statusFilter)
-		clauses = append(clauses, fmt.Sprintf("status = $%d", len(args)))
+		clauses = append(clauses, fmt.Sprintf("a.status = $%d", len(args)))
 	}
 	query := fmt.Sprintf(`
-select id, organization_id, account_id, name, description, capabilities, interaction_patterns,
-    workgroup_scopes, tunnel_mode, contract_id, schema_version, status, retracted_at, created_at, updated_at
-from advertisements
+select a.id, a.organization_id, o.name as organization_name, a.account_id, a.name, a.description, a.capabilities, a.interaction_patterns,
+    a.workgroup_scopes, a.tunnel_mode, a.contract_id, a.schema_version, a.status, a.retracted_at, a.created_at, a.updated_at
+from advertisements a
+left join organizations o on o.id = a.organization_id
 where %s
-order by updated_at desc, created_at desc, id asc`, strings.Join(clauses, " and "))
+order by a.updated_at desc, a.created_at desc, a.id asc`, strings.Join(clauses, " and "))
 
 	var ads []Advertisement
 	if err := db.SelectContext(ctx, &ads, query, args...); err != nil {
@@ -195,7 +199,7 @@ func (r *AdvertisementsRepository) Search(ctx context.Context, db Queryer, param
 		limit = searchMaxLimit
 	}
 
-	clauses := []string{"status = 'active'"}
+	clauses := []string{"a.status = 'active'"}
 	args := []any{}
 
 	// Visibility predicate: caller is owner OR shares a workgroup.
@@ -203,22 +207,22 @@ func (r *AdvertisementsRepository) Search(ctx context.Context, db Queryer, param
 	callerArgIdx := len(args)
 	args = append(args, pq.StringArray(params.CallerWorkgroupIDs))
 	wgArgIdx := len(args)
-	clauses = append(clauses, fmt.Sprintf("(account_id = $%d or workgroup_scopes && $%d)", callerArgIdx, wgArgIdx))
+	clauses = append(clauses, fmt.Sprintf("(a.account_id = $%d or a.workgroup_scopes && $%d)", callerArgIdx, wgArgIdx))
 
 	if len(params.WorkgroupFilter) > 0 {
 		args = append(args, pq.StringArray(params.WorkgroupFilter))
-		clauses = append(clauses, fmt.Sprintf("workgroup_scopes && $%d", len(args)))
+		clauses = append(clauses, fmt.Sprintf("a.workgroup_scopes && $%d", len(args)))
 	}
 	if params.OwnerOrganizationID != "" {
 		args = append(args, params.OwnerOrganizationID)
-		clauses = append(clauses, fmt.Sprintf("organization_id = $%d", len(args)))
+		clauses = append(clauses, fmt.Sprintf("a.organization_id = $%d", len(args)))
 	}
 	if params.CapabilityKeyword != "" {
 		// EXISTS subquery over the jsonb array, matching capability.name (case-insensitive substring).
 		args = append(args, "%"+strings.ToLower(strings.TrimSpace(params.CapabilityKeyword))+"%")
 		clauses = append(clauses, fmt.Sprintf(`exists (
             select 1
-            from jsonb_array_elements(capabilities) cap
+            from jsonb_array_elements(a.capabilities) cap
             where lower(cap->>'name') like $%d
         )`, len(args)))
 	}
@@ -231,7 +235,7 @@ func (r *AdvertisementsRepository) Search(ctx context.Context, db Queryer, param
 		args = append(args, pq.StringArray(kinds))
 		clauses = append(clauses, fmt.Sprintf(`exists (
             select 1
-            from jsonb_array_elements(interaction_patterns) ip
+            from jsonb_array_elements(a.interaction_patterns) ip
             where (ip->>'kind') = any($%d)
         )`, len(args)))
 	}
@@ -244,7 +248,7 @@ func (r *AdvertisementsRepository) Search(ctx context.Context, db Queryer, param
 		args = append(args, params.Cursor.ID)
 		idIdx := len(args)
 		clauses = append(clauses, fmt.Sprintf(
-			"(updated_at < $%d or (updated_at = $%d and (created_at < $%d or (created_at = $%d and id > $%d))))",
+			"(a.updated_at < $%d or (a.updated_at = $%d and (a.created_at < $%d or (a.created_at = $%d and a.id > $%d))))",
 			updIdx, updIdx, crIdx, crIdx, idIdx,
 		))
 	}
@@ -253,11 +257,12 @@ func (r *AdvertisementsRepository) Search(ctx context.Context, db Queryer, param
 	limitIdx := len(args)
 
 	query := fmt.Sprintf(`
-select id, organization_id, account_id, name, description, capabilities, interaction_patterns,
-    workgroup_scopes, tunnel_mode, contract_id, schema_version, status, retracted_at, created_at, updated_at
-from advertisements
+select a.id, a.organization_id, o.name as organization_name, a.account_id, a.name, a.description, a.capabilities, a.interaction_patterns,
+    a.workgroup_scopes, a.tunnel_mode, a.contract_id, a.schema_version, a.status, a.retracted_at, a.created_at, a.updated_at
+from advertisements a
+left join organizations o on o.id = a.organization_id
 where %s
-order by updated_at desc, created_at desc, id asc
+order by a.updated_at desc, a.created_at desc, a.id asc
 limit $%d`, strings.Join(clauses, " and "), limitIdx)
 
 	var rows []Advertisement
@@ -308,6 +313,7 @@ set name = $2,
     updated_at = $9
 where id = $1
 returning id, organization_id, account_id, name, description, capabilities, interaction_patterns,
+    (select name from organizations where id = organization_id) as organization_name,
     workgroup_scopes, tunnel_mode, contract_id, schema_version, status, retracted_at, created_at, updated_at`
 
 	var updated Advertisement

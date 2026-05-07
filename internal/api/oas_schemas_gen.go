@@ -506,6 +506,7 @@ func (s *AdminWorkgroupEntry) SetInvitations(val []WorkgroupInvitation) {
 type Advertisement struct {
 	ID                  string                            `json:"id"`
 	OrganizationId      string                            `json:"organizationId"`
+	OrganizationName    string                            `json:"organizationName"`
 	AccountId           string                            `json:"accountId"`
 	Name                string                            `json:"name"`
 	Description         OptString                         `json:"description"`
@@ -529,6 +530,11 @@ func (s *Advertisement) GetID() string {
 // GetOrganizationId returns the value of OrganizationId.
 func (s *Advertisement) GetOrganizationId() string {
 	return s.OrganizationId
+}
+
+// GetOrganizationName returns the value of OrganizationName.
+func (s *Advertisement) GetOrganizationName() string {
+	return s.OrganizationName
 }
 
 // GetAccountId returns the value of AccountId.
@@ -604,6 +610,11 @@ func (s *Advertisement) SetID(val string) {
 // SetOrganizationId sets the value of OrganizationId.
 func (s *Advertisement) SetOrganizationId(val string) {
 	s.OrganizationId = val
+}
+
+// SetOrganizationName sets the value of OrganizationName.
+func (s *Advertisement) SetOrganizationName(val string) {
+	s.OrganizationName = val
 }
 
 // SetAccountId sets the value of AccountId.

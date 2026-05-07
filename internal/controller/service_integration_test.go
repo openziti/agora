@@ -1113,6 +1113,11 @@ func TestCatalogSearchVisibilityAndFilters(t *testing.T) {
 	if len(bobResp.Items) != 2 {
 		t.Fatalf("expected bob to see 2 ads, got %d", len(bobResp.Items))
 	}
+	for _, item := range bobResp.Items {
+		if item.OrganizationName != "org-a" {
+			t.Fatalf("expected catalog organizationName %q, got %q", "org-a", item.OrganizationName)
+		}
+	}
 
 	// capability filter: substring "summar" → 1 result
 	capSearch, _ := bobClient.SearchCatalog(env.ctx, api.SearchCatalogParams{Capability: api.NewOptString("summar")})

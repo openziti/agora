@@ -405,6 +405,7 @@ type Session struct {
 type Advertisement struct {
 	ID                  string                  `db:"id"`
 	OrganizationID      string                  `db:"organization_id"`
+	OrganizationName    string                  `db:"organization_name"`
 	AccountID           string                  `db:"account_id"`
 	Name                string                  `db:"name"`
 	Description         *string                 `db:"description"`

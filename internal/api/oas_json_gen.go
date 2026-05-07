@@ -1995,6 +1995,10 @@ func (s *Advertisement) encodeFields(e *jx.Encoder) {
 		e.Str(s.OrganizationId)
 	}
 	{
+		e.FieldStart("organizationName")
+		e.Str(s.OrganizationName)
+	}
+	{
 		e.FieldStart("accountId")
 		e.Str(s.AccountId)
 	}
@@ -2068,22 +2072,23 @@ func (s *Advertisement) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfAdvertisement = [15]string{
+var jsonFieldsNameOfAdvertisement = [16]string{
 	0:  "id",
 	1:  "organizationId",
-	2:  "accountId",
-	3:  "name",
-	4:  "description",
-	5:  "capabilities",
-	6:  "interactionPatterns",
-	7:  "workgroupScopes",
-	8:  "tunnelMode",
-	9:  "contractId",
-	10: "schemaVersion",
-	11: "status",
-	12: "retractedAt",
-	13: "createdAt",
-	14: "updatedAt",
+	2:  "organizationName",
+	3:  "accountId",
+	4:  "name",
+	5:  "description",
+	6:  "capabilities",
+	7:  "interactionPatterns",
+	8:  "workgroupScopes",
+	9:  "tunnelMode",
+	10: "contractId",
+	11: "schemaVersion",
+	12: "status",
+	13: "retractedAt",
+	14: "createdAt",
+	15: "updatedAt",
 }
 
 // Decode decodes Advertisement from json.
@@ -2119,8 +2124,20 @@ func (s *Advertisement) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"organizationId\"")
 			}
-		case "accountId":
+		case "organizationName":
 			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				v, err := d.Str()
+				s.OrganizationName = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"organizationName\"")
+			}
+		case "accountId":
+			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
 				v, err := d.Str()
 				s.AccountId = string(v)
@@ -2132,7 +2149,7 @@ func (s *Advertisement) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"accountId\"")
 			}
 		case "name":
-			requiredBitSet[0] |= 1 << 3
+			requiredBitSet[0] |= 1 << 4
 			if err := func() error {
 				v, err := d.Str()
 				s.Name = string(v)
@@ -2154,7 +2171,7 @@ func (s *Advertisement) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"description\"")
 			}
 		case "capabilities":
-			requiredBitSet[0] |= 1 << 5
+			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
 				s.Capabilities = make([]AdvertisementCapability, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -2172,7 +2189,7 @@ func (s *Advertisement) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"capabilities\"")
 			}
 		case "interactionPatterns":
-			requiredBitSet[0] |= 1 << 6
+			requiredBitSet[0] |= 1 << 7
 			if err := func() error {
 				s.InteractionPatterns = make([]AdvertisementInteractionPattern, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -2190,7 +2207,7 @@ func (s *Advertisement) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"interactionPatterns\"")
 			}
 		case "workgroupScopes":
-			requiredBitSet[0] |= 1 << 7
+			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
 				s.WorkgroupScopes = make([]string, 0)
 				if err := d.Arr(func(d *jx.Decoder) error {
@@ -2230,7 +2247,7 @@ func (s *Advertisement) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"contractId\"")
 			}
 		case "schemaVersion":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				v, err := d.Int()
 				s.SchemaVersion = int(v)
@@ -2242,7 +2259,7 @@ func (s *Advertisement) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"schemaVersion\"")
 			}
 		case "status":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				if err := s.Status.Decode(d); err != nil {
 					return err
@@ -2262,7 +2279,7 @@ func (s *Advertisement) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"retractedAt\"")
 			}
 		case "createdAt":
-			requiredBitSet[1] |= 1 << 5
+			requiredBitSet[1] |= 1 << 6
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CreatedAt = v
@@ -2274,7 +2291,7 @@ func (s *Advertisement) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"createdAt\"")
 			}
 		case "updatedAt":
-			requiredBitSet[1] |= 1 << 6
+			requiredBitSet[1] |= 1 << 7
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.UpdatedAt = v
@@ -2295,8 +2312,8 @@ func (s *Advertisement) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
-		0b11101111,
-		0b01101100,
+		0b11011111,
+		0b11011001,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.

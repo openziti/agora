@@ -108,6 +108,7 @@ func mapAdvertisement(ad *persistence.Advertisement, visibleScopes []string) *ap
 	result := &api.Advertisement{
 		ID:                  ad.ID,
 		OrganizationId:      ad.OrganizationID,
+		OrganizationName:    fallbackString(ad.OrganizationName, ad.OrganizationID),
 		AccountId:           ad.AccountID,
 		Name:                ad.Name,
 		WorkgroupScopes:     append([]string(nil), visibleScopes...),

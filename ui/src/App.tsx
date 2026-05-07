@@ -1,5 +1,6 @@
 import { createBrowserRouter, RouterProvider, type RouteObject } from 'react-router';
 
+import Catalog from './screens/Catalog';
 import Dashboard from './screens/Dashboard';
 import Sessions from './screens/Sessions';
 import Workgroups from './screens/Workgroups';
@@ -12,6 +13,7 @@ const routes: RouteObject[] = [
   { path: '/', Component: Dashboard },
   { path: '/sessions', Component: Sessions },
   { path: '/workgroups', Component: Workgroups },
+  { path: '/catalog', Component: Catalog },
   ...(import.meta.env.DEV
     ? [
         {

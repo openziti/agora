@@ -983,10 +983,16 @@ func TestAdvertisementJSONBRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
+	if created.OrganizationName != org.Name {
+		t.Fatalf("expected created organization name %q, got %q", org.Name, created.OrganizationName)
+	}
 
 	loaded, err := store.Advertisements.GetByID(ctx, store.DB(), created.ID)
 	if err != nil {
 		t.Fatalf("get: %v", err)
+	}
+	if loaded.OrganizationName != org.Name {
+		t.Fatalf("expected loaded organization name %q, got %q", org.Name, loaded.OrganizationName)
 	}
 	if len(loaded.Capabilities) != 2 || loaded.Capabilities[0].Name != "summarize" {
 		t.Fatalf("unexpected capabilities round-trip: %#v", loaded.Capabilities)
@@ -1151,6 +1157,9 @@ func TestAdvertisementSearchVisibility(t *testing.T) {
 	}
 	if len(memberResults) != 1 || memberResults[0].ID != publishedAd.ID {
 		t.Fatalf("expected member to see the ad, got %d results", len(memberResults))
+	}
+	if memberResults[0].OrganizationName != org.Name {
+		t.Fatalf("expected search organization name %q, got %q", org.Name, memberResults[0].OrganizationName)
 	}
 
 	outsiderResults, _, err := store.Advertisements.Search(ctx, store.DB(), SearchParams{

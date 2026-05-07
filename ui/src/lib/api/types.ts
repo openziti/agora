@@ -91,6 +91,7 @@ export type AdvertisementInteractionPattern = {
 export type Advertisement = {
   id: string;
   organizationId: string;
+  organizationName: string;
   accountId: string;
   name: string;
   description?: string;

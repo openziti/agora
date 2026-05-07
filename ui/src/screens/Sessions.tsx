@@ -59,6 +59,7 @@ const routeByTab: Record<string, string> = {
   dashboard: '/',
   sessions: '/sessions',
   workgroups: '/workgroups',
+  catalog: '/catalog',
 };
 
 const numberFormatter = new Intl.NumberFormat();

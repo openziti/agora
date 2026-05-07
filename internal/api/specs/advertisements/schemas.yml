@@ -3,6 +3,7 @@ advertisement:
   required:
     - id
     - organizationId
+    - organizationName
     - accountId
     - name
     - capabilities
@@ -19,6 +20,8 @@ advertisement:
     organizationId:
       type: string
       pattern: '^org_[a-z0-9]{12}$'
+    organizationName:
+      type: string
     accountId:
       type: string
       pattern: '^ac_[a-z0-9]{12}$'
