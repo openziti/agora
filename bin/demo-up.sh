@@ -13,6 +13,8 @@ SEED_SQL="${DEMO_ROOT}/seed-history.sql"
 ADMIN_TOKEN="${AGORA_ADMIN_TOKEN:-demo-admin-token}"
 CONTROLLER_URL="${AGORA_DEMO_CONTROLLER_URL:-}"
 DEMO_DSN="${AGORA_DEMO_DSN:-}"
+DEMO_EMAIL="demo@agora.local"
+DEMO_PASSWORD="Agora-Demo-1"
 STARTED_ANY=0
 
 WORKERS=(
@@ -275,7 +277,7 @@ start_workers() {
 start_pulse_agent() {
   local bin="${AGORA_PULSE_AGENT_BIN:-macro-pulse-pulse-agent}"
   ensure_command "${bin}"
-  local envroot="${DEMO_ROOT}/envs/demo@agora.local"
+  local envroot="${DEMO_ROOT}/envs/${DEMO_EMAIL}"
   [[ -f "${envroot}/environment.json" ]] || fail "missing orchestrator env root: ${envroot}"
   [[ -f "${REPO_ROOT}/etc/demo-profile.yaml" ]] || fail "missing etc/demo-profile.yaml"
   start_background "macro-pulse-pulse-agent" "${RUN_DIR}/pulse-agent.pid" "${LOG_DIR}/macro-pulse-pulse-agent.log" "${envroot}" "${bin}" --loop --profile="${REPO_ROOT}/etc/demo-profile.yaml"
@@ -341,6 +343,14 @@ open_browser() {
   warn "no browser opener found; visit ${CONTROLLER_URL}/"
 }
 
+print_credentials() {
+  log "run bin/demo-down.sh to stop managed processes"
+  printf '\n'
+  printf 'Agora demo is running at %s/\n' "${CONTROLLER_URL}"
+  printf '   Email:    %s\n' "${DEMO_EMAIL}"
+  printf '   Password: %s\n' "${DEMO_PASSWORD}"
+}
+
 main() {
   cd "${REPO_ROOT}"
   prepare_paths
@@ -358,8 +368,7 @@ main() {
   start_gateways
   open_browser
   trap - ERR
-  log "demo is running at ${CONTROLLER_URL}/"
-  log "run bin/demo-down.sh to stop managed processes"
+  print_credentials
 }
 
 main "$@"
