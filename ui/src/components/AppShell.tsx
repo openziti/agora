@@ -1,11 +1,14 @@
 import type { ReactNode } from 'react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router';
 
 import { BrandMark, type Product } from './BrandMark';
 import { NavTabs, type NavTab } from './NavTabs';
 import { OrgIndicator } from './OrgIndicator';
 import { StatusPill, type StatusPillStatus } from './StatusPill';
 import { UserBadge } from './UserBadge';
-import { useAuthState } from '../lib/auth-state';
+import { logout } from '../lib/api';
+import { clearAuthState, useAuthState } from '../lib/auth-state';
 
 export type AppShellProps = {
   product?: Product;
@@ -34,10 +37,28 @@ export function AppShell({
   fullHeight = true,
   children,
 }: AppShellProps) {
+  const navigate = useNavigate();
   const { account } = useAuthState();
+  const [loggingOut, setLoggingOut] = useState(false);
   const displayOrganizationName = account?.organizationName ?? organizationName;
   const displayUserLabel = account?.email ?? userLabel;
   const displayUserInitials = account ? initialsForEmail(account.email) : userInitials;
+
+  async function handleLogout() {
+    if (loggingOut) {
+      return;
+    }
+
+    setLoggingOut(true);
+
+    try {
+      await logout();
+    } finally {
+      clearAuthState();
+      setLoggingOut(false);
+      navigate('/login', { replace: true });
+    }
+  }
 
   return (
     <div className={`${fullHeight ? 'min-h-screen' : 'min-h-[28rem]'} bg-page text-text`}>
@@ -49,7 +70,13 @@ export function AppShell({
           </div>
           <div className="flex min-w-0 items-center gap-3">
             <StatusPill status={status} label={statusLabel} className="max-w-60" />
-            <UserBadge initials={displayUserInitials} label={displayUserLabel} />
+            <UserBadge
+              email={account?.email}
+              initials={displayUserInitials}
+              label={displayUserLabel}
+              loggingOut={loggingOut}
+              onLogout={handleLogout}
+            />
           </div>
         </div>
         <div className="mx-auto max-w-7xl px-8">
