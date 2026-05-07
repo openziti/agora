@@ -411,26 +411,9 @@ func findOrgIDByName(ctx context.Context, client *api.Client, name string) (stri
 }
 
 func ensureAccount(ctx context.Context, adminClient, loginClient *api.Client, orgID string, spec accountSpec) (id, token string, err error) {
-	req := &api.CreateAccountRequest{
-		Email:    spec.Email,
-		Password: accountPassword(spec),
-	}
-	if spec.DisplayName != "" {
-		req.DisplayName.SetTo(spec.DisplayName)
-	}
-	if spec.Role != "" {
-		role, err := apiAccountRole(spec.Role)
-		if err != nil {
-			return "", "", err
-		}
-		req.Role.SetTo(role)
-	}
-	if spec.Status != "" {
-		status, err := apiAccountStatus(spec.Status)
-		if err != nil {
-			return "", "", err
-		}
-		req.Status.SetTo(status)
+	req, err := createAccountRequest(spec)
+	if err != nil {
+		return "", "", err
 	}
 
 	res, err := adminClient.CreateAccount(ctx, req, api.CreateAccountParams{OrganizationId: orgID})
@@ -463,6 +446,31 @@ func ensureAccount(ctx context.Context, adminClient, loginClient *api.Client, or
 	default:
 		return "", "", fmt.Errorf("unexpected create account response: %T", res)
 	}
+}
+
+func createAccountRequest(spec accountSpec) (*api.CreateAccountRequest, error) {
+	req := &api.CreateAccountRequest{
+		Email:    spec.Email,
+		Password: accountPassword(spec),
+	}
+	if spec.DisplayName != "" {
+		req.DisplayName.SetTo(spec.DisplayName)
+	}
+	if spec.Role != "" {
+		role, err := apiAccountRole(spec.Role)
+		if err != nil {
+			return nil, err
+		}
+		req.Role.SetTo(role)
+	}
+	if spec.Status != "" {
+		status, err := apiAccountStatus(spec.Status)
+		if err != nil {
+			return nil, err
+		}
+		req.Status.SetTo(status)
+	}
+	return req, nil
 }
 
 func findAccountIDByEmail(ctx context.Context, client *api.Client, orgID, email string) (string, error) {
