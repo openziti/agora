@@ -30,6 +30,38 @@ contracts:
       - "*"
     access_mode: approval_required
 
+history:
+  consumer_email: demo@agora.local
+  weekday_scale: 1.0
+  weekend_scale: 0.42
+  overnight_floor: 0.08
+  morning_peak_hour: 9
+  morning_peak_weight: 0.34
+  business_peak_hour: 14
+  business_peak_weight: 0.92
+  hourly_jitter: 0.16
+  session_burst_probability: 0.18
+  provider_close_probability: 0.16
+  long_tail_probability: 0.10
+  contract_violation_probability: 0.04
+  tight_contract_violation_probability: 0.24
+  envelope_count:
+    min: 8
+    max: 42
+  workgroups:
+    - name: markets-channel
+      weight: 0.78
+      envelope_multiplier: 1.45
+    - name: signals-channel
+      weight: 0.62
+      envelope_multiplier: 1.22
+    - name: analytics-channel
+      weight: 0.48
+      envelope_multiplier: 1.05
+    - name: weather-channel
+      weight: 0.34
+      envelope_multiplier: 0.82
+
 accounts:
   - email: equity-feed@markets-co
     display_name: Equity Feed

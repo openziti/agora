@@ -31,6 +31,7 @@ type topology struct {
 	Accounts      []accountSpec
 	Workgroups    []workgroupSpec
 	Gateways      []gatewaySpec
+	History       historySpec
 }
 
 type organizationSpec struct {
@@ -91,6 +92,36 @@ type gatewaySpec struct {
 	Name              string
 	AccountEmail      string
 	AdvertisementName string
+}
+
+type historySpec struct {
+	ConsumerEmail                     string
+	WeekdayScale                      float64
+	WeekendScale                      float64
+	OvernightFloor                    float64
+	MorningPeakHour                   int
+	MorningPeakWeight                 float64
+	BusinessPeakHour                  int
+	BusinessPeakWeight                float64
+	HourlyJitter                      float64
+	SessionBurstProbability           float64
+	ProviderCloseProbability          float64
+	LongTailProbability               float64
+	ContractViolationProbability      float64
+	TightContractViolationProbability float64
+	EnvelopeCount                     historyRangeSpec
+	Workgroups                        []historyWorkgroupSpec
+}
+
+type historyRangeSpec struct {
+	Min int
+	Max int
+}
+
+type historyWorkgroupSpec struct {
+	Name               string
+	Weight             float64
+	EnvelopeMultiplier float64
 }
 
 type seededAccount struct {
@@ -237,19 +268,89 @@ func (t *topology) validate() error {
 		}
 		contracts[strings.ToLower(c.Name)] = struct{}{}
 	}
+	accounts := map[string]struct{}{}
 	for _, acct := range t.Accounts {
 		if acct.Email == "" || acct.Organization == "" {
 			return fmt.Errorf("topology account requires email and organization: %#v", acct)
 		}
+		accounts[strings.ToLower(acct.Email)] = struct{}{}
 		if acct.Advertisement.Contract != "" {
 			if _, ok := contracts[strings.ToLower(acct.Advertisement.Contract)]; !ok {
 				return fmt.Errorf("account %q references unknown contract %q", acct.Email, acct.Advertisement.Contract)
 			}
 		}
 	}
+	workgroups := map[string]struct{}{}
 	for _, wg := range t.Workgroups {
 		if wg.Name == "" || wg.Scope == "" || wg.OwnerOrganization == "" || wg.InitialAdmin == "" {
 			return fmt.Errorf("topology workgroup requires name, scope, owner_organization, and initial_admin: %#v", wg)
+		}
+		workgroups[strings.ToLower(wg.Name)] = struct{}{}
+	}
+	if err := t.History.validate(accounts, workgroups); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (h historySpec) validate(accounts, workgroups map[string]struct{}) error {
+	if h.ConsumerEmail != "" {
+		if _, ok := accounts[strings.ToLower(h.ConsumerEmail)]; !ok {
+			return fmt.Errorf("history references unknown consumer_email %q", h.ConsumerEmail)
+		}
+	}
+	if h.EnvelopeCount.Min < 0 || h.EnvelopeCount.Max < 0 {
+		return errors.New("history envelope_count min and max must be non-negative")
+	}
+	if h.EnvelopeCount.Min > 0 && h.EnvelopeCount.Max > 0 && h.EnvelopeCount.Max < h.EnvelopeCount.Min {
+		return errors.New("history envelope_count max must be greater than or equal to min")
+	}
+	for name, value := range map[string]float64{
+		"weekday_scale":                        h.WeekdayScale,
+		"weekend_scale":                        h.WeekendScale,
+		"overnight_floor":                      h.OvernightFloor,
+		"morning_peak_weight":                  h.MorningPeakWeight,
+		"business_peak_weight":                 h.BusinessPeakWeight,
+		"hourly_jitter":                        h.HourlyJitter,
+		"session_burst_probability":            h.SessionBurstProbability,
+		"provider_close_probability":           h.ProviderCloseProbability,
+		"long_tail_probability":                h.LongTailProbability,
+		"contract_violation_probability":       h.ContractViolationProbability,
+		"tight_contract_violation_probability": h.TightContractViolationProbability,
+	} {
+		if value < 0 {
+			return fmt.Errorf("history %s must be non-negative", name)
+		}
+	}
+	for name, value := range map[string]float64{
+		"session_burst_probability":            h.SessionBurstProbability,
+		"provider_close_probability":           h.ProviderCloseProbability,
+		"long_tail_probability":                h.LongTailProbability,
+		"contract_violation_probability":       h.ContractViolationProbability,
+		"tight_contract_violation_probability": h.TightContractViolationProbability,
+	} {
+		if value > 1 {
+			return fmt.Errorf("history %s must be <= 1", name)
+		}
+	}
+	if h.MorningPeakHour < 0 || h.MorningPeakHour > 23 {
+		return errors.New("history morning_peak_hour must be between 0 and 23")
+	}
+	if h.BusinessPeakHour < 0 || h.BusinessPeakHour > 23 {
+		return errors.New("history business_peak_hour must be between 0 and 23")
+	}
+	for _, wg := range h.Workgroups {
+		if wg.Name == "" {
+			return errors.New("history workgroup entry missing name")
+		}
+		if _, ok := workgroups[strings.ToLower(wg.Name)]; !ok {
+			return fmt.Errorf("history references unknown workgroup %q", wg.Name)
+		}
+		if wg.Weight < 0 {
+			return fmt.Errorf("history workgroup %q weight must be non-negative", wg.Name)
+		}
+		if wg.EnvelopeMultiplier < 0 {
+			return fmt.Errorf("history workgroup %q envelope_multiplier must be non-negative", wg.Name)
 		}
 	}
 	return nil

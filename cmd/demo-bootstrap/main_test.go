@@ -31,6 +31,12 @@ func TestEmbeddedTopologyShape(t *testing.T) {
 	if len(topo.Workgroups) != 8 {
 		t.Fatalf("expected 8 workgroups, got %d", len(topo.Workgroups))
 	}
+	if topo.History.ConsumerEmail != "demo@agora.local" {
+		t.Fatalf("expected demo history consumer, got %q", topo.History.ConsumerEmail)
+	}
+	if len(topo.History.Workgroups) != 4 {
+		t.Fatalf("expected 4 history workgroup profiles, got %d", len(topo.History.Workgroups))
+	}
 
 	var newsContract string
 	var demoAccount accountSpec
