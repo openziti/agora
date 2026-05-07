@@ -44,6 +44,7 @@ const routeByTab: Record<string, string> = {
   sessions: '/sessions',
   workgroups: '/workgroups',
   catalog: '/catalog',
+  contracts: '/contracts',
 };
 
 const tunnelFilters: TunnelFilter[] = ['all', 'http', 'tcp', 'udp'];

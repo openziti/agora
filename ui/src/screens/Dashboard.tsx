@@ -54,6 +54,7 @@ const routeByTab: Record<string, string> = {
   sessions: '/sessions',
   workgroups: '/workgroups',
   catalog: '/catalog',
+  contracts: '/contracts',
 };
 
 const environmentColumns: DataTableColumn<DashboardEnvironment>[] = [

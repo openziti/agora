@@ -5,6 +5,7 @@ import { BrandMark } from './components';
 import { getWhoami, setUnauthorizedHandler } from './lib/api';
 import { clearAuthState, getAuthState, setAuthenticatedAccount, useAuthState } from './lib/auth-state';
 import Catalog from './screens/Catalog';
+import Contracts from './screens/Contracts';
 import Dashboard from './screens/Dashboard';
 import Login from './screens/Login';
 import Sessions from './screens/Sessions';
@@ -69,6 +70,14 @@ const routes: RouteObject[] = [
     element: (
       <RequireAuth>
         <Catalog />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/contracts',
+    element: (
+      <RequireAuth>
+        <Contracts />
       </RequireAuth>
     ),
   },
