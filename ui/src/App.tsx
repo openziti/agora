@@ -2,6 +2,7 @@ import { createBrowserRouter, RouterProvider, type RouteObject } from 'react-rou
 
 import Dashboard from './screens/Dashboard';
 import Sessions from './screens/Sessions';
+import Workgroups from './screens/Workgroups';
 
 export function App() {
   return <RouterProvider router={router} />;
@@ -10,6 +11,7 @@ export function App() {
 const routes: RouteObject[] = [
   { path: '/', Component: Dashboard },
   { path: '/sessions', Component: Sessions },
+  { path: '/workgroups', Component: Workgroups },
   ...(import.meta.env.DEV
     ? [
         {

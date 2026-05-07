@@ -58,6 +58,7 @@ const roleFilters: SessionRoleFilter[] = ['both', 'provider', 'consumer'];
 const routeByTab: Record<string, string> = {
   dashboard: '/',
   sessions: '/sessions',
+  workgroups: '/workgroups',
 };
 
 const numberFormatter = new Intl.NumberFormat();

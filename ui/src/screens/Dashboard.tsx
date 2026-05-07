@@ -52,6 +52,7 @@ const activityWindowOptions: ActivityWindowOption[] = [
 const routeByTab: Record<string, string> = {
   dashboard: '/',
   sessions: '/sessions',
+  workgroups: '/workgroups',
 };
 
 const environmentColumns: DataTableColumn<DashboardEnvironment>[] = [

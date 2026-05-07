@@ -4,6 +4,7 @@ export { getDashboardActivity, getDashboardEnvironments, getDashboardSummary, ge
 export type { DashboardActivityParams, WorkgroupsActivityParams } from './dashboard';
 export { getAdvertisement, listAdvertisements, searchCatalogAdvertisements } from './advertisements';
 export type { ListAdvertisementsParams, SearchCatalogParams } from './advertisements';
+export { fetchAllVisibleAdvertisements } from './catalog';
 export { getContract, listContracts } from './contracts';
 export { getEnvironment, listEnvironments } from './environments';
 export { useApiResource } from './hooks';
