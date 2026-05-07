@@ -58,6 +58,7 @@ const (
 	ListWorkgroupMembersOperation          OperationName = "ListWorkgroupMembers"
 	ListWorkgroupsOperation                OperationName = "ListWorkgroups"
 	LoginOperation                         OperationName = "Login"
+	LogoutOperation                        OperationName = "Logout"
 	ProposeSessionOperation                OperationName = "ProposeSession"
 	PublishAdvertisementOperation          OperationName = "PublishAdvertisement"
 	RegenerateAccountTokenOperation        OperationName = "RegenerateAccountToken"

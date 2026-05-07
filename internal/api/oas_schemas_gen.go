@@ -3643,6 +3643,9 @@ type LoginUnauthorized Error
 
 func (*LoginUnauthorized) loginRes() {}
 
+// LogoutOK is response for Logout operation.
+type LogoutOK struct{}
+
 // Ref: #/maturityRequirements
 type MaturityRequirements struct {
 	MinAccountAgeDays OptInt `json:"minAccountAgeDays"`

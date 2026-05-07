@@ -216,6 +216,10 @@ type Handler interface {
 	//
 	// POST /account/login
 	Login(ctx context.Context, req *LoginRequest) (LoginRes, error)
+	// Logout implements logout operation.
+	//
+	// POST /account/logout
+	Logout(ctx context.Context) error
 	// ProposeSession implements proposeSession operation.
 	//
 	// POST /sessions

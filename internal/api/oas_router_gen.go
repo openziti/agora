@@ -117,24 +117,58 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								return
 							}
 
-						case 'l': // Prefix: "login"
+						case 'l': // Prefix: "log"
 
-							if l := len("login"); len(elem) >= l && elem[0:l] == "login" {
+							if l := len("log"); len(elem) >= l && elem[0:l] == "log" {
 								elem = elem[l:]
 							} else {
 								break
 							}
 
 							if len(elem) == 0 {
-								// Leaf node.
-								switch r.Method {
-								case "POST":
-									s.handleLoginRequest([0]string{}, elemIsEscaped, w, r)
-								default:
-									s.notAllowed(w, r, "POST")
+								break
+							}
+							switch elem[0] {
+							case 'i': // Prefix: "in"
+
+								if l := len("in"); len(elem) >= l && elem[0:l] == "in" {
+									elem = elem[l:]
+								} else {
+									break
 								}
 
-								return
+								if len(elem) == 0 {
+									// Leaf node.
+									switch r.Method {
+									case "POST":
+										s.handleLoginRequest([0]string{}, elemIsEscaped, w, r)
+									default:
+										s.notAllowed(w, r, "POST")
+									}
+
+									return
+								}
+
+							case 'o': // Prefix: "out"
+
+								if l := len("out"); len(elem) >= l && elem[0:l] == "out" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch r.Method {
+									case "POST":
+										s.handleLogoutRequest([0]string{}, elemIsEscaped, w, r)
+									default:
+										s.notAllowed(w, r, "POST")
+									}
+
+									return
+								}
+
 							}
 
 						case 'r': // Prefix: "regenerate-token"
@@ -1606,28 +1640,66 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 								}
 							}
 
-						case 'l': // Prefix: "login"
+						case 'l': // Prefix: "log"
 
-							if l := len("login"); len(elem) >= l && elem[0:l] == "login" {
+							if l := len("log"); len(elem) >= l && elem[0:l] == "log" {
 								elem = elem[l:]
 							} else {
 								break
 							}
 
 							if len(elem) == 0 {
-								// Leaf node.
-								switch method {
-								case "POST":
-									r.name = LoginOperation
-									r.summary = ""
-									r.operationID = "login"
-									r.pathPattern = "/account/login"
-									r.args = args
-									r.count = 0
-									return r, true
-								default:
-									return
+								break
+							}
+							switch elem[0] {
+							case 'i': // Prefix: "in"
+
+								if l := len("in"); len(elem) >= l && elem[0:l] == "in" {
+									elem = elem[l:]
+								} else {
+									break
 								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch method {
+									case "POST":
+										r.name = LoginOperation
+										r.summary = ""
+										r.operationID = "login"
+										r.pathPattern = "/account/login"
+										r.args = args
+										r.count = 0
+										return r, true
+									default:
+										return
+									}
+								}
+
+							case 'o': // Prefix: "out"
+
+								if l := len("out"); len(elem) >= l && elem[0:l] == "out" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch method {
+									case "POST":
+										r.name = LogoutOperation
+										r.summary = ""
+										r.operationID = "logout"
+										r.pathPattern = "/account/logout"
+										r.args = args
+										r.count = 0
+										return r, true
+									default:
+										return
+									}
+								}
+
 							}
 
 						case 'r': // Prefix: "regenerate-token"

@@ -6621,6 +6621,69 @@ func (s *Server) handleLoginRequest(args [0]string, argsEscaped bool, w http.Res
 	}
 }
 
+// handleLogoutRequest handles logout operation.
+//
+// POST /account/logout
+func (s *Server) handleLogoutRequest(args [0]string, argsEscaped bool, w http.ResponseWriter, r *http.Request) {
+	statusWriter := &codeRecorder{ResponseWriter: w}
+	w = statusWriter
+	ctx := r.Context()
+
+	var (
+		err error
+	)
+
+	var rawBody []byte
+
+	var response *LogoutOK
+	if m := s.cfg.Middleware; m != nil {
+		mreq := middleware.Request{
+			Context:          ctx,
+			OperationName:    LogoutOperation,
+			OperationSummary: "",
+			OperationID:      "logout",
+			Body:             nil,
+			RawBody:          rawBody,
+			Params:           middleware.Parameters{},
+			Raw:              r,
+		}
+
+		type (
+			Request  = struct{}
+			Params   = struct{}
+			Response = *LogoutOK
+		)
+		response, err = middleware.HookMiddleware[
+			Request,
+			Params,
+			Response,
+		](
+			m,
+			mreq,
+			nil,
+			func(ctx context.Context, request Request, params Params) (response Response, err error) {
+				err = s.h.Logout(ctx)
+				return response, err
+			},
+		)
+	} else {
+		err = s.h.Logout(ctx)
+	}
+	if err != nil {
+		defer recordError("Internal", err)
+		s.cfg.ErrorHandler(ctx, w, r, err)
+		return
+	}
+
+	if err := encodeLogoutResponse(response, w); err != nil {
+		defer recordError("EncodeResponse", err)
+		if !errors.Is(err, ht.ErrInternalServerErrorResponse) {
+			s.cfg.ErrorHandler(ctx, w, r, err)
+		}
+		return
+	}
+}
+
 // handleProposeSessionRequest handles proposeSession operation.
 //
 // POST /sessions

@@ -56,7 +56,11 @@ func NewHandler(svc *Service) (http.Handler, error) {
 }
 
 func (s *Service) HandleAccountTokenAuth(ctx context.Context, _ api.OperationName, token api.AccountTokenAuth) (context.Context, error) {
-	acct, err := s.store.Accounts.FindByToken(ctx, s.store.DB(), token.APIKey)
+	return s.attachAccountPrincipal(ctx, token.APIKey)
+}
+
+func (s *Service) attachAccountPrincipal(ctx context.Context, token string) (context.Context, error) {
+	acct, err := s.store.Accounts.FindByToken(ctx, s.store.DB(), token)
 	if err != nil {
 		dl.Warnf("account token authentication failed: %v", err)
 		return ctx, err

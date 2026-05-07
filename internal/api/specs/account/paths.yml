@@ -29,6 +29,15 @@
             schema:
               $ref: "../agora.yml#/components/schemas/error"
 
+/account/logout:
+  post:
+    tags:
+      - account
+    operationId: logout
+    responses:
+      200:
+        description: ok
+
 /account/change-password:
   post:
     tags:

@@ -8146,6 +8146,15 @@ func decodeLoginResponse(resp *http.Response) (res LoginRes, _ error) {
 	return res, validate.UnexpectedStatusCodeWithResponse(resp)
 }
 
+func decodeLogoutResponse(resp *http.Response) (res *LogoutOK, _ error) {
+	switch resp.StatusCode {
+	case 200:
+		// Code 200.
+		return &LogoutOK{}, nil
+	}
+	return res, validate.UnexpectedStatusCodeWithResponse(resp)
+}
+
 func decodeProposeSessionResponse(resp *http.Response) (res ProposeSessionRes, _ error) {
 	switch resp.StatusCode {
 	case 201:

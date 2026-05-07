@@ -229,6 +229,10 @@ type Invoker interface {
 	//
 	// POST /account/login
 	Login(ctx context.Context, request *LoginRequest) (LoginRes, error)
+	// Logout invokes logout operation.
+	//
+	// POST /account/logout
+	Logout(ctx context.Context) error
 	// ProposeSession invokes proposeSession operation.
 	//
 	// POST /sessions
@@ -4896,6 +4900,40 @@ func (c *Client) sendLogin(ctx context.Context, request *LoginRequest) (res Logi
 	defer resp.Body.Close()
 
 	result, err := decodeLoginResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// Logout invokes logout operation.
+//
+// POST /account/logout
+func (c *Client) Logout(ctx context.Context) error {
+	_, err := c.sendLogout(ctx)
+	return err
+}
+
+func (c *Client) sendLogout(ctx context.Context) (res *LogoutOK, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/account/logout"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeLogoutResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

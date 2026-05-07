@@ -21,6 +21,8 @@ paths:
 
   /account/login:
     $ref: "account/paths.yml#/~1account~1login"
+  /account/logout:
+    $ref: "account/paths.yml#/~1account~1logout"
   /account/change-password:
     $ref: "account/paths.yml#/~1account~1change-password"
   /account/regenerate-token:

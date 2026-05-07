@@ -279,6 +279,49 @@ func TestAuditEventsLoginPathsAndFailOpen(t *testing.T) {
 	}
 }
 
+func TestLogoutHandlerAuditPathsAndFailOpen(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	noAuthClient, err := api.NewClient(env.baseURL, staticSecuritySource{}, api.WithClient(env.ts.Client()))
+	if err != nil {
+		t.Fatalf("new no-auth client: %v", err)
+	}
+	if err := noAuthClient.Logout(env.ctx); err != nil {
+		t.Fatalf("logout without principal: %v", err)
+	}
+	if got := len(auditEventsByType(t, env, persistence.AuditEventAccountLogout)); got != 0 {
+		t.Fatalf("expected no-principal logout to skip audit, got %d rows", got)
+	}
+
+	orgID, accountID, _ := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	ctx := context.WithValue(env.ctx, accountPrincipalKey{}, &accountPrincipal{
+		AccountID:      accountID,
+		OrganizationID: orgID,
+		Email:          "alice@example.com",
+		Role:           persistence.AccountRoleMember,
+	})
+
+	if err := env.service.Logout(ctx); err != nil {
+		t.Fatalf("logout with principal: %v", err)
+	}
+	logoutEvents := auditEventsByType(t, env, persistence.AuditEventAccountLogout)
+	assertOnePartyAuditEvent(t, logoutEvents, orgID, accountID)
+	if got := logoutEvents[0].Data["email"]; got != "alice@example.com" {
+		t.Fatalf("expected logout email audit data, got %#v", got)
+	}
+
+	addAuditRejectConstraint(t, env, "audit_events_no_account_logout", persistence.AuditEventAccountLogout)
+	defer dropAuditRejectConstraint(t, env, "audit_events_no_account_logout")
+	if err := env.service.Logout(ctx); err != nil {
+		t.Fatalf("logout with audit failure: %v", err)
+	}
+	if got := len(auditEventsByType(t, env, persistence.AuditEventAccountLogout)); got != 1 {
+		t.Fatalf("expected failed account.logout audit insert to be skipped, got %d rows", got)
+	}
+}
+
 func auditEventsByType(t *testing.T, env *workgroupTestEnv, eventType persistence.AuditEventType) []persistence.AuditEvent {
 	t.Helper()
 	return auditEventsWhere(t, env, `event_type = $1`, eventType)

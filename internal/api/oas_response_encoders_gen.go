@@ -3287,6 +3287,12 @@ func encodeLoginResponse(response LoginRes, w http.ResponseWriter) error {
 	}
 }
 
+func encodeLogoutResponse(response *LogoutOK, w http.ResponseWriter) error {
+	w.WriteHeader(200)
+
+	return nil
+}
+
 func encodeProposeSessionResponse(response ProposeSessionRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *Session:
