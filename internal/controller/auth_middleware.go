@@ -30,6 +30,10 @@ var loginCookieEmitPaths = map[string]bool{
 	"/v1/account/regenerate-token": true,
 }
 
+var logoutCookieClearPaths = map[string]bool{
+	"/v1/account/logout": true,
+}
+
 func cookieToHeaderMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get(accountTokenHeader) != "" {
@@ -141,6 +145,27 @@ func loginCookieEmitMiddleware(secure bool) func(http.Handler) http.Handler {
 	}
 }
 
+func logoutCookieClearMiddleware(secure bool) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost || !logoutCookieClearPaths[r.URL.Path] {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			recorder := newBufferedResponseWriter()
+			next.ServeHTTP(recorder, r)
+
+			copyHeaders(w.Header(), recorder.Header())
+			if recorder.StatusCode() == http.StatusOK {
+				clearSessionCookies(w, secure)
+			}
+			w.WriteHeader(recorder.StatusCode())
+			_, _ = w.Write(recorder.Body())
+		})
+	}
+}
+
 func setSessionCookies(w http.ResponseWriter, token string, secure bool) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookieName,
@@ -156,6 +181,26 @@ func setSessionCookies(w http.ResponseWriter, token string, secure bool) {
 		Path:     "/",
 		Secure:   secure,
 		SameSite: http.SameSiteStrictMode,
+	})
+}
+
+func clearSessionCookies(w http.ResponseWriter, secure bool) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     sessionCookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   -1,
+	})
+	http.SetCookie(w, &http.Cookie{
+		Name:     csrfCookieName,
+		Value:    "",
+		Path:     "/",
+		Secure:   secure,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   -1,
 	})
 }
 

@@ -3,6 +3,7 @@ package controller
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -369,10 +370,139 @@ func TestLoginCookieEmitMiddleware(t *testing.T) {
 	}
 }
 
+func TestLogoutCookieClearMiddleware(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		method      string
+		path        string
+		status      int
+		secure      bool
+		wantCookies bool
+	}{
+		{
+			name:        "logout 200 clears cookies",
+			method:      http.MethodPost,
+			path:        "/v1/account/logout",
+			status:      http.StatusOK,
+			wantCookies: true,
+		},
+		{
+			name:        "logout 200 clears secure cookies",
+			method:      http.MethodPost,
+			path:        "/v1/account/logout",
+			status:      http.StatusOK,
+			secure:      true,
+			wantCookies: true,
+		},
+		{
+			name:   "logout non-200 sets no cookies",
+			method: http.MethodPost,
+			path:   "/v1/account/logout",
+			status: http.StatusInternalServerError,
+		},
+		{
+			name:   "other path sets no cookies",
+			method: http.MethodPost,
+			path:   "/v1/sessions",
+			status: http.StatusOK,
+		},
+		{
+			name:   "other method sets no cookies",
+			method: http.MethodGet,
+			path:   "/v1/account/logout",
+			status: http.StatusOK,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(tt.status)
+				_, _ = w.Write([]byte(`{"message":"ok"}`))
+			})
+
+			req := httptest.NewRequest(tt.method, tt.path, nil)
+			rr := httptest.NewRecorder()
+
+			logoutCookieClearMiddleware(tt.secure)(next).ServeHTTP(rr, req)
+
+			if rr.Code != tt.status {
+				t.Fatalf("expected status %d, got %d", tt.status, rr.Code)
+			}
+			if rr.Body.String() != `{"message":"ok"}` {
+				t.Fatalf("unexpected body %q", rr.Body.String())
+			}
+			if rr.Header().Get("Content-Type") != "application/json" {
+				t.Fatalf("expected content type to be preserved, got %q", rr.Header().Get("Content-Type"))
+			}
+
+			cookies := cookiesByName(rr.Result().Cookies())
+			sessionCookie := cookies[sessionCookieName]
+			csrfCookie := cookies[csrfCookieName]
+			if !tt.wantCookies {
+				if sessionCookie != nil || csrfCookie != nil {
+					t.Fatalf("expected no auth cookies, got session=%#v csrf=%#v", sessionCookie, csrfCookie)
+				}
+				return
+			}
+
+			if sessionCookie == nil || csrfCookie == nil {
+				t.Fatalf("expected both auth cookies, got session=%#v csrf=%#v", sessionCookie, csrfCookie)
+			}
+			if sessionCookie.Value != "" || csrfCookie.Value != "" {
+				t.Fatalf("expected empty cookie values, got session=%q csrf=%q", sessionCookie.Value, csrfCookie.Value)
+			}
+			if sessionCookie.MaxAge >= 0 || csrfCookie.MaxAge >= 0 {
+				t.Fatalf("expected clearing max-age, got session=%d csrf=%d", sessionCookie.MaxAge, csrfCookie.MaxAge)
+			}
+			if !sessionCookie.HttpOnly {
+				t.Fatalf("expected session cookie to be httpOnly")
+			}
+			if csrfCookie.HttpOnly {
+				t.Fatalf("expected csrf cookie to be readable by JavaScript")
+			}
+			if sessionCookie.Secure != tt.secure || csrfCookie.Secure != tt.secure {
+				t.Fatalf("expected secure=%v, got session=%v csrf=%v", tt.secure, sessionCookie.Secure, csrfCookie.Secure)
+			}
+			if sessionCookie.Path != "/" || csrfCookie.Path != "/" {
+				t.Fatalf("expected cookie path '/', got session=%q csrf=%q", sessionCookie.Path, csrfCookie.Path)
+			}
+			if sessionCookie.SameSite != http.SameSiteStrictMode || csrfCookie.SameSite != http.SameSiteStrictMode {
+				t.Fatalf("expected SameSite=Strict, got session=%v csrf=%v", sessionCookie.SameSite, csrfCookie.SameSite)
+			}
+
+			headers := rr.Header().Values("Set-Cookie")
+			for _, name := range []string{sessionCookieName, csrfCookieName} {
+				header := setCookieHeader(headers, name)
+				if header == "" {
+					t.Fatalf("expected Set-Cookie header for %q in %#v", name, headers)
+				}
+				if !strings.Contains(header, "Max-Age=0") {
+					t.Fatalf("expected %q to contain Max-Age=0, got %q", name, header)
+				}
+			}
+		})
+	}
+}
+
 func cookiesByName(cookies []*http.Cookie) map[string]*http.Cookie {
 	byName := make(map[string]*http.Cookie, len(cookies))
 	for _, cookie := range cookies {
 		byName[cookie.Name] = cookie
 	}
 	return byName
+}
+
+func setCookieHeader(headers []string, name string) string {
+	for _, header := range headers {
+		if strings.HasPrefix(header, name+"=") {
+			return header
+		}
+	}
+	return ""
 }
