@@ -349,6 +349,122 @@ func TestAuditEventsRecordRollsBackWithTransaction(t *testing.T) {
 	}
 }
 
+func TestAuditEventsListFiltersAndPagination(t *testing.T) {
+	ctx := context.Background()
+	store := migratedTestStore(t)
+
+	orgA := NewResourceID(PrefixOrganization)
+	orgB := NewResourceID(PrefixOrganization)
+	accountA := NewResourceID(PrefixAccount)
+	accountB := NewResourceID(PrefixAccount)
+	workgroupA := NewResourceID(PrefixWorkgroup)
+	workgroupB := NewResourceID(PrefixWorkgroup)
+	base := time.Date(2026, 5, 7, 12, 0, 0, 0, time.UTC)
+
+	record := func(event AuditEvent) AuditEvent {
+		t.Helper()
+		if err := store.AuditEvents.Record(ctx, store.DB(), event); err != nil {
+			t.Fatalf("record audit event: %v", err)
+		}
+		return latestAuditEvent(t, ctx, store)
+	}
+
+	old := record(AuditEvent{
+		OccurredAt:     base,
+		EventType:      AuditEventAccountLogin,
+		OrganizationID: orgA,
+		AccountID:      &accountA,
+		Data:           AuditEventData{"email": "a@example.com"},
+	})
+	middle := record(AuditEvent{
+		OccurredAt:     base.Add(time.Minute),
+		EventType:      AuditEventEnvelopeFlowed,
+		OrganizationID: orgA,
+		AccountID:      &accountA,
+		WorkgroupID:    &workgroupA,
+		Data:           AuditEventData{"count_delta": 3},
+	})
+	tiedFirstInserted := record(AuditEvent{
+		OccurredAt:     base.Add(2 * time.Minute),
+		EventType:      AuditEventSessionClosed,
+		OrganizationID: orgA,
+		AccountID:      &accountA,
+		WorkgroupID:    &workgroupA,
+		Data:           AuditEventData{"close_reason": "consumer_close"},
+	})
+	tiedSecondInserted := record(AuditEvent{
+		OccurredAt:     base.Add(2 * time.Minute),
+		EventType:      AuditEventSessionAccepted,
+		OrganizationID: orgA,
+		AccountID:      &accountB,
+		WorkgroupID:    &workgroupB,
+		Data:           AuditEventData{"tunnel_id": "tn_123"},
+	})
+	record(AuditEvent{
+		OccurredAt:     base.Add(3 * time.Minute),
+		EventType:      AuditEventAccountLogin,
+		OrganizationID: orgB,
+		AccountID:      &accountB,
+		Data:           AuditEventData{"email": "b@example.com"},
+	})
+
+	page1, cursor, err := store.AuditEvents.List(ctx, store.DB(), AuditEventListParams{OrganizationID: orgA, Limit: 2})
+	if err != nil {
+		t.Fatalf("list page 1: %v", err)
+	}
+	assertAuditEventIDs(t, page1, []int64{tiedSecondInserted.ID, tiedFirstInserted.ID})
+	if cursor == "" {
+		t.Fatal("expected pagination cursor")
+	}
+	page2, cursor2, err := store.AuditEvents.List(ctx, store.DB(), AuditEventListParams{OrganizationID: orgA, Cursor: mustDecodeAuditCursor(t, cursor), Limit: 2})
+	if err != nil {
+		t.Fatalf("list page 2: %v", err)
+	}
+	assertAuditEventIDs(t, page2, []int64{middle.ID, old.ID})
+	if cursor2 != "" {
+		t.Fatalf("expected final page to omit cursor, got %q", cursor2)
+	}
+
+	envelopes, _, err := store.AuditEvents.List(ctx, store.DB(), AuditEventListParams{
+		OrganizationID: orgA,
+		EventTypes:     []AuditEventType{AuditEventEnvelopeFlowed},
+	})
+	if err != nil {
+		t.Fatalf("list event type filter: %v", err)
+	}
+	assertAuditEventIDs(t, envelopes, []int64{middle.ID})
+
+	workgroupRows, _, err := store.AuditEvents.List(ctx, store.DB(), AuditEventListParams{
+		OrganizationID: orgA,
+		WorkgroupID:    workgroupA,
+	})
+	if err != nil {
+		t.Fatalf("list workgroup filter: %v", err)
+	}
+	assertAuditEventIDs(t, workgroupRows, []int64{tiedFirstInserted.ID, middle.ID})
+
+	accountRows, _, err := store.AuditEvents.List(ctx, store.DB(), AuditEventListParams{
+		OrganizationID: orgA,
+		AccountID:      accountB,
+	})
+	if err != nil {
+		t.Fatalf("list account filter: %v", err)
+	}
+	assertAuditEventIDs(t, accountRows, []int64{tiedSecondInserted.ID})
+
+	from := base.Add(time.Minute)
+	to := base.Add(2 * time.Minute)
+	windowRows, _, err := store.AuditEvents.List(ctx, store.DB(), AuditEventListParams{
+		OrganizationID: orgA,
+		From:           &from,
+		To:             &to,
+	})
+	if err != nil {
+		t.Fatalf("list time filter: %v", err)
+	}
+	assertAuditEventIDs(t, windowRows, []int64{middle.ID})
+}
+
 func latestAuditEvent(t *testing.T, ctx context.Context, store *Store) AuditEvent {
 	t.Helper()
 
@@ -376,6 +492,27 @@ order by id asc`, auditEventColumns)
 		t.Fatalf("list audit events: %v", err)
 	}
 	return events
+}
+
+func mustDecodeAuditCursor(t *testing.T, cursor string) *AuditEventCursor {
+	t.Helper()
+	decoded, err := DecodeAuditEventCursor(cursor)
+	if err != nil {
+		t.Fatalf("decode audit cursor: %v", err)
+	}
+	return decoded
+}
+
+func assertAuditEventIDs(t *testing.T, events []AuditEvent, want []int64) {
+	t.Helper()
+	if len(events) != len(want) {
+		t.Fatalf("expected %d audit events, got %d", len(want), len(events))
+	}
+	for i := range want {
+		if events[i].ID != want[i] {
+			t.Fatalf("event %d: expected id %d, got %d", i, want[i], events[i].ID)
+		}
+	}
 }
 
 func assertAuditEventShape(t *testing.T, got AuditEvent, want AuditEvent, wantData AuditEventData) {

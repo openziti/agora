@@ -1,0 +1,78 @@
+/audit-events:
+  get:
+    tags:
+      - audit
+    operationId: listAuditEvents
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: eventType
+        in: query
+        required: false
+        schema:
+          type: array
+          items:
+            $ref: "../agora.yml#/components/schemas/auditEventType"
+        style: form
+        explode: true
+      - name: workgroupId
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: '^wg_[a-z0-9]{12}$'
+      - name: accountId
+        in: query
+        required: false
+        schema:
+          type: string
+          pattern: '^ac_[a-z0-9]{12}$'
+      - name: from
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: to
+        in: query
+        required: false
+        schema:
+          type: string
+          format: date-time
+      - name: cursor
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 200
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/listAuditEventsResponse"
+      400:
+        description: bad request
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"

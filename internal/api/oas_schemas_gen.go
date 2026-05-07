@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/go-faster/errors"
+	"github.com/go-faster/jx"
 )
 
 type AcceptSessionBadRequest Error
@@ -901,6 +902,262 @@ func (s *AdvertisementTunnelMode) UnmarshalText(data []byte) error {
 		return nil
 	case AdvertisementTunnelModeUDP:
 		*s = AdvertisementTunnelModeUDP
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
+// Ref: #/auditEvent
+type AuditEvent struct {
+	ID              int64          `json:"id"`
+	OccurredAt      time.Time      `json:"occurredAt"`
+	EventType       AuditEventType `json:"eventType"`
+	OrganizationId  string         `json:"organizationId"`
+	AccountId       OptString      `json:"accountId"`
+	WorkgroupId     OptString      `json:"workgroupId"`
+	SessionId       OptString      `json:"sessionId"`
+	AdvertisementId OptString      `json:"advertisementId"`
+	ContractId      OptString      `json:"contractId"`
+	EnvelopeId      OptString      `json:"envelopeId"`
+	Data            AuditEventData `json:"data"`
+}
+
+// GetID returns the value of ID.
+func (s *AuditEvent) GetID() int64 {
+	return s.ID
+}
+
+// GetOccurredAt returns the value of OccurredAt.
+func (s *AuditEvent) GetOccurredAt() time.Time {
+	return s.OccurredAt
+}
+
+// GetEventType returns the value of EventType.
+func (s *AuditEvent) GetEventType() AuditEventType {
+	return s.EventType
+}
+
+// GetOrganizationId returns the value of OrganizationId.
+func (s *AuditEvent) GetOrganizationId() string {
+	return s.OrganizationId
+}
+
+// GetAccountId returns the value of AccountId.
+func (s *AuditEvent) GetAccountId() OptString {
+	return s.AccountId
+}
+
+// GetWorkgroupId returns the value of WorkgroupId.
+func (s *AuditEvent) GetWorkgroupId() OptString {
+	return s.WorkgroupId
+}
+
+// GetSessionId returns the value of SessionId.
+func (s *AuditEvent) GetSessionId() OptString {
+	return s.SessionId
+}
+
+// GetAdvertisementId returns the value of AdvertisementId.
+func (s *AuditEvent) GetAdvertisementId() OptString {
+	return s.AdvertisementId
+}
+
+// GetContractId returns the value of ContractId.
+func (s *AuditEvent) GetContractId() OptString {
+	return s.ContractId
+}
+
+// GetEnvelopeId returns the value of EnvelopeId.
+func (s *AuditEvent) GetEnvelopeId() OptString {
+	return s.EnvelopeId
+}
+
+// GetData returns the value of Data.
+func (s *AuditEvent) GetData() AuditEventData {
+	return s.Data
+}
+
+// SetID sets the value of ID.
+func (s *AuditEvent) SetID(val int64) {
+	s.ID = val
+}
+
+// SetOccurredAt sets the value of OccurredAt.
+func (s *AuditEvent) SetOccurredAt(val time.Time) {
+	s.OccurredAt = val
+}
+
+// SetEventType sets the value of EventType.
+func (s *AuditEvent) SetEventType(val AuditEventType) {
+	s.EventType = val
+}
+
+// SetOrganizationId sets the value of OrganizationId.
+func (s *AuditEvent) SetOrganizationId(val string) {
+	s.OrganizationId = val
+}
+
+// SetAccountId sets the value of AccountId.
+func (s *AuditEvent) SetAccountId(val OptString) {
+	s.AccountId = val
+}
+
+// SetWorkgroupId sets the value of WorkgroupId.
+func (s *AuditEvent) SetWorkgroupId(val OptString) {
+	s.WorkgroupId = val
+}
+
+// SetSessionId sets the value of SessionId.
+func (s *AuditEvent) SetSessionId(val OptString) {
+	s.SessionId = val
+}
+
+// SetAdvertisementId sets the value of AdvertisementId.
+func (s *AuditEvent) SetAdvertisementId(val OptString) {
+	s.AdvertisementId = val
+}
+
+// SetContractId sets the value of ContractId.
+func (s *AuditEvent) SetContractId(val OptString) {
+	s.ContractId = val
+}
+
+// SetEnvelopeId sets the value of EnvelopeId.
+func (s *AuditEvent) SetEnvelopeId(val OptString) {
+	s.EnvelopeId = val
+}
+
+// SetData sets the value of Data.
+func (s *AuditEvent) SetData(val AuditEventData) {
+	s.Data = val
+}
+
+// Ref: #/auditEventData
+type AuditEventData map[string]jx.Raw
+
+func (s *AuditEventData) init() AuditEventData {
+	m := *s
+	if m == nil {
+		m = map[string]jx.Raw{}
+		*s = m
+	}
+	return m
+}
+
+// Ref: #/auditEventType
+type AuditEventType string
+
+const (
+	AuditEventTypeSessionProposed        AuditEventType = "session.proposed"
+	AuditEventTypeSessionAccepted        AuditEventType = "session.accepted"
+	AuditEventTypeSessionRejected        AuditEventType = "session.rejected"
+	AuditEventTypeSessionClosed          AuditEventType = "session.closed"
+	AuditEventTypeEnvelopeFlowed         AuditEventType = "envelope.flowed"
+	AuditEventTypeTunnelAttached         AuditEventType = "tunnel.attached"
+	AuditEventTypeTunnelDetached         AuditEventType = "tunnel.detached"
+	AuditEventTypeAdvertisementPublished AuditEventType = "advertisement.published"
+	AuditEventTypeAdvertisementRetracted AuditEventType = "advertisement.retracted"
+	AuditEventTypeEnvironmentHeartbeat   AuditEventType = "environment.heartbeat"
+	AuditEventTypeAccountLogin           AuditEventType = "account.login"
+	AuditEventTypeAccountLoginFailed     AuditEventType = "account.login_failed"
+	AuditEventTypeAccountLogout          AuditEventType = "account.logout"
+)
+
+// AllValues returns all AuditEventType values.
+func (AuditEventType) AllValues() []AuditEventType {
+	return []AuditEventType{
+		AuditEventTypeSessionProposed,
+		AuditEventTypeSessionAccepted,
+		AuditEventTypeSessionRejected,
+		AuditEventTypeSessionClosed,
+		AuditEventTypeEnvelopeFlowed,
+		AuditEventTypeTunnelAttached,
+		AuditEventTypeTunnelDetached,
+		AuditEventTypeAdvertisementPublished,
+		AuditEventTypeAdvertisementRetracted,
+		AuditEventTypeEnvironmentHeartbeat,
+		AuditEventTypeAccountLogin,
+		AuditEventTypeAccountLoginFailed,
+		AuditEventTypeAccountLogout,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s AuditEventType) MarshalText() ([]byte, error) {
+	switch s {
+	case AuditEventTypeSessionProposed:
+		return []byte(s), nil
+	case AuditEventTypeSessionAccepted:
+		return []byte(s), nil
+	case AuditEventTypeSessionRejected:
+		return []byte(s), nil
+	case AuditEventTypeSessionClosed:
+		return []byte(s), nil
+	case AuditEventTypeEnvelopeFlowed:
+		return []byte(s), nil
+	case AuditEventTypeTunnelAttached:
+		return []byte(s), nil
+	case AuditEventTypeTunnelDetached:
+		return []byte(s), nil
+	case AuditEventTypeAdvertisementPublished:
+		return []byte(s), nil
+	case AuditEventTypeAdvertisementRetracted:
+		return []byte(s), nil
+	case AuditEventTypeEnvironmentHeartbeat:
+		return []byte(s), nil
+	case AuditEventTypeAccountLogin:
+		return []byte(s), nil
+	case AuditEventTypeAccountLoginFailed:
+		return []byte(s), nil
+	case AuditEventTypeAccountLogout:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *AuditEventType) UnmarshalText(data []byte) error {
+	switch AuditEventType(data) {
+	case AuditEventTypeSessionProposed:
+		*s = AuditEventTypeSessionProposed
+		return nil
+	case AuditEventTypeSessionAccepted:
+		*s = AuditEventTypeSessionAccepted
+		return nil
+	case AuditEventTypeSessionRejected:
+		*s = AuditEventTypeSessionRejected
+		return nil
+	case AuditEventTypeSessionClosed:
+		*s = AuditEventTypeSessionClosed
+		return nil
+	case AuditEventTypeEnvelopeFlowed:
+		*s = AuditEventTypeEnvelopeFlowed
+		return nil
+	case AuditEventTypeTunnelAttached:
+		*s = AuditEventTypeTunnelAttached
+		return nil
+	case AuditEventTypeTunnelDetached:
+		*s = AuditEventTypeTunnelDetached
+		return nil
+	case AuditEventTypeAdvertisementPublished:
+		*s = AuditEventTypeAdvertisementPublished
+		return nil
+	case AuditEventTypeAdvertisementRetracted:
+		*s = AuditEventTypeAdvertisementRetracted
+		return nil
+	case AuditEventTypeEnvironmentHeartbeat:
+		*s = AuditEventTypeEnvironmentHeartbeat
+		return nil
+	case AuditEventTypeAccountLogin:
+		*s = AuditEventTypeAccountLogin
+		return nil
+	case AuditEventTypeAccountLoginFailed:
+		*s = AuditEventTypeAccountLoginFailed
+		return nil
+	case AuditEventTypeAccountLogout:
+		*s = AuditEventTypeAccountLogout
 		return nil
 	default:
 		return errors.Errorf("invalid value: %q", data)
@@ -3337,6 +3594,46 @@ func (*ListAdvertisementsResponse) listAdvertisementsRes() {}
 type ListAdvertisementsUnauthorized Error
 
 func (*ListAdvertisementsUnauthorized) listAdvertisementsRes() {}
+
+type ListAuditEventsBadRequest Error
+
+func (*ListAuditEventsBadRequest) listAuditEventsRes() {}
+
+type ListAuditEventsInternalServerError Error
+
+func (*ListAuditEventsInternalServerError) listAuditEventsRes() {}
+
+// Ref: #/listAuditEventsResponse
+type ListAuditEventsResponse struct {
+	Items      []AuditEvent `json:"items"`
+	NextCursor OptString    `json:"nextCursor"`
+}
+
+// GetItems returns the value of Items.
+func (s *ListAuditEventsResponse) GetItems() []AuditEvent {
+	return s.Items
+}
+
+// GetNextCursor returns the value of NextCursor.
+func (s *ListAuditEventsResponse) GetNextCursor() OptString {
+	return s.NextCursor
+}
+
+// SetItems sets the value of Items.
+func (s *ListAuditEventsResponse) SetItems(val []AuditEvent) {
+	s.Items = val
+}
+
+// SetNextCursor sets the value of NextCursor.
+func (s *ListAuditEventsResponse) SetNextCursor(val OptString) {
+	s.NextCursor = val
+}
+
+func (*ListAuditEventsResponse) listAuditEventsRes() {}
+
+type ListAuditEventsUnauthorized Error
+
+func (*ListAuditEventsUnauthorized) listAuditEventsRes() {}
 
 type ListContractsInternalServerError Error
 

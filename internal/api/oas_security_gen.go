@@ -66,6 +66,7 @@ var operationRolesAccountTokenAuth = map[string][]string{
 	HeartbeatTunnelAttachmentOperation:     []string{},
 	HeartbeatTunnelServeOperation:          []string{},
 	ListAdvertisementsOperation:            []string{},
+	ListAuditEventsOperation:               []string{},
 	ListContractsOperation:                 []string{},
 	ListEnvironmentsOperation:              []string{},
 	ListSessionsOperation:                  []string{},

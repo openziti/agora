@@ -1,0 +1,73 @@
+auditEventType:
+  type: string
+  enum:
+    - session.proposed
+    - session.accepted
+    - session.rejected
+    - session.closed
+    - envelope.flowed
+    - tunnel.attached
+    - tunnel.detached
+    - advertisement.published
+    - advertisement.retracted
+    - environment.heartbeat
+    - account.login
+    - account.login_failed
+    - account.logout
+
+auditEventData:
+  type: object
+  additionalProperties: true
+
+auditEvent:
+  type: object
+  required:
+    - id
+    - occurredAt
+    - eventType
+    - organizationId
+    - data
+  properties:
+    id:
+      type: integer
+      format: int64
+      minimum: 1
+    occurredAt:
+      type: string
+      format: date-time
+    eventType:
+      $ref: "#/auditEventType"
+    organizationId:
+      type: string
+      pattern: '^org_[a-z0-9]{12}$'
+    accountId:
+      type: string
+      pattern: '^ac_[a-z0-9]{12}$'
+    workgroupId:
+      type: string
+      pattern: '^wg_[a-z0-9]{12}$'
+    sessionId:
+      type: string
+      pattern: '^ses_[a-z0-9]{12}$'
+    advertisementId:
+      type: string
+      pattern: '^adv_[a-z0-9]{12}$'
+    contractId:
+      type: string
+      pattern: '^con_[a-z0-9]{12}$'
+    envelopeId:
+      type: string
+    data:
+      $ref: "#/auditEventData"
+
+listAuditEventsResponse:
+  type: object
+  required:
+    - items
+  properties:
+    items:
+      type: array
+      items:
+        $ref: "#/auditEvent"
+    nextCursor:
+      type: string

@@ -2,13 +2,64 @@ package persistence
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 type AuditEventsRepository struct{}
 
 const auditEventColumns = `id, occurred_at, event_type, organization_id, account_id, workgroup_id, session_id, advertisement_id, contract_id, envelope_id, data`
+const auditEventsDefaultLimit = 100
+const auditEventsMaxLimit = 200
+
+type AuditEventListParams struct {
+	OrganizationID string
+	EventTypes     []AuditEventType
+	WorkgroupID    string
+	AccountID      string
+	From           *time.Time
+	To             *time.Time
+	Cursor         *AuditEventCursor
+	Limit          int
+}
+
+// AuditEventCursor encodes the position of the last returned audit row
+// in the deterministic sort order (occurred_at desc, id desc).
+type AuditEventCursor struct {
+	OccurredAt time.Time `json:"occurredAt"`
+	ID         int64     `json:"id"`
+}
+
+func EncodeAuditEventCursor(c *AuditEventCursor) (string, error) {
+	if c == nil {
+		return "", nil
+	}
+	bytes, err := json.Marshal(c)
+	if err != nil {
+		return "", fmt.Errorf("encode audit cursor: %w", err)
+	}
+	return base64.URLEncoding.EncodeToString(bytes), nil
+}
+
+func DecodeAuditEventCursor(raw string) (*AuditEventCursor, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	bytes, err := base64.URLEncoding.DecodeString(raw)
+	if err != nil {
+		return nil, fmt.Errorf("decode audit cursor: %w", err)
+	}
+	var c AuditEventCursor
+	if err := json.Unmarshal(bytes, &c); err != nil {
+		return nil, fmt.Errorf("unmarshal audit cursor: %w", err)
+	}
+	return &c, nil
+}
 
 func auditEventInsertColumns() string {
 	return `occurred_at, event_type, organization_id, account_id, workgroup_id, session_id, advertisement_id, contract_id, envelope_id, data`
@@ -60,6 +111,78 @@ where id = $1`, auditEventColumns)
 		return nil, fmt.Errorf("get audit event: %w", err)
 	}
 	return &event, nil
+}
+
+func (r *AuditEventsRepository) List(ctx context.Context, db Queryer, params AuditEventListParams) ([]AuditEvent, string, error) {
+	limit := params.Limit
+	if limit <= 0 {
+		limit = auditEventsDefaultLimit
+	}
+	if limit > auditEventsMaxLimit {
+		limit = auditEventsMaxLimit
+	}
+
+	clauses := []string{"organization_id = $1"}
+	args := []any{params.OrganizationID}
+
+	if len(params.EventTypes) > 0 {
+		eventTypes := make([]string, 0, len(params.EventTypes))
+		for _, eventType := range params.EventTypes {
+			eventTypes = append(eventTypes, string(eventType))
+		}
+		args = append(args, pq.StringArray(eventTypes))
+		clauses = append(clauses, fmt.Sprintf("event_type = any($%d)", len(args)))
+	}
+	if params.WorkgroupID != "" {
+		args = append(args, params.WorkgroupID)
+		clauses = append(clauses, fmt.Sprintf("workgroup_id = $%d", len(args)))
+	}
+	if params.AccountID != "" {
+		args = append(args, params.AccountID)
+		clauses = append(clauses, fmt.Sprintf("account_id = $%d", len(args)))
+	}
+	if params.From != nil {
+		args = append(args, *params.From)
+		clauses = append(clauses, fmt.Sprintf("occurred_at >= $%d", len(args)))
+	}
+	if params.To != nil {
+		args = append(args, *params.To)
+		clauses = append(clauses, fmt.Sprintf("occurred_at < $%d", len(args)))
+	}
+	if params.Cursor != nil {
+		args = append(args, params.Cursor.OccurredAt)
+		occurredIdx := len(args)
+		args = append(args, params.Cursor.ID)
+		idIdx := len(args)
+		clauses = append(clauses, fmt.Sprintf("(occurred_at < $%d or (occurred_at = $%d and id < $%d))", occurredIdx, occurredIdx, idIdx))
+	}
+
+	args = append(args, limit+1)
+	limitIdx := len(args)
+
+	query := fmt.Sprintf(`
+select %s
+from audit_events
+where %s
+order by occurred_at desc, id desc
+limit $%d`, auditEventColumns, strings.Join(clauses, " and "), limitIdx)
+
+	var rows []AuditEvent
+	if err := db.SelectContext(ctx, &rows, query, args...); err != nil {
+		return nil, "", fmt.Errorf("list audit events: %w", err)
+	}
+
+	var nextCursor string
+	if len(rows) > limit {
+		last := rows[limit-1]
+		encoded, err := EncodeAuditEventCursor(&AuditEventCursor{OccurredAt: last.OccurredAt, ID: last.ID})
+		if err != nil {
+			return nil, "", err
+		}
+		nextCursor = encoded
+		rows = rows[:limit]
+	}
+	return rows, nextCursor, nil
 }
 
 func NewSessionProposedEvent(sess Session, organizationID, accountID string) AuditEvent {

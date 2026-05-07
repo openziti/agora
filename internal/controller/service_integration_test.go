@@ -1427,6 +1427,115 @@ func TestWorkgroupsActivityEndpoint(t *testing.T) {
 	})
 }
 
+func TestListAuditEventsEndpoint(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgAlpha, alphaID, alphaToken := env.createOrgWithAccount(t, "Alpha Co", "alpha-audit@example.com")
+	orgBeta, betaID, _ := env.createOrgWithAccount(t, "Beta Co", "beta-audit@example.com")
+	wgAlpha := env.seedIntraOrgWorkgroup(t, orgAlpha, "alpha-audit", alphaID)
+	wgBeta := env.seedIntraOrgWorkgroup(t, orgBeta, "beta-audit", betaID)
+	base := time.Date(2026, 5, 7, 12, 0, 0, 0, time.UTC)
+
+	alphaOld := recordAuditEventForTest(t, env, persistence.AuditEvent{
+		OccurredAt:     base,
+		EventType:      persistence.AuditEventAccountLogin,
+		OrganizationID: orgAlpha,
+		AccountID:      &alphaID,
+		Data:           persistence.AuditEventData{"email": "alpha-audit@example.com"},
+	})
+	alphaMiddle := recordAuditEventForTest(t, env, persistence.AuditEvent{
+		OccurredAt:     base.Add(time.Minute),
+		EventType:      persistence.AuditEventEnvelopeFlowed,
+		OrganizationID: orgAlpha,
+		AccountID:      &alphaID,
+		WorkgroupID:    &wgAlpha,
+		Data:           persistence.AuditEventData{"count_delta": 9},
+	})
+	alphaLatest := recordAuditEventForTest(t, env, persistence.AuditEvent{
+		OccurredAt:     base.Add(2 * time.Minute),
+		EventType:      persistence.AuditEventSessionClosed,
+		OrganizationID: orgAlpha,
+		AccountID:      &alphaID,
+		WorkgroupID:    &wgAlpha,
+		Data:           persistence.AuditEventData{"close_reason": "consumer_close"},
+	})
+	recordAuditEventForTest(t, env, persistence.AuditEvent{
+		OccurredAt:     base.Add(3 * time.Minute),
+		EventType:      persistence.AuditEventEnvelopeFlowed,
+		OrganizationID: orgBeta,
+		AccountID:      &betaID,
+		WorkgroupID:    &wgBeta,
+		Data:           persistence.AuditEventData{"count_delta": 99},
+	})
+
+	assertDashboardUnauthorized(t, env, "/audit-events")
+
+	alpha := env.accountClient(t, alphaToken)
+	page1Res, err := alpha.ListAuditEvents(env.ctx, api.ListAuditEventsParams{Limit: api.NewOptInt(2)})
+	if err != nil {
+		t.Fatalf("list audit events page 1: %v", err)
+	}
+	page1 := page1Res.(*api.ListAuditEventsResponse)
+	assertAuditResponseIDs(t, page1.Items, []int64{alphaLatest.ID, alphaMiddle.ID})
+	if !page1.NextCursor.Set {
+		t.Fatal("expected audit cursor")
+	}
+	for _, event := range page1.Items {
+		if event.OrganizationId != orgAlpha {
+			t.Fatalf("expected audit row scoped to %s, got %s", orgAlpha, event.OrganizationId)
+		}
+	}
+
+	page2Res, err := alpha.ListAuditEvents(env.ctx, api.ListAuditEventsParams{
+		Limit:  api.NewOptInt(2),
+		Cursor: api.NewOptString(page1.NextCursor.Value),
+	})
+	if err != nil {
+		t.Fatalf("list audit events page 2: %v", err)
+	}
+	page2 := page2Res.(*api.ListAuditEventsResponse)
+	assertAuditResponseIDs(t, page2.Items, []int64{alphaOld.ID})
+	if page2.NextCursor.Set {
+		t.Fatalf("expected final audit page without cursor, got %q", page2.NextCursor.Value)
+	}
+
+	filteredRes, err := alpha.ListAuditEvents(env.ctx, api.ListAuditEventsParams{
+		EventType:   []api.AuditEventType{api.AuditEventTypeEnvelopeFlowed},
+		WorkgroupId: api.NewOptString(wgAlpha),
+		AccountId:   api.NewOptString(alphaID),
+	})
+	if err != nil {
+		t.Fatalf("list audit events filtered: %v", err)
+	}
+	filtered := filteredRes.(*api.ListAuditEventsResponse)
+	assertAuditResponseIDs(t, filtered.Items, []int64{alphaMiddle.ID})
+
+	from := base.Add(30 * time.Second)
+	to := base.Add(90 * time.Second)
+	windowRes, err := alpha.ListAuditEvents(env.ctx, api.ListAuditEventsParams{
+		From: api.NewOptDateTime(from),
+		To:   api.NewOptDateTime(to),
+	})
+	if err != nil {
+		t.Fatalf("list audit events time window: %v", err)
+	}
+	windowRows := windowRes.(*api.ListAuditEventsResponse)
+	assertAuditResponseIDs(t, windowRows.Items, []int64{alphaMiddle.ID})
+
+	bad, err := alpha.ListAuditEvents(env.ctx, api.ListAuditEventsParams{
+		From: api.NewOptDateTime(to),
+		To:   api.NewOptDateTime(from),
+	})
+	if err != nil {
+		t.Fatalf("list audit events bad window: %v", err)
+	}
+	if _, ok := bad.(*api.ListAuditEventsBadRequest); !ok {
+		t.Fatalf("expected bad request for inverted time window, got %T", bad)
+	}
+}
+
 func (e *workgroupTestEnv) publishDashboardAdvertisement(t *testing.T, token, name, workgroupID string) string {
 	t.Helper()
 	client := e.accountClient(t, token)
@@ -1456,6 +1565,40 @@ func assertDashboardUnauthorized(t *testing.T, env *workgroupTestEnv, path strin
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected %s to return 401 without account token, got %d", path, resp.StatusCode)
+	}
+}
+
+func recordAuditEventForTest(t *testing.T, env *workgroupTestEnv, event persistence.AuditEvent) persistence.AuditEvent {
+	t.Helper()
+	if err := env.store.AuditEvents.Record(env.ctx, env.store.DB(), event); err != nil {
+		t.Fatalf("record audit event: %v", err)
+	}
+	return latestAuditEventForControllerTest(t, env)
+}
+
+func latestAuditEventForControllerTest(t *testing.T, env *workgroupTestEnv) persistence.AuditEvent {
+	t.Helper()
+	query := fmt.Sprintf(`
+select %s
+from audit_events
+order by id desc
+limit 1`, auditEventSelectColumns)
+	var event persistence.AuditEvent
+	if err := env.store.DB().GetContext(env.ctx, &event, query); err != nil {
+		t.Fatalf("get latest audit event: %v", err)
+	}
+	return event
+}
+
+func assertAuditResponseIDs(t *testing.T, events []api.AuditEvent, want []int64) {
+	t.Helper()
+	if len(events) != len(want) {
+		t.Fatalf("expected %d audit events, got %d", len(want), len(events))
+	}
+	for i := range want {
+		if events[i].ID != want[i] {
+			t.Fatalf("event %d: expected id %d, got %d", i, want[i], events[i].ID)
+		}
 	}
 }
 

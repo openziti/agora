@@ -2,6 +2,8 @@ export { ApiError, apiRequest, buildApiURL, setUnauthorizedHandler } from './cli
 export type { ApiParams, ApiRequestOptions, UnauthorizedHandler } from './client';
 export { login, logout } from './auth';
 export type { LoginCredentials } from './auth';
+export { fetchAllAuditEvents, listAuditEvents } from './audit';
+export type { ListAuditEventsParams } from './audit';
 export { getWhoami } from './whoami';
 export type { WhoamiOptions } from './whoami';
 export { getDashboardActivity, getDashboardEnvironments, getDashboardSummary, getWorkgroupsActivity } from './dashboard';

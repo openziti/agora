@@ -121,6 +121,40 @@ export type CatalogSearchResponse = {
   nextCursor?: string;
 };
 
+export type AuditEventType =
+  | 'session.proposed'
+  | 'session.accepted'
+  | 'session.rejected'
+  | 'session.closed'
+  | 'envelope.flowed'
+  | 'tunnel.attached'
+  | 'tunnel.detached'
+  | 'advertisement.published'
+  | 'advertisement.retracted'
+  | 'environment.heartbeat'
+  | 'account.login'
+  | 'account.login_failed'
+  | 'account.logout';
+
+export type AuditEvent = {
+  id: number;
+  occurredAt: DateTimeString;
+  eventType: AuditEventType;
+  organizationId: string;
+  accountId?: string;
+  workgroupId?: string;
+  sessionId?: string;
+  advertisementId?: string;
+  contractId?: string;
+  envelopeId?: string;
+  data: Record<string, unknown>;
+};
+
+export type ListAuditEventsResponse = {
+  items: AuditEvent[];
+  nextCursor?: string;
+};
+
 export type ContractAccessMode = 'open' | 'approval_required';
 
 export type MaturityRequirements = {

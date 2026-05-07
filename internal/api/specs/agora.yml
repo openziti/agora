@@ -84,6 +84,9 @@ paths:
   /catalog/advertisements:
     $ref: "catalog/paths.yml#/~1catalog~1advertisements"
 
+  /audit-events:
+    $ref: "audit/paths.yml#/~1audit-events"
+
   /dashboard/summary:
     $ref: "dashboard/paths.yml#/~1dashboard~1summary"
   /dashboard/activity:
@@ -227,6 +230,14 @@ components:
       $ref: "advertisements/schemas.yml#/listAdvertisementsResponse"
     catalogSearchResponse:
       $ref: "catalog/schemas.yml#/catalogSearchResponse"
+    auditEventType:
+      $ref: "audit/schemas.yml#/auditEventType"
+    auditEventData:
+      $ref: "audit/schemas.yml#/auditEventData"
+    auditEvent:
+      $ref: "audit/schemas.yml#/auditEvent"
+    listAuditEventsResponse:
+      $ref: "audit/schemas.yml#/listAuditEventsResponse"
     dashboardWindow:
       $ref: "dashboard/schemas.yml#/dashboardWindow"
     dashboardBucket:

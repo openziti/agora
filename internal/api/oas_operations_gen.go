@@ -47,6 +47,7 @@ const (
 	ListAccountsOperation                  OperationName = "ListAccounts"
 	ListAdminWorkgroupsOperation           OperationName = "ListAdminWorkgroups"
 	ListAdvertisementsOperation            OperationName = "ListAdvertisements"
+	ListAuditEventsOperation               OperationName = "ListAuditEvents"
 	ListContractsOperation                 OperationName = "ListContracts"
 	ListEnvironmentsOperation              OperationName = "ListEnvironments"
 	ListOrganizationsOperation             OperationName = "ListOrganizations"

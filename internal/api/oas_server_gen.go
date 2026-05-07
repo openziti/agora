@@ -172,6 +172,10 @@ type Handler interface {
 	//
 	// GET /advertisements
 	ListAdvertisements(ctx context.Context, params ListAdvertisementsParams) (ListAdvertisementsRes, error)
+	// ListAuditEvents implements listAuditEvents operation.
+	//
+	// GET /audit-events
+	ListAuditEvents(ctx context.Context, params ListAuditEventsParams) (ListAuditEventsRes, error)
 	// ListContracts implements listContracts operation.
 	//
 	// GET /contracts

@@ -4,6 +4,7 @@ import { createBrowserRouter, Navigate, RouterProvider, useLocation, type RouteO
 import { BrandMark } from './components';
 import { getWhoami, setUnauthorizedHandler } from './lib/api';
 import { clearAuthState, getAuthState, setAuthenticatedAccount, useAuthState } from './lib/auth-state';
+import AuditLog from './screens/AuditLog';
 import Catalog from './screens/Catalog';
 import Contracts from './screens/Contracts';
 import Dashboard from './screens/Dashboard';
@@ -78,6 +79,14 @@ const routes: RouteObject[] = [
     element: (
       <RequireAuth>
         <Contracts />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/audit',
+    element: (
+      <RequireAuth>
+        <AuditLog />
       </RequireAuth>
     ),
   },

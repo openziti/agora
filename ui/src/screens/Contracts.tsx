@@ -38,6 +38,7 @@ const routeByTab: Record<string, string> = {
   workgroups: '/workgroups',
   catalog: '/catalog',
   contracts: '/contracts',
+  audit: '/audit',
 };
 
 const numberFormatter = new Intl.NumberFormat();

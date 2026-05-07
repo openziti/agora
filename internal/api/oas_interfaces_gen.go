@@ -165,6 +165,10 @@ type ListAdvertisementsRes interface {
 	listAdvertisementsRes()
 }
 
+type ListAuditEventsRes interface {
+	listAuditEventsRes()
+}
+
 type ListContractsRes interface {
 	listContractsRes()
 }

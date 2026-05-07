@@ -499,6 +499,26 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 					}
 
+				case 'u': // Prefix: "udit-events"
+
+					if l := len("udit-events"); len(elem) >= l && elem[0:l] == "udit-events" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch r.Method {
+						case "GET":
+							s.handleListAuditEventsRequest([0]string{}, elemIsEscaped, w, r)
+						default:
+							s.notAllowed(w, r, "GET")
+						}
+
+						return
+					}
+
 				}
 
 			case 'c': // Prefix: "c"
@@ -2094,6 +2114,30 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 
 						}
 
+					}
+
+				case 'u': // Prefix: "udit-events"
+
+					if l := len("udit-events"); len(elem) >= l && elem[0:l] == "udit-events" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						// Leaf node.
+						switch method {
+						case "GET":
+							r.name = ListAuditEventsOperation
+							r.summary = ""
+							r.operationID = "listAuditEvents"
+							r.pathPattern = "/audit-events"
+							r.args = args
+							r.count = 0
+							return r, true
+						default:
+							return
+						}
 					}
 
 				}
