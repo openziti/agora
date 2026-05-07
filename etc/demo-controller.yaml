@@ -1,0 +1,25 @@
+# Agora demo controller configuration.
+#
+# Postgres and OpenZiti are external preconditions for bin/demo-up.sh.
+# Edit this file when the demo host uses different local service
+# addresses or credentials.
+
+bind_address: ":18080"
+
+admin_tokens:
+  - "demo-admin-token"
+
+open_ziti:
+  api_endpoint: "https://localhost:1280"
+  auth:
+    mode: "updb"
+    updb:
+      username: "admin"
+      password: "admin"
+
+store:
+  # Keep the demo database separate from the dev controller default.
+  dsn: "postgres://agora:agora@localhost:5432/agora_demo?sslmode=disable"
+  max_open_conns: 4
+  max_idle_conns: 4
+  conn_max_lifetime: "1h"

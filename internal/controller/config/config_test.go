@@ -110,6 +110,27 @@ open_ziti:
 	}
 }
 
+func TestLoadDemoControllerConfig(t *testing.T) {
+	path := filepath.Join("..", "..", "..", "etc", "demo-controller.yaml")
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("load demo controller config: %v", err)
+	}
+
+	if cfg.BindAddress != ":18080" {
+		t.Fatalf("expected demo bind address, got %q", cfg.BindAddress)
+	}
+	if len(cfg.AdminTokens) != 1 || cfg.AdminTokens[0] != "demo-admin-token" {
+		t.Fatalf("unexpected demo admin tokens: %#v", cfg.AdminTokens)
+	}
+	if cfg.Store.DSN == "" || !strings.Contains(cfg.Store.DSN, "/agora_demo?") {
+		t.Fatalf("unexpected demo store dsn: %q", cfg.Store.DSN)
+	}
+	if cfg.OpenZiti == nil || cfg.OpenZiti.APIEndpoint != "https://localhost:1280" {
+		t.Fatalf("unexpected demo open_ziti config: %#v", cfg.OpenZiti)
+	}
+}
+
 func TestLoadRequiresStoreBlock(t *testing.T) {
 	path := writeConfigFile(t, `
 bind_address: ":8080"
