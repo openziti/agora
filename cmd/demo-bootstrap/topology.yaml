@@ -1,0 +1,212 @@
+organizations:
+  - name: markets-co
+  - name: weather-co
+  - name: signals-co
+  - name: analytics-co
+  - name: enterprise-client
+  - name: gateway-services-org
+
+contracts:
+  - name: macro-pulse-provider-default
+    description: "Demo contract: bounded session duration for macro-pulse morning briefings."
+    max_duration_seconds: 60
+    allowed_message_types:
+      - "*"
+    access_mode: approval_required
+  - name: demo-contract-tight
+    description: "Demo contract: intentionally tight bounds for contract-violation walkthroughs."
+    max_duration_seconds: 30
+    max_envelope_bytes: 1024
+    allowed_message_types:
+      - signals.news.request
+      - signals.news.response
+    access_mode: approval_required
+  - name: gateway-services-default
+    description: "Demo contract: bounded gateway advertisement sessions."
+    max_duration_seconds: 900
+    max_envelope_count: 500
+    max_envelope_bytes: 262144
+    allowed_message_types:
+      - "*"
+    access_mode: approval_required
+
+accounts:
+  - email: equity-feed@markets-co
+    display_name: Equity Feed
+    organization: markets-co
+    password: macro-pulse-bootstrap
+    role: member
+    env: true
+    advertisement:
+      name: equity-feed
+      workgroup: markets-channel
+      contract: macro-pulse-provider-default
+  - email: fx-feed@markets-co
+    display_name: FX Feed
+    organization: markets-co
+    password: macro-pulse-bootstrap
+    role: member
+    env: true
+    advertisement:
+      name: fx-feed
+      workgroup: markets-channel
+      contract: macro-pulse-provider-default
+  - email: commodities-feed@markets-co
+    display_name: Commodities Feed
+    organization: markets-co
+    password: macro-pulse-bootstrap
+    role: member
+    env: true
+    advertisement:
+      name: commodities-feed
+      workgroup: markets-channel
+      contract: macro-pulse-provider-default
+  - email: weather-feed@weather-co
+    display_name: Weather Feed
+    organization: weather-co
+    password: macro-pulse-bootstrap
+    role: member
+    env: true
+    advertisement:
+      name: weather-feed
+      workgroup: weather-channel
+      contract: macro-pulse-provider-default
+  - email: search-trends@signals-co
+    display_name: Search Trends
+    organization: signals-co
+    password: macro-pulse-bootstrap
+    role: member
+    env: true
+    advertisement:
+      name: search-trends
+      workgroup: signals-channel
+      contract: macro-pulse-provider-default
+  - email: news-pulse@signals-co
+    display_name: News Pulse
+    organization: signals-co
+    password: macro-pulse-bootstrap
+    role: member
+    env: true
+    advertisement:
+      name: news-pulse
+      workgroup: signals-channel
+      contract: demo-contract-tight
+  - email: correlator@analytics-co
+    display_name: Correlator
+    organization: analytics-co
+    password: macro-pulse-bootstrap
+    role: member
+    env: true
+    advertisement:
+      name: correlator
+      workgroup: analytics-channel
+      contract: macro-pulse-provider-default
+  - email: narrator@analytics-co
+    display_name: Narrator
+    organization: analytics-co
+    password: macro-pulse-bootstrap
+    role: member
+    env: true
+    advertisement:
+      name: narrator
+      workgroup: analytics-channel
+      contract: macro-pulse-provider-default
+  - email: demo@agora.local
+    display_name: Agora Demo
+    organization: enterprise-client
+    password: Agora-Demo-1
+    role: admin
+    env: true
+  - email: llm-gateway@gateway-services-org
+    display_name: LLM Gateway
+    organization: gateway-services-org
+    password: macro-pulse-bootstrap
+    role: member
+    env: true
+    gateway: llm
+    advertisement:
+      name: llm-gateway
+      workgroup: gateway-services
+      contract: gateway-services-default
+  - email: mcp-gateway@gateway-services-org
+    display_name: MCP Gateway
+    organization: gateway-services-org
+    password: macro-pulse-bootstrap
+    role: member
+    env: true
+    gateway: mcp
+    advertisement:
+      name: mcp-gateway
+      workgroup: gateway-services
+      contract: gateway-services-default
+
+workgroups:
+  - name: markets-internal
+    scope: intra-org
+    owner_organization: markets-co
+    initial_admin: equity-feed@markets-co
+    members:
+      - email: fx-feed@markets-co
+      - email: commodities-feed@markets-co
+  - name: weather-internal
+    scope: intra-org
+    owner_organization: weather-co
+    initial_admin: weather-feed@weather-co
+  - name: signals-internal
+    scope: intra-org
+    owner_organization: signals-co
+    initial_admin: search-trends@signals-co
+    members:
+      - email: news-pulse@signals-co
+  - name: markets-channel
+    scope: inter-org
+    owner_organization: markets-co
+    initial_admin: equity-feed@markets-co
+    invited_organizations:
+      - organization: enterprise-client
+        initial_admin: demo@agora.local
+    members:
+      - email: fx-feed@markets-co
+      - email: commodities-feed@markets-co
+  - name: weather-channel
+    scope: inter-org
+    owner_organization: weather-co
+    initial_admin: weather-feed@weather-co
+    invited_organizations:
+      - organization: enterprise-client
+        initial_admin: demo@agora.local
+  - name: signals-channel
+    scope: inter-org
+    owner_organization: signals-co
+    initial_admin: search-trends@signals-co
+    invited_organizations:
+      - organization: enterprise-client
+        initial_admin: demo@agora.local
+    members:
+      - email: news-pulse@signals-co
+  - name: analytics-channel
+    scope: inter-org
+    owner_organization: analytics-co
+    initial_admin: correlator@analytics-co
+    invited_organizations:
+      - organization: enterprise-client
+        initial_admin: demo@agora.local
+    members:
+      - email: narrator@analytics-co
+  - name: gateway-services
+    scope: inter-org
+    owner_organization: gateway-services-org
+    initial_admin: llm-gateway@gateway-services-org
+    invited_organizations:
+      - organization: enterprise-client
+        initial_admin: demo@agora.local
+    members:
+      - email: mcp-gateway@gateway-services-org
+
+gateways:
+  - name: llm
+    account_email: llm-gateway@gateway-services-org
+    advertisement_name: llm-gateway
+  - name: mcp
+    account_email: mcp-gateway@gateway-services-org
+    advertisement_name: mcp-gateway

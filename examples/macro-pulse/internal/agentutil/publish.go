@@ -7,8 +7,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/michaelquigley/df/dd"
 	"github.com/openziti/agora/internal/api"
 )
 
@@ -30,14 +33,20 @@ type AdvertisementSpec struct {
 // ContractSpec describes a contract to ensure-exists and reference
 // from the advertisement. Names are unique within the owning account.
 type ContractSpec struct {
-	Name                         string
-	Description                  string
-	MaxDurationSeconds           int
-	MaxEnvelopeCount             int
-	AllowedMessageTypes          []string
-	RequiredWorkgroupNames       []string
-	MinAccountAgeDays            int
-	AccessMode                   api.ContractAccessMode
+	Name                   string
+	Description            string
+	MaxDurationSeconds     int
+	MaxEnvelopeCount       int
+	MaxEnvelopeBytes       int
+	AllowedMessageTypes    []string
+	RequiredWorkgroupNames []string
+	MinAccountAgeDays      int
+	AccessMode             api.ContractAccessMode
+}
+
+type AgentConfig struct {
+	Contract   string
+	ContractID string
 }
 
 // EnsureAdvertisement publishes the advertisement, or — when the
@@ -45,6 +54,10 @@ type ContractSpec struct {
 // existing record and returns it. This makes provider/tool agent
 // startup idempotent against repeated runs.
 func EnsureAdvertisement(ctx context.Context, client *api.Client, spec AdvertisementSpec) (*api.Advertisement, error) {
+	if err := applyAgentConfig(&spec); err != nil {
+		return nil, err
+	}
+
 	scopes, err := resolveWorkgroupNames(ctx, client, spec.WorkgroupNames)
 	if err != nil {
 		return nil, err
@@ -165,6 +178,9 @@ func ensureContract(ctx context.Context, client *api.Client, spec ContractSpec) 
 	if spec.MaxEnvelopeCount > 0 {
 		req.MaxEnvelopeCount.SetTo(spec.MaxEnvelopeCount)
 	}
+	if spec.MaxEnvelopeBytes > 0 {
+		req.MaxEnvelopeBytes.SetTo(spec.MaxEnvelopeBytes)
+	}
 	if len(spec.AllowedMessageTypes) > 0 {
 		req.AllowedMessageTypes = append([]string{}, spec.AllowedMessageTypes...)
 	}
@@ -215,6 +231,44 @@ func ensureContract(ctx context.Context, client *api.Client, spec ContractSpec) 
 	default:
 		return nil, fmt.Errorf("unexpected create contract response: %T", res)
 	}
+}
+
+func applyAgentConfig(spec *AdvertisementSpec) error {
+	if spec == nil || spec.Contract == nil {
+		return nil
+	}
+	cfg, err := loadAgentConfig()
+	if err != nil {
+		return err
+	}
+	if cfg == nil || cfg.Contract == "" {
+		return nil
+	}
+	spec.Contract.Name = cfg.Contract
+	return nil
+}
+
+func loadAgentConfig() (*AgentConfig, error) {
+	root := os.Getenv("AGORA_ENV_ROOT")
+	if root == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return nil, err
+		}
+		root = filepath.Join(home, ".agora")
+	}
+	path := filepath.Join(root, "agent-config.yaml")
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	cfg := &AgentConfig{}
+	if err := dd.BindYAMLFile(cfg, path); err != nil {
+		return nil, fmt.Errorf("load agent config %q: %w", path, err)
+	}
+	return cfg, nil
 }
 
 func findAdvertisementByName(ctx context.Context, client *api.Client, name string) (*api.Advertisement, error) {
