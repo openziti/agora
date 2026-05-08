@@ -21,7 +21,7 @@ func main() {
 		agent.WithRuntime(),
 	)
 	if err := app.Run(func(ctx context.Context, a *agent.Agent) error {
-		ad, err := agentutil.EnsureAdvertisement(ctx, a.Controller(), agentutil.AdvertisementSpec{
+		ad, err := agentutil.EnsureAdvertisement(ctx, a, agentutil.AdvertisementSpec{
 			Name:        "narrator",
 			Description: "Template-driven prose summaries of numeric inputs",
 			Capabilities: []api.AdvertisementCapability{
@@ -30,11 +30,11 @@ func main() {
 			InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
 			WorkgroupNames:      []string{"analytics-channel"},
 			Contract: &agentutil.ContractSpec{
-				Name:               "macro-pulse-provider-default",
-				Description:        "Demo contract: bounded session duration for macro-pulse morning briefings.",
+				Name:                "macro-pulse-provider-default",
+				Description:         "Demo contract: bounded session duration for macro-pulse morning briefings.",
 				MaxDurationSeconds:  60,
 				AllowedMessageTypes: []string{"*"},
-				AccessMode:         api.ContractAccessModeApprovalRequired,
+				AccessMode:          api.ContractAccessModeApprovalRequired,
 			},
 		})
 		if err != nil {

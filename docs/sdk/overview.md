@@ -36,6 +36,30 @@ The SDK exposes three ways to construct a runtime, matched to three deployment s
 
 Most agent authors want path 3. The Macro Pulse example agents all use it.
 
+## Catalog advertisements
+
+Agents that need to publish into Agora's Layer 2 catalog should use
+`sdk/agent/catalog`. The package exposes public SDK-native types and
+helpers for advertisement publish, lookup, list, and retract operations
+without requiring external Go modules to import Agora's generated
+`internal/api` package.
+
+```go
+ad, err := catalog.EnsurePublished(ctx, a, catalog.PublishSpec{
+    Name: "llm-gateway",
+    Capabilities: []catalog.Capability{
+        {Name: "llm-routing"},
+    },
+    WorkgroupScopeIDs: []string{"wg_abcdefghijkl"},
+    TunnelMode:        catalog.TunnelTCP,
+    ContractID:        "con_abcdefghijkl",
+})
+```
+
+`EnsurePublished` is idempotent for agent startup: if the calling
+account already owns an active advertisement with the same name, the
+helper returns that record unchanged.
+
 ## Typical agent shape
 
 ```go
@@ -94,6 +118,10 @@ The `*Agent` passed to the business-logic function exposes:
 - `Log() *dl.Builder` — a df/dl structured-log builder with `agent` and `environment_id` fields pre-populated
 - `Live() bool` — the `--live` flag value
 
+External modules should prefer public SDK subpackages such as
+`sdk/agent/catalog` over calling `Controller()` directly when a
+sub-package exists for the desired operation.
+
 ## Isolation from the standalone daemon
 
 Embedded runtimes are isolated from any `agora network start` daemon running on the same host. See [`docs/layer-1/agent.md`](../layer-1/agent.md) "Packaging Direction" for the full model. Summary:
@@ -108,7 +136,7 @@ This means an operator can run `agora network start` for CLI-driven tunnel opera
 ## When the SDK does not yet suffice
 
 - **Public-module consumption.** The SDK lives inside the main `github.com/openziti/agora` Go module. Agents in this repo (including the Macro Pulse examples) can import `github.com/openziti/agora/sdk/agent` directly. External projects that want to depend on the SDK without vendoring the full Agora source tree will need a future split of the SDK into its own module; not in scope for MVP.
-- **Advertisement / session / contract / envelope APIs.** Not part of the SDK yet. They land as each Layer 2 slice ships. See [`docs/layer-2/status.md`](../layer-2/status.md) for the slice order and [`docs/examples/macro-pulse.md`](../examples/macro-pulse.md) "Slice Rollout" for which agent behavior lands alongside each.
+- **Session / contract / envelope APIs.** Public wrappers for these surfaces are not part of the SDK yet. They land as each Layer 2 slice needs external consumers. Advertisement publication is available through `sdk/agent/catalog`.
 - **Discovery by non-capability properties.** Catalog search surfaces are deferred to the catalog/advertisement slice.
 
 ## Related documentation

@@ -13,6 +13,8 @@ import (
 
 	"github.com/michaelquigley/df/dd"
 	"github.com/openziti/agora/internal/api"
+	"github.com/openziti/agora/sdk/agent"
+	"github.com/openziti/agora/sdk/agent/catalog"
 )
 
 // AdvertisementSpec describes an advertisement an agent wants to
@@ -53,7 +55,11 @@ type AgentConfig struct {
 // advertisement name is already in use by the caller — looks up the
 // existing record and returns it. This makes provider/tool agent
 // startup idempotent against repeated runs.
-func EnsureAdvertisement(ctx context.Context, client *api.Client, spec AdvertisementSpec) (*api.Advertisement, error) {
+func EnsureAdvertisement(ctx context.Context, a *agent.Agent, spec AdvertisementSpec) (*catalog.Advertisement, error) {
+	if a == nil {
+		return nil, errors.New("agent is required")
+	}
+	client := a.Controller()
 	if err := applyAgentConfig(&spec); err != nil {
 		return nil, err
 	}
@@ -63,51 +69,24 @@ func EnsureAdvertisement(ctx context.Context, client *api.Client, spec Advertise
 		return nil, err
 	}
 
-	req := &api.PublishAdvertisementRequest{
-		Name:                spec.Name,
-		Capabilities:        spec.Capabilities,
-		InteractionPatterns: spec.InteractionPatterns,
-		WorkgroupScopes:     scopes,
-	}
-	if spec.Description != "" {
-		req.Description.SetTo(spec.Description)
-	}
-	if spec.TunnelMode != "" {
-		req.TunnelMode.SetTo(spec.TunnelMode)
-	}
+	contractID := ""
 	if spec.Contract != nil {
 		contract, err := ensureContract(ctx, client, *spec.Contract)
 		if err != nil {
 			return nil, err
 		}
-		req.ContractId.SetTo(contract.ID)
+		contractID = contract.ID
 	}
 
-	res, err := client.PublishAdvertisement(ctx, req)
-	if err != nil {
-		return nil, fmt.Errorf("publish advertisement: %w", err)
-	}
-	switch typed := res.(type) {
-	case *api.Advertisement:
-		return typed, nil
-	case *api.PublishAdvertisementConflict:
-		// Look up the existing advertisement we own with this name.
-		existing, lookupErr := findAdvertisementByName(ctx, client, spec.Name)
-		if lookupErr != nil {
-			return nil, lookupErr
-		}
-		return existing, nil
-	case *api.PublishAdvertisementBadRequest:
-		return nil, errors.New("publish advertisement bad_request: " + typed.Message)
-	case *api.PublishAdvertisementForbidden:
-		return nil, errors.New("publish advertisement forbidden: " + typed.Message)
-	case *api.PublishAdvertisementUnauthorized:
-		return nil, errors.New("publish advertisement unauthorized: " + typed.Message)
-	case *api.PublishAdvertisementInternalServerError:
-		return nil, errors.New("publish advertisement internal_error: " + typed.Message)
-	default:
-		return nil, fmt.Errorf("unexpected publish advertisement response: %T", res)
-	}
+	return catalog.EnsurePublished(ctx, a, catalog.PublishSpec{
+		Name:                spec.Name,
+		Description:         spec.Description,
+		Capabilities:        capabilitiesToCatalog(spec.Capabilities),
+		InteractionPatterns: interactionPatternsToCatalog(spec.InteractionPatterns),
+		WorkgroupScopeIDs:   scopes,
+		TunnelMode:          catalog.TunnelMode(spec.TunnelMode),
+		ContractID:          contractID,
+	})
 }
 
 func resolveWorkgroupNames(ctx context.Context, client *api.Client, names []string) ([]string, error) {
@@ -271,20 +250,29 @@ func loadAgentConfig() (*AgentConfig, error) {
 	return cfg, nil
 }
 
-func findAdvertisementByName(ctx context.Context, client *api.Client, name string) (*api.Advertisement, error) {
-	res, err := client.ListAdvertisements(ctx, api.ListAdvertisementsParams{})
-	if err != nil {
-		return nil, fmt.Errorf("list advertisements: %w", err)
-	}
-	listing, ok := res.(*api.ListAdvertisementsResponse)
-	if !ok {
-		return nil, fmt.Errorf("unexpected list advertisements response: %T", res)
-	}
-	for i := range *listing {
-		ad := (*listing)[i]
-		if strings.EqualFold(ad.Name, name) {
-			return &ad, nil
+func capabilitiesToCatalog(caps []api.AdvertisementCapability) []catalog.Capability {
+	out := make([]catalog.Capability, 0, len(caps))
+	for _, c := range caps {
+		entry := catalog.Capability{Name: c.Name}
+		if c.Description.Set {
+			entry.Description = c.Description.Value
 		}
+		if c.Metadata.Set {
+			entry.Metadata = map[string]string(c.Metadata.Value)
+		}
+		out = append(out, entry)
 	}
-	return nil, fmt.Errorf("advertisement %q not found in caller's own list", name)
+	return out
+}
+
+func interactionPatternsToCatalog(patterns []api.AdvertisementInteractionPattern) []catalog.InteractionPattern {
+	out := make([]catalog.InteractionPattern, 0, len(patterns))
+	for _, p := range patterns {
+		entry := catalog.InteractionPattern{Kind: catalog.InteractionPatternKind(p.Kind)}
+		if p.CustomPattern.Set {
+			entry.CustomPattern = p.CustomPattern.Value
+		}
+		out = append(out, entry)
+	}
+	return out
 }

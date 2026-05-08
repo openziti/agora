@@ -1,5 +1,3 @@
-name: agora
-log_destination: .mercurius
 default_budget: 4
 max_findings: 6
 
@@ -14,7 +12,7 @@ review_context: |
   normal implementation friction, while over-engineered fixes ship as
   permanent doc surface and constrain future work.
 
-prompt_overrides: |
+review_focus: |
   review these as implementation handoff artifacts: design and work-order
   documents an implementer (LLM or human) will use to build the system
   without further clarification.
