@@ -10,12 +10,13 @@ RUN_DIR="${DEMO_ROOT}/run"
 WORKER_RUN_DIR="${RUN_DIR}/workers"
 LOG_DIR="${DEMO_ROOT}/logs"
 SEED_SQL="${DEMO_ROOT}/seed-history.sql"
-ADMIN_TOKEN="${AGORA_ADMIN_TOKEN:-demo-admin-token}"
+ADMIN_TOKEN="${AGORA_DEMO_ADMIN_TOKEN:-}"
 CONTROLLER_URL="${AGORA_DEMO_CONTROLLER_URL:-}"
 DEMO_DSN="${AGORA_DEMO_DSN:-}"
 DEMO_EMAIL="demo@agora.local"
 DEMO_PASSWORD="Agora-Demo-1"
 STARTED_ANY=0
+CLEANING_UP=0
 
 WORKERS=(
   "macro-pulse-equity-feed:equity-feed@markets-co:equity-feed"
@@ -53,15 +54,21 @@ warn() {
 
 fail() {
   printf '[demo-up] error: %s\n' "$*" >&2
+  cleanup_started
   exit 1
+}
+
+cleanup_started() {
+  if [[ "${STARTED_ANY}" == "1" && "${CLEANING_UP}" == "0" ]]; then
+    CLEANING_UP=1
+    warn "startup failed; stopping processes launched under ${DEMO_ROOT}"
+    AGORA_DEMO_ROOT="${DEMO_ROOT}" AGORA_DEMO_CONTROLLER_CONFIG="${CONFIG_PATH}" "${REPO_ROOT}/bin/demo-down.sh" || true
+  fi
 }
 
 on_error() {
   local status=$?
-  if [[ "${STARTED_ANY}" == "1" ]]; then
-    warn "startup failed; stopping processes launched under ${DEMO_ROOT}"
-    AGORA_DEMO_ROOT="${DEMO_ROOT}" AGORA_DEMO_CONTROLLER_CONFIG="${CONFIG_PATH}" "${REPO_ROOT}/bin/demo-down.sh" || true
-  fi
+  cleanup_started
   exit "${status}"
 }
 trap on_error ERR
@@ -70,6 +77,14 @@ extract_yaml_scalar() {
   local key="$1"
   local file="$2"
   sed -nE "s/^[[:space:]]*${key}:[[:space:]]*\"?([^\"#]+)\"?.*$/\1/p" "${file}" | head -n 1 | sed -E 's/[[:space:]]+$//'
+}
+
+extract_yaml_sequence_first() {
+  local key="$1"
+  local file="$2"
+  sed -nE "/^[[:space:]]*${key}:[[:space:]]*$/,/^[[:space:]]*[A-Za-z0-9_]+:[[:space:]]*/ {
+    s/^[[:space:]]*-[[:space:]]*['\"]?([^'\"#]+)['\"]?.*$/\1/p
+  }" "${file}" | head -n 1 | sed -E 's/[[:space:]]+$//'
 }
 
 controller_url_from_bind() {
@@ -119,7 +134,15 @@ ensure_pid_slot_free() {
 prepare_paths() {
   [[ -f "${CONFIG_PATH}" ]] || fail "controller config not found: ${CONFIG_PATH}"
   mkdir -p "${RUN_DIR}" "${WORKER_RUN_DIR}" "${LOG_DIR}"
-  local bind port
+  local bind port config_admin_token
+  config_admin_token="$(extract_yaml_sequence_first admin_tokens "${CONFIG_PATH}")"
+  if [[ -z "${ADMIN_TOKEN}" ]]; then
+    ADMIN_TOKEN="${config_admin_token}"
+  fi
+  [[ -n "${ADMIN_TOKEN}" ]] || fail "admin_tokens not found in ${CONFIG_PATH}; set AGORA_DEMO_ADMIN_TOKEN to override"
+  if [[ -n "${AGORA_ADMIN_TOKEN:-}" && -z "${AGORA_DEMO_ADMIN_TOKEN:-}" && "${AGORA_ADMIN_TOKEN}" != "${ADMIN_TOKEN}" ]]; then
+    warn "ignoring ambient AGORA_ADMIN_TOKEN for demo startup; using admin_tokens from ${CONFIG_PATH}"
+  fi
   bind="$(extract_yaml_scalar bind_address "${CONFIG_PATH}")"
   [[ -n "${bind}" ]] || bind=":8080"
   if [[ -z "${CONTROLLER_URL}" ]]; then

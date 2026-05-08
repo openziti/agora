@@ -1536,6 +1536,43 @@ func TestListAuditEventsEndpoint(t *testing.T) {
 	}
 }
 
+func TestListAuditEventsAllowsSyntheticReferenceIDs(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+
+	orgAlpha, alphaID, alphaToken := env.createOrgWithAccount(t, "Alpha Co", "alpha-audit-synthetic@example.com")
+	base := time.Date(2026, 5, 7, 12, 0, 0, 0, time.UTC)
+	sessionID := "sess_seed_000000000001"
+	advertisementID := "ad_seed_equityfeed"
+
+	inserted := recordAuditEventForTest(t, env, persistence.AuditEvent{
+		OccurredAt:      base,
+		EventType:       persistence.AuditEventSessionProposed,
+		OrganizationID:  orgAlpha,
+		AccountID:       &alphaID,
+		SessionID:       &sessionID,
+		AdvertisementID: &advertisementID,
+		Data:            persistence.AuditEventData{"source": "synthetic_history"},
+	})
+
+	alpha := env.accountClient(t, alphaToken)
+	res, err := alpha.ListAuditEvents(env.ctx, api.ListAuditEventsParams{
+		From:  api.NewOptDateTime(base.Add(-time.Minute)),
+		To:    api.NewOptDateTime(base.Add(time.Minute)),
+		Limit: api.NewOptInt(10),
+	})
+	if err != nil {
+		t.Fatalf("list audit events with synthetic reference ids: %v", err)
+	}
+	page := res.(*api.ListAuditEventsResponse)
+	assertAuditResponseIDs(t, page.Items, []int64{inserted.ID})
+	got := page.Items[0]
+	if got.SessionId.Value != sessionID || got.AdvertisementId.Value != advertisementID {
+		t.Fatalf("expected synthetic refs session=%q advertisement=%q, got session=%q advertisement=%q", sessionID, advertisementID, got.SessionId.Value, got.AdvertisementId.Value)
+	}
+}
+
 func (e *workgroupTestEnv) publishDashboardAdvertisement(t *testing.T, token, name, workgroupID string) string {
 	t.Helper()
 	client := e.accountClient(t, token)

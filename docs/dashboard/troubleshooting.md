@@ -117,6 +117,21 @@ Fix:
    ./bin/demo-up.sh
    ```
 
+## Bootstrap Fails Creating The First Organization
+
+Symptom:
+- Bootstrap fails at `ensure org "markets-co"`.
+- The controller log contains `admin token authentication failed`.
+
+Fix:
+1. Prefer the admin token configured in `etc/demo-controller.yaml`; `demo-up.sh` reads it automatically.
+2. If you intentionally need a different token, set `AGORA_DEMO_ADMIN_TOKEN` to a token that also appears in the controller config.
+3. Re-run:
+
+   ```sh
+   ./bin/demo-up.sh
+   ```
+
 ## UI Build Fails
 
 Symptom:

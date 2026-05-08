@@ -42,19 +42,14 @@ auditEvent:
       pattern: '^org_[a-z0-9]{12}$'
     accountId:
       type: string
-      pattern: '^ac_[a-z0-9]{12}$'
     workgroupId:
       type: string
-      pattern: '^wg_[a-z0-9]{12}$'
     sessionId:
       type: string
-      pattern: '^ses_[a-z0-9]{12}$'
     advertisementId:
       type: string
-      pattern: '^adv_[a-z0-9]{12}$'
     contractId:
       type: string
-      pattern: '^con_[a-z0-9]{12}$'
     envelopeId:
       type: string
     data:

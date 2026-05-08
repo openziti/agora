@@ -9,6 +9,7 @@ import (
 
 	"github.com/michaelquigley/df/dl"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/agora/environment"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -22,6 +23,7 @@ var rootCmd = &cobra.Command{
 	Use:   strings.TrimSuffix(filepath.Base(os.Args[0]), filepath.Ext(os.Args[0])),
 	Short: "agora",
 	PersistentPreRun: func(_ *cobra.Command, _ []string) {
+		configureEnvironmentRootFromEnv()
 		slogLevel := slog.LevelInfo
 		logrusLevel := logrus.InfoLevel
 		if verbose {
@@ -31,6 +33,12 @@ var rootCmd = &cobra.Command{
 		dl.Init(dl.DefaultOptions().SetLevel(slogLevel).SetTrimPrefix("github.com/openziti/"))
 		pfxlog.GlobalInit(logrusLevel, pfxlog.DefaultOptions().SetTrimPrefix("github.com/openziti/"))
 	},
+}
+
+func configureEnvironmentRootFromEnv() {
+	if envRoot := os.Getenv("AGORA_ENV_ROOT"); envRoot != "" {
+		environment.SetRootDirName(envRoot)
+	}
 }
 
 var (
