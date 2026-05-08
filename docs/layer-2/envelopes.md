@@ -46,11 +46,15 @@ Envelopes are not first-class REST resources. `envelope_id` exists for correlati
 
 Envelopes are serialized as **frames** on the session's backing Layer 1 tunnel. Frames use a small fixed-size prefix so a reader can detect and bound an envelope before committing to any envelope-shaped parsing.
 
-```
-+--------------+----------------+-----------------+---------- header JSON ---------+-------- payload --------+
-| 1 byte       | 4 bytes        | 4 bytes         |   variable (UTF-8 JSON)        |   variable (opaque)     |
-| frame_version| header_len (be)| payload_len (be)|   envelope header              |   envelope payload      |
-+--------------+----------------+-----------------+--------------------------------+-------------------------+
+```mermaid
+flowchart LR
+    frameVersion["frame_version<br/>1 byte"]
+    headerLen["header_len<br/>4 bytes, big-endian"]
+    payloadLen["payload_len<br/>4 bytes, big-endian"]
+    header["envelope header<br/>variable UTF-8 JSON"]
+    payload["envelope payload<br/>variable opaque bytes"]
+
+    frameVersion --> headerLen --> payloadLen --> header --> payload
 ```
 
 - `frame_version` — 1 byte. MVP is `0x01`. A receiver that sees an unknown `frame_version` closes the connection cleanly without attempting to parse the lengths. This byte allows the framing itself (not just the header's `schema_version`) to evolve.

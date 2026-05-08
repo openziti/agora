@@ -133,15 +133,13 @@ Icons come from `lucide-react`, matching the gateway mockups exactly. The icons 
 
 The dashboard is a six-tab application, of which four are day-one scope and two are stretch.
 
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│  Agora   [environment-prod ▾]   Dashboard  Sessions  Workgroups        │
-│                                 Catalog  · · ·  Audit       [● Active] │
-├────────────────────────────────────────────────────────────────────────┤
-│                                                                        │
-│   <active screen>                                                      │
-│                                                                        │
-└────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph shell["Dashboard shell"]
+        header["Brand mark | Org indicator | Dashboard | Sessions | Workgroups | Catalog | Audit | Status | User"]
+        main["Active screen"]
+        header --> main
+    end
 ```
 
 The chrome:

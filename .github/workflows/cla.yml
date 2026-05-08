@@ -1,11 +1,3 @@
-# CLA Check Workflow
-#
-# Copy this file to .github/workflows/cla.yml in any repository that should
-# require CLA signatures from contributors.
-#
-# REQUIRED: Add CLA_APP_ID and CLA_APP_PRIVATE_KEY as organization secrets
-# accessible to this repository.
-
 name: "CLA Check"
 
 on:

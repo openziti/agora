@@ -65,5 +65,4 @@ Not data-dependent. One mode: computes correlation from request payload. No snap
 
 ## Implementation status
 
-- Slice-gated: advertisement, session, envelope slices
-- Pre-slice: `main.go` skeleton only.
+- Shipped. Publishes its advertisement on startup, accepts governed sessions, and returns Pearson correlation results for typed request envelopes.

@@ -63,8 +63,7 @@ Not data-dependent. Single mode: template expansion against request payload.
 
 ## Implementation status
 
-- Slice-gated: advertisement, session, envelope slices
-- Pre-slice: `main.go` skeleton only.
+- Shipped. Publishes its advertisement on startup, accepts governed sessions, and returns deterministic prose summaries for typed request envelopes.
 
 ## Post-MVP extension
 

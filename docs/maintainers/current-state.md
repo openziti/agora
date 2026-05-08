@@ -156,7 +156,7 @@ Envelopes implementation surfaces (slice 5):
 - Macro Pulse advancement: `agentutil.EchoSessionHandler` replaces `LoggingSessionHandler`; providers echo inbound envelopes with `.request` → `.response`; `pulse-agent` sends a per-advertisement ping and logs the response envelope
 - Scope note: MVP envelope transport is `tcp`-carrier only. `http`/`udp` carriers, envelope-level signing, richer A2A bridging, session multiplexing, and per-envelope contract-violation error envelopes are all post-MVP.
 
-Alongside the Layer 2 specs, the project also has a primary reference demo under [../../examples/macro-pulse/](../../examples/macro-pulse/) with its own formal doc at [../examples/macro-pulse.md](../examples/macro-pulse.md). The demo is scaffolded but not yet runnable end-to-end — it advances one slice at a time as Layer 2 slices ship. See [../examples/index.md](../examples/index.md) for the example-set overview.
+Alongside the Layer 2 specs, the project also has a primary reference demo under [../../examples/macro-pulse/](../../examples/macro-pulse/) with its own formal doc at [../examples/macro-pulse.md](../examples/macro-pulse.md). The demo now runs end-to-end against a live Agora controller and OpenZiti fabric: `bin/demo-up.sh` builds the UI and Go demo binaries, migrates the store, starts the controller, provisions the topology, starts the workers, and leaves the dashboard available on the configured controller URL. See [../examples/index.md](../examples/index.md) for the example-set overview and [../dashboard/walkthrough.md](../dashboard/walkthrough.md) for the presentation path.
 
 Metrics and limits are intentionally deferred to post-MVP work and tracked in [../roadmap/post-mvp.md](../roadmap/post-mvp.md).
 

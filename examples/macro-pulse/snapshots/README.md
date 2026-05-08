@@ -6,35 +6,42 @@ This directory holds canned data that each Macro Pulse data agent reads when run
 
 One subdirectory per capability domain, one file per queryable unit (ticker, city, term, topic).
 
-```
-snapshots/
-├── README.md                this file
-├── equity/
-│   ├── SPY.json             S&P 500 ETF
-│   ├── XLK.json             technology sector
-│   ├── XLE.json             energy sector
-│   └── XLF.json             financials sector
-├── fx/
-│   ├── USD-EUR.json
-│   ├── USD-JPY.json
-│   └── USD-GBP.json
-├── commodities/
-│   ├── CL_F.json            WTI crude front-month
-│   ├── GC_F.json            gold front-month
-│   └── NG_F.json            Henry Hub natural gas front-month
-├── weather/
-│   ├── new-york.json
-│   ├── houston.json
-│   ├── frankfurt.json
-│   └── singapore.json
-├── search/
-│   ├── layoffs.json
-│   ├── gulf-storm.json
-│   └── housing-market.json
-└── news/
-    ├── financial.json
-    ├── energy.json
-    └── supply-chain.json
+```mermaid
+flowchart TD
+    root["snapshots/"]
+    root --> readme["README.md"]
+    root --> equity["equity/"]
+    root --> fx["fx/"]
+    root --> commodities["commodities/"]
+    root --> weather["weather/"]
+    root --> search["search/"]
+    root --> news["news/"]
+
+    equity --> spy["SPY.json<br/>S&P 500 ETF"]
+    equity --> xlk["XLK.json<br/>technology sector"]
+    equity --> xle["XLE.json<br/>energy sector"]
+    equity --> xlf["XLF.json<br/>financials sector"]
+
+    fx --> usdeur["USD-EUR.json"]
+    fx --> usdjpy["USD-JPY.json"]
+    fx --> usdgbp["USD-GBP.json"]
+
+    commodities --> clf["CL_F.json<br/>WTI crude front-month"]
+    commodities --> gcf["GC_F.json<br/>gold front-month"]
+    commodities --> ngf["NG_F.json<br/>Henry Hub natural gas front-month"]
+
+    weather --> newYork["new-york.json"]
+    weather --> houston["houston.json"]
+    weather --> frankfurt["frankfurt.json"]
+    weather --> singapore["singapore.json"]
+
+    search --> layoffs["layoffs.json"]
+    search --> gulfStorm["gulf-storm.json"]
+    search --> housingMarket["housing-market.json"]
+
+    news --> financial["financial.json"]
+    news --> energy["energy.json"]
+    news --> supplyChain["supply-chain.json"]
 ```
 
 Filename rules:

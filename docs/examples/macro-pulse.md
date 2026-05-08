@@ -12,26 +12,36 @@ The scenario: a financial-services firm produces a morning "macro pulse" brief b
 
 Five organizations, eight agents, seven workgroups:
 
-```
-                       ┌───────────────────┐
-                       │  enterprise-client │
-                       │   └─ pulse-agent   │
-                       └─────────┬─────────┘
-                                 │ member of all four channels
-          ┌──────────────────────┼──────────────────────┐
-          │                      │                      │
-   ┌──────┴──────┐       ┌──────┴──────┐       ┌──────┴──────┐       ┌──────────────┐
-   │ markets-co  │       │ weather-co  │       │ signals-co  │       │ analytics-co │
-   │ ├ equity    │       │ └ weather   │       │ ├ search    │       │ ├ correlator │
-   │ ├ fx        │       │             │       │ └ news      │       │ └ narrator   │
-   │ └ commod.   │       │             │       │             │       │              │
-   └─────────────┘       └─────────────┘       └─────────────┘       └──────────────┘
-        │                     │                     │                      │
-   markets-channel      weather-channel      signals-channel        analytics-channel
-   (inter-org)          (inter-org)          (inter-org)            (inter-org)
-        │                     │                     │                      │
-   markets-internal     weather-internal     signals-internal
-   (intra-org)          (intra-org)          (intra-org)
+```mermaid
+flowchart TD
+    enterprise["enterprise-client<br/>pulse-agent"]
+    markets["markets-co<br/>equity-feed<br/>fx-feed<br/>commodities-feed"]
+    weather["weather-co<br/>weather-feed"]
+    signals["signals-co<br/>search-trends<br/>news-pulse"]
+    analytics["analytics-co<br/>correlator<br/>narrator"]
+
+    marketsChannel["markets-channel<br/>(inter-org)"]
+    weatherChannel["weather-channel<br/>(inter-org)"]
+    signalsChannel["signals-channel<br/>(inter-org)"]
+    analyticsChannel["analytics-channel<br/>(inter-org)"]
+
+    marketsInternal["markets-internal<br/>(intra-org)"]
+    weatherInternal["weather-internal<br/>(intra-org)"]
+    signalsInternal["signals-internal<br/>(intra-org)"]
+
+    enterprise --- marketsChannel
+    enterprise --- weatherChannel
+    enterprise --- signalsChannel
+    enterprise --- analyticsChannel
+
+    markets --- marketsChannel
+    weather --- weatherChannel
+    signals --- signalsChannel
+    analytics --- analyticsChannel
+
+    markets --- marketsInternal
+    weather --- weatherInternal
+    signals --- signalsInternal
 ```
 
 Provider-to-provider workgroups deliberately do not exist. `markets-co` and `signals-co` do not share a workgroup. Cross-channel data composition happens only at `pulse-agent`, which is the sole agent with visibility across all four channels.
@@ -72,9 +82,9 @@ Each Layer 2 slice advances the example. This matrix is the authoritative statem
 | **Catalog + advertisements** | Each provider/tool agent runs as a daemon, publishes its advertisement on startup (idempotent on `409 name_in_use`). Demo: `agora catalog search` from `enterprise-client` returns the eight visible advertisements across the four channels; `--workgroup markets-channel` narrows to the three markets feeds. | **shipped** |
 | **Sessions** | Each provider/tool agent registers a `session.RegisterHandler(...)` loop that logs and accepts proposals. `pulse-agent` iterates the catalog and calls `session.Propose(...)` + `Session.Close(...)` for each discovered advertisement. Session lifecycle reaches `active` (backing tunnel provisioned on the controller); runtime-level tunnel attach and byte-level ping exchange are deferred to the envelopes slice. Demo: every agent logs a session_id / tunnel_id pairing and clean close. | **shipped** |
 | **Contracts** | Each provider/tool agent ensures a shared `macro-pulse-provider-default` contract (MVP terms: `max_duration_seconds=60`, `access_mode=approval_required`) and attaches it to its advertisement. `pulse-agent` reads the snapshot off each session and logs its parameters. The session-duration reaper enforces the `max_duration_seconds` cap via scheduled `close_reason=contract_violation`. Envelope-count and `allowed_message_types` enforcement lands in the envelopes slice. | **shipped** |
-| **Envelopes** | Provider agents run `EchoSessionHandler` that reads an inbound envelope and flips `.request` → `.response`. `pulse-agent` sends a per-advertisement ping (`<capability>.request` with a small JSON payload) and logs the reply envelope. The wire format is the finalized frame (1-byte version + 4+4 length-prefixed JSON header + opaque payload); envelope counts flow back to the controller via the `POST /v1/sessions/{id}/envelope-count` heartbeat. `pulse-agent`'s full narrative brief (aggregating real feed data across providers) is post-MVP demo polish. | **shipped** |
+| **Envelopes** | Provider agents decode typed JSON request envelopes and return typed JSON responses over session-governed transport. `pulse-agent` discovers every provider/tool advertisement, exchanges request/response envelopes, asks `correlator` for cross-domain Pearson r calculations, asks `narrator` for deterministic prose, and prints the full morning brief. The wire format is the finalized frame (1-byte version + 4+4 length-prefixed JSON header + opaque payload); envelope counts flow back to the controller via the `POST /v1/sessions/{id}/envelope-count` heartbeat. | **shipped** |
 
-Pre-slice (i.e. now), each agent ships a `main.go` skeleton that uses the [`sdk/agent`](../sdk/overview.md) SDK to load the local environment root, open a controller API client, and log "alive" on startup; it idles until SIGTERM. This exercises the Layer-1 side of agent boot and validates that the SDK construction path works end-to-end.
+Current demo behavior is implemented by the binaries under [`examples/macro-pulse/cmd/`](../../examples/macro-pulse/cmd/). The provider and tool agents use the [`sdk/agent`](../sdk/overview.md) SDK to load their local environment roots, publish advertisements, accept sessions, and exchange envelopes. The orchestrator uses the same controller and session surfaces as an external agent would.
 
 ## Constraints and non-goals
 

@@ -117,9 +117,9 @@ Deterministic given inputs. No LLM calls. The `narrator` agent is template-drive
 
 ## Implementation status
 
-Macro Pulse is rolled out incrementally, one increment per Layer 2 slice landing. See [docs/examples/macro-pulse.md](../../docs/examples/macro-pulse.md) "Slice Rollout" for the full dependency matrix. At the time of this document:
+Macro Pulse was rolled out incrementally, one increment per Layer 2 slice landing. See [docs/examples/macro-pulse.md](../../docs/examples/macro-pulse.md) "Slice Rollout" for the full dependency matrix. The full end-to-end demo is now shipped:
 
-- **Documentation and scaffolding**: in progress
+- **Documentation and scaffolding**: shipped
 - **`bootstrap/` program**: shipped (workgroup slice)
 - **Provider/tool agents publish-on-startup** (catalog/advertisements slice): shipped
 - **Provider/tool agents accept sessions** (sessions slice): shipped — each agent registers a logging session handler
@@ -167,25 +167,28 @@ AGORA_ENV_ROOT=/tmp/mp-roots/pulse-agent/.agora       macro-pulse-pulse-agent
 
 ## Directory layout
 
-```
-examples/macro-pulse/
-├── README.md                           this file
-├── SMOKE.md                            end-to-end smoke procedure
-├── cmd/                                top-level commands; each Go subdir is a binary
-│   ├── macro-pulse-bootstrap/          provisions orgs / accounts / workgroups / memberships
-│   ├── macro-pulse-equity-feed/        provider: markets.equity
-│   ├── macro-pulse-fx-feed/            provider: markets.fx
-│   ├── macro-pulse-commodities-feed/   provider: markets.commodities
-│   ├── macro-pulse-weather-feed/       provider: weather.current/forecast
-│   ├── macro-pulse-search-trends/      provider: signals.search
-│   ├── macro-pulse-news-pulse/         provider: signals.news
-│   ├── macro-pulse-correlator/         tool: analytics.correlate
-│   ├── macro-pulse-narrator/           tool: analytics.narrate
-│   └── macro-pulse-pulse-agent/        orchestrator: catalog → propose → ping → close
-├── internal/
-│   ├── agentutil/                      shared agent scaffolding (advertise + sessions + handlers)
-│   └── payloads/                       per-capability JSON request/response Go types
-└── snapshots/                          canned external-API data + go:embed loader (package snapshots)
+```mermaid
+flowchart TD
+    root["examples/macro-pulse/"]
+    root --> readme["README.md<br/>operator entry point"]
+    root --> smoke["SMOKE.md<br/>end-to-end smoke procedure"]
+    root --> cmd["cmd/<br/>top-level commands; each Go subdir is a binary"]
+    root --> internal["internal/"]
+    root --> snapshots["snapshots/<br/>canned external-API data + go:embed loader"]
+
+    cmd --> bootstrap["macro-pulse-bootstrap/<br/>provisions orgs, accounts, workgroups, memberships"]
+    cmd --> equity["macro-pulse-equity-feed/<br/>provider: markets.equity"]
+    cmd --> fx["macro-pulse-fx-feed/<br/>provider: markets.fx"]
+    cmd --> commodities["macro-pulse-commodities-feed/<br/>provider: markets.commodities"]
+    cmd --> weather["macro-pulse-weather-feed/<br/>provider: weather.current/forecast"]
+    cmd --> search["macro-pulse-search-trends/<br/>provider: signals.search"]
+    cmd --> news["macro-pulse-news-pulse/<br/>provider: signals.news"]
+    cmd --> correlator["macro-pulse-correlator/<br/>tool: analytics.correlate"]
+    cmd --> narrator["macro-pulse-narrator/<br/>tool: analytics.narrate"]
+    cmd --> pulse["macro-pulse-pulse-agent/<br/>orchestrator: catalog -> propose -> ping -> close"]
+
+    internal --> agentutil["agentutil/<br/>shared agent scaffolding"]
+    internal --> payloads["payloads/<br/>per-capability JSON request/response Go types"]
 ```
 
 Each binary is one `main.go` in its `cmd/macro-pulse-<name>/` directory. Shared agent scaffolding lives in [`sdk/agent`](../../sdk/agent) at the repo root — the Agora SDK — and is imported by every Macro Pulse agent.

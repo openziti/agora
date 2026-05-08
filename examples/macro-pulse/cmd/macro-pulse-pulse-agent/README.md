@@ -45,7 +45,7 @@ CLI flags (finalized during implementation):
 
 ## Output
 
-Human-readable text to stdout. Format documented in [../../README.md](../../README.md) "Expected output." No machine-readable `--json` variant in MVP.
+Human-readable text to stdout. Format documented in [../../README.md](../../README.md) "Expected output." Pass `--json` to emit the same brief data as JSON.
 
 ## Contract expectations
 
@@ -57,10 +57,4 @@ One mode. The agent is ignorant of whether any given data provider is running in
 
 ## Implementation status
 
-- Slice-gated: all five Layer 2 slices
-- Pre-slice: `main.go` logs "pulse-agent alive," loads the local environment, opens a controller API client, and exits.
-- After workgroup slice: (no direct change — `pulse-agent` isn't doing workgroup ops, the bootstrap program is)
-- After catalog/advertisement slice: executes step 1's catalog search, logs resolved advertisement IDs, exits
-- After session slice: executes each step's session open/close, no envelope exchange yet
-- After contract slice: sessions carry contracts; demonstrate a contract-violation attempt
-- After envelope slice: full request/response envelope exchange, full brief output
+- Shipped. Discovers the visible catalog, opens governed sessions to every provider/tool, exchanges typed request/response envelopes, computes cross-domain correlations through `correlator`, asks `narrator` for deterministic prose, and prints the full brief.

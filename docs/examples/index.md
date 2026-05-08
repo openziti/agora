@@ -10,7 +10,7 @@ This directory catalogs the reference/demo agent implementations that live under
 
 | Example | Status | Summary |
 | --- | --- | --- |
-| [Macro Pulse](macro-pulse.md) | in progress | Cross-domain morning market briefing. Five orgs, eight agents. Composes market + weather + internet-activity signals. |
+| [Macro Pulse](macro-pulse.md) | shipped | Cross-domain morning market briefing. Five orgs, eight provider/tool agents plus one orchestrator. Composes market + weather + internet-activity signals over governed sessions. |
 
 Macro Pulse is the primary reference example. Additional examples may be added as the need arises (for instance, a smaller "getting started" scenario, or an intentionally external-consumer demo on a separate `go.mod` that uses only public Agora surfaces). These do not yet exist.
 
@@ -23,6 +23,6 @@ Macro Pulse is the primary reference example. Additional examples may be added a
 
 ## How examples roll out alongside slices
 
-Examples grow incrementally with Layer 2 implementation. Each Layer 2 slice (workgroups → catalog + advertisements → sessions → contracts → envelopes) lands with a corresponding advancement to the current example(s). See each example's dedicated doc for its slice-by-slice dependency matrix.
+Examples grow incrementally with Layer 2 implementation. Each Layer 2 slice (workgroups -> catalog + advertisements -> sessions -> contracts -> envelopes) lands with a corresponding advancement to the current example(s). See each example's dedicated doc for its slice-by-slice dependency matrix.
 
-Running examples end-to-end requires the slices they depend on to be implemented. Until then, each example's per-agent `README.md` documents what the agent _will_ do; `main.go` skeletons exist and compile, but do not yet exercise the gated behavior.
+Macro Pulse has completed that rollout and now runs end-to-end against a live Agora controller and OpenZiti fabric. Future examples can follow the same pattern: start with a focused narrative, then advance only as the platform primitives they need are implemented.

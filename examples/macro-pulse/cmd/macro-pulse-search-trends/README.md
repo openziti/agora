@@ -62,5 +62,4 @@ Response (`signals.search.response`):
 
 ## Implementation status
 
-- Slice-gated: advertisement, session, envelope slices
-- Pre-slice: `main.go` skeleton only.
+- Shipped. Publishes its advertisement on startup, accepts governed sessions, and serves typed request/response envelopes from snapshot data or Wikipedia Pageviews live data.

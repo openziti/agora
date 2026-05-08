@@ -48,12 +48,11 @@ After bootstrap, all non-admin agents (e.g. `fx-feed`, `news-pulse`) can be adde
 
 ## What it produces
 
-On success, emits one line per created resource, then prints the account tokens for each of the nine agent accounts. The tokens need to be distributed to the machines (or environment roots) where each agent will run; `bootstrap` itself does not enroll environments — that is done separately via `agora enable` per agent (or per environment root when running multiple agents on one host).
+On success, emits one line per created resource, then prints the account tokens for each of the nine agent accounts. The tokens need to be distributed to the machines (or environment roots) where each agent will run.
 
-A future enhancement can have `bootstrap` also perform `agora enable` for each agent against locally-rooted `~/.agora-<agent>` directories so the whole demo can run on a single machine. That is a post-MVP convenience, not required for the demo to work.
+The standalone `macro-pulse-bootstrap` binary does not enroll environments by itself. For the dashboard demo, `bin/demo-up.sh` runs the newer `demo-bootstrap` helper, which provisions the same topology and enrolls per-agent environment roots under `$AGORA_DEMO_ROOT/envs` so the whole demo can run on one machine.
 
 ## Implementation status
 
-- Slice-gated: **workgroup slice**
-- Pre-slice: not implemented. The `main.go` for `bootstrap` exists but only logs "bootstrap requires workgroup slice" and exits.
-- After workgroup slice: full implementation; runnable against a clean controller to produce the full demo topology in under a second.
+- Shipped with the workgroup slice.
+- Runnable against a clean controller to produce the full Macro Pulse topology.

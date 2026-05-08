@@ -6,19 +6,20 @@ The SDK is also consumed by Agora's own `agora network start` daemon. The daemon
 
 ## Package layout
 
-```
-sdk/agent/
-├── doc.go               package-level godoc
-├── agent.go             Runtime type and daemon-mode constructor (NewDaemon)
-├── app.go               App / Agent (SDK handle) / options / Run(fn)
-├── embedded.go          NewEmbedded / Start / Close
-├── state.go             in-memory state helpers
-├── heartbeat/*.go       environment heartbeat (heartbeat loop, state machine)
-├── tunnel_runtime.go    serve/connect lifecycle
-├── tunnel_state.go      tunnel runtime state transitions
-├── controller_client.go controller HTTP interactions
-├── runtime_host.go      HTTP/TCP/UDP tunnel runtime host abstraction
-└── pb/                  generated gRPC/protobuf types (daemon surface)
+```mermaid
+flowchart TD
+    root["sdk/agent/"]
+    root --> doc["doc.go<br/>package-level godoc"]
+    root --> agentGo["agent.go<br/>Runtime type and daemon-mode constructor"]
+    root --> app["app.go<br/>App / Agent SDK handle / options / Run(fn)"]
+    root --> embedded["embedded.go<br/>NewEmbedded / Start / Close"]
+    root --> state["state.go<br/>in-memory state helpers"]
+    root --> heartbeat["heartbeat/*.go<br/>environment heartbeat loop and state machine"]
+    root --> tunnelRuntime["tunnel_runtime.go<br/>serve/connect lifecycle"]
+    root --> tunnelState["tunnel_state.go<br/>tunnel runtime state transitions"]
+    root --> controllerClient["controller_client.go<br/>controller HTTP interactions"]
+    root --> runtimeHost["runtime_host.go<br/>HTTP/TCP/UDP tunnel runtime host abstraction"]
+    root --> pb["networkpb/<br/>generated gRPC/protobuf types"]
 ```
 
 Adjacent, daemon-specific code lives separately at `internal/network/daemon/` (CLI-side client helpers such as `Dial`, `Ping`, `Stop`).

@@ -58,5 +58,4 @@ Same shape as other `markets-co` feeds.
 
 ## Implementation status
 
-- Slice-gated: advertisement, session, envelope slices
-- Pre-slice: `main.go` skeleton only.
+- Shipped. Publishes its advertisement on startup, accepts governed sessions, and serves typed request/response envelopes from snapshot data or Yahoo Finance live data.

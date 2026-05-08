@@ -51,47 +51,17 @@ States:
 
 Transitions:
 
-```
-                    (consumer proposes)
-                           │
-                           ▼
-                     ┌───────────┐
-                     │ proposed  │
-                     └─────┬─────┘
-           ┌───────────────┼───────────────┐
-           │               │               │
- (provider rejects) (provider accepts) (consumer closes,
-           │               │             admin close,
-           │               │             workgroup/env
-           │               │             invalidation)
-           │               ▼               │
-           │         ┌───────────┐         │
-           │         │ accepting │         │
-           │         └─────┬─────┘         │
-           │               │               │
-           │      (tunnel provisioned)     │
-           │               │               │
-           │               ▼               │
-           │         ┌───────────┐         │
-           │         │  active   │         │
-           │         └─────┬─────┘         │
-           │               │               │
-           │      (either side closes,     │
-           │       contract violation,     │
-           │       tunnel failed,          │
-           │       admin close)            │
-           │               │               │
-           │               ▼               │
-           │         ┌───────────┐         │
-           │         │  closing  │         │
-           │         └─────┬─────┘         │
-           │               │               │
-           │      (tunnel deprovisioned)   │
-           │               │               │
-           ▼               ▼               ▼
-                     ┌───────────┐
-                     │  closed   │
-                     └───────────┘
+```mermaid
+stateDiagram-v2
+    [*] --> proposed: consumer proposes
+    proposed --> accepting: provider accepts
+    proposed --> closed: provider rejects
+    proposed --> closed: consumer/admin/workgroup/env invalidation
+    accepting --> active: tunnel provisioned
+    accepting --> closed: tunnel failed/admin close
+    active --> closing: participant close/contract violation/admin close
+    active --> closed: tunnel failed
+    closing --> closed: tunnel deprovisioned
 ```
 
 Close reasons and the transitions that produce them:
