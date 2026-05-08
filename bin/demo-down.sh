@@ -19,6 +19,13 @@ warn() {
   printf '[demo-down] warning: %s\n' "$*" >&2
 }
 
+extract_yaml_scalar() {
+  local key="$1"
+  local file="$2"
+  [[ -f "${file}" ]] || return 0
+  sed -nE "s/^[[:space:]]*${key}:[[:space:]]*\"?([^\"#]+)\"?.*$/\1/p" "${file}" | head -n 1 | sed -E 's/[[:space:]]+$//'
+}
+
 usage() {
   cat <<'USAGE'
 usage: bin/demo-down.sh [--purge]
@@ -65,17 +72,11 @@ wait_for_exit() {
   return 0
 }
 
-stop_pid_file() {
-  local pidfile="$1"
+stop_pid() {
+  local pid="$1"
   local label="$2"
   local timeout="$3"
-  if [[ ! -f "${pidfile}" ]]; then
-    return 0
-  fi
-  local pid
-  pid="$(cat "${pidfile}" 2>/dev/null || true)"
   if ! is_running "${pid}"; then
-    rm -f "${pidfile}"
     return 0
   fi
   log "stopping ${label} pid=${pid}"
@@ -85,6 +86,18 @@ stop_pid_file() {
     kill -KILL "${pid}" 2>/dev/null || true
     wait_for_exit "${pid}" 2 || true
   fi
+}
+
+stop_pid_file() {
+  local pidfile="$1"
+  local label="$2"
+  local timeout="$3"
+  if [[ ! -f "${pidfile}" ]]; then
+    return 0
+  fi
+  local pid
+  pid="$(cat "${pidfile}" 2>/dev/null || true)"
+  stop_pid "${pid}" "${label}" "${timeout}"
   rm -f "${pidfile}"
 }
 
@@ -105,14 +118,47 @@ stop_controller() {
   local pidfile="${RUN_DIR}/controller.pid"
   if [[ -f "${pidfile}" ]]; then
     stop_pid_file "${pidfile}" "agora controller" 10
-    return 0
   fi
-  warn "controller PID file missing; attempting best-effort pkill for demo controller config ${CONFIG_PATH}"
-  if command -v pkill >/dev/null 2>&1; then
-    pkill -TERM -f "agora controller ${CONFIG_PATH}" 2>/dev/null || true
-    sleep 2
-    pkill -KILL -f "agora controller ${CONFIG_PATH}" 2>/dev/null || true
+  stop_controller_by_config
+}
+
+stop_controller_by_config() {
+  command -v pgrep >/dev/null 2>&1 || return 0
+  local pid
+  while IFS= read -r pid; do
+    [[ -n "${pid}" ]] || continue
+    stop_pid "${pid}" "agora controller" 10
+  done < <(pgrep -f "agora controller ${CONFIG_PATH}" 2>/dev/null || true)
+}
+
+stop_controller_by_port_if_matching_config() {
+  command -v ss >/dev/null 2>&1 || return 0
+  local bind port pid cmd
+  bind="$(extract_yaml_scalar bind_address "${CONFIG_PATH}")"
+  [[ -n "${bind}" ]] || bind=":8080"
+  port="$(printf '%s' "${bind}" | sed -nE 's/^.*:([0-9]+)$/\1/p')"
+  [[ -n "${port}" ]] || return 0
+  while IFS= read -r pid; do
+    [[ -n "${pid}" ]] || continue
+    cmd="$(ps -p "${pid}" -o args= 2>/dev/null || true)"
+    if [[ "${cmd}" == *"agora controller ${CONFIG_PATH}"* ]]; then
+      stop_pid "${pid}" "agora controller" 10
+    fi
+  done < <(ss -ltnp "sport = :${port}" 2>/dev/null | sed -nE 's/.*pid=([0-9]+).*/\1/p' | sort -u)
+}
+
+stop_orphaned_controller() {
+  stop_controller_by_config
+  stop_controller_by_port_if_matching_config
+}
+
+stop_demo_processes() {
+  if [[ -d "${DEMO_ROOT}" ]]; then
+    stop_workers
+    stop_pid_file "${RUN_DIR}/pulse-agent.pid" "macro-pulse-pulse-agent" 5
+    stop_gateways
   fi
+  stop_controller
 }
 
 clean_run_dir() {
@@ -124,22 +170,26 @@ clean_run_dir() {
 
 main() {
   cd "${REPO_ROOT}"
-  if [[ ! -d "${DEMO_ROOT}" ]]; then
-    log "demo root does not exist: ${DEMO_ROOT}"
-    return 0
+  stop_demo_processes
+  if [[ -d "${DEMO_ROOT}" ]]; then
+    clean_run_dir
+  else
+    stop_orphaned_controller
   fi
 
-  stop_workers
-  stop_pid_file "${RUN_DIR}/pulse-agent.pid" "macro-pulse-pulse-agent" 5
-  stop_gateways
-  stop_controller
-  clean_run_dir
-
   if [[ "${PURGE}" == "1" ]]; then
-    log "purging ${DEMO_ROOT}"
-    rm -rf "${DEMO_ROOT}"
+    if [[ -d "${DEMO_ROOT}" ]]; then
+      log "purging ${DEMO_ROOT}"
+      rm -rf "${DEMO_ROOT}"
+    else
+      log "demo root already absent: ${DEMO_ROOT}"
+    fi
   else
-    log "stopped managed demo processes; preserved ${DEMO_ROOT}/envs and ${DEMO_ROOT}/logs"
+    if [[ -d "${DEMO_ROOT}" ]]; then
+      log "stopped managed demo processes; preserved ${DEMO_ROOT}/envs and ${DEMO_ROOT}/logs"
+    else
+      log "stopped managed demo processes; demo root does not exist: ${DEMO_ROOT}"
+    fi
   fi
 }
 

@@ -197,10 +197,7 @@ start_controller() {
   local logfile="${LOG_DIR}/controller.log"
   ensure_pid_slot_free "${pidfile}"
   log "starting controller at ${CONTROLLER_URL}"
-  (
-    cd "${REPO_ROOT}"
-    AGORA_ADMIN_TOKEN="${ADMIN_TOKEN}" agora controller "${CONFIG_PATH}"
-  ) >>"${logfile}" 2>&1 &
+  AGORA_ADMIN_TOKEN="${ADMIN_TOKEN}" agora controller "${CONFIG_PATH}" >>"${logfile}" 2>&1 &
   echo "$!" > "${pidfile}"
   STARTED_ANY=1
   wait_ready "${CONTROLLER_URL}/ready" 10 "controller" "${logfile}"
@@ -256,10 +253,7 @@ start_background() {
   ensure_pid_slot_free "${pidfile}"
   mkdir -p "$(dirname "${pidfile}")" "$(dirname "${logfile}")"
   log "starting ${name}"
-  (
-    cd "${REPO_ROOT}"
-    AGORA_ENV_ROOT="${envroot}" AGORA_API_ENDPOINT="${CONTROLLER_URL}" "$@"
-  ) >>"${logfile}" 2>&1 &
+  AGORA_ENV_ROOT="${envroot}" AGORA_API_ENDPOINT="${CONTROLLER_URL}" "$@" >>"${logfile}" 2>&1 &
   local pid=$!
   echo "${pid}" > "${pidfile}"
   STARTED_ANY=1
@@ -328,15 +322,12 @@ start_gateway() {
   local logfile="${LOG_DIR}/${name}-gateway.log"
   ensure_pid_slot_free "${pidfile}"
   log "starting ${name}-gateway"
-  (
-    cd "${REPO_ROOT}"
-    env \
-      "AGORA_ENV_ROOT=${envroot}" \
-      "AGORA_API_ENDPOINT=${CONTROLLER_URL}" \
-      "AGORA_GATEWAY_CONFIG=${config}" \
-      "AGORA_${name^^}_GATEWAY_CONFIG=${config}" \
-      "${bin}" --network=agora
-  ) >>"${logfile}" 2>&1 &
+  env \
+    "AGORA_ENV_ROOT=${envroot}" \
+    "AGORA_API_ENDPOINT=${CONTROLLER_URL}" \
+    "AGORA_GATEWAY_CONFIG=${config}" \
+    "AGORA_${name^^}_GATEWAY_CONFIG=${config}" \
+    "${bin}" --network=agora >>"${logfile}" 2>&1 &
   echo "$!" > "${pidfile}"
   STARTED_ANY=1
   sleep 1
