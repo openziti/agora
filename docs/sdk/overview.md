@@ -20,6 +20,7 @@ flowchart TD
     root --> controllerClient["controller_client.go<br/>controller HTTP interactions"]
     root --> runtimeHost["runtime_host.go<br/>HTTP/TCP/UDP tunnel runtime host abstraction"]
     root --> pb["networkpb/<br/>generated gRPC/protobuf types"]
+    root --> tunnel["tunnel/<br/>public Layer 1 serve/connect helpers"]
 ```
 
 Adjacent, daemon-specific code lives separately at `internal/network/daemon/` (CLI-side client helpers such as `Dial`, `Ping`, `Stop`).
@@ -33,8 +34,12 @@ The SDK exposes three ways to construct a runtime, matched to three deployment s
 | `agent.NewDaemon()` | The standalone `agora network start` daemon. Loads `~/.agora/network.json`, binds UDS, serves gRPC. |
 | `agent.NewEmbedded(opts)` | Low-level embedded use. Caller provides explicit environment, identity path, and optional timing. No disk I/O; no UDS. |
 | `agent.New(name, opts...)` plus `app.Run(fn)` | The SDK app pattern. Flag parsing, env loading, optional embedded runtime construction (via `WithRuntime()`), signal-handled lifecycle, clean shutdown. The recommended path for Layer 2 agents. |
+| `agent.NewStandalone(opts)` | External-service pattern. Explicit env loading and optional unstarted embedded runtime, with no flag parsing, signal handling, or global logger initialization. The caller drives `StartRuntime`, `StopRuntime`, and `Close`. |
 
 Most agent authors want path 3. The Macro Pulse example agents all use it.
+
+Services that already own their CLI, signal handling, and logging
+should use `NewStandalone` instead of `app.Run`.
 
 ## Catalog advertisements
 
@@ -59,6 +64,27 @@ ad, err := catalog.EnsurePublished(ctx, a, catalog.PublishSpec{
 `EnsurePublished` is idempotent for agent startup: if the calling
 account already owns an active advertisement with the same name, the
 helper returns that record unchanged.
+
+## Layer 1 tunnels
+
+Agents that need to serve or connect private Layer 1 tunnels should use
+`sdk/agent/tunnel`. The package exposes SDK-native types and sentinel
+errors over the embedded runtime's protobuf control surface.
+
+```go
+serve, err := tunnel.EnsureServed(ctx, a, tunnel.ServeSpec{
+    Name:          "llm-gateway",
+    Mode:          tunnel.ModeHTTP,
+    BackendTarget: "http://127.0.0.1:8080",
+    GrantEmails:   []string{"consumer@example.com"},
+})
+```
+
+`EnsureServed` and `EnsureConnected` require a started embedded runtime.
+For `app.Run` users this means constructing the app with
+`agent.WithRuntime()`. For standalone users this means constructing with
+`StandaloneOptions{WithRuntime: true}` and calling `StartRuntime` before
+tunnel operations.
 
 ## Typical agent shape
 
@@ -114,13 +140,14 @@ The `*Agent` passed to the business-logic function exposes:
 - `Environment() *env_core.Environment` — enrolled environment record (account token, environment ID)
 - `AccountID() string` — the enrolled environment ID (identifies this agent instance within its org)
 - `Controller() *api.Client` — a controller API client authenticated with the account token
-- `Runtime() *Runtime` — the embedded Layer 1 runtime, or nil if `WithRuntime()` was not set
+- `Runtime() *Runtime` — the started embedded Layer 1 runtime, or nil if no runtime was configured or it has not been started
 - `Log() *dl.Builder` — a df/dl structured-log builder with `agent` and `environment_id` fields pre-populated
 - `Live() bool` — the `--live` flag value
 
 External modules should prefer public SDK subpackages such as
-`sdk/agent/catalog` over calling `Controller()` directly when a
-sub-package exists for the desired operation.
+`sdk/agent/catalog` and `sdk/agent/tunnel` over calling
+`Controller()` or `Runtime()` directly when a sub-package exists for
+the desired operation.
 
 ## Isolation from the standalone daemon
 
@@ -135,8 +162,8 @@ This means an operator can run `agora network start` for CLI-driven tunnel opera
 
 ## When the SDK does not yet suffice
 
-- **Public-module consumption.** The SDK lives inside the main `github.com/openziti/agora` Go module. Agents in this repo (including the Macro Pulse examples) can import `github.com/openziti/agora/sdk/agent` directly. External projects that want to depend on the SDK without vendoring the full Agora source tree will need a future split of the SDK into its own module; not in scope for MVP.
-- **Session / contract / envelope APIs.** Public wrappers for these surfaces are not part of the SDK yet. They land as each Layer 2 slice needs external consumers. Advertisement publication is available through `sdk/agent/catalog`.
+- **SDK module split.** The SDK still lives inside the main `github.com/openziti/agora` Go module. External projects can depend on this module and use public helper packages without naming `internal/api`; a future SDK-only module split remains a packaging follow-on.
+- **Session / contract / envelope APIs.** Public wrappers for these surfaces are not part of the SDK yet. They land as each Layer 2 slice needs external consumers. Advertisement publication is available through `sdk/agent/catalog`, Layer 1 serve/connect operations through `sdk/agent/tunnel`, and external lifecycle construction through `agent.NewStandalone`.
 - **Discovery by non-capability properties.** Catalog search surfaces are deferred to the catalog/advertisement slice.
 
 ## Related documentation

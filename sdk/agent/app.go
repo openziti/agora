@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -32,14 +33,24 @@ type App struct {
 // client, an optional embedded Runtime (when WithRuntime was set),
 // and a pre-scoped df/dl log builder.
 type Agent struct {
-	appName   string
-	root      env_core.Root
-	env       *env_core.Environment
-	accountID string
-	api       *api.Client
-	runtime   *Runtime
-	live      bool
+	appName      string
+	root         env_core.Root
+	env          *env_core.Environment
+	accountID    string
+	api          *api.Client
+	runtime      *Runtime
+	runtimeMu    sync.Mutex
+	runtimeState agentRuntimeState
+	live         bool
 }
+
+type agentRuntimeState uint8
+
+const (
+	agentRuntimeNotStarted agentRuntimeState = iota
+	agentRuntimeStarted
+	agentRuntimeStopped
+)
 
 // Option configures an App.
 type Option func(*App)
@@ -174,6 +185,7 @@ func (app *App) Run(fn func(context.Context, *Agent) error) error {
 			return fmt.Errorf("start embedded runtime: %w", startErr)
 		}
 		a.runtime = rt
+		a.runtimeState = agentRuntimeStarted
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -186,9 +198,9 @@ func (app *App) Run(fn func(context.Context, *Agent) error) error {
 
 	runErr := fn(ctx, a)
 
-	if a.runtime != nil {
+	if app.wantRuntime {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		if err := a.runtime.Close(shutdownCtx); err != nil {
+		if err := a.Close(shutdownCtx); err != nil {
 			dl.Warnf("runtime close error: %v", err)
 		}
 		cancel()
@@ -215,9 +227,19 @@ func (a *Agent) AccountID() string { return a.accountID }
 // the enrolled account token.
 func (a *Agent) Controller() *api.Client { return a.api }
 
-// Runtime returns the embedded Layer 1 runtime, or nil if the agent
-// was constructed without WithRuntime.
-func (a *Agent) Runtime() *Runtime { return a.runtime }
+// Runtime returns the started embedded Layer 1 runtime, or nil if the
+// agent has no runtime or its runtime has not been started.
+func (a *Agent) Runtime() *Runtime {
+	if a == nil {
+		return nil
+	}
+	a.runtimeMu.Lock()
+	defer a.runtimeMu.Unlock()
+	if a.runtimeState != agentRuntimeStarted {
+		return nil
+	}
+	return a.runtime
+}
 
 // Log returns a df/dl structured-log builder with the agent name and
 // environment ID pre-populated.

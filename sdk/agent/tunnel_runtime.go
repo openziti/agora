@@ -821,7 +821,7 @@ func (a *Runtime) removeServeActor(serveID, tunnelID, name string) (*managedServ
 		key, actor = a.findServeActorLocked(tunnelID, name)
 	}
 	if actor == nil {
-		return nil, fmt.Errorf("managed serve not found")
+		return nil, managedActorNotFoundError{kind: "serve"}
 	}
 	delete(a.serves, key)
 	removeServe(a.network, actor.desired.TunnelID, actor.desired.Name)
@@ -844,7 +844,7 @@ func (a *Runtime) removeConnectActor(attachmentID, tunnelID, name, listenAddress
 		key, actor = a.findConnectActorLocked(tunnelID, name, listenAddress)
 	}
 	if actor == nil {
-		return nil, fmt.Errorf("managed connect not found")
+		return nil, managedActorNotFoundError{kind: "connect"}
 	}
 	delete(a.connects, key)
 	removeConnect(a.network, actor.desired.TunnelID, actor.desired.Name, actor.desired.ListenAddress)
@@ -853,6 +853,18 @@ func (a *Runtime) removeConnectActor(attachmentID, tunnelID, name, listenAddress
 		return nil, err
 	}
 	return actor, nil
+}
+
+type managedActorNotFoundError struct {
+	kind string
+}
+
+func (e managedActorNotFoundError) Error() string {
+	return "managed " + e.kind + " not found"
+}
+
+func (e managedActorNotFoundError) ManagedActorNotFound() bool {
+	return true
 }
 
 func (a *Runtime) shutdownManagedActors() {

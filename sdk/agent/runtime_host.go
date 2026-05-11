@@ -57,3 +57,7 @@ type unsupportedTunnelModeError struct {
 func (e *unsupportedTunnelModeError) Error() string {
 	return "unsupported tunnel mode '" + e.mode + "'"
 }
+
+func (e *unsupportedTunnelModeError) UnsupportedTunnelMode() string {
+	return e.mode
+}

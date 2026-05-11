@@ -8,7 +8,8 @@
 //   - a controller API client authenticated against that identity
 //   - optionally, an embedded Layer 1 network runtime that hosts
 //     serves and connects in-process without a separate daemon
-//   - a lifecycle tied to SIGINT/SIGTERM with clean runtime teardown
+//   - either the opinionated App lifecycle, or explicit standalone
+//     lifecycle control through NewStandalone
 //
 // # Relationship to the standalone daemon
 //
@@ -18,10 +19,11 @@
 //     daemon with ~/.agora/network.json desired-state persistence and
 //     a gRPC+UDS control surface at ~/.agora/network.sock. CLI
 //     commands like `agora tunnel serve` delegate to this daemon.
-//   - SDK consumers embed the runtime in-process via NewEmbedded.
-//     Embedded runtimes do not touch network.json and do not bind the
-//     UDS socket; they are isolated from any daemon on the same host,
-//     sharing only the enrolled environment identity.
+//   - SDK consumers embed the runtime in-process via App.WithRuntime,
+//     NewStandalone, or lower-level NewEmbedded. Embedded runtimes do
+//     not touch network.json and do not bind the UDS socket; they are
+//     isolated from any daemon on the same host, sharing only the
+//     enrolled environment identity.
 //
 // See docs/layer-1/agent.md "Packaging Direction" for the full
 // isolation model.
@@ -39,6 +41,10 @@
 //     typically receive it via Agent.Runtime() rather than
 //     constructing it directly; advanced callers can call
 //     NewEmbedded for full control.
+//
+// External services that own their own CLI, logging, and signal model
+// should construct Agent values with NewStandalone and call
+// StartRuntime, StopRuntime, and Close explicitly.
 //
 // # Typical usage
 //
