@@ -17,6 +17,47 @@ DEMO_EMAIL="demo@agora.local"
 DEMO_PASSWORD="Agora-Demo-1"
 STARTED_ANY=0
 CLEANING_UP=0
+ATTACH=0
+
+usage() {
+  cat <<'USAGE'
+usage: bin/demo-up.sh [--attach]
+
+Starts the Agora demo. By default (standalone mode) it builds the UI, installs
+the demo + controller binaries, runs DB migrations, starts a controller on the
+port from etc/demo-controller.yaml, and provisions demo orgs/agents.
+
+  --attach    Skip UI build, binary-overwrite of agora, migrations, and the
+              controller start. Bootstrap data and run demo agents against an
+              already-running controller managed outside this script.
+              In attach mode these env vars are required:
+                AGORA_DEMO_CONTROLLER_URL   user's controller URL
+                AGORA_DEMO_ADMIN_TOKEN     admin token for that controller
+              Optional in attach mode:
+                AGORA_DEMO_DSN             DB DSN; only needed to load seed
+                                           history. Skipped if unset.
+
+  -h, --help  Show this message.
+USAGE
+}
+
+while (($#)); do
+  case "$1" in
+    --attach)
+      ATTACH=1
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      printf '[demo-up] error: unknown argument: %s\n' "$1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+  shift
+done
 
 WORKERS=(
   "macro-pulse-equity-feed:equity-feed@markets-co:equity-feed"
@@ -62,7 +103,11 @@ cleanup_started() {
   if [[ "${STARTED_ANY}" == "1" && "${CLEANING_UP}" == "0" ]]; then
     CLEANING_UP=1
     warn "startup failed; stopping processes launched under ${DEMO_ROOT}"
-    AGORA_DEMO_ROOT="${DEMO_ROOT}" AGORA_DEMO_CONTROLLER_CONFIG="${CONFIG_PATH}" "${REPO_ROOT}/bin/demo-down.sh" || true
+    local down_args=()
+    if [[ "${ATTACH}" == "1" ]]; then
+      down_args+=("--attach")
+    fi
+    AGORA_DEMO_ROOT="${DEMO_ROOT}" AGORA_DEMO_CONTROLLER_CONFIG="${CONFIG_PATH}" "${REPO_ROOT}/bin/demo-down.sh" "${down_args[@]}" || true
   fi
 }
 
@@ -132,8 +177,16 @@ ensure_pid_slot_free() {
 }
 
 prepare_paths() {
-  [[ -f "${CONFIG_PATH}" ]] || fail "controller config not found: ${CONFIG_PATH}"
   mkdir -p "${RUN_DIR}" "${WORKER_RUN_DIR}" "${LOG_DIR}"
+
+  if [[ "${ATTACH}" == "1" ]]; then
+    [[ -n "${CONTROLLER_URL}" ]] || fail "--attach requires AGORA_DEMO_CONTROLLER_URL"
+    [[ -n "${ADMIN_TOKEN}" ]] || fail "--attach requires AGORA_DEMO_ADMIN_TOKEN"
+    CONTROLLER_URL="${CONTROLLER_URL%/}"
+    return 0
+  fi
+
+  [[ -f "${CONFIG_PATH}" ]] || fail "controller config not found: ${CONFIG_PATH}"
   local bind port config_admin_token
   config_admin_token="$(extract_yaml_sequence_first admin_tokens "${CONFIG_PATH}")"
   if [[ -z "${ADMIN_TOKEN}" ]]; then
@@ -163,16 +216,33 @@ prepare_paths() {
 
 build_ui() {
   log "building dashboard UI"
-  (cd "${REPO_ROOT}/ui" && npm ci && npm run build)
-  [[ -d "${REPO_ROOT}/ui/dist" ]] || fail "ui/dist was not created"
-  if ! find "${REPO_ROOT}/ui/dist" -mindepth 1 -print -quit | grep -q .; then
+  local ui_dir="${REPO_ROOT}/ui"
+  local node_modules="${ui_dir}/node_modules"
+  local sentinel="${node_modules}/.demo-npm-ci-in-progress"
+  if [[ -d "${node_modules}" ]]; then
+    if [[ -f "${sentinel}" || ! -f "${node_modules}/.package-lock.json" ]]; then
+      warn "ui/node_modules appears to be from an interrupted npm ci; wiping and reinstalling"
+      rm -rf "${node_modules}"
+    fi
+  fi
+  mkdir -p "${node_modules}"
+  touch "${sentinel}"
+  (cd "${ui_dir}" && npm ci && npm run build)
+  rm -f "${sentinel}"
+  [[ -d "${ui_dir}/dist" ]] || fail "ui/dist was not created"
+  if ! find "${ui_dir}/dist" -mindepth 1 -print -quit | grep -q .; then
     fail "ui/dist is empty after npm run build"
   fi
 }
 
 build_go_binaries() {
-  log "installing Go demo binaries"
-  (cd "${REPO_ROOT}" && go install ./cmd/... ./examples/macro-pulse/cmd/...)
+  if [[ "${ATTACH}" == "1" ]]; then
+    log "installing demo-only Go binaries (skipping ./cmd/... in --attach mode)"
+    (cd "${REPO_ROOT}" && go install ./cmd/demo-bootstrap ./examples/macro-pulse/cmd/...)
+  else
+    log "installing Go demo binaries"
+    (cd "${REPO_ROOT}" && go install ./cmd/... ./examples/macro-pulse/cmd/...)
+  fi
   local missing=()
   local bin
   for bin in "${REQUIRED_BINS[@]}"; do
@@ -183,6 +253,9 @@ build_go_binaries() {
   if (( ${#missing[@]} > 0 )); then
     printf '[demo-up] missing installed binaries on PATH:\n' >&2
     printf '  %s\n' "${missing[@]}" >&2
+    if [[ "${ATTACH}" == "1" ]]; then
+      fail 'go install completed; ensure agora is on PATH (you manage the controller in --attach mode) and check GOBIN/GOPATH/bin'
+    fi
     fail 'go install completed, but one or more binaries are not on PATH; check GOBIN/GOPATH/bin'
   fi
 }
@@ -222,12 +295,64 @@ is_first_run() {
   ! find "${DEMO_ROOT}/envs" -mindepth 1 -maxdepth 1 -type d -print -quit 2>/dev/null | grep -q .
 }
 
+# validate_existing_envs guards against the silent-stale-token failure mode:
+# if ${DEMO_ROOT}/envs has env roots from a previous run but the controller's
+# DB has since been reset (or we've been pointed at a different controller),
+# the cached account tokens won't authenticate. demo-bootstrap then "reuses"
+# the env roots, workers start with stale tokens, and the failures look
+# unrelated. Catch it here with a single whoami probe.
+validate_existing_envs() {
+  [[ -d "${DEMO_ROOT}/envs" ]] || return 0
+  local purge_hint="bin/demo-down.sh --purge"
+  if [[ "${ATTACH}" == "1" ]]; then
+    purge_hint="bin/demo-down.sh --attach --purge"
+  fi
+  local entry env_file token env_endpoint http_code label
+  local checked=0
+  for entry in "${DEMO_ROOT}/envs/"*/; do
+    env_file="${entry}environment.json"
+    [[ -f "${env_file}" ]] || continue
+    token="$(sed -nE 's/.*"account_token"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p' "${env_file}" | head -n 1)"
+    env_endpoint="$(sed -nE 's|.*"api_endpoint"[[:space:]]*:[[:space:]]*"([^"]+)".*|\1|p' "${env_file}" | head -n 1)"
+    label="$(basename "${entry%/}")"
+    [[ -n "${token}" ]] || continue
+    if [[ -n "${env_endpoint}" && "${env_endpoint%/}" != "${CONTROLLER_URL%/}" ]]; then
+      fail "existing env root '${label}' was enrolled against ${env_endpoint} but this run targets ${CONTROLLER_URL}; run '${purge_hint}' to wipe stale env roots and try again"
+    fi
+    http_code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 \
+      -H "X-Token: ${token}" "${CONTROLLER_URL%/}/v1/account/whoami" 2>/dev/null || true)"
+    case "${http_code}" in
+      200)
+        ;;
+      401|404)
+        fail "cached env token for '${label}' no longer authenticates against ${CONTROLLER_URL} (HTTP ${http_code}); the controller's DB has likely been reset since the last demo run. Run '${purge_hint}' to wipe stale env roots and try again."
+        ;;
+      "")
+        fail "could not reach ${CONTROLLER_URL}/v1/account/whoami to validate existing env roots; ensure the controller is reachable before retrying"
+        ;;
+      *)
+        warn "unexpected HTTP ${http_code} from whoami while validating env root '${label}'; continuing"
+        ;;
+    esac
+    checked=$((checked + 1))
+  done
+  if (( checked > 0 )); then
+    log "validated ${checked} cached env token(s) against ${CONTROLLER_URL}"
+  fi
+}
+
 run_bootstrap() {
   local first_run="$1"
   local seed_arg="--seed-history=0"
+  local load_seed=0
   if [[ "${first_run}" == "1" ]]; then
-    ensure_command psql
-    seed_arg="--seed-history=7d"
+    if [[ "${ATTACH}" == "1" && -z "${DEMO_DSN}" ]]; then
+      log "first-run detected but AGORA_DEMO_DSN is unset in --attach mode; skipping synthetic seed history"
+    else
+      ensure_command psql
+      seed_arg="--seed-history=7d"
+      load_seed=1
+    fi
   fi
   log "provisioning demo topology"
   AGORA_DEMO_ROOT="${DEMO_ROOT}" demo-bootstrap \
@@ -235,11 +360,11 @@ run_bootstrap() {
     --admin-token="${ADMIN_TOKEN}" \
     "${seed_arg}"
 
-  if [[ "${first_run}" == "1" ]]; then
+  if [[ "${load_seed}" == "1" ]]; then
     [[ -s "${SEED_SQL}" ]] || fail "expected seed history SQL at ${SEED_SQL}"
     log "loading synthetic history from ${SEED_SQL}"
     psql "${DEMO_DSN}" -f "${SEED_SQL}"
-  else
+  elif [[ "${first_run}" != "1" ]]; then
     log "warm restart detected; preserved env roots reused and seed history not reloaded"
   fi
 }
@@ -358,9 +483,18 @@ open_browser() {
 }
 
 print_credentials() {
-  log "run bin/demo-down.sh to stop managed processes"
+  local down_hint="bin/demo-down.sh"
+  if [[ "${ATTACH}" == "1" ]]; then
+    down_hint="bin/demo-down.sh --attach"
+  fi
+  log "run ${down_hint} to stop managed processes"
   printf '\n'
-  printf 'Agora demo is running at %s/\n' "${CONTROLLER_URL}"
+  if [[ "${ATTACH}" == "1" ]]; then
+    printf 'Agora demo agents are attached to %s/\n' "${CONTROLLER_URL}"
+    printf '   (controller is managed externally; this script did not start it)\n'
+  else
+    printf 'Agora demo is running at %s/\n' "${CONTROLLER_URL}"
+  fi
   printf '   Email:    %s\n' "${DEMO_EMAIL}"
   printf '   Password: %s\n' "${DEMO_PASSWORD}"
 }
@@ -372,15 +506,24 @@ main() {
   if is_first_run; then
     first_run=1
   fi
-  build_ui
-  build_go_binaries
-  run_migrations
-  start_controller
+  if [[ "${ATTACH}" == "1" ]]; then
+    build_go_binaries
+  else
+    build_ui
+    build_go_binaries
+    run_migrations
+    start_controller
+  fi
+  if [[ "${first_run}" != "1" ]]; then
+    validate_existing_envs
+  fi
   run_bootstrap "${first_run}"
   start_workers
   start_pulse_agent
   start_gateways
-  open_browser
+  if [[ "${ATTACH}" != "1" ]]; then
+    open_browser
+  fi
   trap - ERR
   print_credentials
 }

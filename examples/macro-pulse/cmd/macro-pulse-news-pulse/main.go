@@ -30,10 +30,11 @@ func main() {
 			InteractionPatterns: []api.AdvertisementInteractionPattern{{Kind: api.AdvertisementInteractionPatternKindRequestResponse}},
 			WorkgroupNames:      []string{"signals-channel"},
 			Contract: &agentutil.ContractSpec{
-				Name:                "macro-pulse-provider-default",
-				Description:         "Demo contract: bounded session duration for macro-pulse morning briefings.",
-				MaxDurationSeconds:  60,
-				AllowedMessageTypes: []string{"*"},
+				Name:                "demo-contract-tight",
+				Description:         "Demo contract: intentionally tight bounds for contract-violation walkthroughs.",
+				MaxDurationSeconds:  30,
+				MaxEnvelopeBytes:    1024,
+				AllowedMessageTypes: []string{"signals.news.request", "signals.news.response"},
 				AccessMode:          api.ContractAccessModeApprovalRequired,
 			},
 		})

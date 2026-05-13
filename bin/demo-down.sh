@@ -10,6 +10,7 @@ DEMO_ROOT="${DEMO_ROOT/#\~/${HOME}}"
 RUN_DIR="${DEMO_ROOT}/run"
 WORKER_RUN_DIR="${RUN_DIR}/workers"
 PURGE=0
+ATTACH=0
 
 log() {
   printf '[demo-down] %s\n' "$*"
@@ -28,11 +29,20 @@ extract_yaml_scalar() {
 
 usage() {
   cat <<'USAGE'
-usage: bin/demo-down.sh [--purge]
+usage: bin/demo-down.sh [--attach] [--purge]
 
 Stops demo processes started by bin/demo-up.sh. By default it preserves
 $AGORA_DEMO_ROOT/envs and $AGORA_DEMO_ROOT/logs for warm restarts and
-debugging. --purge removes the entire demo root after stopping processes.
+debugging.
+
+  --attach   Mirror of bin/demo-up.sh --attach. Stop demo workers, pulse
+             agent, and gateways but leave the controller alone (the
+             controller is externally managed in attach mode).
+  --purge    Remove $AGORA_DEMO_ROOT after stopping processes. Compatible
+             with --attach: --attach --purge stops demo agents and removes
+             the demo state directory without touching the external
+             controller.
+  -h, --help Show this message.
 USAGE
 }
 
@@ -40,6 +50,9 @@ while (($#)); do
   case "$1" in
     --purge)
       PURGE=1
+      ;;
+    --attach)
+      ATTACH=1
       ;;
     -h|--help)
       usage
@@ -158,7 +171,9 @@ stop_demo_processes() {
     stop_pid_file "${RUN_DIR}/pulse-agent.pid" "macro-pulse-pulse-agent" 5
     stop_gateways
   fi
-  stop_controller
+  if [[ "${ATTACH}" != "1" ]]; then
+    stop_controller
+  fi
 }
 
 clean_run_dir() {
@@ -173,7 +188,7 @@ main() {
   stop_demo_processes
   if [[ -d "${DEMO_ROOT}" ]]; then
     clean_run_dir
-  else
+  elif [[ "${ATTACH}" != "1" ]]; then
     stop_orphaned_controller
   fi
 
