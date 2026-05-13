@@ -97,10 +97,12 @@ const environmentColumns: DataTableColumn<DashboardEnvironment>[] = [
 
 const numberFormatter = new Intl.NumberFormat();
 
+const DASHBOARD_POLL_MS = 5000;
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const [activityWindow, setActivityWindow] = useState<DashboardWindow>('24h');
-  const summary = useApiResource(getDashboardSummary);
+  const summary = useApiResource(getDashboardSummary, { intervalMs: DASHBOARD_POLL_MS });
   const activityLoad = useCallback(
     (signal: AbortSignal) =>
       getDashboardActivity(
@@ -112,11 +114,14 @@ export default function Dashboard() {
       ),
     [activityWindow],
   );
-  const activity = useApiResource(activityLoad);
-  const environments = useApiResource(getDashboardEnvironments);
+  const activity = useApiResource(activityLoad, { intervalMs: DASHBOARD_POLL_MS });
+  const environments = useApiResource(getDashboardEnvironments, { intervalMs: DASHBOARD_POLL_MS });
   const account = summary.data?.account;
   const hasError = Boolean(summary.error || activity.error || environments.error);
-  const isLoading = summary.loading || activity.loading || environments.loading;
+  const isLoading =
+    (summary.loading && !summary.data) ||
+    (activity.loading && !activity.data) ||
+    (environments.loading && !environments.data);
 
   const chartData = useMemo(
     () => toChartData(activity.data, activityWindow),
