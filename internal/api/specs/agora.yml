@@ -29,6 +29,8 @@ paths:
     $ref: "account/paths.yml#/~1account~1change-password"
   /account/regenerate-token:
     $ref: "account/paths.yml#/~1account~1regenerate-token"
+  /account/token:
+    $ref: "account/paths.yml#/~1account~1token"
 
   /environments:
     $ref: "environments/paths.yml#/~1environments"

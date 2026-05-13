@@ -35,6 +35,13 @@ export function BarChart({ data, accent, height = 220, className }: BarChartProp
   const barWidth = Math.max((width - paddingX * 2 - gap * (data.length - 1)) / data.length, 12);
   const colors = chartColors[accent];
 
+  // decimate labels so they never collide: aim for ~8 ticks, always include first and last
+  const targetTicks = 8;
+  const labelStride = Math.max(1, Math.ceil(data.length / targetTicks));
+  const lastIndex = data.length - 1;
+  const showLabelAt = (index: number) =>
+    index === 0 || index === lastIndex || index % labelStride === 0;
+
   return (
     <div className={['w-full overflow-hidden', className].filter(Boolean).join(' ')}>
       <svg className="block w-full" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Bar chart">
@@ -68,16 +75,19 @@ export function BarChart({ data, accent, height = 220, className }: BarChartProp
           const y = chartHeight + 4 - barHeight;
 
           return (
-            <g key={datum.label}>
+            <g key={`${index}-${datum.label}`}>
               <rect x={x} y={y} width={barWidth} height={barHeight} rx="5" fill={`url(#${gradientId})`} />
-              <text
-                x={x + barWidth / 2}
-                y={height - 7}
-                textAnchor="middle"
-                className="fill-text-mute text-[0.625rem]"
-              >
-                {datum.label}
-              </text>
+              {showLabelAt(index) && (
+                <text
+                  x={x + barWidth / 2}
+                  y={height - 7}
+                  textAnchor="middle"
+                  fontSize="11"
+                  className="fill-text-mute"
+                >
+                  {datum.label}
+                </text>
+              )}
             </g>
           );
         })}

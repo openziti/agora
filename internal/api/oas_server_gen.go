@@ -104,6 +104,10 @@ type Handler interface {
 	//
 	// POST /environments
 	EnableEnvironment(ctx context.Context, req *EnableEnvironmentRequest) (EnableEnvironmentRes, error)
+	// GetAccountToken implements getAccountToken operation.
+	//
+	// GET /account/token
+	GetAccountToken(ctx context.Context) (GetAccountTokenRes, error)
 	// GetAdvertisement implements getAdvertisement operation.
 	//
 	// GET /advertisements/{advertisementId}

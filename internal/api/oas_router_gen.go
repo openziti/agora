@@ -191,6 +191,26 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 								return
 							}
 
+						case 't': // Prefix: "token"
+
+							if l := len("token"); len(elem) >= l && elem[0:l] == "token" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch r.Method {
+								case "GET":
+									s.handleGetAccountTokenRequest([0]string{}, elemIsEscaped, w, r)
+								default:
+									s.notAllowed(w, r, "GET")
+								}
+
+								return
+							}
+
 						case 'w': // Prefix: "whoami"
 
 							if l := len("whoami"); len(elem) >= l && elem[0:l] == "whoami" {
@@ -1758,6 +1778,30 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 									r.summary = ""
 									r.operationID = "regenerateAccountToken"
 									r.pathPattern = "/account/regenerate-token"
+									r.args = args
+									r.count = 0
+									return r, true
+								default:
+									return
+								}
+							}
+
+						case 't': // Prefix: "token"
+
+							if l := len("token"); len(elem) >= l && elem[0:l] == "token" {
+								elem = elem[l:]
+							} else {
+								break
+							}
+
+							if len(elem) == 0 {
+								// Leaf node.
+								switch method {
+								case "GET":
+									r.name = GetAccountTokenOperation
+									r.summary = ""
+									r.operationID = "getAccountToken"
+									r.pathPattern = "/account/token"
 									r.args = args
 									r.count = 0
 									return r, true

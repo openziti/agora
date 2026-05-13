@@ -1,15 +1,21 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   Activity,
   AlertTriangle,
   Boxes,
+  Check,
   Clock3,
+  Copy,
+  Eye,
+  EyeOff,
   Gauge,
   RefreshCcw,
   Server,
+  Terminal,
   Users,
   Wifi,
+  X,
 } from 'lucide-react';
 
 import {
@@ -27,6 +33,7 @@ import {
 } from '../components';
 import {
   ApiError,
+  getAccountToken,
   getDashboardActivity,
   getDashboardEnvironments,
   getDashboardSummary,
@@ -236,16 +243,25 @@ export default function Dashboard() {
 }
 
 function AccountCallout({ summary }: { summary: DashboardSummaryResponse }) {
+  const [cliOpen, setCliOpen] = useState(false);
+
   return (
     <section className="rounded-card border border-border bg-panel p-5">
       <div className="grid gap-5 lg:grid-cols-[1fr_1.4fr]">
         <div className="min-w-0">
           <p className="text-label font-medium uppercase text-text-mute">Current account</p>
           <h1 className="mt-2 truncate text-2xl font-semibold text-text">{summary.account.email}</h1>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             <StatusPill status="info" label={summary.account.organizationName} />
             <StatusPill status="neutral" label={formatRole(summary.account.role)} />
-            <StatusPill status="success" label="Zero-Trust Active" />
+            <button
+              type="button"
+              onClick={() => setCliOpen(true)}
+              className="inline-flex h-7 items-center gap-1.5 rounded-pill border border-border bg-panel-subtle px-3 text-label font-medium text-text-mute-strong hover:bg-panel focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora"
+            >
+              <Terminal className="h-3.5 w-3.5" aria-hidden="true" />
+              CLI access
+            </button>
           </div>
         </div>
 
@@ -256,7 +272,191 @@ function AccountCallout({ summary }: { summary: DashboardSummaryResponse }) {
           <RibbonMetric label="environments" value={summary.ribbon.environmentCount} />
         </div>
       </div>
+
+      {cliOpen && <CliAccessModal onClose={() => setCliOpen(false)} />}
     </section>
+  );
+}
+
+const TOKEN_MASK = '••••••••••••••••••••••••••••••••';
+
+function CliAccessModal({ onClose }: { onClose: () => void }) {
+  const [token, setToken] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<'token' | 'command' | null>(null);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose();
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  const ensureToken = useCallback(async (): Promise<string | null> => {
+    if (token) return token;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getAccountToken();
+      setToken(res.accountToken);
+      return res.accountToken;
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : 'failed to load account token';
+      setError(message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
+  const flashCopied = useCallback((field: 'token' | 'command') => {
+    setCopied(field);
+    setTimeout(() => {
+      setCopied((current) => (current === field ? null : current));
+    }, 1500);
+  }, []);
+
+  const handleToggleReveal = useCallback(async () => {
+    if (revealed) {
+      setRevealed(false);
+      return;
+    }
+    const value = await ensureToken();
+    if (value) setRevealed(true);
+  }, [revealed, ensureToken]);
+
+  const handleCopyToken = useCallback(async () => {
+    const value = await ensureToken();
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      flashCopied('token');
+    } catch {
+      setError('failed to copy to clipboard');
+    }
+  }, [ensureToken, flashCopied]);
+
+  const handleCopyCommand = useCallback(async () => {
+    const value = await ensureToken();
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(`agora enable ${value}`);
+      flashCopied('command');
+    } catch {
+      setError('failed to copy to clipboard');
+    }
+  }, [ensureToken, flashCopied]);
+
+  const tokenDisplay = revealed && token ? token : TOKEN_MASK;
+  const commandDisplay = `agora enable ${revealed && token ? token : TOKEN_MASK}`;
+
+  return (
+    <div
+      className="fixed inset-0 z-40 flex items-center justify-center bg-text/30 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cli-access-title"
+    >
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default"
+        aria-label="Close CLI access"
+        onClick={onClose}
+      />
+      <div className="relative w-full max-w-xl rounded-card border border-border bg-page shadow-xl">
+        <header className="flex items-start justify-between gap-4 border-b border-border bg-panel px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-label font-medium uppercase text-text-mute">CLI access</p>
+            <h2 id="cli-access-title" className="mt-1 text-section font-semibold text-text">
+              Enable a local environment
+            </h2>
+          </div>
+          <button
+            type="button"
+            className="inline-flex size-9 shrink-0 items-center justify-center rounded-pill border border-border bg-panel text-text-mute-strong hover:bg-panel-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora"
+            aria-label="Close CLI access"
+            onClick={onClose}
+          >
+            <X size={18} aria-hidden="true" />
+          </button>
+        </header>
+
+        <div className="flex flex-col gap-4 p-5">
+          <p className="text-table text-text-mute">
+            Use this account token to enable a local environment with{' '}
+            <code className="font-mono text-text">agora enable</code>.
+          </p>
+
+          <div className="grid gap-2">
+            <TokenRow
+              label="Account token"
+              value={tokenDisplay}
+              copied={copied === 'token'}
+              copyAriaLabel="Copy account token"
+              onCopy={handleCopyToken}
+              reveal={{
+                revealed,
+                onToggle: handleToggleReveal,
+                loading,
+              }}
+            />
+            <TokenRow
+              label="Enable command"
+              value={commandDisplay}
+              copied={copied === 'command'}
+              copyAriaLabel="Copy enable command"
+              onCopy={handleCopyCommand}
+            />
+          </div>
+
+          {error && <p className="text-label text-danger">{error}</p>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type TokenRowProps = {
+  label: string;
+  value: string;
+  copied: boolean;
+  copyAriaLabel: string;
+  onCopy: () => void;
+  reveal?: {
+    revealed: boolean;
+    onToggle: () => void;
+    loading: boolean;
+  };
+};
+
+function TokenRow({ label, value, copied, copyAriaLabel, onCopy, reveal }: TokenRowProps) {
+  return (
+    <div className="flex items-center gap-3 rounded-pill border border-border bg-panel-subtle px-3 py-2">
+      <span className="w-28 shrink-0 text-label font-medium uppercase text-text-mute">{label}</span>
+      <span className="min-w-0 flex-1 truncate font-mono text-table text-text">{value}</span>
+      {reveal && (
+        <button
+          type="button"
+          onClick={reveal.onToggle}
+          disabled={reveal.loading}
+          aria-label={reveal.revealed ? 'Hide account token' : 'Reveal account token'}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-pill text-text-mute hover:bg-panel hover:text-text focus-visible:outline-brand-agora disabled:opacity-50"
+        >
+          {reveal.revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={onCopy}
+        aria-label={copied ? 'Copied' : copyAriaLabel}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-pill text-text-mute hover:bg-panel hover:text-text focus-visible:outline-brand-agora"
+      >
+        {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+      </button>
+    </div>
   );
 }
 

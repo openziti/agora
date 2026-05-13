@@ -1684,6 +1684,49 @@ func encodeEnableEnvironmentResponse(response EnableEnvironmentRes, w http.Respo
 	}
 }
 
+func encodeGetAccountTokenResponse(response GetAccountTokenRes, w http.ResponseWriter) error {
+	switch response := response.(type) {
+	case *AccountTokenResponse:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(200)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *GetAccountTokenUnauthorized:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *GetAccountTokenInternalServerError:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(500)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
 func encodeGetAdvertisementResponse(response GetAdvertisementRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *Advertisement:

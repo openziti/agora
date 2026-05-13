@@ -30,6 +30,7 @@ const (
 	DeleteWorkgroupOperation               OperationName = "DeleteWorkgroup"
 	DisableEnvironmentOperation            OperationName = "DisableEnvironment"
 	EnableEnvironmentOperation             OperationName = "EnableEnvironment"
+	GetAccountTokenOperation               OperationName = "GetAccountToken"
 	GetAdvertisementOperation              OperationName = "GetAdvertisement"
 	GetContractOperation                   OperationName = "GetContract"
 	GetDashboardActivityOperation          OperationName = "GetDashboardActivity"

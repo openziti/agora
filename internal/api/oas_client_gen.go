@@ -117,6 +117,10 @@ type Invoker interface {
 	//
 	// POST /environments
 	EnableEnvironment(ctx context.Context, request *EnableEnvironmentRequest) (EnableEnvironmentRes, error)
+	// GetAccountToken invokes getAccountToken operation.
+	//
+	// GET /account/token
+	GetAccountToken(ctx context.Context) (GetAccountTokenRes, error)
 	// GetAdvertisement invokes getAdvertisement operation.
 	//
 	// GET /advertisements/{advertisementId}
@@ -2525,6 +2529,73 @@ func (c *Client) sendEnableEnvironment(ctx context.Context, request *EnableEnvir
 	defer resp.Body.Close()
 
 	result, err := decodeEnableEnvironmentResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetAccountToken invokes getAccountToken operation.
+//
+// GET /account/token
+func (c *Client) GetAccountToken(ctx context.Context) (GetAccountTokenRes, error) {
+	res, err := c.sendGetAccountToken(ctx)
+	return res, err
+}
+
+func (c *Client) sendGetAccountToken(ctx context.Context) (res GetAccountTokenRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/account/token"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, GetAccountTokenOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeGetAccountTokenResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

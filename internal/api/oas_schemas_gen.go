@@ -322,6 +322,7 @@ func (s *AccountTokenResponse) SetAccountToken(val string) {
 }
 
 func (*AccountTokenResponse) createAccountRes()          {}
+func (*AccountTokenResponse) getAccountTokenRes()        {}
 func (*AccountTokenResponse) loginRes()                  {}
 func (*AccountTokenResponse) regenerateAccountTokenRes() {}
 
@@ -3326,6 +3327,14 @@ func (s *Error) SetCode(val string) {
 func (s *Error) SetMessage(val string) {
 	s.Message = val
 }
+
+type GetAccountTokenInternalServerError Error
+
+func (*GetAccountTokenInternalServerError) getAccountTokenRes() {}
+
+type GetAccountTokenUnauthorized Error
+
+func (*GetAccountTokenUnauthorized) getAccountTokenRes() {}
 
 type GetAdvertisementInternalServerError Error
 

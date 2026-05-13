@@ -97,6 +97,10 @@ type EnableEnvironmentRes interface {
 	enableEnvironmentRes()
 }
 
+type GetAccountTokenRes interface {
+	getAccountTokenRes()
+}
+
 type GetAdvertisementRes interface {
 	getAdvertisementRes()
 }

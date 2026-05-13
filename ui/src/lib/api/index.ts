@@ -6,6 +6,8 @@ export { fetchAllAuditEvents, listAuditEvents } from './audit';
 export type { ListAuditEventsParams } from './audit';
 export { getWhoami } from './whoami';
 export type { WhoamiOptions } from './whoami';
+export { getAccountToken } from './accountToken';
+export type { GetAccountTokenOptions } from './accountToken';
 export { getDashboardActivity, getDashboardEnvironments, getDashboardSummary, getWorkgroupsActivity } from './dashboard';
 export type { DashboardActivityParams, WorkgroupsActivityParams } from './dashboard';
 export { getAdvertisement, listAdvertisements, searchCatalogAdvertisements } from './advertisements';

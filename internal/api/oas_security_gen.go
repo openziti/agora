@@ -51,6 +51,7 @@ var operationRolesAccountTokenAuth = map[string][]string{
 	DeleteWorkgroupOperation:               []string{},
 	DisableEnvironmentOperation:            []string{},
 	EnableEnvironmentOperation:             []string{},
+	GetAccountTokenOperation:               []string{},
 	GetAdvertisementOperation:              []string{},
 	GetContractOperation:                   []string{},
 	GetDashboardActivityOperation:          []string{},
