@@ -285,7 +285,7 @@ function CatalogFilters({
   return (
     <section className="rounded-card border border-border bg-panel p-4">
       <div className="grid gap-4 xl:grid-cols-[minmax(18rem,1fr)_auto]">
-        <label className="relative block min-w-0">
+        <label className="relative block min-w-0 self-start">
           <span className="sr-only">Search catalog</span>
           <Search size={17} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-text-mute" />
           <input
@@ -297,7 +297,7 @@ function CatalogFilters({
           />
         </label>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2">
           <FilterGroup label="Mode">
             {tunnelFilters.map((mode) => (
               <FilterButton
@@ -432,9 +432,9 @@ const compactPillClassNames = {
 
 function FilterGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-label font-medium uppercase text-text-mute">{label}</span>
-      {children}
+    <div className="contents">
+      <span className="text-right text-label font-medium uppercase text-text-mute">{label}</span>
+      <div className="flex flex-wrap items-center gap-2">{children}</div>
     </div>
   );
 }
@@ -444,7 +444,7 @@ function FilterButton({ active, label, onClick }: { active: boolean; label: stri
     <button
       type="button"
       className={[
-        'h-8 max-w-48 truncate rounded-status border px-3 text-table font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora',
+        'h-7 max-w-48 truncate rounded-pill border px-3 text-label font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora',
         active
           ? 'border-brand-agora bg-brand-agora/10 text-brand-agora'
           : 'border-border bg-panel-subtle text-text-mute-strong hover:bg-panel',
