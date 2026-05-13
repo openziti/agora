@@ -146,7 +146,7 @@ export default function Dashboard() {
       organizationName={account?.organizationName ?? 'Loading organization'}
       activeTab="dashboard"
       status={hasError ? 'warning' : isLoading ? 'info' : 'success'}
-      statusLabel={hasError ? 'Data refresh issue' : isLoading ? 'Loading data' : 'All systems operational'}
+      statusLabel={hasError ? 'Data refresh issue' : isLoading ? 'Loading data' : 'Connected'}
       userInitials={account ? initialsForEmail(account.email) : '--'}
       userLabel={account?.email ?? 'Account loading'}
       onTabChange={handleTabChange}

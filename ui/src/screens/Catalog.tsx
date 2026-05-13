@@ -125,7 +125,7 @@ export default function Catalog() {
       organizationName={callerAccount?.organizationName ?? 'Loading organization'}
       activeTab="catalog"
       status={hasError ? 'warning' : isLoading ? 'info' : 'success'}
-      statusLabel={hasError ? 'Data refresh issue' : isLoading ? 'Loading data' : 'All systems operational'}
+      statusLabel={hasError ? 'Data refresh issue' : isLoading ? 'Loading data' : 'Connected'}
       userInitials={callerAccount ? initialsFromEmail(callerAccount.email) : '--'}
       userLabel={callerAccount?.email ?? 'Account loading'}
       onTabChange={handleTabChange}

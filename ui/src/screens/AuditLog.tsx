@@ -75,6 +75,7 @@ const auditEventTypes: AuditEventType[] = [
 ];
 
 const numberFormatter = new Intl.NumberFormat();
+const AUDIT_POLL_MS = 5000;
 
 export default function AuditLog() {
   const navigate = useNavigate();
@@ -85,10 +86,10 @@ export default function AuditLog() {
   const [reportOpen, setReportOpen] = useState(false);
   const account = useApiResource(getDashboardSummary);
   const auditLoad = useCallback((signal: AbortSignal) => fetchAllAuditEvents(rangeParams(timeRange), signal), [timeRange]);
-  const auditEvents = useApiResource(auditLoad);
+  const auditEvents = useApiResource(auditLoad, { intervalMs: AUDIT_POLL_MS });
   const callerAccount = account.data?.account;
   const hasError = Boolean(account.error || auditEvents.error);
-  const isLoading = account.loading || auditEvents.loading;
+  const isLoading = (account.loading && !account.data) || (auditEvents.loading && !auditEvents.data);
   const events = useMemo(() => auditEvents.data ?? [], [auditEvents.data]);
 
   const workgroupOptions = useMemo(() => buildIDOptions(events, (event) => event.workgroupId), [events]);
@@ -118,7 +119,7 @@ export default function AuditLog() {
       organizationName={callerAccount?.organizationName ?? 'Loading organization'}
       activeTab="audit"
       status={hasError ? 'warning' : isLoading ? 'info' : 'success'}
-      statusLabel={hasError ? 'Data refresh issue' : isLoading ? 'Loading data' : 'All systems operational'}
+      statusLabel={hasError ? 'Data refresh issue' : isLoading ? 'Loading data' : 'Connected'}
       userInitials={callerAccount ? initialsFromEmail(callerAccount.email) : '--'}
       userLabel={callerAccount?.email ?? 'Account loading'}
       onTabChange={handleTabChange}

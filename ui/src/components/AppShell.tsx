@@ -30,7 +30,7 @@ export function AppShell({
   activeTab,
   navItems,
   status = 'success',
-  statusLabel = 'All systems operational',
+  statusLabel = 'Connected',
   userInitials,
   userLabel,
   onTabChange,

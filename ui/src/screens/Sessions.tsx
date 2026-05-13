@@ -65,6 +65,7 @@ const routeByTab: Record<string, string> = {
 };
 
 const numberFormatter = new Intl.NumberFormat();
+const SESSIONS_POLL_MS = 5000;
 const avatarClassNames = [
   'bg-brand-agora/10 text-brand-agora',
   'bg-brand-llm/10 text-brand-llm',
@@ -89,11 +90,14 @@ export default function Sessions() {
     (signal: AbortSignal) => listSessions({ states: ['closed'], role: 'both', sort: 'closedAtDesc', limit: 50 }, signal),
     [],
   );
-  const active = useApiResource(activeLoad);
-  const recent = useApiResource(recentLoad);
+  const active = useApiResource(activeLoad, { intervalMs: SESSIONS_POLL_MS });
+  const recent = useApiResource(recentLoad, { intervalMs: SESSIONS_POLL_MS });
   const callerAccount = account.data?.account;
   const hasError = Boolean(account.error || active.error || recent.error);
-  const isLoading = account.loading || active.loading || recent.loading;
+  const isLoading =
+    (account.loading && !account.data) ||
+    (active.loading && !active.data) ||
+    (recent.loading && !recent.data);
 
   const activeRows = useMemo(
     () => toRows(active.data ?? [], callerAccount?.accountId, now),
@@ -134,7 +138,7 @@ export default function Sessions() {
       organizationName={callerAccount?.organizationName ?? 'Loading organization'}
       activeTab="sessions"
       status={hasError ? 'warning' : isLoading ? 'info' : 'success'}
-      statusLabel={hasError ? 'Data refresh issue' : isLoading ? 'Loading data' : 'All systems operational'}
+      statusLabel={hasError ? 'Data refresh issue' : isLoading ? 'Loading data' : 'Connected'}
       userInitials={callerAccount ? initialsFor(callerAccount.email) : '--'}
       userLabel={callerAccount?.email ?? 'Account loading'}
       onTabChange={handleTabChange}
