@@ -6,6 +6,7 @@
 .codex
 .claude
 .mercurius
+mercurius.yaml
 *.db
 /automated-release-build/
 etc/dev*
