@@ -1,10 +1,14 @@
 # Cookie-Based Authentication — Reference
 
-This document is preserved verbatim from the zrok project (its `COOKIE_AUTH.md`), where it captures the design for migrating zrok's web UI from `localStorage`-based auth to `httpOnly` cookies. Agora adopts the same architecture from day one rather than retrofitting it. This file is the implementer's reference; the canonical agora design lives in `design.md` ("Authentication Posture" section), and the agora-specific work units live in `work-order.md` (Track G).
+Agora's dashboard cookie auth is implemented and running. The handler and middleware live in `internal/controller/auth_middleware.go`, `internal/controller/login.go`, `internal/controller/logout.go`, and `internal/controller/whoami.go`; the full middleware stack is wired in `internal/controller/server.go`. The UI side is in `ui/src/screens/Login.tsx`, `ui/src/components/UserBadge.tsx`, and `ui/src/lib/cookies.ts`.
+
+This document is the design-lineage record for that implementation. The body below is preserved verbatim from zrok's `COOKIE_AUTH.md` — the design Agora's auth was modeled on. The deltas table that follows is the authoritative diff between zrok's design and Agora's implementation; everything Agora does differently (cookie names, the ogen middleware approach instead of go-swagger Responders, the unchanged `/login` response shape that keeps CLI compatibility, etc.) is listed there.
+
+Keep this document if you need to understand *why* Agora's auth has the shape it does. For *how it behaves today*, read the code listed above.
 
 ## How to read this document
 
-Read the rest of this file as the architectural background and design rationale. The shape of the solution — cookie-to-header middleware, double-submit CSRF, login-cookie-emit on success, logout-cookie-clear — is shared between zrok and agora. The deltas below identify everywhere agora differs.
+The shape of the solution — cookie-to-header middleware, double-submit CSRF, login-cookie-emit on success, logout-cookie-clear — is shared between zrok and agora. The deltas table below identifies everywhere agora differs; the rest of the file is the original zrok reference material.
 
 ## Agora vs. zrok deltas
 

@@ -63,8 +63,8 @@ This checklist is not complete.
 - [x] the local runtime packaging direction is finalized (dual delivery: standalone daemon + embeddable library)
 - [ ] the local runtime library extraction is reflected in the implementation
 - [ ] the project has a documented and repeatable end-to-end operational validation path
-- [ ] metrics are implemented (deferred; see [../roadmap/post-mvp.md](../roadmap/post-mvp.md))
-- [ ] limits are implemented (deferred; see [../roadmap/post-mvp.md](../roadmap/post-mvp.md))
+- [ ] metrics are implemented (deferred; see [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md))
+- [ ] limits are implemented (deferred; see [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md))
 
 ## Deferred Post-MVP Work
 
@@ -73,7 +73,7 @@ These items are intentionally deferred and are not part of the minimum-working L
 - metrics
 - limits
 
-They remain part of the broader architecture and are tracked in [../roadmap/post-mvp.md](../roadmap/post-mvp.md).
+They remain part of the broader architecture and are tracked in [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md).
 
 ## Testing Status
 

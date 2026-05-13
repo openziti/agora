@@ -1,8 +1,8 @@
-# Agora Dashboard — Design Specification
+# Agora Dashboard — Design
 
-This document is the canonical design for the Agora dashboard, the time-series substrate that backs it, the gateway integration that populates the catalog, the continuous Macro Pulse activity loop that gives it a heartbeat, and the demo orchestration that ties everything together.
+This document describes the Agora dashboard, the time-series substrate that backs it, the gateway integration that populates the catalog, the continuous Macro Pulse activity loop that gives it a heartbeat, and the demo orchestration that ties everything together. The dashboard is built and running; this is the architecture of record. The companion document, [`work-order.md`](./work-order.md), is the implementation decision-record that explains how the work was sequenced and why specific decisions were made.
 
-It is written to be implementation-ready. The companion document, `work-order.md`, decomposes this design into discrete work units that coding agents can execute against.
+What remains is operational polish: tightening the test suite around the demo flow and refining the on-stage presentation surface. The architectural surface described below is in place — the launch script, the React SPA, the audit-events substrate, the aggregation endpoints, the gateway agora-mode integration, the continuous Macro Pulse loop, and the cookie-based session auth all run end-to-end via `bin/demo-up.sh`.
 
 ## Purpose
 
@@ -41,7 +41,7 @@ Explicitly out of scope:
 - deep gateway integration where tool calls are routed as Agora envelopes through Agora sessions; the demo uses shallow integration (advertisement-only) and the existing gateway transports continue to operate as they do today
 - mobile or responsive layouts beyond what falls out of the desktop-first design naturally
 - internationalization
-- the post-MVP metrics and limits work tracked in `docs/roadmap/post-mvp.md`; the time-series substrate this work introduces is a precursor that accelerates that roadmap item but does not satisfy it
+- the post-MVP metrics and limits work tracked in `docs/future/roadmap/post-mvp.md`; the time-series substrate this work introduces is a precursor that accelerates that roadmap item but does not satisfy it
 
 ## Visual Design System
 
@@ -183,7 +183,7 @@ The landing screen. Mirrors the gateway mockups' four-stat-cards-plus-chart-plus
 1. *Active Sessions* — current snapshot count of sessions in the calling account's organization with `state IN ('proposed', 'accepting', 'active', 'closing')`. Delta `activeSessionsDelta7d` = current snapshot minus the count of sessions that were *historically* in this in-flight cohort at `now - 7 days` (reconstructed from `proposed_at` and `closed_at` rather than current `state`, so a session that was in-flight a week ago and has since closed correctly registers as a one-unit drop in the delta). The delta reads as "how many more in-flight sessions exist now versus a week ago." See `work-order.md` A.4's "Snapshot delta semantics" Note for why current-state filtering produces silently wrong numbers and how the historical reconstruction predicate fixes it. Negative deltas render in red/orange, positive in green.
 2. *Envelopes Today* — total envelopes flowed in the calling account's organization in the rolling 24h window `[now - 24h, now)`. Delta `envelopesYesterday` = the same total for the prior rolling 24h window `[now - 48h, now - 24h)`; the dashboard renders the delta as `envelopesToday - envelopesYesterday`. Both windows are deliberately rolling (not UTC-day-aligned) so the comparison is apples-to-apples regardless of wall-clock time.
 3. *Active Workgroups* — count of distinct workgroup memberships held by the calling account. No delta in MVP — "how many groups am I in" is a structural number, not a trending one.
-4. *Active Tunnels* — current snapshot count of live runtime records in the calling account's organization. Counts the union of `tunnel_attachments` (consumer-side runtime records) and `tunnel_serves` (provider-side runtime records) with `state = 'active'`. This counts runtime records, not distinct tunnels — a single tunnel with one provider-side serve and two consumer-side attachments counts as 3 (one serve plus two attachments). The Layer 1 spec separates these as two parallel runtime records (`tunnel_serves` for provider-side hosting, `tunnel_attachments` for consumer-side connection — see `docs/layer-1/spec.md` for the architectural model); both are first-class for the dashboard's "what's actively running" semantic, so the StatCard counts both. No delta companion in MVP — neither table can reliably reconstruct historical "state=active" at an arbitrary past instant, because the `active`/`stale` flap has no per-state-transition timestamp. The StatCard renders as a plain number (no up/down arrow). See `work-order.md` A.4 Notes ("Snapshot delta semantics") for the full reasoning, and `work-order.md` A.4's `activeTunnels` formula for the exact UNION query.
+4. *Active Tunnels* — current snapshot count of live runtime records in the calling account's organization. Counts the union of `tunnel_attachments` (consumer-side runtime records) and `tunnel_serves` (provider-side runtime records) with `state = 'active'`. This counts runtime records, not distinct tunnels — a single tunnel with one provider-side serve and two consumer-side attachments counts as 3 (one serve plus two attachments). The Layer 1 spec separates these as two parallel runtime records (`tunnel_serves` for provider-side hosting, `tunnel_attachments` for consumer-side connection — see `docs/current/layer-1/spec.md` for the architectural model); both are first-class for the dashboard's "what's actively running" semantic, so the StatCard counts both. No delta companion in MVP — neither table can reliably reconstruct historical "state=active" at an arbitrary past instant, because the `active`/`stale` flap has no per-state-transition timestamp. The StatCard renders as a plain number (no up/down arrow). See `work-order.md` A.4 Notes ("Snapshot delta semantics") for the full reasoning, and `work-order.md` A.4's `activeTunnels` formula for the exact UNION query.
 
 Each card uses the StatCard primitive and is colored neutrally — no brand color in the stat cards themselves; the brand color appears in deltas (green for up, red or orange for down). Exact aggregation formulas for every field (event types counted, time-window semantics, ordering conventions) live in `work-order.md` A.4's "Aggregation formulas" Notes section, which is the authoritative reference; the prose above is a high-level sketch.
 
@@ -253,7 +253,7 @@ The full audit surface. Mirrors the LLM Gateway mockup's Audit Log tab. Filterab
 
 The dashboard requires a real history of activity. The current Agora persistence layer stores state, not history: a session row records its terminal close reason but not its envelope flow over time, and there is no record at all of envelope-level events. This work introduces the substrate.
 
-The implementation is intentionally narrow — exactly enough to drive the dashboard, no more. It is a precursor to the post-MVP metrics work tracked in `docs/roadmap/post-mvp.md`, not a substitute for it: the metrics work calls for ingest and query APIs, org-scoped visibility, automatic emission, and TimescaleDB-backed storage. The dashboard's substrate uses plain PostgreSQL, in-process emission, and a single read path.
+The implementation is intentionally narrow — exactly enough to drive the dashboard, no more. It is a precursor to the post-MVP metrics work tracked in `docs/future/roadmap/post-mvp.md`, not a substitute for it: the metrics work calls for ingest and query APIs, org-scoped visibility, automatic emission, and TimescaleDB-backed storage. The dashboard's substrate uses plain PostgreSQL, in-process emission, and a single read path.
 
 ### Schema
 
@@ -518,7 +518,7 @@ Session cookies have no explicit `Expires` and persist as session cookies in the
 
 ### Implementation reference
 
-The architecture closely follows the design captured in zrok's `COOKIE_AUTH.md` reference document (preserved alongside this design as `cookie-auth-reference.md`), with several agora-specific simplifications:
+The architecture closely follows the design captured in zrok's `COOKIE_AUTH.md` reference document (preserved as `docs/current/dashboard/cookie-auth-reference.md` once Track G shipped), with several agora-specific simplifications:
 
 - agora's account model already carries `password_salt` and `password_hash`; no schema work is required
 - agora ships cookie-based auth from day one — no pre-existing localStorage to migrate from, no `getXApi(user)` call sites to refactor
@@ -562,7 +562,8 @@ The dashboard work introduces these new top-level paths in the Agora repository:
 - `cmd/demo-bootstrap/` — one-shot bootstrap binary.
 - `etc/demo-profile.yaml`, `etc/demo-controller.yaml` — demo-specific config files.
 - `bin/demo-up.sh`, `bin/demo-down.sh` — launch and teardown scripts.
-- `docs/dashboard/design.md`, `docs/dashboard/work-order.md`, `docs/dashboard/cookie-auth-reference.md` — these documents and the cookie-auth implementation reference.
+- `docs/current/dashboard/design.md`, `docs/current/dashboard/work-order.md` — these documents.
+- `docs/current/dashboard/cookie-auth-reference.md` — cookie-auth design-lineage reference.
 
 The `ui/` build is embedded into the controller binary using the same pattern as zrok: `ui/embed.go` with `//go:embed dist`, `ui/embed_stub.go` for `no_agora_ui` builds, and `ui/middleware.go` that passes through `/v1` and falls back to `index.html` for SPA routes.
 
@@ -650,9 +651,9 @@ These items are explicitly deferred. They are not blockers, and proposing them m
 - the deep gateway integration where tool calls are routed as Agora envelopes
 - gateway dashboards: the LLM Gateway and MCP Gateway do not currently ship dashboards; building them is a separate slice that follows agora's dashboard work and the extraction of a shared component package
 - gateway-side implementation of the agora-mode flag: lives in the LLM Gateway and MCP Gateway repositories, not in this scope
-- the post-MVP metrics work tracked in `docs/roadmap/post-mvp.md` (this work is a precursor that accelerates that roadmap item but does not replace it)
+- the post-MVP metrics work tracked in `docs/future/roadmap/post-mvp.md` (this work is a precursor that accelerates that roadmap item but does not replace it)
 - the post-MVP semantic catalog search, programmatic contracts, workgroup hierarchy, memory-oriented services
-- the existing Layer 1 runtime library extraction tracked in `docs/layer-1/status.md`
+- the existing Layer 1 runtime library extraction tracked in `docs/current/layer-1/status.md`
 
 ## Open Questions
 

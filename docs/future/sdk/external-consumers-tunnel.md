@@ -733,7 +733,7 @@ consumer perspective. The `agent.NewStandalone` constructor and
    with `errors.Is` matching the documented sentinels.
 6. Godoc on every exported symbol, with at least one runnable
    `Example` on `EnsureServed` and one on `NewStandalone`.
-7. `docs/sdk/overview.md`'s "When the SDK does not yet suffice"
+7. `docs/current/sdk/overview.md`'s "When the SDK does not yet suffice"
    section is updated to retire the bullets this spec addresses and
    to mention `sdk/agent/tunnel` and `NewStandalone`.
 
@@ -741,11 +741,11 @@ consumer perspective. The `agent.NewStandalone` constructor and
 
 - [`external-consumers.md`](./external-consumers.md) — the catalog
   spec; the same template applies here
-- [`overview.md`](./overview.md) — the SDK's shape; this spec
+- [`../../current/sdk/overview.md`](../../current/sdk/overview.md) — the SDK's shape; this spec
   expands its "When the SDK does not yet suffice" section
-- [`../layer-1/agent.md`](../layer-1/agent.md) — Layer 1 runtime
+- [`../../current/layer-1/agent.md`](../../current/layer-1/agent.md) — Layer 1 runtime
   model and isolation
 - [`llm-gateway/docs/future/agora.md`](https://github.com/openziti/llm-gateway/blob/main/docs/future/agora.md)
   — the driving consumer's requirements
-- [`sdk/agent/networkpb/network.proto`](../../sdk/agent/networkpb/network.proto)
+- [`sdk/agent/networkpb/network.proto`](../../../sdk/agent/networkpb/network.proto)
   — the proto source of truth for the shapes this spec wraps

@@ -11,7 +11,7 @@ Detailed layer-specific behavior lives in:
 - [Layer 2 (Collaboration) foundation](../layer-2/foundation.md)
 - Layer 2 per-concept specs: [workgroups](../layer-2/workgroups.md), [catalog](../layer-2/catalog.md), [advertisements](../layer-2/advertisements.md), [sessions](../layer-2/sessions.md), [contracts](../layer-2/contracts.md), [envelopes](../layer-2/envelopes.md)
 - [Layer 2 (Collaboration) status](../layer-2/status.md)
-- [Post-MVP roadmap](../roadmap/post-mvp.md)
+- [Post-MVP roadmap](../../future/roadmap/post-mvp.md)
 
 ## Overview
 
@@ -110,4 +110,4 @@ In particular:
 - limits are deferred to post-MVP work
 - several broader collaboration and governance enhancements remain intentionally deferred
 
-Those items are tracked in [roadmap/post-mvp.md](../roadmap/post-mvp.md) rather than mixed into the MVP-layer specs.
+Those items are tracked in [future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md) rather than mixed into the MVP-layer specs.

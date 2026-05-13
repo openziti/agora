@@ -517,7 +517,7 @@ The workgroup slice is implemented when all of the following are true. Each is v
 
 ## Out Of Scope For First Slice
 
-- workgroup hierarchy (deferred per [../roadmap/post-mvp.md](../roadmap/post-mvp.md))
+- workgroup hierarchy (deferred per [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md))
 - per-workgroup rate limits or quotas (limits are deferred)
 - workgroup-level audit surfaces beyond what falls out of standard logging
 - configurable membership-removal close policy (MVP hardcodes "close immediately")

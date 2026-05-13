@@ -2,7 +2,7 @@
 
 Status: implemented in `sdk/agent/catalog`.
 Driving consumer: the LLM Gateway and MCP Gateway agora-mode work
-(see [`docs/dashboard/design.md`](../dashboard/design.md) "Gateway Integration").
+(see [`docs/current/dashboard/design.md`](../../current/dashboard/design.md) "Gateway Integration").
 
 ## Purpose
 
@@ -55,7 +55,7 @@ unreachable from outside this repo.
 
 ### The module-split context
 
-[`docs/sdk/overview.md`](./overview.md) already calls this out under
+[`docs/current/sdk/overview.md`](../../current/sdk/overview.md) already calls this out under
 "When the SDK does not yet suffice":
 
 > **Public-module consumption.** The SDK lives inside the main
@@ -116,8 +116,8 @@ Explicitly out of scope:
 
 "Catalog" is agora's Layer 2 vocabulary for the discovery surface — the
 place advertisements live (see
-[`docs/layer-2/catalog.md`](../layer-2/catalog.md) and
-[`docs/layer-2/advertisements.md`](../layer-2/advertisements.md)). The
+[`docs/current/layer-2/catalog.md`](../../current/layer-2/catalog.md) and
+[`docs/current/layer-2/advertisements.md`](../../current/layer-2/advertisements.md)). The
 package surfaces the calling agent's interactions with that catalog:
 publishing into it, retracting from it, looking up entries the agent
 owns. Sibling packages already follow this pattern:
@@ -459,7 +459,7 @@ intended security model anyway.
 The dashboard demo's gateway agora-mode does not exercise update — the
 gateway publishes once on startup and retracts on shutdown. The
 controller does support `PATCH /advertisements/{id}` (see
-[`internal/api/specs/advertisements/paths.yml`](../../internal/api/specs/advertisements/paths.yml)),
+[`internal/api/specs/advertisements/paths.yml`](../../../internal/api/specs/advertisements/paths.yml)),
 so adding `Update(ctx, a, id, spec)` is a natural extension when a
 consumer needs it. Out of scope here to keep the surface small.
 
@@ -497,7 +497,7 @@ necessarily acceptable for a slim client that only wants the catalog
 surface.
 
 The follow-on SDK module split (deferred per
-[`docs/sdk/overview.md`](./overview.md)) is what fully closes that
+[`docs/current/sdk/overview.md`](../../current/sdk/overview.md)) is what fully closes that
 concern. It does not need to land before this spec ships. When the
 split happens:
 
@@ -567,25 +567,25 @@ The implementation closes the gap when all of the following are true:
    `errors.Is` matching the documented sentinels.
 7. Godoc on every exported symbol, with at least one runnable example
    on `EnsurePublished` (Example function in `example_test.go`).
-8. [`docs/sdk/overview.md`](./overview.md)'s "When the SDK does not yet
+8. [`docs/current/sdk/overview.md`](../../current/sdk/overview.md)'s "When the SDK does not yet
    suffice" section is updated to retire the advertisement clause and
    point readers at the new package.
 
 ## Related documentation
 
-- [`docs/sdk/overview.md`](./overview.md) — SDK shape and the existing
+- [`docs/current/sdk/overview.md`](../../current/sdk/overview.md) — SDK shape and the existing
   "When the SDK does not yet suffice" notes that this spec begins to
   retire
-- [`docs/dashboard/design.md`](../dashboard/design.md) "Gateway
+- [`docs/current/dashboard/design.md`](../../current/dashboard/design.md) "Gateway
   Integration" — the driving consumer's requirements
-- [`docs/dashboard/work-order.md`](../dashboard/work-order.md) Track E
+- [`docs/current/dashboard/work-order.md`](../../current/dashboard/work-order.md) Track E
   note — the work-order side of the gateway integration
-- [`docs/layer-2/advertisements.md`](../layer-2/advertisements.md) —
+- [`docs/current/layer-2/advertisements.md`](../../current/layer-2/advertisements.md) —
   Layer 2 advertisement design
-- [`docs/layer-2/catalog.md`](../layer-2/catalog.md) — Layer 2 catalog
+- [`docs/current/layer-2/catalog.md`](../../current/layer-2/catalog.md) — Layer 2 catalog
   design
-- [`internal/api/specs/advertisements/`](../../internal/api/specs/advertisements/) —
+- [`internal/api/specs/advertisements/`](../../../internal/api/specs/advertisements/) —
   the OpenAPI source of truth for the shapes this spec mirrors
-- [`examples/macro-pulse/internal/agentutil/publish.go`](../../examples/macro-pulse/internal/agentutil/publish.go) —
+- [`examples/macro-pulse/internal/agentutil/publish.go`](../../../examples/macro-pulse/internal/agentutil/publish.go) —
   the existing internal helper whose behavior this spec preserves and
   exposes

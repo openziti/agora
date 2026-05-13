@@ -163,4 +163,4 @@ This preserves demo enrollments and logs for the next run. Use a clean slate onl
 
 ## Recording Notes
 
-Record from the login screen through the close, using the path above and a normal speaking cadence. Keep the video under 10 minutes. Save the approved recording as `docs/dashboard/walkthrough.mp4` if the team decides to commit the binary; otherwise store it externally and link it from this section.
+Record from the login screen through the close, using the path above and a normal speaking cadence. Keep the video under 10 minutes. Save the approved recording as `docs/current/dashboard/walkthrough.mp4` if the team decides to commit the binary; otherwise store it externally and link it from this section.

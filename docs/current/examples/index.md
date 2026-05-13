@@ -1,6 +1,6 @@
 # Reference Examples
 
-This directory catalogs the reference/demo agent implementations that live under [`examples/`](../../examples/) in the repository. Examples serve three purposes:
+This directory catalogs the reference/demo agent implementations that live under [`examples/`](../../../examples/) in the repository. Examples serve three purposes:
 
 1. **Demonstrate** Agora's value proposition end-to-end, in scenarios plausible enough to stand up to executive scrutiny
 2. **Exercise** each Layer 2 slice as it lands, so no slice is "done" without a working reference agent using it
@@ -19,7 +19,7 @@ Macro Pulse is the primary reference example. Additional examples may be added a
 - `examples/<example-name>/` at the repo root. Subdirectories are part of the main `github.com/openziti/agora` Go module, which means example agents can import from `internal/` packages. This is a deliberate choice for reference examples — a future "external consumer" demo would sit in a sibling directory with its own `go.mod` and would only import public surfaces.
 - Each example has a `README.md` at its root with the operator-facing narrative and running instructions.
 - Each agent within an example has its own `README.md` describing the agent's capability, workgroup, envelope shapes, and behavior.
-- Per-example formal architecture docs live here under `docs/examples/`.
+- Per-example formal architecture docs live here under `docs/current/examples/`.
 
 ## How examples roll out alongside slices
 

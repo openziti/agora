@@ -6,7 +6,7 @@ This document records the current implementation state of Layer 2 (Collaboration
 
 Layer 2 is **MVP-complete**: all five slices (workgroups, catalog+advertisements, sessions, contracts, envelopes) have shipped. Every per-concept spec is at Tier A with its open-questions walk closed and implementation landed.
 
-Documentation has moved beyond the initial architectural sketch. The cross-cutting design decisions are captured in [foundation.md](foundation.md), and each of the six concepts has its own dedicated spec. The next milestones are post-MVP extensions tracked in [../roadmap/post-mvp.md](../roadmap/post-mvp.md): session multiplexing over a shared tunnel, programmatic contracts, envelope-level signing, richer A2A bridging, metrics, limits, and the other items collected there.
+Documentation has moved beyond the initial architectural sketch. The cross-cutting design decisions are captured in [foundation.md](foundation.md), and each of the six concepts has its own dedicated spec. The next milestones are post-MVP extensions tracked in [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md): session multiplexing over a shared tunnel, programmatic contracts, envelope-level signing, richer A2A bridging, metrics, limits, and the other items collected there.
 
 What ships today:
 
@@ -19,7 +19,7 @@ What ships today:
 - envelope wire format (`frame_version` + length-prefixed JSON header + opaque payload), runtime-level tunnel attach on both consumer and provider sides, envelope `Send`/`Receive` on `*session.Session`, contract enforcement of `max_envelope_bytes` / `max_envelope_count` / `allowed_message_types` at the SDK layer, platform hard ceiling of 10 MiB per envelope, periodic envelope-count heartbeat via `POST /v1/sessions/{id}/envelope-count`, CLI `agora session send` for one-shot debugging
 - the Macro Pulse demo runs an end-to-end ping: each provider/tool agent attaches an `EchoSessionHandler` that reads the inbound envelope and writes a `.response` reply; `pulse-agent` iterates the catalog and exchanges a `{domain}.{capability}.request` → `{domain}.{capability}.response` envelope round-trip per advertisement
 
-The post-MVP surface tracked in [../roadmap/post-mvp.md](../roadmap/post-mvp.md) covers everything not shipped in MVP.
+The post-MVP surface tracked in [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md) covers everything not shipped in MVP.
 
 ## Documentation Tier Tracking
 
@@ -84,4 +84,4 @@ These items should not shape the first Layer 2 implementation slice:
 - session multiplexing over a shared tunnel
 - workgroup hierarchy
 
-Those are tracked separately in [../roadmap/post-mvp.md](../roadmap/post-mvp.md).
+Those are tracked separately in [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md).

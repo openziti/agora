@@ -26,7 +26,7 @@ Agora is organized in layers:
   workgroups, catalog discovery, advertisements, sessions, contracts, and
   envelopes.
 
-See [docs/architecture/overview.md](./docs/architecture/overview.md) for the
+See [docs/current/architecture/overview.md](./docs/current/architecture/overview.md) for the
 cross-layer architecture.
 
 ## Current Status
@@ -51,9 +51,9 @@ Layer 1 is minimum-working and Layer 2 is MVP-complete. Remaining work is
 mostly operational hardening, SDK packaging, metrics, limits, and post-MVP
 collaboration extensions. For details, see:
 
-- [docs/layer-1/status.md](./docs/layer-1/status.md)
-- [docs/layer-2/status.md](./docs/layer-2/status.md)
-- [docs/roadmap/post-mvp.md](./docs/roadmap/post-mvp.md)
+- [docs/current/layer-1/status.md](./docs/current/layer-1/status.md)
+- [docs/current/layer-2/status.md](./docs/current/layer-2/status.md)
+- [docs/future/roadmap/post-mvp.md](./docs/future/roadmap/post-mvp.md)
 
 ## Repository Layout
 
@@ -132,8 +132,8 @@ For a clean demo root:
 
 Demo operation details live in:
 
-- [docs/dashboard/walkthrough.md](./docs/dashboard/walkthrough.md)
-- [docs/dashboard/troubleshooting.md](./docs/dashboard/troubleshooting.md)
+- [docs/current/dashboard/walkthrough.md](./docs/current/dashboard/walkthrough.md)
+- [docs/current/dashboard/troubleshooting.md](./docs/current/dashboard/troubleshooting.md)
 - [examples/macro-pulse/README.md](./examples/macro-pulse/README.md)
 
 ## Development
@@ -244,9 +244,9 @@ resource objects.
 Start with:
 
 - [docs/README.md](./docs/README.md)
-- [docs/architecture/overview.md](./docs/architecture/overview.md)
-- [docs/sdk/overview.md](./docs/sdk/overview.md)
-- [docs/maintainers/current-state.md](./docs/maintainers/current-state.md)
+- [docs/current/architecture/overview.md](./docs/current/architecture/overview.md)
+- [docs/current/sdk/overview.md](./docs/current/sdk/overview.md)
+- [docs/current/maintainers/current-state.md](./docs/current/maintainers/current-state.md)
 
 ## License
 

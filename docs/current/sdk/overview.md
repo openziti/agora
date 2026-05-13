@@ -151,7 +151,7 @@ the desired operation.
 
 ## Isolation from the standalone daemon
 
-Embedded runtimes are isolated from any `agora network start` daemon running on the same host. See [`docs/layer-1/agent.md`](../layer-1/agent.md) "Packaging Direction" for the full model. Summary:
+Embedded runtimes are isolated from any `agora network start` daemon running on the same host. See [`docs/current/layer-1/agent.md`](../layer-1/agent.md) "Packaging Direction" for the full model. Summary:
 
 - Embedded runtimes do **not** read or write `~/.agora/network.json`.
 - Embedded runtimes do **not** bind `~/.agora/network.sock`.
@@ -168,6 +168,6 @@ This means an operator can run `agora network start` for CLI-driven tunnel opera
 
 ## Related documentation
 
-- [`docs/layer-1/agent.md`](../layer-1/agent.md) — runtime model, ownership boundaries, packaging direction, isolation model
-- [`docs/layer-2/foundation.md`](../layer-2/foundation.md) — Layer 2 cross-cutting decisions that the SDK's capability surface will grow to reflect
-- [`docs/examples/macro-pulse.md`](../examples/macro-pulse.md) — the primary reference consumer of the SDK
+- [`docs/current/layer-1/agent.md`](../layer-1/agent.md) — runtime model, ownership boundaries, packaging direction, isolation model
+- [`docs/current/layer-2/foundation.md`](../layer-2/foundation.md) — Layer 2 cross-cutting decisions that the SDK's capability surface will grow to reflect
+- [`docs/current/examples/macro-pulse.md`](../examples/macro-pulse.md) — the primary reference consumer of the SDK

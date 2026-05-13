@@ -4,7 +4,7 @@ A reference multi-agent demo on top of Agora that produces a cross-domain mornin
 
 Macro Pulse exists to exercise and demonstrate Agora's Layer 2 (Collaboration) primitives — workgroups, catalog, advertisements, sessions, contracts, envelopes — in a scenario that is plausible enough to stand up to executive scrutiny rather than feel like a hello-world toy. It is also the platform we use to validate each Layer 2 slice end-to-end as it lands.
 
-For the formal specification of the demo's architecture, rollout, and slice-gated dependencies, see [docs/examples/macro-pulse.md](../../docs/examples/macro-pulse.md). This README is the operator-facing entry point for running the demo.
+For the formal specification of the demo's architecture, rollout, and slice-gated dependencies, see [docs/current/examples/macro-pulse.md](../../docs/current/examples/macro-pulse.md). This README is the operator-facing entry point for running the demo.
 
 ## The narrative
 
@@ -117,7 +117,7 @@ Deterministic given inputs. No LLM calls. The `narrator` agent is template-drive
 
 ## Implementation status
 
-Macro Pulse was rolled out incrementally, one increment per Layer 2 slice landing. See [docs/examples/macro-pulse.md](../../docs/examples/macro-pulse.md) "Slice Rollout" for the full dependency matrix. The full end-to-end demo is now shipped:
+Macro Pulse was rolled out incrementally, one increment per Layer 2 slice landing. See [docs/current/examples/macro-pulse.md](../../docs/current/examples/macro-pulse.md) "Slice Rollout" for the full dependency matrix. The full end-to-end demo is now shipped:
 
 - **Documentation and scaffolding**: shipped
 - **`bootstrap/` program**: shipped (workgroup slice)

@@ -1,6 +1,6 @@
 # Macro Pulse
 
-This document is the formal architecture and rollout reference for the [Macro Pulse](../../examples/macro-pulse/) demo. The operator-facing narrative, running instructions, and agent map live in the demo's own [README](../../examples/macro-pulse/README.md). This document covers the parts relevant to Agora maintainers: architecture, envelope wire shapes, slice-by-slice rollout, and implementation constraints.
+This document is the formal architecture and rollout reference for the [Macro Pulse](../../../examples/macro-pulse/) demo. The operator-facing narrative, running instructions, and agent map live in the demo's own [README](../../../examples/macro-pulse/README.md). This document covers the parts relevant to Agora maintainers: architecture, envelope wire shapes, slice-by-slice rollout, and implementation constraints.
 
 ## Purpose
 
@@ -84,7 +84,7 @@ Each Layer 2 slice advances the example. This matrix is the authoritative statem
 | **Contracts** | Each provider/tool agent ensures a shared `macro-pulse-provider-default` contract (MVP terms: `max_duration_seconds=60`, `access_mode=approval_required`) and attaches it to its advertisement. `pulse-agent` reads the snapshot off each session and logs its parameters. The session-duration reaper enforces the `max_duration_seconds` cap via scheduled `close_reason=contract_violation`. Envelope-count and `allowed_message_types` enforcement lands in the envelopes slice. | **shipped** |
 | **Envelopes** | Provider agents decode typed JSON request envelopes and return typed JSON responses over session-governed transport. `pulse-agent` discovers every provider/tool advertisement, exchanges request/response envelopes, asks `correlator` for cross-domain Pearson r calculations, asks `narrator` for deterministic prose, and prints the full morning brief. The wire format is the finalized frame (1-byte version + 4+4 length-prefixed JSON header + opaque payload); envelope counts flow back to the controller via the `POST /v1/sessions/{id}/envelope-count` heartbeat. | **shipped** |
 
-Current demo behavior is implemented by the binaries under [`examples/macro-pulse/cmd/`](../../examples/macro-pulse/cmd/). The provider and tool agents use the [`sdk/agent`](../sdk/overview.md) SDK to load their local environment roots, publish advertisements, accept sessions, and exchange envelopes. The orchestrator uses the same controller and session surfaces as an external agent would.
+Current demo behavior is implemented by the binaries under [`examples/macro-pulse/cmd/`](../../../examples/macro-pulse/cmd/). The provider and tool agents use the [`sdk/agent`](../sdk/overview.md) SDK to load their local environment roots, publish advertisements, accept sessions, and exchange envelopes. The orchestrator uses the same controller and session surfaces as an external agent would.
 
 ## Constraints and non-goals
 
@@ -105,11 +105,11 @@ Current demo behavior is implemented by the binaries under [`examples/macro-puls
 
 In `--live` mode, each data agent attempts the live API first. On any network error, parse error, or response-shape mismatch, it falls back to the snapshot data with a warning log. This means demos never fail due to a transient upstream issue — they gracefully degrade to offline behavior.
 
-Snapshot data lives under [`examples/macro-pulse/snapshots/`](../../examples/macro-pulse/snapshots/) as plain JSON files organized by capability. See [`examples/macro-pulse/snapshots/README.md`](../../examples/macro-pulse/snapshots/README.md) for the snapshot schema and update procedure.
+Snapshot data lives under [`examples/macro-pulse/snapshots/`](../../../examples/macro-pulse/snapshots/) as plain JSON files organized by capability. See [`examples/macro-pulse/snapshots/README.md`](../../../examples/macro-pulse/snapshots/README.md) for the snapshot schema and update procedure.
 
 ## Relationship to Layer 2 documentation
 
-Per-concept design in [`docs/layer-2/`](../layer-2/) is informed by Macro Pulse:
+Per-concept design in [`docs/current/layer-2/`](../layer-2/) is informed by Macro Pulse:
 
 - **Workgroups** ([workgroups.md](../layer-2/workgroups.md)): the Macro Pulse topology is one of the real-world test cases. Five orgs, four inter-org workgroups, three intra-org workgroups, nine accounts — exercises both tenancy model dimensions.
 - **Catalog, advertisements** ([catalog.md](../layer-2/catalog.md), [advertisements.md](../layer-2/advertisements.md)): the eight advertisements here drive the capability-naming convention (`<domain>.<capability>`) and the "discover by capability across workgroups" query pattern.

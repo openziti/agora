@@ -25,7 +25,7 @@
 //     isolated from any daemon on the same host, sharing only the
 //     enrolled environment identity.
 //
-// See docs/layer-1/agent.md "Packaging Direction" for the full
+// See docs/current/layer-1/agent.md "Packaging Direction" for the full
 // isolation model.
 //
 // # Types

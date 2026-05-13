@@ -4,16 +4,17 @@
 
 Agora is a native zero-trust overlay network for agent-to-agent communication, built on OpenZiti. It provides secure connectivity primitives at Layer 1 (Network) and governed agent collaboration services at Layer 2 (Collaboration).
 
-This repository is in early-stage development. Favor simple, explicit structure and keep implementation aligned with `docs/architecture/overview.md` and the relevant layer docs under `docs/`.
+This repository is in early-stage development. Favor simple, explicit structure and keep implementation aligned with `docs/current/architecture/overview.md` and the relevant layer docs under `docs/current/`.
 
 ## Documentation Structure
 
+- `docs/` is split into `docs/current/` (verifiable against running code) and `docs/future/` (vision, work orders, deferred designs). New docs default to the bucket that matches their nature; promote from `future/` to `current/` as work lands. See [`docs/README.md`](./docs/README.md) for the full convention — what each bucket means, where new docs go, and the promotion procedure.
 - The canonical architecture, status, maintainer, and roadmap materials live under `docs/`.
-- Use `docs/architecture/overview.md` for cross-layer architecture and system-wide design.
-- Use `docs/layer-1/spec.md`, `docs/layer-1/status.md`, and `docs/layer-1/agent.md` for Layer 1 (Network) normative behavior, current state, and local-runtime design.
-- Use `docs/layer-2/spec.md` and `docs/layer-2/status.md` for Layer 2 (Collaboration) design and implementation status.
-- Use `docs/maintainers/current-state.md` for repo-shape, workflow, and maintainer-facing current-state context.
-- Use `docs/roadmap/post-mvp.md` for explicitly deferred work such as metrics and limits.
+- Use `docs/current/architecture/overview.md` for cross-layer architecture and system-wide design.
+- Use `docs/current/layer-1/spec.md`, `docs/current/layer-1/status.md`, and `docs/current/layer-1/agent.md` for Layer 1 (Network) normative behavior, current state, and local-runtime design.
+- Use `docs/current/layer-2/spec.md` and `docs/current/layer-2/status.md` for Layer 2 (Collaboration) design and implementation status.
+- Use `docs/current/maintainers/current-state.md` for repo-shape, workflow, and maintainer-facing current-state context.
+- Use `docs/future/roadmap/post-mvp.md` for explicitly deferred work such as metrics and limits.
 - Do not create new root-level planning or handoff docs that duplicate the `docs/` canon.
 - Keep spec docs normative, status docs factual/current-state, and roadmap docs limited to deferred or later-phase work.
 
@@ -77,7 +78,7 @@ This repository is in early-stage development. Favor simple, explicit structure 
 - Prefer extending the environment package over scattering ad hoc dotfiles or one-off env var parsing across commands
 
 **Package Naming**:
-- The public SDK lives at `sdk/agent` (top-level, outside `internal/`). It exposes the embeddable Layer 1 runtime plus App/Agent scaffolding. Both Agora's own `agora network start` daemon and every agent built on Agora import from here. See [docs/sdk/overview.md](./docs/sdk/overview.md).
+- The public SDK lives at `sdk/agent` (top-level, outside `internal/`). It exposes the embeddable Layer 1 runtime plus App/Agent scaffolding. Both Agora's own `agora network start` daemon and every agent built on Agora import from here. See [docs/current/sdk/overview.md](./docs/current/sdk/overview.md).
 - Layer-owned internal packages follow the conceptual layer names:
 - `internal/fabric/...` for Layer 0 (Fabric) implementation code
 - `internal/network/...` for Layer 1 (Network) implementation code that is NOT part of the SDK (e.g., `internal/network/daemon` for daemon-client helpers, `internal/network/tunnelruntime` for the HTTP/TCP/UDP engine)
