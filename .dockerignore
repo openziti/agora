@@ -1,0 +1,54 @@
+# Keep the build context small and reproducible.
+# Anything required by the Dockerfile stages must NOT be excluded here.
+
+# Version control / CI metadata
+.git
+.gitignore
+.gitattributes
+.github
+
+# Editor / OS noise
+.idea
+.vscode
+.claude
+.codex
+.cursor
+.cursorrules
+.DS_Store
+*.swp
+
+# Local secrets / env
+.env
+.env.*
+etc/dev*
+etc/*.pem
+
+# Local demo and dev state
+.agora
+.agora-demo
+/localtest/
+
+# Node build artifacts (regenerated in the ui-build stage)
+ui/node_modules
+ui/dist
+ui/.vite
+
+# Stray Go build outputs (the .gitignore in this repo lists these; mirror
+# the list so they never leak into the build context if present locally)
+/agora
+/macro-pulse-bootstrap
+/macro-pulse-commodities-feed
+/macro-pulse-correlator
+/macro-pulse-equity-feed
+/macro-pulse-fx-feed
+/macro-pulse-narrator
+/macro-pulse-news-pulse
+/macro-pulse-pulse-agent
+/macro-pulse-search-trends
+/macro-pulse-weather-feed
+
+# Python / Node SDK build outputs (not needed; would be stale if present)
+sdk/nodejs/sdk/dist
+sdk/python/src/dist
+**/__pycache__/
+**/*.egg-info/

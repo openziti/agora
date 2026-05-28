@@ -1,10 +1,20 @@
 # Coding Agent Instructions
 
+> `CLAUDE.md` at the repo root is a symlink to this file. Edit `AGENTS.md` — never replace `CLAUDE.md` with a regular file, which would break the symlink and split the two sources of truth.
+
 ## Agora
 
 Agora is a native zero-trust overlay network for agent-to-agent communication, built on OpenZiti. It provides secure connectivity primitives at Layer 1 (Network) and governed agent collaboration services at Layer 2 (Collaboration).
 
 This repository is in early-stage development. Favor simple, explicit structure and keep implementation aligned with `docs/current/architecture/overview.md` and the relevant layer docs under `docs/current/`.
+
+### Prerequisites
+
+- Go 1.25+ (controller, CLI, SDK, and tests)
+- Node.js + npm (only when working in `ui/` or running the demo, which rebuilds the dashboard)
+- PostgreSQL (controller runtime; integration tests spin their own via `testcontainers-go`)
+- Docker (required for the persistence/controller integration tests)
+- An OpenZiti controller + enrolled edge router for real tunnel and demo flows
 
 ## Documentation Structure
 
@@ -34,8 +44,23 @@ This repository is in early-stage development. Favor simple, explicit structure 
 
 ### Testing
 - Go tests: `go test ./...`
-- Persistence integration tests use PostgreSQL containers via `testcontainers-go`
+- Single package: `go test ./internal/persistence/...`
+- Single test: `go test ./internal/persistence/ -run TestNameRegex` (add `-v` to see per-test output, `-count=1` to bypass the test cache)
+- Persistence integration tests use PostgreSQL containers via `testcontainers-go` and require Docker
 - Before finishing a change, run the narrowest relevant tests first, then `go test ./...` when the change touches shared code or project wiring
+
+### Dashboard (`ui/`)
+- The dashboard is a Vite + React + TypeScript app embedded into the controller binary at build time via `ui/embed.go`. Building Go alone does not rebuild the dashboard — `go build` ships whatever assets are currently embedded.
+- Install deps once: `cd ui && npm ci`
+- Production build (regenerates the embedded assets the controller serves): `cd ui && npm run build`
+- Lint: `cd ui && npm run lint`
+- Live dev against a running controller: `cd ui && npm run dev` — Vite serves on a separate port and proxies API calls; remember the [Test Process Cleanup](#test-process-cleanup) rules and stop the dev server before handing work back.
+
+### Demo Orchestration
+- `./bin/demo-up.sh` builds the dashboard, installs Go demo binaries, runs migrations, starts the controller, provisions the demo topology, and launches the Macro Pulse workers. It expects external PostgreSQL and OpenZiti services per [etc/demo-controller.yaml](./etc/demo-controller.yaml).
+- `./bin/demo-up.sh --attach` and `./bin/demo-down.sh --attach` run in the foreground for interactive use.
+- `./bin/demo-down.sh` stops managed demo processes; `./bin/demo-down.sh --purge` also clears demo state for a clean restart.
+- Treat the demo stack as a long-running set of processes — apply the [Test Process Cleanup](#test-process-cleanup) rules when using it for verification.
 
 ### Test Process Cleanup
 - Any process started only for verification or manual testing must be stopped before handing the work back for review or moving to the next work unit. This includes Vite dev servers, mock HTTP controllers, `go run` controller processes, demo agents, background scripts, and ad hoc local listeners.
