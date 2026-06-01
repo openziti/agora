@@ -1,0 +1,33 @@
+version: 2
+builds:
+- id: agora-darwin-amd64
+  main: ./cmd/agora
+  binary: agora
+  ldflags:
+    - -s -w
+    - -X github.com/openziti/agora/build.Version={{.Tag}}
+    - -X github.com/openziti/agora/build.Hash={{.ShortCommit}}
+    - -X github.com/openziti/agora/build.Date={{.Date}}
+    - -X github.com/openziti/agora/build.BuiltBy=goreleaser
+  env:
+    - CGO_ENABLED=0
+  goos:
+    - darwin
+  goarch:
+    - amd64
+
+- id: agora-darwin-arm64
+  main: ./cmd/agora
+  binary: agora
+  ldflags:
+    - -s -w
+    - -X github.com/openziti/agora/build.Version={{.Tag}}
+    - -X github.com/openziti/agora/build.Hash={{.ShortCommit}}
+    - -X github.com/openziti/agora/build.Date={{.Date}}
+    - -X github.com/openziti/agora/build.BuiltBy=goreleaser
+  env:
+    - CGO_ENABLED=0
+  goos:
+    - darwin
+  goarch:
+    - arm64

@@ -17,6 +17,7 @@ node_modules/
 
 # Artifacts
 /dist/
+/.goreleaser-dist/
 
 # Stray Go build outputs at repo root (from `go build ./path/to/cmd`).
 # Prefer `go build -o /dev/null ./...` or `go vet ./...` for verification so
