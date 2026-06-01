@@ -130,21 +130,12 @@ jobs:
           name: release-builds-windows
           path: ./dist/*.gz
 
-  call-publish-docker-images:
-    name: Publish Release Docker Images
-    needs:
-      - build-linux
-    uses: ./.github/workflows/publish-docker-images.yml
-    secrets: inherit
-    with:
-      release-version: ${{ github.ref_name }}
-
   draft-release:
     runs-on: ubuntu-latest
     needs:
+      - build-linux
       - build-darwin
       - build-windows
-      - call-publish-docker-images
     permissions:
       contents: write  # need write to draft the release
       id-token: write  # need write to get OIDC token for generating attestations
