@@ -1,5 +1,9 @@
 # CHANGELOG
 
+# v0.1.2
+
+CHANGE: Do not push docker images.
+
 # v0.1.1
 
 CHANGE: `agora enable` now supports token-less enablement; if you do not provide a token it will prompt for email/password.
