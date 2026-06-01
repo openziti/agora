@@ -82,7 +82,8 @@ Layer 1 tunnel authorization follows these rules:
 
 - the owning account manages its own tunnels
 - tunnel names are unique within an organization among active tunnels, using case-insensitive matching
-- the owning environment may always serve and connect to its own tunnel
+- the owning environment serves its own tunnel; serve is environment-bound
+- any environment enrolled to the owning account may connect to the account's tunnels
 - same-organization accounts may connect only when explicitly granted
 - active access is represented by controller-visible attachment records rather than inferred from low-level fabric state
 

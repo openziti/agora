@@ -132,17 +132,15 @@ func (s *Service) canConnectToTunnel(ctx context.Context, tunnel *persistence.Tu
 	if env.OrganizationID != principal.OrganizationID {
 		return false, nil
 	}
-	// Same-org caller is the tunnel owner: full access.
+	// Ownership is account-scoped: any environment enrolled to the
+	// owning account may connect to the account's own tunnel. (serve
+	// remains environment-bound; connect does not.)
 	if tunnel.OrganizationID == principal.OrganizationID &&
-		tunnel.EnvironmentID == env.ID &&
 		tunnel.AccountID == principal.AccountID {
 		return true, nil
 	}
-	// Same-org caller, same account but different env: not allowed.
-	if tunnel.OrganizationID == principal.OrganizationID && principal.AccountID == tunnel.AccountID {
-		return false, nil
-	}
-	// Same- or cross-org: grants table is authoritative.
+	// Otherwise (same-org other account, or cross-org): the grants
+	// table is authoritative.
 	return s.store.TunnelGrants.IsGranted(ctx, s.store.DB(), tunnel.ID, principal.AccountID)
 }
 
