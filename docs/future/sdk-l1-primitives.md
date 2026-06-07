@@ -40,7 +40,7 @@ type OverlayContext interface {
 
 `Listen` returns a real `net.Listener` whose `Accept()` yields overlay connections; `Dial` returns a real `net.Conn`. The managed actors consume these inside their proxy loops rather than handing them out. The work here is the thin public path that returns the object directly.
 
-The new entry points are `Listen` on the provider side and `Dial` on the consumer side. `EnsureServed` / `EnsureConnected` are untouched and remain the managed option for anyone who wants the heartbeated, supervised lifecycle. `Listen` is specified for near-term implementation; `Dial` is designed here but is phase-2 work (its one prerequisite is in its own section).
+The new entry points are `Listen` on the provider side and `Dial` on the consumer side. `EnsureServed` / `EnsureConnected` are untouched and remain the managed option for anyone who wants the heartbeated, supervised lifecycle. `Listen` is specified for near-term implementation; `Dial` is designed here but is phase-2 work (its prerequisites are detailed below).
 
 ## Why thin is the whole point
 
