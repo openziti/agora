@@ -87,7 +87,6 @@ connectTunnelRequest:
   required:
     - environmentId
     - name
-    - listenAddress
   properties:
     environmentId:
       type: string
@@ -162,7 +161,7 @@ tunnelAttachment:
     - organizationId
     - accountId
     - environmentId
-    - listenAddress
+    - kind
     - state
     - lastHeartbeatAt
     - createdAt
@@ -190,6 +189,9 @@ tunnelAttachment:
       type: string
     tunnelMode:
       $ref: "#/tunnelMode"
+    kind:
+      type: string
+      enum: [proxy, dialer]
     listenAddress:
       type: string
     dialPolicyId:
@@ -214,6 +216,21 @@ listTunnelAttachmentsResponse:
   type: array
   items:
     $ref: "#/tunnelAttachment"
+
+activeDialerAttachment:
+  type: object
+  required:
+    - attachment
+    - tunnelId
+    - tunnelMode
+  properties:
+    attachment:
+      $ref: "#/tunnelAttachment"
+    tunnelId:
+      type: string
+      pattern: '^tt_[a-z0-9]{12}$'
+    tunnelMode:
+      $ref: "#/tunnelMode"
 
 tunnelServe:
   type: object

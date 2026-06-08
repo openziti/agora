@@ -96,6 +96,10 @@ type Handler interface {
 	//
 	// DELETE /workgroups/{workgroupId}
 	DeleteWorkgroup(ctx context.Context, params DeleteWorkgroupParams) (DeleteWorkgroupRes, error)
+	// DetachDialerAttachment implements detachDialerAttachment operation.
+	//
+	// DELETE /dialer-attachments
+	DetachDialerAttachment(ctx context.Context, params DetachDialerAttachmentParams) (DetachDialerAttachmentRes, error)
 	// DisableEnvironment implements disableEnvironment operation.
 	//
 	// DELETE /environments/{environmentId}/heartbeat
@@ -108,6 +112,10 @@ type Handler interface {
 	//
 	// GET /account/token
 	GetAccountToken(ctx context.Context) (GetAccountTokenRes, error)
+	// GetActiveDialerAttachment implements getActiveDialerAttachment operation.
+	//
+	// GET /dialer-attachments
+	GetActiveDialerAttachment(ctx context.Context, params GetActiveDialerAttachmentParams) (GetActiveDialerAttachmentRes, error)
 	// GetAdvertisement implements getAdvertisement operation.
 	//
 	// GET /advertisements/{advertisementId}

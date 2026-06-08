@@ -87,7 +87,7 @@ func TestAgentEnsureServeAndConnectPersistDesiredState(t *testing.T) {
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
 				BackendTarget: api.NewOptString("https://backend.example"),
-			}, &api.TunnelAttachment{ID: "ta_test00000001", ListenAddress: "127.0.0.1:8080"}, nil
+			}, &api.TunnelAttachment{ID: "ta_test00000001", ListenAddress: api.NewOptString("127.0.0.1:8080")}, nil
 		},
 	}
 
@@ -403,7 +403,7 @@ func TestAgentRestoresDesiredServeAndConnectOnStart(t *testing.T) {
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
 				BackendTarget: api.NewOptString("https://backend.example"),
-			}, &api.TunnelAttachment{ID: "ta_test00000025", ListenAddress: "127.0.0.1:8080"}, nil
+			}, &api.TunnelAttachment{ID: "ta_test00000025", ListenAddress: api.NewOptString("127.0.0.1:8080")}, nil
 		},
 	}
 

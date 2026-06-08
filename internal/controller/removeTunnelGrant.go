@@ -7,7 +7,6 @@ import (
 
 	"github.com/michaelquigley/df/dl"
 	"github.com/openziti/agora/internal/api"
-	"github.com/openziti/agora/internal/fabric/openziti/automation"
 	"github.com/openziti/agora/internal/persistence"
 )
 
@@ -19,45 +18,44 @@ func (s *Service) RemoveTunnelGrant(ctx context.Context, params api.RemoveTunnel
 	}
 	dl.Infof("removing tunnel grant tunnel_id='%s' account_id='%s' %s", params.TunnelId, params.AccountId, principalLogFields(principal))
 
-	tunnel, err := s.requireManagedTunnel(ctx, principal, params.TunnelId)
-	if err != nil {
-		if errors.Is(err, persistence.ErrNotFound) {
-			return &api.RemoveTunnelGrantNotFound{Code: "not_found", Message: "tunnel not found"}, nil
-		}
-		return &api.RemoveTunnelGrantInternalServerError{Code: "internal_error", Message: err.Error()}, nil
-	}
-
-	if err := s.store.TunnelGrants.Delete(ctx, s.store.DB(), tunnel.ID, params.AccountId, tunnel.OrganizationID); err != nil {
-		if errors.Is(err, persistence.ErrNotFound) {
-			return &api.RemoveTunnelGrantNotFound{Code: "not_found", Message: "grant not found"}, nil
-		}
-		return &api.RemoveTunnelGrantInternalServerError{Code: "internal_error", Message: err.Error()}, nil
-	}
-
-	attachments, err := s.store.TunnelAttachments.ListByTunnelAndAccount(ctx, s.store.DB(), tunnel.ID, tunnel.OrganizationID, params.AccountId)
-	if err != nil {
-		return &api.RemoveTunnelGrantInternalServerError{Code: "internal_error", Message: err.Error()}, nil
-	}
-
 	_, tunnelLifecycle, err := s.lifecycleFactory(ctx)
 	if err != nil {
 		return &api.RemoveTunnelGrantInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
 
 	disconnectedAt := time.Now().UTC()
-	for i := range attachments {
-		attachment := attachments[i]
-		if attachment.DialPolicyID != nil {
-			if err := tunnelLifecycle.Deprovision(ctx, automation.DeprovisionTunnelSpec{DialPolicyID: *attachment.DialPolicyID}); err != nil {
-				dl.Errorf("remove tunnel grant deprovision failed attachment_id='%s' tunnel_id='%s' %s: %v", attachment.ID, tunnel.ID, principalLogFields(principal), err)
-				return &api.RemoveTunnelGrantInternalServerError{Code: "internal_error", Message: err.Error()}, nil
-			}
+	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+		if err := lockTunnelScope(ctx, tx, params.TunnelId); err != nil {
+			return err
 		}
-		if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
-			return s.detachTunnel(ctx, tx, attachment, persistence.TunnelAttachmentStateDisconnected, &disconnectedAt)
-		}); err != nil {
-			return &api.RemoveTunnelGrantInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+		tunnel, err := s.requireManagedTunnelWithQuery(ctx, tx, principal, params.TunnelId)
+		if err != nil {
+			return err
 		}
+		granted, err := s.store.TunnelGrants.IsGranted(ctx, tx, tunnel.ID, params.AccountId)
+		if err != nil {
+			return err
+		}
+		if !granted {
+			return persistence.ErrNotFound
+		}
+		attachments, err := s.store.TunnelAttachments.ListByTunnelAndAccountCrossOrg(ctx, tx, tunnel.ID, params.AccountId)
+		if err != nil {
+			return err
+		}
+		if err := deprovisionAttachmentPolicies(ctx, tunnelLifecycle, attachments); err != nil {
+			dl.Errorf("remove tunnel grant attachment deprovision failed tunnel_id='%s' account_id='%s' %s: %v", tunnel.ID, params.AccountId, principalLogFields(principal), err)
+			return err
+		}
+		if err := s.detachAndSoftDeleteAttachments(ctx, tx, attachments, persistence.TunnelAttachmentStateDisconnected, disconnectedAt); err != nil {
+			return err
+		}
+		return s.store.TunnelGrants.DeleteCrossOrg(ctx, tx, params.TunnelId, params.AccountId)
+	}); err != nil {
+		if errors.Is(err, persistence.ErrNotFound) {
+			return &api.RemoveTunnelGrantNotFound{Code: "not_found", Message: "grant not found"}, nil
+		}
+		return &api.RemoveTunnelGrantInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
 
 	return &api.RemoveTunnelGrantNoContent{}, nil

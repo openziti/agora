@@ -69,21 +69,22 @@ func NewStandalone(opts StandaloneOptions) (*Agent, error) {
 	if err != nil {
 		return nil, fmt.Errorf("build controller api client: %w", err)
 	}
+	identityPath, err := root.ZitiIdentityNamed(environmentIdentityName)
+	if err != nil {
+		return nil, fmt.Errorf("locate environment identity: %w", err)
+	}
 
 	a := &Agent{
-		appName:   name,
-		root:      root,
-		env:       env,
-		accountID: env.EnvironmentID,
-		api:       apiClient,
-		live:      opts.Live,
+		appName:      name,
+		root:         root,
+		env:          env,
+		identityPath: identityPath,
+		accountID:    env.EnvironmentID,
+		api:          apiClient,
+		live:         opts.Live,
 	}
 
 	if opts.WithRuntime {
-		identityPath, idErr := root.ZitiIdentityNamed(environmentIdentityName)
-		if idErr != nil {
-			return nil, fmt.Errorf("locate environment identity: %w", idErr)
-		}
 		rt, rtErr := NewEmbedded(EmbeddedOptions{
 			Environment:  env,
 			IdentityPath: identityPath,

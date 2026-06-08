@@ -113,8 +113,29 @@ return httpServer.Serve(listener)
 `Listen` is thin: it resolves the tunnel, opens the environment identity
 on the overlay service, and returns a raw `net.Listener`. It does not
 create a serve record, heartbeat, retry, or manage accepted connections.
-Direct dialer primitives are not implemented yet; that work remains in
-`docs/future/sdk-l1-primitives-work-order.md`.
+
+Consumer processes that already own their client protocol can provision a
+direct dialer attachment and dial the overlay without a local proxy port:
+
+```go
+att, err := tunnel.Attach(ctx, a, "mcp-gateway")
+if err != nil {
+    return err
+}
+defer tunnel.Detach(ctx, a, att)
+
+conn, err := tunnel.Dial(ctx, a, "mcp-gateway")
+if err != nil {
+    return err
+}
+defer conn.Close()
+```
+
+`Attach` / `Detach` own the durable consumer-side dial policy. `Dial` is
+thin: it verifies an active dialer attachment, rejects packet-mode tunnels,
+opens the environment identity on the overlay service, and returns a raw
+`net.Conn`. It does not create a managed connect actor, bind a local port,
+heartbeat, retry, or manage the connection lifecycle.
 
 ## Typical agent shape
 

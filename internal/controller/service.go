@@ -220,11 +220,14 @@ func mapTunnelAttachment(attachment *persistence.TunnelAttachment) *api.TunnelAt
 		OrganizationId:  attachment.OrganizationID,
 		AccountId:       attachment.AccountID,
 		EnvironmentId:   attachment.EnvironmentID,
-		ListenAddress:   attachment.ListenAddress,
+		Kind:            api.TunnelAttachmentKind(attachment.Kind),
 		State:           api.TunnelAttachmentState(attachment.State),
 		LastHeartbeatAt: attachment.LastHeartbeatAt,
 		CreatedAt:       attachment.CreatedAt,
 		UpdatedAt:       attachment.UpdatedAt,
+	}
+	if attachment.ListenAddress != nil {
+		result.ListenAddress.SetTo(*attachment.ListenAddress)
 	}
 	if attachment.DialPolicyID != nil {
 		result.DialPolicyId.SetTo(*attachment.DialPolicyID)

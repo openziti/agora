@@ -85,7 +85,7 @@ func TestConnectTunnelCrossEnvironmentSameAccount(t *testing.T) {
 	crossRes, err := alice.ConnectTunnel(env.ctx, &api.ConnectTunnelRequest{
 		Name:          tunnel.Name,
 		EnvironmentId: connectEnvID,
-		ListenAddress: "127.0.0.1:0",
+		ListenAddress: api.NewOptString("127.0.0.1:0"),
 	})
 	if err != nil {
 		t.Fatalf("connect tunnel from second environment: %v", err)
@@ -102,7 +102,7 @@ func TestConnectTunnelCrossEnvironmentSameAccount(t *testing.T) {
 	sameRes, err := alice.ConnectTunnel(env.ctx, &api.ConnectTunnelRequest{
 		Name:          tunnel.Name,
 		EnvironmentId: serveEnvID,
-		ListenAddress: "127.0.0.1:0",
+		ListenAddress: api.NewOptString("127.0.0.1:0"),
 	})
 	if err != nil {
 		t.Fatalf("connect tunnel from serving environment: %v", err)
@@ -222,7 +222,7 @@ func TestConnectTunnelCrossAccountRequiresGrant(t *testing.T) {
 	denied, err := bob.ConnectTunnel(env.ctx, &api.ConnectTunnelRequest{
 		Name:          tunnel.Name,
 		EnvironmentId: bobEnvID,
-		ListenAddress: "127.0.0.1:0",
+		ListenAddress: api.NewOptString("127.0.0.1:0"),
 	})
 	if err != nil {
 		t.Fatalf("connect tunnel (ungranted): %v", err)
@@ -238,7 +238,7 @@ func TestConnectTunnelCrossAccountRequiresGrant(t *testing.T) {
 	granted, err := bob.ConnectTunnel(env.ctx, &api.ConnectTunnelRequest{
 		Name:          tunnel.Name,
 		EnvironmentId: bobEnvID,
-		ListenAddress: "127.0.0.1:0",
+		ListenAddress: api.NewOptString("127.0.0.1:0"),
 	})
 	if err != nil {
 		t.Fatalf("connect tunnel (granted): %v", err)

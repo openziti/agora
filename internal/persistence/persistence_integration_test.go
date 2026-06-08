@@ -24,8 +24,8 @@ func TestMigrateUpAndCompatibilityCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}
-	if applied != 10 {
-		t.Fatalf("expected 10 migrations applied, got %d", applied)
+	if applied != 11 {
+		t.Fatalf("expected 11 migrations applied, got %d", applied)
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); err != nil {
@@ -51,8 +51,8 @@ func TestCheckSchemaCompatibilityBehindBinary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migration status: %v", err)
 	}
-	if len(statuses) != 10 {
-		t.Fatalf("expected 10 migration statuses, got %d", len(statuses))
+	if len(statuses) != 11 {
+		t.Fatalf("expected 11 migration statuses, got %d", len(statuses))
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); !errors.Is(err, ErrSchemaBehindBinary) {
@@ -84,10 +84,10 @@ func TestAuditEventsMigrationDownDropsTable(t *testing.T) {
 		t.Fatal("expected audit_events table after migrate up")
 	}
 
-	if applied, err := MigrateDown(ctx, store, 2); err != nil {
+	if applied, err := MigrateDown(ctx, store, 3); err != nil {
 		t.Fatalf("migrate down: %v", err)
-	} else if applied != 2 {
-		t.Fatalf("expected 2 down migrations applied, got %d", applied)
+	} else if applied != 3 {
+		t.Fatalf("expected 3 down migrations applied, got %d", applied)
 	}
 	if tableExists(t, ctx, store, "audit_events") {
 		t.Fatal("expected audit_events table to be dropped")
@@ -95,8 +95,8 @@ func TestAuditEventsMigrationDownDropsTable(t *testing.T) {
 
 	if applied, err := MigrateUp(ctx, store); err != nil {
 		t.Fatalf("migrate up again: %v", err)
-	} else if applied != 2 {
-		t.Fatalf("expected 2 migrations reapplied, got %d", applied)
+	} else if applied != 3 {
+		t.Fatalf("expected 3 migrations reapplied, got %d", applied)
 	}
 	if !tableExists(t, ctx, store, "audit_events") {
 		t.Fatal("expected audit_events table after reapply")
@@ -480,11 +480,11 @@ func TestDeleteRepositories(t *testing.T) {
 	}
 
 	org2, acct2, _ := createOrgAccountEnvironment(t, ctx, store)
-	if err := store.Organizations.Delete(ctx, store.DB(), org2.ID); err != nil {
-		t.Fatalf("delete organization with cascade: %v", err)
+	if err := store.Organizations.Delete(ctx, store.DB(), org2.ID); !errors.Is(err, ErrConflict) {
+		t.Fatalf("expected populated organization delete conflict, got %v", err)
 	}
-	if _, err := store.Accounts.GetByID(ctx, store.DB(), acct2.ID); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("expected cascaded account delete, got %v", err)
+	if _, err := store.Accounts.GetByID(ctx, store.DB(), acct2.ID); err != nil {
+		t.Fatalf("expected account to remain after organization delete conflict, got %v", err)
 	}
 }
 

@@ -1588,6 +1588,139 @@ func decodeDeleteWorkgroupParams(args [1]string, argsEscaped bool, r *http.Reque
 	return params, nil
 }
 
+// DetachDialerAttachmentParams is parameters of detachDialerAttachment operation.
+type DetachDialerAttachmentParams struct {
+	EnvironmentId string
+	Tunnel        string
+}
+
+func unpackDetachDialerAttachmentParams(packed middleware.Parameters) (params DetachDialerAttachmentParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "environmentId",
+			In:   "query",
+		}
+		params.EnvironmentId = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "tunnel",
+			In:   "query",
+		}
+		params.Tunnel = packed[key].(string)
+	}
+	return params
+}
+
+func decodeDetachDialerAttachmentParams(args [0]string, argsEscaped bool, r *http.Request) (params DetachDialerAttachmentParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode query: environmentId.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "environmentId",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.EnvironmentId = c
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^ev_[a-z0-9]{12}$"],
+				}).Validate(string(params.EnvironmentId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "environmentId",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: tunnel.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "tunnel",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.Tunnel = c
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    1,
+					MinLengthSet: true,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        nil,
+				}).Validate(string(params.Tunnel)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "tunnel",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // DisableEnvironmentParams is parameters of disableEnvironment operation.
 type DisableEnvironmentParams struct {
 	EnvironmentId string
@@ -1663,6 +1796,139 @@ func decodeDisableEnvironmentParams(args [1]string, argsEscaped bool, r *http.Re
 		return params, &ogenerrors.DecodeParamError{
 			Name: "environmentId",
 			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
+// GetActiveDialerAttachmentParams is parameters of getActiveDialerAttachment operation.
+type GetActiveDialerAttachmentParams struct {
+	EnvironmentId string
+	Tunnel        string
+}
+
+func unpackGetActiveDialerAttachmentParams(packed middleware.Parameters) (params GetActiveDialerAttachmentParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "environmentId",
+			In:   "query",
+		}
+		params.EnvironmentId = packed[key].(string)
+	}
+	{
+		key := middleware.ParameterKey{
+			Name: "tunnel",
+			In:   "query",
+		}
+		params.Tunnel = packed[key].(string)
+	}
+	return params
+}
+
+func decodeGetActiveDialerAttachmentParams(args [0]string, argsEscaped bool, r *http.Request) (params GetActiveDialerAttachmentParams, _ error) {
+	q := uri.NewQueryDecoder(r.URL.Query())
+	// Decode query: environmentId.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "environmentId",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.EnvironmentId = c
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^ev_[a-z0-9]{12}$"],
+				}).Validate(string(params.EnvironmentId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "environmentId",
+			In:   "query",
+			Err:  err,
+		}
+	}
+	// Decode query: tunnel.
+	if err := func() error {
+		cfg := uri.QueryParameterDecodingConfig{
+			Name:    "tunnel",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.HasParam(cfg); err == nil {
+			if err := q.DecodeParam(cfg, func(d uri.Decoder) error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.Tunnel = c
+				return nil
+			}); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    1,
+					MinLengthSet: true,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        nil,
+				}).Validate(string(params.Tunnel)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "tunnel",
+			In:   "query",
 			Err:  err,
 		}
 	}

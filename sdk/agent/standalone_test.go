@@ -118,6 +118,30 @@ func TestNewStandaloneEnvRootFromEnvironment(t *testing.T) {
 	}
 }
 
+func TestNewStandaloneCapturesStableIdentityPath(t *testing.T) {
+	dir := t.TempDir()
+	firstRoot := filepath.Join(dir, "first")
+	secondRoot := filepath.Join(dir, "second")
+	prepareStandaloneRoot(t, firstRoot)
+	prepareStandaloneRoot(t, secondRoot)
+
+	first, err := NewStandalone(StandaloneOptions{Name: "first", EnvRoot: firstRoot})
+	if err != nil {
+		t.Fatalf("new first standalone: %v", err)
+	}
+	second, err := NewStandalone(StandaloneOptions{Name: "second", EnvRoot: secondRoot})
+	if err != nil {
+		t.Fatalf("new second standalone: %v", err)
+	}
+
+	if got, want := first.EnvironmentIdentityPath(), filepath.Join(firstRoot, "identities", "environment.json"); got != want {
+		t.Fatalf("expected first identity path %q, got %q", want, got)
+	}
+	if got, want := second.EnvironmentIdentityPath(), filepath.Join(secondRoot, "identities", "environment.json"); got != want {
+		t.Fatalf("expected second identity path %q, got %q", want, got)
+	}
+}
+
 func TestNewStandaloneValidation(t *testing.T) {
 	if _, err := NewStandalone(StandaloneOptions{}); err == nil {
 		t.Fatal("expected missing name error")

@@ -183,6 +183,7 @@ type controllerAttachment struct {
 	AccountEmail    *string    `json:"account_email,omitempty"`
 	TunnelName      *string    `json:"tunnel_name,omitempty"`
 	TunnelMode      *string    `json:"tunnel_mode,omitempty"`
+	Kind            string     `json:"kind"`
 	ListenAddress   string     `json:"listen_address"`
 	State           string     `json:"state"`
 	LastHeartbeatAt time.Time  `json:"last_heartbeat_at"`
@@ -626,7 +627,8 @@ func mapControllerAttachment(attachment *api.TunnelAttachment) controllerAttachm
 		AccountEmail:    optStringPtr(attachment.AccountEmail),
 		TunnelName:      optStringPtr(attachment.TunnelName),
 		TunnelMode:      optTunnelModePtr(attachment.TunnelMode),
-		ListenAddress:   attachment.ListenAddress,
+		Kind:            string(attachment.Kind),
+		ListenAddress:   attachment.ListenAddress.Or(""),
 		State:           string(attachment.State),
 		LastHeartbeatAt: attachment.LastHeartbeatAt.UTC(),
 		DisconnectedAt:  optDateTimePtr(attachment.DisconnectedAt),

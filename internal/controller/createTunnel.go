@@ -32,16 +32,6 @@ func (s *Service) CreateTunnel(ctx context.Context, req *api.CreateTunnelRequest
 		principalLogFields(principal),
 	)
 
-	env, err := s.requireOwnedEnvironment(ctx, principal, req.EnvironmentId)
-	if err != nil {
-		if errors.Is(err, persistence.ErrNotFound) {
-			dl.Warnf("create tunnel environment not found environment_id='%s' %s", req.EnvironmentId, principalLogFields(principal))
-			return &api.CreateTunnelNotFound{Code: "not_found", Message: "environment not found"}, nil
-		}
-		dl.Errorf("create tunnel environment lookup failed environment_id='%s' %s: %v", req.EnvironmentId, principalLogFields(principal), err)
-		return &api.CreateTunnelInternalServerError{Code: "internal_error", Message: err.Error()}, nil
-	}
-
 	existing, err := s.store.Tunnels.GetByName(ctx, s.store.DB(), principal.OrganizationID, req.Name)
 	if err == nil {
 		dl.Warnf(
@@ -77,39 +67,52 @@ func (s *Service) CreateTunnel(ctx context.Context, req *api.CreateTunnelRequest
 		return &api.CreateTunnelInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
 
-	provisioned, err := tunnelLifecycle.Provision(ctx, automation.TunnelSpec{
-		OrganizationID:        principal.OrganizationID,
-		AccountID:             principal.AccountID,
-		EnvironmentID:         env.ID,
-		TunnelID:              tunnelID,
-		TunnelName:            req.Name,
-		ServiceName:           serviceName,
-		EnvironmentIdentityID: env.ZitiIdentityID,
-		Version:               automation.DefaultAgoraVersion,
-	})
-	if err != nil {
-		dl.Errorf("create tunnel provisioning failed tunnel_id='%s' %s: %v", tunnelID, principalLogFields(principal), err)
-		return &api.CreateTunnelInternalServerError{Code: "internal_error", Message: err.Error()}, nil
-	}
-
-	tunnel := persistence.Tunnel{
-		ID:                        tunnelID,
-		OrganizationID:            principal.OrganizationID,
-		AccountID:                 principal.AccountID,
-		EnvironmentID:             env.ID,
-		Name:                      req.Name,
-		Mode:                      persistence.TunnelMode(req.Mode),
-		Kind:                      kind,
-		BackendTarget:             backendTarget,
-		ZitiServiceID:             &provisioned.ServiceID,
-		BindPolicyID:              &provisioned.BindPolicyID,
-		ServiceEdgeRouterPolicyID: &provisioned.ServiceEdgeRouterPolicyID,
-		State:                     persistence.TunnelStateActive,
-	}
-
 	var created *persistence.Tunnel
+	var provisioned *automation.ProvisionedTunnel
 	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
-		var err error
+		if err := lockEnvironmentScope(ctx, tx, req.EnvironmentId); err != nil {
+			return err
+		}
+		env, err := s.requireOwnedEnvironmentWithQuery(ctx, tx, principal, req.EnvironmentId)
+		if err != nil {
+			return err
+		}
+		if _, err := s.store.Tunnels.GetByName(ctx, tx, principal.OrganizationID, req.Name); err == nil {
+			return errTunnelNameExists
+		} else if !errors.Is(err, persistence.ErrNotFound) {
+			return err
+		}
+
+		provisioned, err = tunnelLifecycle.Provision(ctx, automation.TunnelSpec{
+			OrganizationID:        principal.OrganizationID,
+			AccountID:             principal.AccountID,
+			EnvironmentID:         env.ID,
+			TunnelID:              tunnelID,
+			TunnelName:            req.Name,
+			ServiceName:           serviceName,
+			EnvironmentIdentityID: env.ZitiIdentityID,
+			Version:               automation.DefaultAgoraVersion,
+		})
+		if err != nil {
+			dl.Errorf("create tunnel provisioning failed tunnel_id='%s' %s: %v", tunnelID, principalLogFields(principal), err)
+			return err
+		}
+
+		tunnel := persistence.Tunnel{
+			ID:                        tunnelID,
+			OrganizationID:            principal.OrganizationID,
+			AccountID:                 principal.AccountID,
+			EnvironmentID:             env.ID,
+			Name:                      req.Name,
+			Mode:                      persistence.TunnelMode(req.Mode),
+			Kind:                      kind,
+			BackendTarget:             backendTarget,
+			ZitiServiceID:             &provisioned.ServiceID,
+			BindPolicyID:              &provisioned.BindPolicyID,
+			ServiceEdgeRouterPolicyID: &provisioned.ServiceEdgeRouterPolicyID,
+			State:                     persistence.TunnelStateActive,
+		}
+
 		created, err = s.store.Tunnels.Create(ctx, tx, tunnel)
 		if err != nil {
 			return err
@@ -126,17 +129,28 @@ func (s *Service) CreateTunnel(ctx context.Context, req *api.CreateTunnelRequest
 		return nil
 	}); err != nil {
 		dl.Errorf("create tunnel persistence failed tunnel_id='%s' %s: %v", tunnelID, principalLogFields(principal), err)
-		_ = tunnelLifecycle.Deprovision(ctx, automation.DeprovisionTunnelSpec{
-			ServiceID:                 provisioned.ServiceID,
-			BindPolicyID:              provisioned.BindPolicyID,
-			ServiceEdgeRouterPolicyID: provisioned.ServiceEdgeRouterPolicyID,
-		})
+		if provisioned != nil {
+			_ = tunnelLifecycle.Deprovision(ctx, automation.DeprovisionTunnelSpec{
+				ServiceID:                 provisioned.ServiceID,
+				BindPolicyID:              provisioned.BindPolicyID,
+				ServiceEdgeRouterPolicyID: provisioned.ServiceEdgeRouterPolicyID,
+			})
+		}
+		if errors.Is(err, persistence.ErrNotFound) {
+			dl.Warnf("create tunnel environment not found environment_id='%s' %s", req.EnvironmentId, principalLogFields(principal))
+			return &api.CreateTunnelNotFound{Code: "not_found", Message: "environment not found"}, nil
+		}
+		if errors.Is(err, errTunnelNameExists) {
+			return &api.CreateTunnelConflict{Code: "conflict", Message: "tunnel name already exists"}, nil
+		}
 		return &api.CreateTunnelConflict{Code: "conflict", Message: err.Error()}, nil
 	}
 
 	dl.Infof("created tunnel id='%s' name='%s' environment_id='%s' %s", created.ID, created.Name, created.EnvironmentID, principalLogFields(principal))
 	return mapTunnel(created), nil
 }
+
+var errTunnelNameExists = errors.New("tunnel name already exists")
 
 func inferTunnelKind(backend api.OptString) (persistence.TunnelKind, *string, error) {
 	if !backend.Set {

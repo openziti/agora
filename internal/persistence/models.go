@@ -172,20 +172,28 @@ const (
 	TunnelAttachmentStateDisconnected TunnelAttachmentState = "disconnected"
 )
 
+type TunnelAttachmentKind string
+
+const (
+	TunnelAttachmentKindProxy  TunnelAttachmentKind = "proxy"
+	TunnelAttachmentKindDialer TunnelAttachmentKind = "dialer"
+)
+
 type TunnelAttachment struct {
-	ID              string                `db:"id"`
-	TunnelID        string                `db:"tunnel_id"`
-	OrganizationID  string                `db:"organization_id"`
-	AccountID       string                `db:"account_id"`
-	EnvironmentID   string                `db:"environment_id"`
-	ListenAddress   string                `db:"listen_address"`
-	DialPolicyID    *string               `db:"dial_policy_id"`
+	ID              string               `db:"id"`
+	TunnelID        string               `db:"tunnel_id"`
+	OrganizationID  string               `db:"organization_id"`
+	AccountID       string               `db:"account_id"`
+	EnvironmentID   string               `db:"environment_id"`
+	Kind            TunnelAttachmentKind `db:"kind"`
+	ListenAddress   *string              `db:"listen_address"`
+	DialPolicyID    *string              `db:"dial_policy_id"`
 	State           TunnelAttachmentState `db:"state"`
-	LastHeartbeatAt time.Time             `db:"last_heartbeat_at"`
-	DisconnectedAt  *time.Time            `db:"disconnected_at"`
-	Deleted         bool                  `db:"deleted"`
-	CreatedAt       time.Time             `db:"created_at"`
-	UpdatedAt       time.Time             `db:"updated_at"`
+	LastHeartbeatAt time.Time  `db:"last_heartbeat_at"`
+	DisconnectedAt  *time.Time `db:"disconnected_at"`
+	Deleted         bool       `db:"deleted"`
+	CreatedAt       time.Time  `db:"created_at"`
+	UpdatedAt       time.Time  `db:"updated_at"`
 }
 
 type TunnelAttachmentDetail struct {

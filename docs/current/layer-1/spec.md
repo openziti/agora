@@ -83,12 +83,23 @@ not create a tunnel serve record or heartbeat. Direct tunnels currently
 support stream modes (`http` and `tcp`) for listening; packet-shaped direct
 UDP is deferred.
 
+Tunnel attachments have two consumer shapes: `proxy` and `dialer`. Proxy
+attachments are created by the managed connect runtime and require a local
+listen address because the runtime binds a local proxy port. Dialer
+attachments are created explicitly through `sdk/agent/tunnel.Attach`, have
+no local listen address, and authorize raw overlay dials through
+`sdk/agent/tunnel.Dial`. `Dial` returns a raw `net.Conn`, does not create a
+managed connect actor, and does not heartbeat. A dialer attachment remains
+an active authorization until `Detach` or another revocation path removes
+its stored dial policy. Direct dialers currently support stream modes
+(`http` and `tcp`); packet-shaped UDP dialing is deferred.
+
 The durable resource is the tunnel itself. The live controller-visible runtime records are:
 
 - tunnel serves for active provider-side hosting
 - tunnel attachments for active or historical consumer-side connection records
 
-Both tunnel serves and tunnel attachments are explicit controller-side records with `active`, `stale`, and `disconnected` states. Only one active serve may exist for a tunnel at a time, and the controller exposes a singular active-serve read surface for status composition.
+Both tunnel serves and tunnel attachments are explicit controller-side records with `active`, `stale`, and `disconnected` states. Only one active serve may exist for a tunnel at a time, and the controller exposes a singular active-serve read surface for status composition. Attachment stale reaping applies to proxy attachments only; dialer attachments are not heartbeat-backed and are removed by explicit detach or revocation cleanup.
 
 ## Authorization And Visibility
 

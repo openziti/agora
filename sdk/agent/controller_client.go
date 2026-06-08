@@ -174,7 +174,7 @@ func (apiTunnelController) StartConnect(ctx context.Context, env *env_core.Envir
 	res, err := client.ConnectTunnel(ctx, &api.ConnectTunnelRequest{
 		EnvironmentId: env.EnvironmentID,
 		Name:          desired.Name,
-		ListenAddress: desired.ListenAddress,
+		ListenAddress: api.NewOptString(desired.ListenAddress),
 	})
 	if err != nil {
 		return nil, nil, err

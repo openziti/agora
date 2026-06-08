@@ -249,7 +249,15 @@ func (a *Runtime) runConnectAttempt(ctx context.Context, actor *managedConnect, 
 	}
 
 	actorCtx, cancel := context.WithCancel(context.Background())
-	handle, err := a.runtimeHost.StartConnect(actorCtx, attempt.identityPath, tunnel, attachment.ListenAddress)
+	listenAddress, ok := attachment.ListenAddress.Get()
+	if !ok {
+		err := fmt.Errorf("connect attachment '%s' missing listen address", attachment.ID)
+		cancel()
+		_ = a.controller.StopAttachment(context.Background(), attempt.env, attachment.ID)
+		a.recordConnectAttemptFailure(actor, attempt.generation, err, scheduleRetry)
+		return err
+	}
+	handle, err := a.runtimeHost.StartConnect(actorCtx, attempt.identityPath, tunnel, listenAddress)
 	if err != nil {
 		cancel()
 		_ = a.controller.StopAttachment(context.Background(), attempt.env, attachment.ID)

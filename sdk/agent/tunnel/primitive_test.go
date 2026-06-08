@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	"testing"
+	"time"
 
 	"github.com/openziti/agora/internal/api"
 	"github.com/openziti/agora/internal/network/tunnelruntime"
@@ -121,6 +122,147 @@ func TestListenValidation(t *testing.T) {
 	}
 }
 
+func TestAttachCreatesDialerAttachment(t *testing.T) {
+	controller := &fakePrimitiveController{
+		connectTunnel: func(_ context.Context, req *api.ConnectTunnelRequest) (api.ConnectTunnelRes, error) {
+			if req.EnvironmentId != "ev_test00000001" || req.Name != "gateway" {
+				t.Fatalf("unexpected attach request %#v", req)
+			}
+			if req.ListenAddress.Set {
+				t.Fatalf("dialer attach should omit listenAddress, got %#v", req.ListenAddress)
+			}
+			return &api.ConnectTunnelResponse{
+				Tunnel: api.Tunnel{
+					ID:            "tt_abcdefghijkl",
+					Name:          "gateway",
+					Mode:          api.TunnelModeHTTP,
+					Kind:          api.TunnelKindDirect,
+					EnvironmentId: "ev_provider0001",
+				},
+				Attachment: api.TunnelAttachment{
+					ID:            "ta_abcdefghijkl",
+					TunnelId:      "tt_abcdefghijkl",
+					EnvironmentId: "ev_test00000001",
+					Kind:          api.TunnelAttachmentKindDialer,
+					State:         api.TunnelAttachmentStateActive,
+				},
+			}, nil
+		},
+	}
+
+	got, err := attach(context.Background(), fakePrimitiveAgent{
+		ctrl:  controller,
+		envID: "ev_test00000001",
+	}, " gateway ")
+	if err != nil {
+		t.Fatalf("attach: %v", err)
+	}
+	if got.ID != "ta_abcdefghijkl" || got.TunnelID != "tt_abcdefghijkl" || got.Kind != AttachmentDialer {
+		t.Fatalf("unexpected attachment %#v", got)
+	}
+}
+
+func TestDetachAcceptsAttachmentTarget(t *testing.T) {
+	controller := &fakePrimitiveController{
+		detachDialerAttachment: func(_ context.Context, params api.DetachDialerAttachmentParams) (api.DetachDialerAttachmentRes, error) {
+			if params.EnvironmentId != "ev_test00000001" || params.Tunnel != "tt_abcdefghijkl" {
+				t.Fatalf("unexpected detach params %#v", params)
+			}
+			return &api.DetachDialerAttachmentNoContent{}, nil
+		},
+	}
+
+	err := detach(context.Background(), fakePrimitiveAgent{
+		ctrl:  controller,
+		envID: "ev_test00000001",
+	}, &Attachment{ID: "ta_abcdefghijkl", TunnelID: "tt_abcdefghijkl"})
+	if err != nil {
+		t.Fatalf("detach: %v", err)
+	}
+}
+
+func TestDialUsesActiveDialerAndOverlayTunnelID(t *testing.T) {
+	conn := &fakeNetConn{}
+	overlay := &fakeOverlay{conn: conn}
+	factory := &fakeOverlayFactory{overlay: overlay}
+	controller := &fakePrimitiveController{
+		getActiveDialerAttachment: func(_ context.Context, params api.GetActiveDialerAttachmentParams) (api.GetActiveDialerAttachmentRes, error) {
+			if params.EnvironmentId != "ev_test00000001" || params.Tunnel != "gateway" {
+				t.Fatalf("unexpected dial lookup params %#v", params)
+			}
+			return &api.ActiveDialerAttachment{
+				Attachment: api.TunnelAttachment{
+					ID:            "ta_abcdefghijkl",
+					TunnelId:      "tt_abcdefghijkl",
+					EnvironmentId: "ev_test00000001",
+					Kind:          api.TunnelAttachmentKindDialer,
+					State:         api.TunnelAttachmentStateActive,
+				},
+				TunnelId:   "tt_abcdefghijkl",
+				TunnelMode: api.TunnelModeHTTP,
+			}, nil
+		},
+	}
+
+	got, err := dial(context.Background(), fakePrimitiveAgent{
+		ctrl:  controller,
+		envID: "ev_test00000001",
+		root:  fakeIdentityRoot{path: "/tmp/environment.json"},
+	}, factory, " gateway ")
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	if got != conn {
+		t.Fatalf("expected fake conn, got %#v", got)
+	}
+	if factory.identityPath != "/tmp/environment.json" {
+		t.Fatalf("unexpected identity path %q", factory.identityPath)
+	}
+	if overlay.dialService != "tt_abcdefghijkl" {
+		t.Fatalf("expected overlay dial on tunnel id, got %q", overlay.dialService)
+	}
+}
+
+func TestDialRejectsUDPTunnel(t *testing.T) {
+	controller := &fakePrimitiveController{
+		getActiveDialerAttachment: func(context.Context, api.GetActiveDialerAttachmentParams) (api.GetActiveDialerAttachmentRes, error) {
+			return &api.ActiveDialerAttachment{
+				TunnelId:   "tt_abcdefghijkl",
+				TunnelMode: api.TunnelModeUDP,
+			}, nil
+		},
+	}
+
+	_, err := dial(context.Background(), fakePrimitiveAgent{
+		ctrl:  controller,
+		envID: "ev_test00000001",
+		root:  fakeIdentityRoot{path: "/tmp/environment.json"},
+	}, &fakeOverlayFactory{overlay: &fakeOverlay{}}, "gateway")
+	assertErrorIs(t, err, ErrUnsupportedMode)
+}
+
+func TestDialPreservesContextCancellation(t *testing.T) {
+	controller := &fakePrimitiveController{
+		getActiveDialerAttachment: func(context.Context, api.GetActiveDialerAttachmentParams) (api.GetActiveDialerAttachmentRes, error) {
+			return &api.ActiveDialerAttachment{
+				TunnelId:   "tt_abcdefghijkl",
+				TunnelMode: api.TunnelModeTCP,
+			}, nil
+		},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := dial(ctx, fakePrimitiveAgent{
+		ctrl:  controller,
+		envID: "ev_test00000001",
+		root:  fakeIdentityRoot{path: "/tmp/environment.json"},
+	}, &fakeOverlayFactory{overlay: &fakeOverlay{dialErr: context.Canceled}}, "gateway")
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected context.Canceled, got %v", err)
+	}
+}
+
 type fakePrimitiveAgent struct {
 	ctrl  primitiveController
 	envID string
@@ -129,13 +271,26 @@ type fakePrimitiveAgent struct {
 
 func (f fakePrimitiveAgent) controller() primitiveController { return f.ctrl }
 func (f fakePrimitiveAgent) environmentID() string           { return f.envID }
-func (f fakePrimitiveAgent) envRoot() identityRoot           { return f.root }
+func (f fakePrimitiveAgent) identityPath() string {
+	if f.root == nil {
+		return ""
+	}
+	path, _ := f.root.ZitiIdentityNamed(environmentIdentityName)
+	return path
+}
+
+type identityRoot interface {
+	ZitiIdentityNamed(name string) (string, error)
+}
 
 type fakePrimitiveController struct {
-	createTunnel func(context.Context, *api.CreateTunnelRequest) (api.CreateTunnelRes, error)
-	deleteTunnel func(context.Context, api.DeleteTunnelParams) (api.DeleteTunnelRes, error)
-	getTunnel    func(context.Context, api.GetTunnelParams) (api.GetTunnelRes, error)
-	listTunnels  func(context.Context, api.ListTunnelsParams) (api.ListTunnelsRes, error)
+	createTunnel              func(context.Context, *api.CreateTunnelRequest) (api.CreateTunnelRes, error)
+	deleteTunnel              func(context.Context, api.DeleteTunnelParams) (api.DeleteTunnelRes, error)
+	getTunnel                 func(context.Context, api.GetTunnelParams) (api.GetTunnelRes, error)
+	listTunnels               func(context.Context, api.ListTunnelsParams) (api.ListTunnelsRes, error)
+	connectTunnel             func(context.Context, *api.ConnectTunnelRequest) (api.ConnectTunnelRes, error)
+	getActiveDialerAttachment func(context.Context, api.GetActiveDialerAttachmentParams) (api.GetActiveDialerAttachmentRes, error)
+	detachDialerAttachment    func(context.Context, api.DetachDialerAttachmentParams) (api.DetachDialerAttachmentRes, error)
 }
 
 func (f *fakePrimitiveController) CreateTunnel(ctx context.Context, req *api.CreateTunnelRequest) (api.CreateTunnelRes, error) {
@@ -166,6 +321,27 @@ func (f *fakePrimitiveController) ListTunnels(ctx context.Context, params api.Li
 	return f.listTunnels(ctx, params)
 }
 
+func (f *fakePrimitiveController) ConnectTunnel(ctx context.Context, req *api.ConnectTunnelRequest) (api.ConnectTunnelRes, error) {
+	if f.connectTunnel == nil {
+		panic("unexpected ConnectTunnel call")
+	}
+	return f.connectTunnel(ctx, req)
+}
+
+func (f *fakePrimitiveController) GetActiveDialerAttachment(ctx context.Context, params api.GetActiveDialerAttachmentParams) (api.GetActiveDialerAttachmentRes, error) {
+	if f.getActiveDialerAttachment == nil {
+		panic("unexpected GetActiveDialerAttachment call")
+	}
+	return f.getActiveDialerAttachment(ctx, params)
+}
+
+func (f *fakePrimitiveController) DetachDialerAttachment(ctx context.Context, params api.DetachDialerAttachmentParams) (api.DetachDialerAttachmentRes, error) {
+	if f.detachDialerAttachment == nil {
+		panic("unexpected DetachDialerAttachment call")
+	}
+	return f.detachDialerAttachment(ctx, params)
+}
+
 type fakeIdentityRoot struct {
 	path string
 	err  error
@@ -191,8 +367,11 @@ func (f *fakeOverlayFactory) New(identityPath string) (tunnelruntime.OverlayCont
 
 type fakeOverlay struct {
 	listener      net.Listener
+	conn          net.Conn
 	listenService string
+	dialService   string
 	listenErr     error
+	dialErr       error
 }
 
 func (f *fakeOverlay) Listen(serviceName string) (net.Listener, error) {
@@ -207,11 +386,30 @@ func (f *fakeOverlay) Dial(string) (net.Conn, error) {
 	return nil, errors.New("unexpected dial")
 }
 
+func (f *fakeOverlay) DialContext(_ context.Context, serviceName string) (net.Conn, error) {
+	f.dialService = serviceName
+	if f.dialErr != nil {
+		return nil, f.dialErr
+	}
+	return f.conn, nil
+}
+
 type fakeNetListener struct{}
 
 func (*fakeNetListener) Accept() (net.Conn, error) { return nil, errors.New("closed") }
 func (*fakeNetListener) Close() error              { return nil }
 func (*fakeNetListener) Addr() net.Addr            { return fakeAddr("listener") }
+
+type fakeNetConn struct{}
+
+func (*fakeNetConn) Read([]byte) (int, error)         { return 0, errors.New("closed") }
+func (*fakeNetConn) Write([]byte) (int, error)        { return 0, errors.New("closed") }
+func (*fakeNetConn) Close() error                     { return nil }
+func (*fakeNetConn) LocalAddr() net.Addr              { return fakeAddr("local") }
+func (*fakeNetConn) RemoteAddr() net.Addr             { return fakeAddr("remote") }
+func (*fakeNetConn) SetDeadline(time.Time) error      { return nil }
+func (*fakeNetConn) SetReadDeadline(time.Time) error  { return nil }
+func (*fakeNetConn) SetWriteDeadline(time.Time) error { return nil }
 
 type fakeAddr string
 

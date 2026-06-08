@@ -15,7 +15,9 @@ func (s *Service) DeleteOrganization(ctx context.Context, params api.DeleteOrgan
 		return &api.DeleteOrganizationUnauthorized{Code: "unauthorized", Message: "unauthorized"}, nil
 	}
 	dl.Infof("deleting organization organization_id='%s' %s", params.OrganizationId, adminLogFields())
-	if err := s.store.Organizations.Delete(ctx, s.store.DB(), params.OrganizationId); err != nil {
+	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+		return s.store.Organizations.Delete(ctx, tx, params.OrganizationId)
+	}); err != nil {
 		if errors.Is(err, persistence.ErrNotFound) {
 			dl.Warnf("delete organization not found organization_id='%s'", params.OrganizationId)
 			return &api.DeleteOrganizationNotFound{Code: "not_found", Message: "organization not found"}, nil

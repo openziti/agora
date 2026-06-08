@@ -4,10 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/openziti/agora/internal/persistence"
+)
+
+var (
+	errTunnelReferenceAmbiguous = errors.New("tunnel reference is ambiguous")
+	controllerTunnelIDPattern   = regexp.MustCompile(`^tt_[a-z0-9]{12}$`)
 )
 
 func environmentRoleAttributes(organizationID, accountID, environmentID string) []string {
@@ -76,7 +83,11 @@ func canManageTunnel(principal *accountPrincipal, tunnel *persistence.Tunnel) bo
 }
 
 func (s *Service) requireManagedTunnel(ctx context.Context, principal *accountPrincipal, tunnelID string) (*persistence.Tunnel, error) {
-	tunnel, err := s.store.Tunnels.GetByID(ctx, s.store.DB(), tunnelID)
+	return s.requireManagedTunnelWithQuery(ctx, s.store.DB(), principal, tunnelID)
+}
+
+func (s *Service) requireManagedTunnelWithQuery(ctx context.Context, q persistence.Queryer, principal *accountPrincipal, tunnelID string) (*persistence.Tunnel, error) {
+	tunnel, err := s.store.Tunnels.GetByID(ctx, q, tunnelID)
 	if err != nil {
 		return nil, err
 	}
@@ -126,7 +137,61 @@ func (s *Service) lookupTunnelByName(ctx context.Context, principal *accountPrin
 	return nil, persistence.ErrNotFound
 }
 
-func (s *Service) canConnectToTunnel(ctx context.Context, tunnel *persistence.Tunnel, env *persistence.Environment, principal *accountPrincipal) (bool, error) {
+func (s *Service) resolveConsumerTunnel(ctx context.Context, q persistence.Queryer, principal *accountPrincipal, env *persistence.Environment, ref string) (*persistence.Tunnel, error) {
+	trimmed := trimTunnelName(ref)
+	if trimmed == "" {
+		return nil, persistence.ErrNotFound
+	}
+
+	if controllerTunnelIDPattern.MatchString(trimmed) {
+		tunnel, err := s.store.Tunnels.GetByID(ctx, q, trimmed)
+		if err != nil {
+			return nil, err
+		}
+		allowed, err := s.canConnectToTunnel(ctx, q, tunnel, env, principal)
+		if err != nil {
+			return nil, err
+		}
+		if !allowed {
+			return nil, persistence.ErrNotFound
+		}
+		return tunnel, nil
+	}
+
+	candidates, err := s.store.Tunnels.ListAccessibleByName(ctx, q, trimmed, principal.OrganizationID, principal.AccountID)
+	if err != nil {
+		return nil, err
+	}
+
+	seen := map[string]struct{}{}
+	matches := make([]persistence.Tunnel, 0, len(candidates))
+	for i := range candidates {
+		tunnel := &candidates[i]
+		if _, ok := seen[tunnel.ID]; ok {
+			continue
+		}
+		allowed, err := s.canConnectToTunnel(ctx, q, tunnel, env, principal)
+		if err != nil {
+			return nil, err
+		}
+		if !allowed {
+			continue
+		}
+		seen[tunnel.ID] = struct{}{}
+		matches = append(matches, *tunnel)
+	}
+
+	switch len(matches) {
+	case 0:
+		return nil, persistence.ErrNotFound
+	case 1:
+		return &matches[0], nil
+	default:
+		return nil, errTunnelReferenceAmbiguous
+	}
+}
+
+func (s *Service) canConnectToTunnel(ctx context.Context, q persistence.Queryer, tunnel *persistence.Tunnel, env *persistence.Environment, principal *accountPrincipal) (bool, error) {
 	// The caller's environment must always belong to the caller's
 	// organization (each account enrolls envs only in its own org).
 	if env.OrganizationID != principal.OrganizationID {
@@ -141,11 +206,15 @@ func (s *Service) canConnectToTunnel(ctx context.Context, tunnel *persistence.Tu
 	}
 	// Otherwise (same-org other account, or cross-org): the grants
 	// table is authoritative.
-	return s.store.TunnelGrants.IsGranted(ctx, s.store.DB(), tunnel.ID, principal.AccountID)
+	return s.store.TunnelGrants.IsGranted(ctx, q, tunnel.ID, principal.AccountID)
 }
 
 func (s *Service) requireOwnedEnvironment(ctx context.Context, principal *accountPrincipal, environmentID string) (*persistence.Environment, error) {
-	env, err := s.store.Environments.GetByID(ctx, s.store.DB(), environmentID)
+	return s.requireOwnedEnvironmentWithQuery(ctx, s.store.DB(), principal, environmentID)
+}
+
+func (s *Service) requireOwnedEnvironmentWithQuery(ctx context.Context, q persistence.Queryer, principal *accountPrincipal, environmentID string) (*persistence.Environment, error) {
+	env, err := s.store.Environments.GetByID(ctx, q, environmentID)
 	if err != nil {
 		return nil, err
 	}
@@ -188,4 +257,9 @@ func (s *Service) resolveGrantAccounts(ctx context.Context, principal *accountPr
 
 func trimTunnelName(name string) string {
 	return strings.TrimSpace(name)
+}
+
+func isUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }

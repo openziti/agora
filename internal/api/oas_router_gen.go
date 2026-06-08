@@ -637,9 +637,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 				}
 
-			case 'd': // Prefix: "dashboard/"
+			case 'd': // Prefix: "d"
 
-				if l := len("dashboard/"); len(elem) >= l && elem[0:l] == "dashboard/" {
+				if l := len("d"); len(elem) >= l && elem[0:l] == "d" {
 					elem = elem[l:]
 				} else {
 					break
@@ -649,69 +649,103 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				switch elem[0] {
-				case 'a': // Prefix: "activity"
+				case 'a': // Prefix: "ashboard/"
 
-					if l := len("activity"); len(elem) >= l && elem[0:l] == "activity" {
+					if l := len("ashboard/"); len(elem) >= l && elem[0:l] == "ashboard/" {
 						elem = elem[l:]
 					} else {
 						break
 					}
 
 					if len(elem) == 0 {
-						// Leaf node.
-						switch r.Method {
-						case "GET":
-							s.handleGetDashboardActivityRequest([0]string{}, elemIsEscaped, w, r)
-						default:
-							s.notAllowed(w, r, "GET")
+						break
+					}
+					switch elem[0] {
+					case 'a': // Prefix: "activity"
+
+						if l := len("activity"); len(elem) >= l && elem[0:l] == "activity" {
+							elem = elem[l:]
+						} else {
+							break
 						}
 
-						return
-					}
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "GET":
+								s.handleGetDashboardActivityRequest([0]string{}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, "GET")
+							}
 
-				case 'e': // Prefix: "environments"
-
-					if l := len("environments"); len(elem) >= l && elem[0:l] == "environments" {
-						elem = elem[l:]
-					} else {
-						break
-					}
-
-					if len(elem) == 0 {
-						// Leaf node.
-						switch r.Method {
-						case "GET":
-							s.handleGetDashboardEnvironmentsRequest([0]string{}, elemIsEscaped, w, r)
-						default:
-							s.notAllowed(w, r, "GET")
+							return
 						}
 
-						return
-					}
+					case 'e': // Prefix: "environments"
 
-				case 's': // Prefix: "summary"
-
-					if l := len("summary"); len(elem) >= l && elem[0:l] == "summary" {
-						elem = elem[l:]
-					} else {
-						break
-					}
-
-					if len(elem) == 0 {
-						// Leaf node.
-						switch r.Method {
-						case "GET":
-							s.handleGetDashboardSummaryRequest([0]string{}, elemIsEscaped, w, r)
-						default:
-							s.notAllowed(w, r, "GET")
+						if l := len("environments"); len(elem) >= l && elem[0:l] == "environments" {
+							elem = elem[l:]
+						} else {
+							break
 						}
 
-						return
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "GET":
+								s.handleGetDashboardEnvironmentsRequest([0]string{}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, "GET")
+							}
+
+							return
+						}
+
+					case 's': // Prefix: "summary"
+
+						if l := len("summary"); len(elem) >= l && elem[0:l] == "summary" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "GET":
+								s.handleGetDashboardSummaryRequest([0]string{}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, "GET")
+							}
+
+							return
+						}
+
+					case 'w': // Prefix: "workgroups-activity"
+
+						if l := len("workgroups-activity"); len(elem) >= l && elem[0:l] == "workgroups-activity" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "GET":
+								s.handleGetWorkgroupsActivityRequest([0]string{}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, "GET")
+							}
+
+							return
+						}
+
 					}
 
-				case 'w': // Prefix: "workgroups-activity"
+				case 'i': // Prefix: "ialer-attachments"
 
-					if l := len("workgroups-activity"); len(elem) >= l && elem[0:l] == "workgroups-activity" {
+					if l := len("ialer-attachments"); len(elem) >= l && elem[0:l] == "ialer-attachments" {
 						elem = elem[l:]
 					} else {
 						break
@@ -720,10 +754,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					if len(elem) == 0 {
 						// Leaf node.
 						switch r.Method {
+						case "DELETE":
+							s.handleDetachDialerAttachmentRequest([0]string{}, elemIsEscaped, w, r)
 						case "GET":
-							s.handleGetWorkgroupsActivityRequest([0]string{}, elemIsEscaped, w, r)
+							s.handleGetActiveDialerAttachmentRequest([0]string{}, elemIsEscaped, w, r)
 						default:
-							s.notAllowed(w, r, "GET")
+							s.notAllowed(w, r, "DELETE,GET")
 						}
 
 						return
@@ -2306,9 +2342,9 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 
 				}
 
-			case 'd': // Prefix: "dashboard/"
+			case 'd': // Prefix: "d"
 
-				if l := len("dashboard/"); len(elem) >= l && elem[0:l] == "dashboard/" {
+				if l := len("d"); len(elem) >= l && elem[0:l] == "d" {
 					elem = elem[l:]
 				} else {
 					break
@@ -2318,9 +2354,119 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					break
 				}
 				switch elem[0] {
-				case 'a': // Prefix: "activity"
+				case 'a': // Prefix: "ashboard/"
 
-					if l := len("activity"); len(elem) >= l && elem[0:l] == "activity" {
+					if l := len("ashboard/"); len(elem) >= l && elem[0:l] == "ashboard/" {
+						elem = elem[l:]
+					} else {
+						break
+					}
+
+					if len(elem) == 0 {
+						break
+					}
+					switch elem[0] {
+					case 'a': // Prefix: "activity"
+
+						if l := len("activity"); len(elem) >= l && elem[0:l] == "activity" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "GET":
+								r.name = GetDashboardActivityOperation
+								r.summary = ""
+								r.operationID = "getDashboardActivity"
+								r.pathPattern = "/dashboard/activity"
+								r.args = args
+								r.count = 0
+								return r, true
+							default:
+								return
+							}
+						}
+
+					case 'e': // Prefix: "environments"
+
+						if l := len("environments"); len(elem) >= l && elem[0:l] == "environments" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "GET":
+								r.name = GetDashboardEnvironmentsOperation
+								r.summary = ""
+								r.operationID = "getDashboardEnvironments"
+								r.pathPattern = "/dashboard/environments"
+								r.args = args
+								r.count = 0
+								return r, true
+							default:
+								return
+							}
+						}
+
+					case 's': // Prefix: "summary"
+
+						if l := len("summary"); len(elem) >= l && elem[0:l] == "summary" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "GET":
+								r.name = GetDashboardSummaryOperation
+								r.summary = ""
+								r.operationID = "getDashboardSummary"
+								r.pathPattern = "/dashboard/summary"
+								r.args = args
+								r.count = 0
+								return r, true
+							default:
+								return
+							}
+						}
+
+					case 'w': // Prefix: "workgroups-activity"
+
+						if l := len("workgroups-activity"); len(elem) >= l && elem[0:l] == "workgroups-activity" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch method {
+							case "GET":
+								r.name = GetWorkgroupsActivityOperation
+								r.summary = ""
+								r.operationID = "getWorkgroupsActivity"
+								r.pathPattern = "/dashboard/workgroups-activity"
+								r.args = args
+								r.count = 0
+								return r, true
+							default:
+								return
+							}
+						}
+
+					}
+
+				case 'i': // Prefix: "ialer-attachments"
+
+					if l := len("ialer-attachments"); len(elem) >= l && elem[0:l] == "ialer-attachments" {
 						elem = elem[l:]
 					} else {
 						break
@@ -2329,83 +2475,19 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 					if len(elem) == 0 {
 						// Leaf node.
 						switch method {
-						case "GET":
-							r.name = GetDashboardActivityOperation
+						case "DELETE":
+							r.name = DetachDialerAttachmentOperation
 							r.summary = ""
-							r.operationID = "getDashboardActivity"
-							r.pathPattern = "/dashboard/activity"
+							r.operationID = "detachDialerAttachment"
+							r.pathPattern = "/dialer-attachments"
 							r.args = args
 							r.count = 0
 							return r, true
-						default:
-							return
-						}
-					}
-
-				case 'e': // Prefix: "environments"
-
-					if l := len("environments"); len(elem) >= l && elem[0:l] == "environments" {
-						elem = elem[l:]
-					} else {
-						break
-					}
-
-					if len(elem) == 0 {
-						// Leaf node.
-						switch method {
 						case "GET":
-							r.name = GetDashboardEnvironmentsOperation
+							r.name = GetActiveDialerAttachmentOperation
 							r.summary = ""
-							r.operationID = "getDashboardEnvironments"
-							r.pathPattern = "/dashboard/environments"
-							r.args = args
-							r.count = 0
-							return r, true
-						default:
-							return
-						}
-					}
-
-				case 's': // Prefix: "summary"
-
-					if l := len("summary"); len(elem) >= l && elem[0:l] == "summary" {
-						elem = elem[l:]
-					} else {
-						break
-					}
-
-					if len(elem) == 0 {
-						// Leaf node.
-						switch method {
-						case "GET":
-							r.name = GetDashboardSummaryOperation
-							r.summary = ""
-							r.operationID = "getDashboardSummary"
-							r.pathPattern = "/dashboard/summary"
-							r.args = args
-							r.count = 0
-							return r, true
-						default:
-							return
-						}
-					}
-
-				case 'w': // Prefix: "workgroups-activity"
-
-					if l := len("workgroups-activity"); len(elem) >= l && elem[0:l] == "workgroups-activity" {
-						elem = elem[l:]
-					} else {
-						break
-					}
-
-					if len(elem) == 0 {
-						// Leaf node.
-						switch method {
-						case "GET":
-							r.name = GetWorkgroupsActivityOperation
-							r.summary = ""
-							r.operationID = "getWorkgroupsActivity"
-							r.pathPattern = "/dashboard/workgroups-activity"
+							r.operationID = "getActiveDialerAttachment"
+							r.pathPattern = "/dialer-attachments"
 							r.args = args
 							r.count = 0
 							return r, true

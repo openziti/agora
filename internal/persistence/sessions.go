@@ -165,6 +165,21 @@ where state = 'active'
 	return rows, nil
 }
 
+func (r *SessionsRepository) HasActiveTunnelForAccount(ctx context.Context, db Queryer, accountID string) (bool, error) {
+	const query = `
+select count(1)
+from sessions
+where state = 'active'
+  and tunnel_id is not null
+  and (provider_account_id = $1 or consumer_account_id = $1)`
+
+	var count int
+	if err := db.GetContext(ctx, &count, query, accountID); err != nil {
+		return false, fmt.Errorf("check active sessions for account: %w", err)
+	}
+	return count > 0, nil
+}
+
 func (r *SessionsRepository) GetByID(ctx context.Context, db Queryer, id string) (*Session, error) {
 	query := fmt.Sprintf(`select %s from sessions where id = $1`, sessionColumns)
 	var sess Session

@@ -90,7 +90,7 @@ func (p *TunnelProvisioner) Provision(ctx context.Context, spec TunnelSpec) (*Pr
 
 	edgeRouterRoles := spec.EdgeRouterRoles
 	if len(edgeRouterRoles) == 0 {
-		edgeRouterRoles = []string{"#all"}
+		edgeRouterRoles = []string{defaultEdgeRouterRole}
 	}
 	serviceEdgeRouterPolicyID, err := p.serviceEdgeRouterPolicies.Create(ctx, &ServiceEdgeRouterPolicyOptions{
 		BaseOptions: BaseOptions{

@@ -109,6 +109,10 @@ type Invoker interface {
 	//
 	// DELETE /workgroups/{workgroupId}
 	DeleteWorkgroup(ctx context.Context, params DeleteWorkgroupParams) (DeleteWorkgroupRes, error)
+	// DetachDialerAttachment invokes detachDialerAttachment operation.
+	//
+	// DELETE /dialer-attachments
+	DetachDialerAttachment(ctx context.Context, params DetachDialerAttachmentParams) (DetachDialerAttachmentRes, error)
 	// DisableEnvironment invokes disableEnvironment operation.
 	//
 	// DELETE /environments/{environmentId}/heartbeat
@@ -121,6 +125,10 @@ type Invoker interface {
 	//
 	// GET /account/token
 	GetAccountToken(ctx context.Context) (GetAccountTokenRes, error)
+	// GetActiveDialerAttachment invokes getActiveDialerAttachment operation.
+	//
+	// GET /dialer-attachments
+	GetActiveDialerAttachment(ctx context.Context, params GetActiveDialerAttachmentParams) (GetActiveDialerAttachmentRes, error)
 	// GetAdvertisement invokes getAdvertisement operation.
 	//
 	// GET /advertisements/{advertisementId}
@@ -2380,6 +2388,104 @@ func (c *Client) sendDeleteWorkgroup(ctx context.Context, params DeleteWorkgroup
 	return result, nil
 }
 
+// DetachDialerAttachment invokes detachDialerAttachment operation.
+//
+// DELETE /dialer-attachments
+func (c *Client) DetachDialerAttachment(ctx context.Context, params DetachDialerAttachmentParams) (DetachDialerAttachmentRes, error) {
+	res, err := c.sendDetachDialerAttachment(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendDetachDialerAttachment(ctx context.Context, params DetachDialerAttachmentParams) (res DetachDialerAttachmentRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/dialer-attachments"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "environmentId" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "environmentId",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.EnvironmentId))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "tunnel" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "tunnel",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.Tunnel))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	r, err := ht.NewRequest(ctx, "DELETE", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, DetachDialerAttachmentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeDetachDialerAttachmentResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
 // DisableEnvironment invokes disableEnvironment operation.
 //
 // DELETE /environments/{environmentId}/heartbeat
@@ -2596,6 +2702,104 @@ func (c *Client) sendGetAccountToken(ctx context.Context) (res GetAccountTokenRe
 	defer resp.Body.Close()
 
 	result, err := decodeGetAccountTokenResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetActiveDialerAttachment invokes getActiveDialerAttachment operation.
+//
+// GET /dialer-attachments
+func (c *Client) GetActiveDialerAttachment(ctx context.Context, params GetActiveDialerAttachmentParams) (GetActiveDialerAttachmentRes, error) {
+	res, err := c.sendGetActiveDialerAttachment(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendGetActiveDialerAttachment(ctx context.Context, params GetActiveDialerAttachmentParams) (res GetActiveDialerAttachmentRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/dialer-attachments"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	q := uri.NewQueryEncoder()
+	{
+		// Encode "environmentId" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "environmentId",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.EnvironmentId))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	{
+		// Encode "tunnel" parameter.
+		cfg := uri.QueryParameterEncodingConfig{
+			Name:    "tunnel",
+			Style:   uri.QueryStyleForm,
+			Explode: true,
+		}
+
+		if err := q.EncodeParam(cfg, func(e uri.Encoder) error {
+			return e.EncodeValue(conv.StringToString(params.Tunnel))
+		}); err != nil {
+			return res, errors.Wrap(err, "encode query")
+		}
+	}
+	u.RawQuery = q.Values().Encode()
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, GetActiveDialerAttachmentOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeGetActiveDialerAttachmentResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

@@ -99,6 +99,15 @@ type Tunnel struct {
 	Mode Mode
 }
 
+// Attachment is the SDK-native representation returned by direct dialer
+// attachment helpers.
+type Attachment struct {
+	ID            string
+	TunnelID      string
+	EnvironmentID string
+	Kind          AttachmentKind
+}
+
 // ServeStatus reflects the runtime's view of a serve actor.
 type ServeStatus struct {
 	Name          string

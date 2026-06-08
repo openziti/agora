@@ -568,7 +568,7 @@ func createAggregationAttachment(t *testing.T, ctx context.Context, store *Store
 		OrganizationID: org.ID,
 		AccountID:      acct.ID,
 		EnvironmentID:  env.ID,
-		ListenAddress:  "127.0.0.1:0",
+		ListenAddress:  stringPtr("127.0.0.1:0"),
 		State:          state,
 	})
 	if err != nil {
