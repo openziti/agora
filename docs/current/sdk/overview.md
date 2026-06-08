@@ -69,7 +69,7 @@ helper returns that record unchanged.
 
 Agents that need to serve or connect private Layer 1 tunnels should use
 `sdk/agent/tunnel`. The package exposes SDK-native types and sentinel
-errors over the embedded runtime's protobuf control surface.
+errors for both managed proxy tunnels and direct provider listeners.
 
 ```go
 serve, err := tunnel.EnsureServed(ctx, a, tunnel.ServeSpec{
@@ -85,6 +85,36 @@ For `app.Run` users this means constructing the app with
 `agent.WithRuntime()`. For standalone users this means constructing with
 `StandaloneOptions{WithRuntime: true}` and calling `StartRuntime` before
 tunnel operations.
+
+Processes that already own their server protocol can provision a direct
+tunnel and listen on the overlay without starting the managed runtime:
+
+```go
+tnl, err := tunnel.Create(ctx, a, tunnel.Spec{
+    Name:        "mcp-gateway",
+    Mode:        tunnel.ModeHTTP,
+    GrantEmails: []string{"consumer@example.com"},
+})
+if err != nil {
+    return err
+}
+defer tunnel.Delete(ctx, a, tnl)
+
+listener, err := tunnel.Listen(ctx, a, tnl.Name)
+if err != nil {
+    return err
+}
+defer listener.Close()
+
+return httpServer.Serve(listener)
+```
+
+`Create` / `Delete` own the durable controller record and fabric policy.
+`Listen` is thin: it resolves the tunnel, opens the environment identity
+on the overlay service, and returns a raw `net.Listener`. It does not
+create a serve record, heartbeat, retry, or manage accepted connections.
+Direct dialer primitives are not implemented yet; that work remains in
+`docs/future/sdk-l1-primitives-work-order.md`.
 
 ## Typical agent shape
 

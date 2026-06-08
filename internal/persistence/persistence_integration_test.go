@@ -24,8 +24,8 @@ func TestMigrateUpAndCompatibilityCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}
-	if applied != 9 {
-		t.Fatalf("expected 9 migrations applied, got %d", applied)
+	if applied != 10 {
+		t.Fatalf("expected 10 migrations applied, got %d", applied)
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); err != nil {
@@ -51,8 +51,8 @@ func TestCheckSchemaCompatibilityBehindBinary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migration status: %v", err)
 	}
-	if len(statuses) != 9 {
-		t.Fatalf("expected 9 migration statuses, got %d", len(statuses))
+	if len(statuses) != 10 {
+		t.Fatalf("expected 10 migration statuses, got %d", len(statuses))
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); !errors.Is(err, ErrSchemaBehindBinary) {
@@ -84,10 +84,10 @@ func TestAuditEventsMigrationDownDropsTable(t *testing.T) {
 		t.Fatal("expected audit_events table after migrate up")
 	}
 
-	if applied, err := MigrateDown(ctx, store, 1); err != nil {
+	if applied, err := MigrateDown(ctx, store, 2); err != nil {
 		t.Fatalf("migrate down: %v", err)
-	} else if applied != 1 {
-		t.Fatalf("expected 1 down migration applied, got %d", applied)
+	} else if applied != 2 {
+		t.Fatalf("expected 2 down migrations applied, got %d", applied)
 	}
 	if tableExists(t, ctx, store, "audit_events") {
 		t.Fatal("expected audit_events table to be dropped")
@@ -95,8 +95,8 @@ func TestAuditEventsMigrationDownDropsTable(t *testing.T) {
 
 	if applied, err := MigrateUp(ctx, store); err != nil {
 		t.Fatalf("migrate up again: %v", err)
-	} else if applied != 1 {
-		t.Fatalf("expected 1 migration reapplied, got %d", applied)
+	} else if applied != 2 {
+		t.Fatalf("expected 2 migrations reapplied, got %d", applied)
 	}
 	if !tableExists(t, ctx, store, "audit_events") {
 		t.Fatal("expected audit_events table after reapply")
@@ -119,7 +119,7 @@ func TestRepositoriesCRUDAndConstraints(t *testing.T) {
 		EnvironmentID:  env.ID,
 		Name:           tunnelName,
 		Mode:           TunnelModeTCP,
-		BackendTarget:  "127.0.0.1:8443",
+		BackendTarget:  stringPtr("127.0.0.1:8443"),
 		ZitiServiceID:  &serviceID,
 	})
 	if err != nil {
@@ -137,6 +137,48 @@ func TestRepositoriesCRUDAndConstraints(t *testing.T) {
 	}
 	if _, err := store.Tunnels.GetByID(ctx, store.DB(), tunnel.ID); err != nil {
 		t.Fatalf("get tunnel: %v", err)
+	}
+	if tunnel.Kind != TunnelKindProxy {
+		t.Fatalf("expected default tunnel kind proxy, got %q", tunnel.Kind)
+	}
+
+	direct, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
+		OrganizationID: org.ID,
+		AccountID:      acct.ID,
+		EnvironmentID:  env.ID,
+		Name:           "direct-gateway",
+		Mode:           TunnelModeHTTP,
+		Kind:           TunnelKindDirect,
+		State:          TunnelStateActive,
+	})
+	if err != nil {
+		t.Fatalf("create direct tunnel: %v", err)
+	}
+	if direct.Kind != TunnelKindDirect || direct.BackendTarget != nil {
+		t.Fatalf("expected direct tunnel with no backend, got %#v", direct)
+	}
+	if _, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
+		OrganizationID: org.ID,
+		AccountID:      acct.ID,
+		EnvironmentID:  env.ID,
+		Name:           "proxy-without-backend",
+		Mode:           TunnelModeHTTP,
+		Kind:           TunnelKindProxy,
+		State:          TunnelStateActive,
+	}); !isCheckViolation(err) {
+		t.Fatalf("expected proxy-without-backend check violation, got %v", err)
+	}
+	if _, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
+		OrganizationID: org.ID,
+		AccountID:      acct.ID,
+		EnvironmentID:  env.ID,
+		Name:           "direct-with-backend",
+		Mode:           TunnelModeHTTP,
+		Kind:           TunnelKindDirect,
+		BackendTarget:  stringPtr("127.0.0.1:9443"),
+		State:          TunnelStateActive,
+	}); !isCheckViolation(err) {
+		t.Fatalf("expected direct-with-backend check violation, got %v", err)
 	}
 
 	lastSeen := time.Now().UTC().Truncate(time.Second)
@@ -174,7 +216,7 @@ func TestRepositoriesCRUDAndConstraints(t *testing.T) {
 		EnvironmentID:  env.ID,
 		Name:           tunnelName,
 		Mode:           TunnelModeTCP,
-		BackendTarget:  "127.0.0.1:9443",
+		BackendTarget:  stringPtr("127.0.0.1:9443"),
 		State:          TunnelStateActive,
 	}); !isUniqueViolation(err) {
 		t.Fatalf("expected tunnel unique violation, got %v", err)
@@ -185,7 +227,7 @@ func TestRepositoriesCRUDAndConstraints(t *testing.T) {
 		EnvironmentID:  env.ID,
 		Name:           strings.ToUpper(tunnelName),
 		Mode:           TunnelModeTCP,
-		BackendTarget:  "127.0.0.1:10443",
+		BackendTarget:  stringPtr("127.0.0.1:10443"),
 		State:          TunnelStateActive,
 	}); !isUniqueViolation(err) {
 		t.Fatalf("expected case-insensitive tunnel unique violation, got %v", err)
@@ -459,7 +501,7 @@ func TestEnvironmentAndTunnelSoftDeleteBehavior(t *testing.T) {
 		EnvironmentID:  env.ID,
 		Name:           "llm-gateway",
 		Mode:           TunnelModeTCP,
-		BackendTarget:  "127.0.0.1:8443",
+		BackendTarget:  stringPtr("127.0.0.1:8443"),
 		State:          TunnelStateActive,
 	})
 	if err != nil {
@@ -478,7 +520,7 @@ func TestEnvironmentAndTunnelSoftDeleteBehavior(t *testing.T) {
 		EnvironmentID:  env.ID,
 		Name:           "llm-gateway",
 		Mode:           TunnelModeTCP,
-		BackendTarget:  "127.0.0.1:9443",
+		BackendTarget:  stringPtr("127.0.0.1:9443"),
 		State:          TunnelStateActive,
 	}); err != nil {
 		t.Fatalf("expected tunnel name reuse after soft delete, got %v", err)
@@ -632,6 +674,11 @@ func isUniqueViolation(err error) bool {
 func isForeignKeyViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == "23503"
+}
+
+func isCheckViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23514"
 }
 
 func TestWorkgroupNameUniquenessWithinOrg(t *testing.T) {
@@ -1497,7 +1544,7 @@ func TestSessionAcceptFlow(t *testing.T) {
 		EnvironmentID:  providerEnv.ID,
 		Name:           "session-tun",
 		Mode:           TunnelModeTCP,
-		BackendTarget:  "localhost:9000",
+		BackendTarget:  stringPtr("localhost:9000"),
 		ZitiServiceID:  &zitiSvc,
 		BindPolicyID:   &bindPol,
 		State:          TunnelStateActive,

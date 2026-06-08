@@ -74,12 +74,13 @@ func (cmd *tunnelListCommand) run(_ *cobra.Command, _ []string) {
 	}
 
 	t := clioutput.NewTable()
-	t.AppendHeader(table.Row{"Name", "Mode", "Backend", "State", "Tunnel ID", "Environment ID"})
+	t.AppendHeader(table.Row{"Name", "Mode", "Backend", "Kind", "State", "Tunnel ID", "Environment ID"})
 	for _, tunnel := range *tunnels {
 		t.AppendRow(table.Row{
 			tunnel.Name,
 			tunnel.Mode,
-			tunnel.BackendTarget,
+			formatTunnelBackend(tunnel),
+			tunnel.Kind,
 			tunnel.State,
 			tunnel.ID,
 			tunnel.EnvironmentId,
@@ -87,4 +88,14 @@ func (cmd *tunnelListCommand) run(_ *cobra.Command, _ []string) {
 	}
 	clioutput.PrintTable(t)
 	clioutput.PrintTotal("tunnel(s)", len(*tunnels))
+}
+
+func formatTunnelBackend(tunnel api.Tunnel) string {
+	if tunnel.Kind == api.TunnelKindDirect {
+		return "direct listener"
+	}
+	if backend, ok := tunnel.BackendTarget.Get(); ok {
+		return backend
+	}
+	return "-"
 }

@@ -552,7 +552,7 @@ func createAggregationTunnel(t *testing.T, ctx context.Context, store *Store, or
 		EnvironmentID:  env.ID,
 		Name:           "tunnel-" + NewResourceID(PrefixTunnel),
 		Mode:           TunnelModeTCP,
-		BackendTarget:  "127.0.0.1:9000",
+		BackendTarget:  stringPtr("127.0.0.1:9000"),
 		State:          TunnelStateActive,
 	})
 	if err != nil {

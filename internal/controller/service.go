@@ -173,6 +173,10 @@ func mapEnableEnvironmentResponse(env *persistence.Environment, enrollmentJSON [
 }
 
 func mapTunnel(tunnel *persistence.Tunnel) *api.Tunnel {
+	kind := tunnel.Kind
+	if kind == "" {
+		kind = persistence.TunnelKindProxy
+	}
 	result := &api.Tunnel{
 		ID:             tunnel.ID,
 		OrganizationId: tunnel.OrganizationID,
@@ -180,10 +184,13 @@ func mapTunnel(tunnel *persistence.Tunnel) *api.Tunnel {
 		EnvironmentId:  tunnel.EnvironmentID,
 		Name:           tunnel.Name,
 		Mode:           api.TunnelMode(tunnel.Mode),
-		BackendTarget:  tunnel.BackendTarget,
+		Kind:           api.TunnelKind(kind),
 		State:          api.TunnelState(tunnel.State),
 		CreatedAt:      tunnel.CreatedAt,
 		UpdatedAt:      tunnel.UpdatedAt,
+	}
+	if tunnel.BackendTarget != nil {
+		result.BackendTarget.SetTo(*tunnel.BackendTarget)
 	}
 	if tunnel.ZitiServiceID != nil {
 		result.ZitiServiceId.SetTo(*tunnel.ZitiServiceID)

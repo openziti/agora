@@ -6447,8 +6447,10 @@ func (s *CreateTunnelRequest) encodeFields(e *jx.Encoder) {
 		s.Mode.Encode(e)
 	}
 	{
-		e.FieldStart("backendTarget")
-		e.Str(s.BackendTarget)
+		if s.BackendTarget.Set {
+			e.FieldStart("backendTarget")
+			s.BackendTarget.Encode(e)
+		}
 	}
 	{
 		if s.GrantEmails != nil {
@@ -6514,11 +6516,9 @@ func (s *CreateTunnelRequest) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"mode\"")
 			}
 		case "backendTarget":
-			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
-				v, err := d.Str()
-				s.BackendTarget = string(v)
-				if err != nil {
+				s.BackendTarget.Reset()
+				if err := s.BackendTarget.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -6554,7 +6554,7 @@ func (s *CreateTunnelRequest) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00001111,
+		0b00000111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -17940,8 +17940,14 @@ func (s *Tunnel) encodeFields(e *jx.Encoder) {
 		s.Mode.Encode(e)
 	}
 	{
-		e.FieldStart("backendTarget")
-		e.Str(s.BackendTarget)
+		e.FieldStart("kind")
+		s.Kind.Encode(e)
+	}
+	{
+		if s.BackendTarget.Set {
+			e.FieldStart("backendTarget")
+			s.BackendTarget.Encode(e)
+		}
 	}
 	{
 		if s.ZitiServiceId.Set {
@@ -17975,20 +17981,21 @@ func (s *Tunnel) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfTunnel = [13]string{
+var jsonFieldsNameOfTunnel = [14]string{
 	0:  "id",
 	1:  "organizationId",
 	2:  "accountId",
 	3:  "environmentId",
 	4:  "name",
 	5:  "mode",
-	6:  "backendTarget",
-	7:  "zitiServiceId",
-	8:  "bindPolicyId",
-	9:  "serviceEdgeRouterPolicyId",
-	10: "state",
-	11: "createdAt",
-	12: "updatedAt",
+	6:  "kind",
+	7:  "backendTarget",
+	8:  "zitiServiceId",
+	9:  "bindPolicyId",
+	10: "serviceEdgeRouterPolicyId",
+	11: "state",
+	12: "createdAt",
+	13: "updatedAt",
 }
 
 // Decode decodes Tunnel from json.
@@ -18070,12 +18077,20 @@ func (s *Tunnel) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"mode\"")
 			}
-		case "backendTarget":
+		case "kind":
 			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
-				v, err := d.Str()
-				s.BackendTarget = string(v)
-				if err != nil {
+				if err := s.Kind.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"kind\"")
+			}
+		case "backendTarget":
+			if err := func() error {
+				s.BackendTarget.Reset()
+				if err := s.BackendTarget.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -18113,7 +18128,7 @@ func (s *Tunnel) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"serviceEdgeRouterPolicyId\"")
 			}
 		case "state":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				if err := s.State.Decode(d); err != nil {
 					return err
@@ -18123,7 +18138,7 @@ func (s *Tunnel) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"state\"")
 			}
 		case "createdAt":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CreatedAt = v
@@ -18135,7 +18150,7 @@ func (s *Tunnel) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"createdAt\"")
 			}
 		case "updatedAt":
-			requiredBitSet[1] |= 1 << 4
+			requiredBitSet[1] |= 1 << 5
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.UpdatedAt = v
@@ -18157,7 +18172,7 @@ func (s *Tunnel) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b01111111,
-		0b00011100,
+		0b00111000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -18721,6 +18736,46 @@ func (s *TunnelGrant) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *TunnelGrant) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes TunnelKind as json.
+func (s TunnelKind) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes TunnelKind from json.
+func (s *TunnelKind) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TunnelKind to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch TunnelKind(v) {
+	case TunnelKindProxy:
+		*s = TunnelKindProxy
+	case TunnelKindDirect:
+		*s = TunnelKindDirect
+	default:
+		*s = TunnelKind(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s TunnelKind) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TunnelKind) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

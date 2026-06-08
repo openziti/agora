@@ -216,7 +216,7 @@ func TestServiceHTTPFlow(t *testing.T) {
 		EnvironmentId: env.ID,
 		Name:          "llm-gateway",
 		Mode:          api.TunnelModeTCP,
-		BackendTarget: "127.0.0.1:8443",
+		BackendTarget: api.NewOptString("127.0.0.1:8443"),
 	})
 	if err != nil {
 		t.Fatalf("create tunnel request: %v", err)

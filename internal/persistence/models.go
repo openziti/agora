@@ -115,6 +115,13 @@ const (
 	TunnelStateDisabled TunnelState = "disabled"
 )
 
+type TunnelKind string
+
+const (
+	TunnelKindProxy  TunnelKind = "proxy"
+	TunnelKindDirect TunnelKind = "direct"
+)
+
 type TunnelMode string
 
 const (
@@ -130,7 +137,8 @@ type Tunnel struct {
 	EnvironmentID             string      `db:"environment_id"`
 	Name                      string      `db:"name"`
 	Mode                      TunnelMode  `db:"mode"`
-	BackendTarget             string      `db:"backend_target"`
+	Kind                      TunnelKind  `db:"kind"`
+	BackendTarget             *string     `db:"backend_target"`
 	ZitiServiceID             *string     `db:"ziti_service_id"`
 	BindPolicyID              *string     `db:"bind_policy_id"`
 	ServiceEdgeRouterPolicyID *string     `db:"service_edge_router_policy_id"`

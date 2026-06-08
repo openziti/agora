@@ -135,7 +135,7 @@ func (s *Service) AcceptSession(ctx context.Context, req *api.AcceptSessionReque
 		EnvironmentID:             env.ID,
 		Name:                      tunnelName,
 		Mode:                      sess.TunnelMode,
-		BackendTarget:             backendTarget,
+		BackendTarget:             stringPtr(backendTarget),
 		ZitiServiceID:             &provisioned.ServiceID,
 		BindPolicyID:              &provisioned.BindPolicyID,
 		ServiceEdgeRouterPolicyID: &provisioned.ServiceEdgeRouterPolicyID,

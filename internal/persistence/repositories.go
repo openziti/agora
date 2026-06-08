@@ -408,14 +408,17 @@ func (r *TunnelsRepository) Create(ctx context.Context, db Queryer, tunnel Tunne
 	if tunnel.Mode == "" {
 		tunnel.Mode = TunnelModeHTTP
 	}
+	if tunnel.Kind == "" {
+		tunnel.Kind = TunnelKindProxy
+	}
 
 	const query = `
 insert into tunnels (
-	id, organization_id, account_id, environment_id, name, mode, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
+	id, organization_id, account_id, environment_id, name, mode, kind, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
 ) values (
-	$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+	$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
 )
-returning id, organization_id, account_id, environment_id, name, mode, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at`
+returning id, organization_id, account_id, environment_id, name, mode, kind, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at`
 
 	var created Tunnel
 	if err := db.GetContext(
@@ -428,6 +431,7 @@ returning id, organization_id, account_id, environment_id, name, mode, backend_t
 		tunnel.EnvironmentID,
 		tunnel.Name,
 		tunnel.Mode,
+		tunnel.Kind,
 		tunnel.BackendTarget,
 		tunnel.ZitiServiceID,
 		tunnel.BindPolicyID,
@@ -444,7 +448,7 @@ returning id, organization_id, account_id, environment_id, name, mode, backend_t
 
 func (r *TunnelsRepository) GetByID(ctx context.Context, db Queryer, id string) (*Tunnel, error) {
 	const query = `
-select id, organization_id, account_id, environment_id, name, mode, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
+select id, organization_id, account_id, environment_id, name, mode, kind, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
 from tunnels
 where id = $1 and not deleted`
 
@@ -460,7 +464,7 @@ where id = $1 and not deleted`
 
 func (r *TunnelsRepository) GetByName(ctx context.Context, db Queryer, organizationID, name string) (*Tunnel, error) {
 	const query = `
-select id, organization_id, account_id, environment_id, name, mode, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
+select id, organization_id, account_id, environment_id, name, mode, kind, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
 from tunnels
 where organization_id = $1 and lower(name) = lower($2) and not deleted`
 
@@ -481,7 +485,7 @@ where organization_id = $1 and lower(name) = lower($2) and not deleted`
 // granted access to a tunnel owned by the provider's organization.
 func (r *TunnelsRepository) GetByNameGrantedToAccount(ctx context.Context, db Queryer, name, accountID string) (*Tunnel, error) {
 	const query = `
-select t.id, t.organization_id, t.account_id, t.environment_id, t.name, t.mode, t.backend_target,
+select t.id, t.organization_id, t.account_id, t.environment_id, t.name, t.mode, t.kind, t.backend_target,
        t.ziti_service_id, t.bind_policy_id, t.service_edge_router_policy_id, t.state, t.deleted,
        t.created_at, t.updated_at
 from tunnels t
@@ -501,7 +505,7 @@ limit 1`
 
 func (r *TunnelsRepository) ListByOrganization(ctx context.Context, db Queryer, organizationID string) ([]Tunnel, error) {
 	const query = `
-select id, organization_id, account_id, environment_id, name, mode, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
+select id, organization_id, account_id, environment_id, name, mode, kind, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
 from tunnels
 where organization_id = $1 and not deleted
 order by name asc`
@@ -515,7 +519,7 @@ order by name asc`
 
 func (r *TunnelsRepository) ListOwnedByAccount(ctx context.Context, db Queryer, organizationID, accountID string) ([]Tunnel, error) {
 	const query = `
-select id, organization_id, account_id, environment_id, name, mode, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
+select id, organization_id, account_id, environment_id, name, mode, kind, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
 from tunnels
 where organization_id = $1 and account_id = $2 and not deleted
 order by name asc`
@@ -530,7 +534,7 @@ order by name asc`
 func (r *TunnelsRepository) ListAccessibleByAccount(ctx context.Context, db Queryer, organizationID, accountID string, includeOwned bool) ([]Tunnel, error) {
 	query := `
 select distinct
-	t.id, t.organization_id, t.account_id, t.environment_id, t.name, t.mode, t.backend_target, t.ziti_service_id, t.bind_policy_id, t.service_edge_router_policy_id, t.state, t.deleted, t.created_at, t.updated_at
+	t.id, t.organization_id, t.account_id, t.environment_id, t.name, t.mode, t.kind, t.backend_target, t.ziti_service_id, t.bind_policy_id, t.service_edge_router_policy_id, t.state, t.deleted, t.created_at, t.updated_at
 from tunnels t
 left join tunnel_account_grants g on g.tunnel_id = t.id and g.account_id = $2 and not g.deleted
 where t.organization_id = $1 and not t.deleted`
@@ -579,7 +583,7 @@ where id = $1 and organization_id = $2 and not deleted`
 
 func (r *TunnelsRepository) ListByEnvironment(ctx context.Context, db Queryer, environmentID, organizationID string) ([]Tunnel, error) {
 	const query = `
-select id, organization_id, account_id, environment_id, name, mode, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
+select id, organization_id, account_id, environment_id, name, mode, kind, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
 from tunnels
 where environment_id = $1 and organization_id = $2 and not deleted
 order by name asc`

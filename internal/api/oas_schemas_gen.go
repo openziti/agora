@@ -2097,7 +2097,7 @@ type CreateTunnelRequest struct {
 	EnvironmentId string     `json:"environmentId"`
 	Name          string     `json:"name"`
 	Mode          TunnelMode `json:"mode"`
-	BackendTarget string     `json:"backendTarget"`
+	BackendTarget OptString  `json:"backendTarget"`
 	GrantEmails   []string   `json:"grantEmails"`
 }
 
@@ -2117,7 +2117,7 @@ func (s *CreateTunnelRequest) GetMode() TunnelMode {
 }
 
 // GetBackendTarget returns the value of BackendTarget.
-func (s *CreateTunnelRequest) GetBackendTarget() string {
+func (s *CreateTunnelRequest) GetBackendTarget() OptString {
 	return s.BackendTarget
 }
 
@@ -2142,7 +2142,7 @@ func (s *CreateTunnelRequest) SetMode(val TunnelMode) {
 }
 
 // SetBackendTarget sets the value of BackendTarget.
-func (s *CreateTunnelRequest) SetBackendTarget(val string) {
+func (s *CreateTunnelRequest) SetBackendTarget(val OptString) {
 	s.BackendTarget = val
 }
 
@@ -5779,7 +5779,8 @@ type Tunnel struct {
 	EnvironmentId             string      `json:"environmentId"`
 	Name                      string      `json:"name"`
 	Mode                      TunnelMode  `json:"mode"`
-	BackendTarget             string      `json:"backendTarget"`
+	Kind                      TunnelKind  `json:"kind"`
+	BackendTarget             OptString   `json:"backendTarget"`
 	ZitiServiceId             OptString   `json:"zitiServiceId"`
 	BindPolicyId              OptString   `json:"bindPolicyId"`
 	ServiceEdgeRouterPolicyId OptString   `json:"serviceEdgeRouterPolicyId"`
@@ -5818,8 +5819,13 @@ func (s *Tunnel) GetMode() TunnelMode {
 	return s.Mode
 }
 
+// GetKind returns the value of Kind.
+func (s *Tunnel) GetKind() TunnelKind {
+	return s.Kind
+}
+
 // GetBackendTarget returns the value of BackendTarget.
-func (s *Tunnel) GetBackendTarget() string {
+func (s *Tunnel) GetBackendTarget() OptString {
 	return s.BackendTarget
 }
 
@@ -5883,8 +5889,13 @@ func (s *Tunnel) SetMode(val TunnelMode) {
 	s.Mode = val
 }
 
+// SetKind sets the value of Kind.
+func (s *Tunnel) SetKind(val TunnelKind) {
+	s.Kind = val
+}
+
 // SetBackendTarget sets the value of BackendTarget.
-func (s *Tunnel) SetBackendTarget(val string) {
+func (s *Tunnel) SetBackendTarget(val OptString) {
 	s.BackendTarget = val
 }
 
@@ -6187,6 +6198,47 @@ func (s *TunnelGrant) SetCreatedAt(val time.Time) {
 }
 
 func (*TunnelGrant) addTunnelGrantRes() {}
+
+type TunnelKind string
+
+const (
+	TunnelKindProxy  TunnelKind = "proxy"
+	TunnelKindDirect TunnelKind = "direct"
+)
+
+// AllValues returns all TunnelKind values.
+func (TunnelKind) AllValues() []TunnelKind {
+	return []TunnelKind{
+		TunnelKindProxy,
+		TunnelKindDirect,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TunnelKind) MarshalText() ([]byte, error) {
+	switch s {
+	case TunnelKindProxy:
+		return []byte(s), nil
+	case TunnelKindDirect:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TunnelKind) UnmarshalText(data []byte) error {
+	switch TunnelKind(data) {
+	case TunnelKindProxy:
+		*s = TunnelKindProxy
+		return nil
+	case TunnelKindDirect:
+		*s = TunnelKindDirect
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 // Ref: #/tunnelMode
 type TunnelMode string

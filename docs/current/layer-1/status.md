@@ -26,6 +26,7 @@ Implemented Layer 1 behavior includes:
 - agent-owned environment heartbeat and environment liveness reporting
 - agent-hosted `serve` and `connect` runtime with reconciliation after restart/failure
 - agent-backed `serve` and `connect` by default, with `--foreground` direct-runtime bypass for debugging
+- SDK-native direct provider tunnels through `tunnel.Create`, `tunnel.Listen`, and `tunnel.Delete`, returning a raw `net.Listener` without the managed runtime
 - unified tunnel delete semantics for both durable tunnel resources and managed runtime state
 - composite `agora status` covering local root state, local agent state, controller environment state, owned tunnels, active serve details, and attachment counts
 - meaningful provider-side and consumer-side request/session logging
@@ -44,12 +45,14 @@ This checklist is complete.
 - [x] a second environment can connect to that tunnel if authorized
 - [x] access and serve heartbeats are tracked and stale state is reaped
 - [x] enabled environments and served tunnels are re-established after local runtime restart or reconnect
+- [x] an embedded process can provision a direct tunnel and serve its own protocol on a raw overlay listener
 
 ## Remaining Work For Broader Layer 1 Completion
 
 The following work still remains if the goal is to call Layer 1 operationally solid rather than merely minimum-working:
 
 - extraction of the local runtime into an embeddable library form alongside the existing standalone daemon, per the revised packaging direction (see [agent.md](agent.md) "Packaging Direction")
+- SDK-native direct dialer primitives (`Attach` / `Detach` / `Dial`) and their attachment cleanup model
 - a documented and repeatable local development and smoke-test stack
 - clearer end-to-end operational validation for enable, serve, connect, status, and cleanup
 
@@ -62,6 +65,7 @@ This checklist is not complete.
 - [x] controller health/readiness and shutdown behavior are solid
 - [x] the local runtime packaging direction is finalized (dual delivery: standalone daemon + embeddable library)
 - [ ] the local runtime library extraction is reflected in the implementation
+- [ ] SDK-native direct dialer primitives are implemented
 - [ ] the project has a documented and repeatable end-to-end operational validation path
 - [ ] metrics are implemented (deferred; see [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md))
 - [ ] limits are implemented (deferred; see [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md))

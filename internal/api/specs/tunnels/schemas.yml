@@ -7,7 +7,7 @@ tunnel:
     - environmentId
     - name
     - mode
-    - backendTarget
+    - kind
     - state
     - createdAt
     - updatedAt
@@ -28,6 +28,9 @@ tunnel:
       type: string
     mode:
       $ref: "#/tunnelMode"
+    kind:
+      type: string
+      enum: [proxy, direct]
     backendTarget:
       type: string
     zitiServiceId:
@@ -56,7 +59,6 @@ createTunnelRequest:
     - environmentId
     - name
     - mode
-    - backendTarget
   properties:
     environmentId:
       type: string

@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/openziti/agora/internal/api"
 	"github.com/openziti/agora/internal/network/tunnelruntime"
@@ -20,13 +21,17 @@ type defaultRuntimeHost struct{}
 
 func (defaultRuntimeHost) StartServe(ctx context.Context, identityPath string, tunnel *api.Tunnel) (runtimeHandle, error) {
 	factory := tunnelruntime.OpenZitiFactory{}
+	backendTarget, ok := tunnel.BackendTarget.Get()
+	if !ok {
+		return nil, fmt.Errorf("tunnel '%s' is missing backend target", tunnel.ID)
+	}
 	switch tunnel.Mode {
 	case api.TunnelModeHTTP:
-		return tunnelruntime.StartServeHTTP(ctx, factory, identityPath, tunnel.ID, tunnel.BackendTarget)
+		return tunnelruntime.StartServeHTTP(ctx, factory, identityPath, tunnel.ID, backendTarget)
 	case api.TunnelModeTCP:
-		return tunnelruntime.StartServeTCP(ctx, factory, identityPath, tunnel.ID, tunnel.BackendTarget)
+		return tunnelruntime.StartServeTCP(ctx, factory, identityPath, tunnel.ID, backendTarget)
 	case api.TunnelModeUDP:
-		return tunnelruntime.StartServeUDP(ctx, factory, identityPath, tunnel.ID, tunnel.BackendTarget)
+		return tunnelruntime.StartServeUDP(ctx, factory, identityPath, tunnel.ID, backendTarget)
 	default:
 		return nil, unsupportedTunnelMode(tunnel.Mode)
 	}

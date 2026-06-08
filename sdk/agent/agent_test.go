@@ -77,7 +77,7 @@ func TestAgentEnsureServeAndConnectPersistDesiredState(t *testing.T) {
 				EnvironmentId: "ev_test00000002",
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
-				BackendTarget: "https://backend.example",
+				BackendTarget: api.NewOptString("https://backend.example"),
 			}, &api.TunnelServe{ID: "ts_test00000001"}, nil
 		},
 		startConnect: func(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {
@@ -86,7 +86,7 @@ func TestAgentEnsureServeAndConnectPersistDesiredState(t *testing.T) {
 				EnvironmentId: "ev_test00000002",
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
-				BackendTarget: "https://backend.example",
+				BackendTarget: api.NewOptString("https://backend.example"),
 			}, &api.TunnelAttachment{ID: "ta_test00000001", ListenAddress: "127.0.0.1:8080"}, nil
 		},
 	}
@@ -392,7 +392,7 @@ func TestAgentRestoresDesiredServeAndConnectOnStart(t *testing.T) {
 				EnvironmentId: "ev_test00000025",
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
-				BackendTarget: "https://backend.example",
+				BackendTarget: api.NewOptString("https://backend.example"),
 			}, &api.TunnelServe{ID: "ts_test00000025"}, nil
 		},
 		startConnect: func(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {
@@ -402,7 +402,7 @@ func TestAgentRestoresDesiredServeAndConnectOnStart(t *testing.T) {
 				EnvironmentId: "ev_test00000025",
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
-				BackendTarget: "https://backend.example",
+				BackendTarget: api.NewOptString("https://backend.example"),
 			}, &api.TunnelAttachment{ID: "ta_test00000025", ListenAddress: "127.0.0.1:8080"}, nil
 		},
 	}
@@ -456,7 +456,7 @@ func TestAgentEnsureServeRetriesAfterInitialFailure(t *testing.T) {
 				EnvironmentId: "ev_test00000026",
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
-				BackendTarget: "https://backend.example",
+				BackendTarget: api.NewOptString("https://backend.example"),
 			}, &api.TunnelServe{ID: "ts_test00000026"}, nil
 		},
 		startConnect: func(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {
@@ -523,7 +523,7 @@ func TestAgentRetriesAfterUnexpectedRuntimeExit(t *testing.T) {
 				EnvironmentId: "ev_test00000027",
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
-				BackendTarget: "https://backend.example",
+				BackendTarget: api.NewOptString("https://backend.example"),
 			}, &api.TunnelServe{ID: fmt.Sprintf("ts_test0000002%d", start)}, nil
 		},
 		startConnect: func(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {
@@ -592,7 +592,7 @@ func TestAgentServeHeartbeatCurrentResourceFailureReconcilesImmediately(t *testi
 				EnvironmentId: "ev_test00000028",
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
-				BackendTarget: "https://backend.example",
+				BackendTarget: api.NewOptString("https://backend.example"),
 			}, &api.TunnelServe{ID: fmt.Sprintf("ts_test0000003%d", start)}, nil
 		},
 		heartbeatServe: func(context.Context, *env_core.Environment, string) error {
@@ -657,7 +657,7 @@ func TestAgentReloadEnvironmentRecoversMissingPrerequisites(t *testing.T) {
 				EnvironmentId: "ev_test00000029",
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
-				BackendTarget: "https://backend.example",
+				BackendTarget: api.NewOptString("https://backend.example"),
 			}, &api.TunnelServe{ID: "ts_test00000029"}, nil
 		},
 		startConnect: func(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {

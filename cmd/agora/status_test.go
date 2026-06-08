@@ -140,6 +140,7 @@ func TestStatusBuilderBuildsCompositeStatus(t *testing.T) {
 							"environmentId":  testEnvironmentID,
 							"name":           "gateway",
 							"mode":           "http",
+							"kind":           "proxy",
 							"backendTarget":  "https://backend.example.com",
 							"state":          "active",
 							"createdAt":      createdAt.Format(time.RFC3339),

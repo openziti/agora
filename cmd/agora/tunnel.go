@@ -126,13 +126,17 @@ func validateListenAddress(address string) error {
 
 func runServeRuntime(ctx context.Context, identityPath string, tunnel *api.Tunnel) error {
 	factory := tunnelruntime.OpenZitiFactory{}
+	backendTarget, ok := tunnel.BackendTarget.Get()
+	if !ok {
+		return fmt.Errorf("tunnel '%s' is missing backend target", tunnel.ID)
+	}
 	switch tunnel.Mode {
 	case api.TunnelModeHTTP:
-		return tunnelruntime.ServeHTTP(ctx, factory, identityPath, tunnel.ID, tunnel.BackendTarget)
+		return tunnelruntime.ServeHTTP(ctx, factory, identityPath, tunnel.ID, backendTarget)
 	case api.TunnelModeTCP:
-		return tunnelruntime.ServeTCP(ctx, factory, identityPath, tunnel.ID, tunnel.BackendTarget)
+		return tunnelruntime.ServeTCP(ctx, factory, identityPath, tunnel.ID, backendTarget)
 	case api.TunnelModeUDP:
-		return tunnelruntime.ServeUDP(ctx, factory, identityPath, tunnel.ID, tunnel.BackendTarget)
+		return tunnelruntime.ServeUDP(ctx, factory, identityPath, tunnel.ID, backendTarget)
 	default:
 		return fmt.Errorf("unsupported tunnel mode '%s'", tunnel.Mode)
 	}
@@ -235,7 +239,7 @@ func ensureTunnelCreatedOrReused(client *api.Client, req *api.CreateTunnelReques
 		if existing.EnvironmentId != environmentID {
 			panic("existing tunnel is not owned by the current environment")
 		}
-		if existing.Mode != req.Mode || existing.BackendTarget != req.BackendTarget {
+		if existing.Kind != api.TunnelKindProxy || existing.Mode != req.Mode || existing.BackendTarget.Or("") != req.BackendTarget.Or("") {
 			panic("existing tunnel configuration does not match requested mode/backend")
 		}
 		return existing

@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/michaelquigley/df/dl"
 	"github.com/openziti/agora/internal/api"
@@ -16,12 +17,18 @@ func (s *Service) CreateTunnel(ctx context.Context, req *api.CreateTunnelRequest
 		dl.Warnf("unauthorized create tunnel request environment_id='%s' name='%s'", req.EnvironmentId, req.Name)
 		return &api.CreateTunnelUnauthorized{Code: "unauthorized", Message: "unauthorized"}, nil
 	}
+	kind, backendTarget, err := inferTunnelKind(req.BackendTarget)
+	if err != nil {
+		dl.Warnf("create tunnel rejected due to invalid backend target name='%s' %s: %v", req.Name, principalLogFields(principal), err)
+		return &api.CreateTunnelConflict{Code: "conflict", Message: err.Error()}, nil
+	}
 	dl.Infof(
-		"creating tunnel name='%s' environment_id='%s' mode='%s' backend_target='%s' %s",
+		"creating tunnel name='%s' environment_id='%s' mode='%s' kind='%s' backend_target='%s' %s",
 		req.Name,
 		req.EnvironmentId,
 		req.Mode,
-		req.BackendTarget,
+		kind,
+		optionalStringValue(backendTarget),
 		principalLogFields(principal),
 	)
 
@@ -92,7 +99,8 @@ func (s *Service) CreateTunnel(ctx context.Context, req *api.CreateTunnelRequest
 		EnvironmentID:             env.ID,
 		Name:                      req.Name,
 		Mode:                      persistence.TunnelMode(req.Mode),
-		BackendTarget:             req.BackendTarget,
+		Kind:                      kind,
+		BackendTarget:             backendTarget,
 		ZitiServiceID:             &provisioned.ServiceID,
 		BindPolicyID:              &provisioned.BindPolicyID,
 		ServiceEdgeRouterPolicyID: &provisioned.ServiceEdgeRouterPolicyID,
@@ -128,4 +136,15 @@ func (s *Service) CreateTunnel(ctx context.Context, req *api.CreateTunnelRequest
 
 	dl.Infof("created tunnel id='%s' name='%s' environment_id='%s' %s", created.ID, created.Name, created.EnvironmentID, principalLogFields(principal))
 	return mapTunnel(created), nil
+}
+
+func inferTunnelKind(backend api.OptString) (persistence.TunnelKind, *string, error) {
+	if !backend.Set {
+		return persistence.TunnelKindDirect, nil, nil
+	}
+	trimmed := strings.TrimSpace(backend.Value)
+	if trimmed == "" {
+		return "", nil, errors.New("backendTarget must be non-empty when present")
+	}
+	return persistence.TunnelKindProxy, &trimmed, nil
 }

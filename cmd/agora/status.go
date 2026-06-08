@@ -151,7 +151,8 @@ type controllerTunnel struct {
 	EnvironmentID  string    `json:"environment_id"`
 	Name           string    `json:"name"`
 	Mode           string    `json:"mode"`
-	BackendTarget  string    `json:"backend_target"`
+	Kind           string    `json:"kind"`
+	BackendTarget  *string   `json:"backend_target,omitempty"`
 	State          string    `json:"state"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
@@ -589,7 +590,8 @@ func mapControllerTunnel(tunnel *api.Tunnel) controllerTunnel {
 		EnvironmentID:  tunnel.EnvironmentId,
 		Name:           tunnel.Name,
 		Mode:           string(tunnel.Mode),
-		BackendTarget:  tunnel.BackendTarget,
+		Kind:           string(tunnel.Kind),
+		BackendTarget:  optStringPtr(tunnel.BackendTarget),
 		State:          string(tunnel.State),
 		CreatedAt:      tunnel.CreatedAt.UTC(),
 		UpdatedAt:      tunnel.UpdatedAt.UTC(),
@@ -699,6 +701,16 @@ func optTunnelModePtr(v api.OptTunnelMode) *string {
 	return &value
 }
 
+func formatControllerTunnelBackend(tunnel controllerTunnel) string {
+	if tunnel.Kind == string(api.TunnelKindDirect) {
+		return "direct listener"
+	}
+	if tunnel.BackendTarget == nil || strings.TrimSpace(*tunnel.BackendTarget) == "" {
+		return "-"
+	}
+	return *tunnel.BackendTarget
+}
+
 func timestampPtr(v interface{ AsTime() time.Time }) *time.Time {
 	if v == nil {
 		return nil
@@ -802,7 +814,7 @@ func renderCompositeStatus(status *compositeStatus) {
 			t.AppendRow(table.Row{
 				tunnel.Tunnel.Name,
 				tunnel.Tunnel.Mode,
-				tunnel.Tunnel.BackendTarget,
+				formatControllerTunnelBackend(tunnel.Tunnel),
 				activeServe,
 				serveHost,
 				formatAttachmentCounts(tunnel.AttachmentCounts),
