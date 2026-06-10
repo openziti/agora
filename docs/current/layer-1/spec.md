@@ -55,6 +55,7 @@ A tunnel is the Layer 1 connectivity primitive. Tunnels are:
 - named
 - owned by an account within an organization
 - bound to the environment that serves them
+- one of two provider shapes: `proxy` or `direct`
 
 Supported tunnel modes in the current Layer 1 surface are:
 
@@ -69,12 +70,36 @@ The user-facing verbs are:
 
 By default, `agora tunnel serve` and `agora tunnel connect` delegate to the local `agora network` runtime. Both commands support `--foreground` as a debug bypass that runs the runtime directly in the CLI process and does not alter agent-managed desired state.
 
+Proxy tunnels are the managed runtime shape. They require a backend target,
+create tunnel serve records when hosted, and are the shape used by
+`agora tunnel serve` and `tunnel.EnsureServed`.
+
+Direct tunnels are the SDK-native provider shape. They have no backend
+target because the embedding process serves the overlay listener itself.
+They are provisioned explicitly through `sdk/agent/tunnel.Create`, listened
+through `sdk/agent/tunnel.Listen`, and deleted through
+`sdk/agent/tunnel.Delete`. `Listen` returns a raw `net.Listener` and does
+not create a tunnel serve record or heartbeat. Direct tunnels currently
+support stream modes (`http` and `tcp`) for listening; packet-shaped direct
+UDP is deferred.
+
+Tunnel attachments have two consumer shapes: `proxy` and `dialer`. Proxy
+attachments are created by the managed connect runtime and require a local
+listen address because the runtime binds a local proxy port. Dialer
+attachments are created explicitly through `sdk/agent/tunnel.Attach`, have
+no local listen address, and authorize raw overlay dials through
+`sdk/agent/tunnel.Dial`. `Dial` returns a raw `net.Conn`, does not create a
+managed connect actor, and does not heartbeat. A dialer attachment remains
+an active authorization until `Detach` or another revocation path removes
+its stored dial policy. Direct dialers currently support stream modes
+(`http` and `tcp`); packet-shaped UDP dialing is deferred.
+
 The durable resource is the tunnel itself. The live controller-visible runtime records are:
 
 - tunnel serves for active provider-side hosting
 - tunnel attachments for active or historical consumer-side connection records
 
-Both tunnel serves and tunnel attachments are explicit controller-side records with `active`, `stale`, and `disconnected` states. Only one active serve may exist for a tunnel at a time, and the controller exposes a singular active-serve read surface for status composition.
+Both tunnel serves and tunnel attachments are explicit controller-side records with `active`, `stale`, and `disconnected` states. Only one active serve may exist for a tunnel at a time, and the controller exposes a singular active-serve read surface for status composition. Attachment stale reaping applies to proxy attachments only; dialer attachments are not heartbeat-backed and are removed by explicit detach or revocation cleanup.
 
 ## Authorization And Visibility
 

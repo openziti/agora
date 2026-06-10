@@ -28,6 +28,13 @@ func (s *Service) StartTunnelServe(ctx context.Context, req *api.StartTunnelServ
 		dl.Errorf("start tunnel serve tunnel lookup failed tunnel_id='%s' %s: %v", params.TunnelId, principalLogFields(principal), err)
 		return &api.StartTunnelServeInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
+	if tunnel.Kind != persistence.TunnelKindProxy {
+		dl.Warnf("start tunnel serve rejected for non-proxy tunnel tunnel_id='%s' kind='%s' %s", tunnel.ID, tunnel.Kind, principalLogFields(principal))
+		return &api.StartTunnelServeConflict{
+			Code:    "conflict",
+			Message: fmt.Sprintf("tunnel '%s' is a direct listener tunnel", tunnel.Name),
+		}, nil
+	}
 
 	env, err := s.requireOwnedEnvironment(ctx, principal, req.EnvironmentId)
 	if err != nil {

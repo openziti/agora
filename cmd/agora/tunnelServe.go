@@ -100,7 +100,7 @@ func (cmd *tunnelServeCommand) runForeground(args []string) {
 		EnvironmentId: env.EnvironmentID,
 		Name:          args[0],
 		Mode:          mode,
-		BackendTarget: cmd.backend,
+		BackendTarget: api.NewOptString(cmd.backend),
 		GrantEmails:   cmd.grantEmails,
 	}, env.EnvironmentID)
 	for _, email := range cmd.grantEmails {
@@ -135,6 +135,6 @@ func (cmd *tunnelServeCommand) runForeground(args []string) {
 	startTunnelServeHeartbeats(ctx, client, serve.ID)
 
 	identityPath := requireEnvironmentIdentityPath(root)
-	fmt.Printf("serving tunnel '%s' mode='%s' backend='%s'\n", tunnel.Name, tunnel.Mode, tunnel.BackendTarget)
+	fmt.Printf("serving tunnel '%s' mode='%s' backend='%s'\n", tunnel.Name, tunnel.Mode, formatTunnelBackend(*tunnel))
 	panicIfErr(runServeRuntime(ctx, identityPath, tunnel))
 }

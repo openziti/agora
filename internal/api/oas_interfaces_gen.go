@@ -89,6 +89,10 @@ type DeleteWorkgroupRes interface {
 	deleteWorkgroupRes()
 }
 
+type DetachDialerAttachmentRes interface {
+	detachDialerAttachmentRes()
+}
+
 type DisableEnvironmentRes interface {
 	disableEnvironmentRes()
 }
@@ -99,6 +103,10 @@ type EnableEnvironmentRes interface {
 
 type GetAccountTokenRes interface {
 	getAccountTokenRes()
+}
+
+type GetActiveDialerAttachmentRes interface {
+	getActiveDialerAttachmentRes()
 }
 
 type GetAdvertisementRes interface {

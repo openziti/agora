@@ -87,7 +87,7 @@ func (apiTunnelController) StartServe(ctx context.Context, env *env_core.Environ
 		EnvironmentId: env.EnvironmentID,
 		Name:          desired.Name,
 		Mode:          api.TunnelMode(desired.Mode),
-		BackendTarget: desired.BackendTarget,
+		BackendTarget: api.NewOptString(desired.BackendTarget),
 		GrantEmails:   append([]string(nil), desired.GrantEmails...),
 	}, env.EnvironmentID)
 	if err != nil {
@@ -174,7 +174,7 @@ func (apiTunnelController) StartConnect(ctx context.Context, env *env_core.Envir
 	res, err := client.ConnectTunnel(ctx, &api.ConnectTunnelRequest{
 		EnvironmentId: env.EnvironmentID,
 		Name:          desired.Name,
-		ListenAddress: desired.ListenAddress,
+		ListenAddress: api.NewOptString(desired.ListenAddress),
 	})
 	if err != nil {
 		return nil, nil, err
@@ -272,7 +272,7 @@ func ensureTunnelCreatedOrReused(client *api.Client, req *api.CreateTunnelReques
 		if existing.EnvironmentId != environmentID {
 			return nil, fmt.Errorf("existing tunnel is not owned by the current environment")
 		}
-		if existing.Mode != req.Mode || existing.BackendTarget != req.BackendTarget {
+		if existing.Kind != api.TunnelKindProxy || existing.Mode != req.Mode || existing.BackendTarget.Or("") != req.BackendTarget.Or("") {
 			return nil, fmt.Errorf("existing tunnel configuration does not match requested mode/backend")
 		}
 		return existing, nil

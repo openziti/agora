@@ -457,6 +457,116 @@
             schema:
               $ref: "../agora.yml#/components/schemas/error"
 
+/dialer-attachments:
+  get:
+    tags:
+      - tunnels
+    operationId: getActiveDialerAttachment
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: environmentId
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: '^ev_[a-z0-9]{12}$'
+      - name: tunnel
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/activeDialerAttachment"
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      403:
+        description: forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+  delete:
+    tags:
+      - tunnels
+    operationId: detachDialerAttachment
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: environmentId
+        in: query
+        required: true
+        schema:
+          type: string
+          pattern: '^ev_[a-z0-9]{12}$'
+      - name: tunnel
+        in: query
+        required: true
+        schema:
+          type: string
+          minLength: 1
+    responses:
+      204:
+        description: deleted
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      403:
+        description: forbidden
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
 /tunnel-attachments/{attachmentId}/heartbeat:
   post:
     tags:

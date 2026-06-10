@@ -19,6 +19,9 @@ var (
 	// ErrUnsupportedMode marks an unsupported tunnel mode.
 	ErrUnsupportedMode = errors.New("tunnel: unsupported mode")
 
+	// ErrConflict marks a controller-side resource conflict.
+	ErrConflict = errors.New("tunnel: conflict")
+
 	// ErrTransient marks a runtime or controller failure that may later recover.
 	ErrTransient = errors.New("tunnel: transient runtime error")
 )

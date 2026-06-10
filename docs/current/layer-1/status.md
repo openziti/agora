@@ -26,6 +26,8 @@ Implemented Layer 1 behavior includes:
 - agent-owned environment heartbeat and environment liveness reporting
 - agent-hosted `serve` and `connect` runtime with reconciliation after restart/failure
 - agent-backed `serve` and `connect` by default, with `--foreground` direct-runtime bypass for debugging
+- SDK-native direct provider tunnels through `tunnel.Create`, `tunnel.Listen`, and `tunnel.Delete`, returning a raw `net.Listener` without the managed runtime
+- SDK-native direct consumer dialers through `tunnel.Attach`, `tunnel.Detach`, and `tunnel.Dial`, returning a raw `net.Conn` without a managed connect actor or local proxy port
 - unified tunnel delete semantics for both durable tunnel resources and managed runtime state
 - composite `agora status` covering local root state, local agent state, controller environment state, owned tunnels, active serve details, and attachment counts
 - meaningful provider-side and consumer-side request/session logging
@@ -44,6 +46,8 @@ This checklist is complete.
 - [x] a second environment can connect to that tunnel if authorized
 - [x] access and serve heartbeats are tracked and stale state is reaped
 - [x] enabled environments and served tunnels are re-established after local runtime restart or reconnect
+- [x] an embedded process can provision a direct tunnel and serve its own protocol on a raw overlay listener
+- [x] an embedded process can provision a direct dialer attachment and dial a raw overlay connection
 
 ## Remaining Work For Broader Layer 1 Completion
 
@@ -62,6 +66,7 @@ This checklist is not complete.
 - [x] controller health/readiness and shutdown behavior are solid
 - [x] the local runtime packaging direction is finalized (dual delivery: standalone daemon + embeddable library)
 - [ ] the local runtime library extraction is reflected in the implementation
+- [x] SDK-native direct dialer primitives are implemented
 - [ ] the project has a documented and repeatable end-to-end operational validation path
 - [ ] metrics are implemented (deferred; see [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md))
 - [ ] limits are implemented (deferred; see [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md))

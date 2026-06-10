@@ -173,6 +173,10 @@ func mapEnableEnvironmentResponse(env *persistence.Environment, enrollmentJSON [
 }
 
 func mapTunnel(tunnel *persistence.Tunnel) *api.Tunnel {
+	kind := tunnel.Kind
+	if kind == "" {
+		kind = persistence.TunnelKindProxy
+	}
 	result := &api.Tunnel{
 		ID:             tunnel.ID,
 		OrganizationId: tunnel.OrganizationID,
@@ -180,10 +184,13 @@ func mapTunnel(tunnel *persistence.Tunnel) *api.Tunnel {
 		EnvironmentId:  tunnel.EnvironmentID,
 		Name:           tunnel.Name,
 		Mode:           api.TunnelMode(tunnel.Mode),
-		BackendTarget:  tunnel.BackendTarget,
+		Kind:           api.TunnelKind(kind),
 		State:          api.TunnelState(tunnel.State),
 		CreatedAt:      tunnel.CreatedAt,
 		UpdatedAt:      tunnel.UpdatedAt,
+	}
+	if tunnel.BackendTarget != nil {
+		result.BackendTarget.SetTo(*tunnel.BackendTarget)
 	}
 	if tunnel.ZitiServiceID != nil {
 		result.ZitiServiceId.SetTo(*tunnel.ZitiServiceID)
@@ -213,11 +220,14 @@ func mapTunnelAttachment(attachment *persistence.TunnelAttachment) *api.TunnelAt
 		OrganizationId:  attachment.OrganizationID,
 		AccountId:       attachment.AccountID,
 		EnvironmentId:   attachment.EnvironmentID,
-		ListenAddress:   attachment.ListenAddress,
+		Kind:            api.TunnelAttachmentKind(attachment.Kind),
 		State:           api.TunnelAttachmentState(attachment.State),
 		LastHeartbeatAt: attachment.LastHeartbeatAt,
 		CreatedAt:       attachment.CreatedAt,
 		UpdatedAt:       attachment.UpdatedAt,
+	}
+	if attachment.ListenAddress != nil {
+		result.ListenAddress.SetTo(*attachment.ListenAddress)
 	}
 	if attachment.DialPolicyID != nil {
 		result.DialPolicyId.SetTo(*attachment.DialPolicyID)

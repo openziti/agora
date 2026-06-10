@@ -35,6 +35,15 @@ type uniqueDialTunnelLifecycle struct {
 	fakeTunnelLifecycle
 }
 
+func (f *uniqueDialTunnelLifecycle) Provision(_ context.Context, spec automation.TunnelSpec) (*automation.ProvisionedTunnel, error) {
+	f.provisionCalls = append(f.provisionCalls, spec)
+	return &automation.ProvisionedTunnel{
+		ServiceID:                 spec.TunnelID + "-service",
+		BindPolicyID:              spec.TunnelID + "-bind",
+		ServiceEdgeRouterPolicyID: spec.TunnelID + "-serp",
+	}, nil
+}
+
 func (f *uniqueDialTunnelLifecycle) CreateAttachmentDialPolicy(_ context.Context, spec automation.TunnelAccessSpec) (string, error) {
 	f.attachmentCalls = append(f.attachmentCalls, spec)
 	return spec.AttachmentID + "-dial", nil
@@ -62,7 +71,7 @@ func TestConnectTunnelCrossEnvironmentSameAccount(t *testing.T) {
 		EnvironmentId: serveEnvID,
 		Name:          "llm-gateway",
 		Mode:          api.TunnelModeTCP,
-		BackendTarget: "127.0.0.1:8443",
+		BackendTarget: api.NewOptString("127.0.0.1:8443"),
 	})
 	if err != nil {
 		t.Fatalf("create tunnel: %v", err)
@@ -76,7 +85,7 @@ func TestConnectTunnelCrossEnvironmentSameAccount(t *testing.T) {
 	crossRes, err := alice.ConnectTunnel(env.ctx, &api.ConnectTunnelRequest{
 		Name:          tunnel.Name,
 		EnvironmentId: connectEnvID,
-		ListenAddress: "127.0.0.1:0",
+		ListenAddress: api.NewOptString("127.0.0.1:0"),
 	})
 	if err != nil {
 		t.Fatalf("connect tunnel from second environment: %v", err)
@@ -93,7 +102,7 @@ func TestConnectTunnelCrossEnvironmentSameAccount(t *testing.T) {
 	sameRes, err := alice.ConnectTunnel(env.ctx, &api.ConnectTunnelRequest{
 		Name:          tunnel.Name,
 		EnvironmentId: serveEnvID,
-		ListenAddress: "127.0.0.1:0",
+		ListenAddress: api.NewOptString("127.0.0.1:0"),
 	})
 	if err != nil {
 		t.Fatalf("connect tunnel from serving environment: %v", err)
@@ -102,6 +111,82 @@ func TestConnectTunnelCrossEnvironmentSameAccount(t *testing.T) {
 		t.Fatalf("expected same-environment connect to succeed, got %T", sameRes)
 	} else if sameConnected.Attachment.EnvironmentId != serveEnvID {
 		t.Fatalf("expected attachment bound to serving environment %q, got %q", serveEnvID, sameConnected.Attachment.EnvironmentId)
+	}
+}
+
+func TestCreateTunnelDirectKindAndServeGuard(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	uniqueEnvironmentIdentities(env)
+
+	_, _, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	alice := env.accountClient(t, aliceToken)
+	envID := env.enableEnvironment(t, aliceToken)
+
+	directRes, err := alice.CreateTunnel(env.ctx, &api.CreateTunnelRequest{
+		EnvironmentId: envID,
+		Name:          "direct-gateway",
+		Mode:          api.TunnelModeHTTP,
+	})
+	if err != nil {
+		t.Fatalf("create direct tunnel: %v", err)
+	}
+	direct, ok := directRes.(*api.Tunnel)
+	if !ok {
+		t.Fatalf("expected direct tunnel, got %T", directRes)
+	}
+	if direct.Kind != api.TunnelKindDirect {
+		t.Fatalf("expected direct kind, got %q", direct.Kind)
+	}
+	if direct.BackendTarget.Set {
+		t.Fatalf("expected no backend target for direct tunnel, got %#v", direct.BackendTarget)
+	}
+	if !direct.ZitiServiceId.Set || !direct.BindPolicyId.Set {
+		t.Fatalf("expected service metadata on direct tunnel: %#v", direct)
+	}
+
+	serveRes, err := alice.StartTunnelServe(env.ctx, &api.StartTunnelServeRequest{
+		EnvironmentId: envID,
+	}, api.StartTunnelServeParams{TunnelId: direct.ID})
+	if err != nil {
+		t.Fatalf("start direct tunnel serve: %v", err)
+	}
+	if _, ok := serveRes.(*api.StartTunnelServeConflict); !ok {
+		t.Fatalf("expected managed serve conflict for direct tunnel, got %T", serveRes)
+	}
+
+	proxyRes, err := alice.CreateTunnel(env.ctx, &api.CreateTunnelRequest{
+		EnvironmentId: envID,
+		Name:          "proxy-gateway",
+		Mode:          api.TunnelModeTCP,
+		BackendTarget: api.NewOptString("127.0.0.1:8443"),
+	})
+	if err != nil {
+		t.Fatalf("create proxy tunnel: %v", err)
+	}
+	proxy, ok := proxyRes.(*api.Tunnel)
+	if !ok {
+		t.Fatalf("expected proxy tunnel, got %T", proxyRes)
+	}
+	if proxy.Kind != api.TunnelKindProxy {
+		t.Fatalf("expected proxy kind, got %q", proxy.Kind)
+	}
+	if proxy.BackendTarget.Or("") != "127.0.0.1:8443" {
+		t.Fatalf("unexpected proxy backend target %#v", proxy.BackendTarget)
+	}
+
+	invalidRes, err := alice.CreateTunnel(env.ctx, &api.CreateTunnelRequest{
+		EnvironmentId: envID,
+		Name:          "blank-backend",
+		Mode:          api.TunnelModeTCP,
+		BackendTarget: api.NewOptString("   "),
+	})
+	if err != nil {
+		t.Fatalf("create whitespace backend tunnel: %v", err)
+	}
+	if _, ok := invalidRes.(*api.CreateTunnelConflict); !ok {
+		t.Fatalf("expected whitespace backend conflict, got %T", invalidRes)
 	}
 }
 
@@ -126,7 +211,7 @@ func TestConnectTunnelCrossAccountRequiresGrant(t *testing.T) {
 		EnvironmentId: aliceEnvID,
 		Name:          "private-gateway",
 		Mode:          api.TunnelModeTCP,
-		BackendTarget: "127.0.0.1:8443",
+		BackendTarget: api.NewOptString("127.0.0.1:8443"),
 	})
 	if err != nil {
 		t.Fatalf("create tunnel: %v", err)
@@ -137,7 +222,7 @@ func TestConnectTunnelCrossAccountRequiresGrant(t *testing.T) {
 	denied, err := bob.ConnectTunnel(env.ctx, &api.ConnectTunnelRequest{
 		Name:          tunnel.Name,
 		EnvironmentId: bobEnvID,
-		ListenAddress: "127.0.0.1:0",
+		ListenAddress: api.NewOptString("127.0.0.1:0"),
 	})
 	if err != nil {
 		t.Fatalf("connect tunnel (ungranted): %v", err)
@@ -153,7 +238,7 @@ func TestConnectTunnelCrossAccountRequiresGrant(t *testing.T) {
 	granted, err := bob.ConnectTunnel(env.ctx, &api.ConnectTunnelRequest{
 		Name:          tunnel.Name,
 		EnvironmentId: bobEnvID,
-		ListenAddress: "127.0.0.1:0",
+		ListenAddress: api.NewOptString("127.0.0.1:0"),
 	})
 	if err != nil {
 		t.Fatalf("connect tunnel (granted): %v", err)

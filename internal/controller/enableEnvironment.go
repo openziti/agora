@@ -40,41 +40,58 @@ func (s *Service) EnableEnvironment(ctx context.Context, req *api.EnableEnvironm
 		return &api.EnableEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
 
-	provisioned, err := envLifecycle.Enable(ctx, automation.EnvironmentSpec{
-		OrganizationID: principal.OrganizationID,
-		AccountID:      principal.AccountID,
-		EnvironmentID:  envID,
-		IdentityName:   environmentIdentityName(principal.OrganizationID, principal.AccountID, envID),
-		RoleAttributes: environmentRoleAttributes(principal.OrganizationID, principal.AccountID, envID),
-		Version:        automation.DefaultAgoraVersion,
-	})
-	if err != nil {
-		dl.Errorf("enable environment provisioning failed environment_id='%s' %s: %v", envID, principalLogFields(principal), err)
-		return &api.EnableEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
-	}
+	var provisioned *automation.ProvisionedEnvironment
+	var created *persistence.Environment
+	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+		if err := lockAccountScope(ctx, tx, principal.AccountID); err != nil {
+			return err
+		}
+		acct, err := s.store.Accounts.GetByIDForUpdate(ctx, tx, principal.AccountID)
+		if err != nil {
+			return err
+		}
+		if acct.OrganizationID != principal.OrganizationID {
+			return persistence.ErrNotFound
+		}
 
-	env := persistence.Environment{
-		ID:                 envID,
-		OrganizationID:     principal.OrganizationID,
-		AccountID:          principal.AccountID,
-		ZitiIdentityID:     provisioned.IdentityID,
-		State:              persistence.EnvironmentStateEnabled,
-		EdgeRouterPolicyID: &provisioned.PolicyID,
-	}
-	if description != "" {
-		env.Description = &description
-	}
-	if host != "" {
-		env.Host = &host
-	}
-
-	created, err := s.store.Environments.Create(ctx, s.store.DB(), env)
-	if err != nil {
-		dl.Errorf("enable environment persistence failed environment_id='%s' ziti_identity_id='%s' %s: %v", envID, provisioned.IdentityID, principalLogFields(principal), err)
-		_ = envLifecycle.Disable(ctx, automation.DeprovisionEnvironmentSpec{
-			IdentityID:         provisioned.IdentityID,
-			EdgeRouterPolicyID: provisioned.PolicyID,
+		provisioned, err = envLifecycle.Enable(ctx, automation.EnvironmentSpec{
+			OrganizationID: principal.OrganizationID,
+			AccountID:      principal.AccountID,
+			EnvironmentID:  envID,
+			IdentityName:   environmentIdentityName(principal.OrganizationID, principal.AccountID, envID),
+			RoleAttributes: environmentRoleAttributes(principal.OrganizationID, principal.AccountID, envID),
+			Version:        automation.DefaultAgoraVersion,
 		})
+		if err != nil {
+			dl.Errorf("enable environment provisioning failed environment_id='%s' %s: %v", envID, principalLogFields(principal), err)
+			return err
+		}
+
+		env := persistence.Environment{
+			ID:                 envID,
+			OrganizationID:     principal.OrganizationID,
+			AccountID:          principal.AccountID,
+			ZitiIdentityID:     provisioned.IdentityID,
+			State:              persistence.EnvironmentStateEnabled,
+			EdgeRouterPolicyID: &provisioned.PolicyID,
+		}
+		if description != "" {
+			env.Description = &description
+		}
+		if host != "" {
+			env.Host = &host
+		}
+
+		created, err = s.store.Environments.Create(ctx, tx, env)
+		return err
+	}); err != nil {
+		if provisioned != nil {
+			_ = envLifecycle.Disable(ctx, automation.DeprovisionEnvironmentSpec{
+				IdentityID:         provisioned.IdentityID,
+				EdgeRouterPolicyID: provisioned.PolicyID,
+			})
+		}
+		dl.Errorf("enable environment persistence failed environment_id='%s' %s: %v", envID, principalLogFields(principal), err)
 		return &api.EnableEnvironmentConflict{Code: "conflict", Message: err.Error()}, nil
 	}
 	dl.Infof("enabled environment environment_id='%s' ziti_identity_id='%s' %s", created.ID, created.ZitiIdentityID, principalLogFields(principal))

@@ -3,6 +3,7 @@ package tunnel_test
 import (
 	"context"
 	"errors"
+	"net"
 	"path/filepath"
 	"testing"
 
@@ -24,9 +25,15 @@ func ExampleEnsureServed() {
 func TestPublicSurfaceCompilesWithoutProtoTypes(t *testing.T) {
 	var serve func(context.Context, *agent.Agent, tunnel.ServeSpec) (*tunnel.ServeStatus, error)
 	var connect func(context.Context, *agent.Agent, tunnel.ConnectSpec) (*tunnel.ConnectStatus, error)
+	var create func(context.Context, *agent.Agent, tunnel.Spec) (*tunnel.Tunnel, error)
+	var listen func(context.Context, *agent.Agent, string) (net.Listener, error)
+	var deleteTunnel func(context.Context, *agent.Agent, *tunnel.Tunnel) error
 	serve = tunnel.EnsureServed
 	connect = tunnel.EnsureConnected
-	if serve == nil || connect == nil {
+	create = tunnel.Create
+	listen = tunnel.Listen
+	deleteTunnel = tunnel.Delete
+	if serve == nil || connect == nil || create == nil || listen == nil || deleteTunnel == nil {
 		t.Fatal("expected tunnel functions")
 	}
 }

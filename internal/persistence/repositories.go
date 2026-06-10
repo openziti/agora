@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/lib/pq"
 )
 
 type OrganizationsRepository struct{}
@@ -63,13 +64,32 @@ order by name asc`
 }
 
 func (r *OrganizationsRepository) Delete(ctx context.Context, db Queryer, id string) error {
-	const query = `delete from organizations where id = $1`
+	const lockQuery = `
+select id, name, created_at, updated_at
+from organizations
+where id = $1
+for update`
 
-	result, err := db.ExecContext(ctx, query, id)
-	if err != nil {
-		if isForeignKeyConstraint(err) {
-			return ErrConflict
+	var org Organization
+	if err := db.GetContext(ctx, &org, lockQuery, id); err != nil {
+		if isNotFound(err) {
+			return ErrNotFound
 		}
+		return fmt.Errorf("lock organization for delete: %w", err)
+	}
+
+	const countQuery = `select count(1) from accounts where organization_id = $1`
+	var accounts int
+	if err := db.GetContext(ctx, &accounts, countQuery, id); err != nil {
+		return fmt.Errorf("count organization accounts for delete: %w", err)
+	}
+	if accounts > 0 {
+		return ErrConflict
+	}
+
+	const deleteQuery = `delete from organizations where id = $1`
+	result, err := db.ExecContext(ctx, deleteQuery, id)
+	if err != nil {
 		return fmt.Errorf("delete organization: %w", err)
 	}
 	rows, err := result.RowsAffected()
@@ -141,6 +161,23 @@ where id = $1`
 			return nil, ErrNotFound
 		}
 		return nil, fmt.Errorf("get account: %w", err)
+	}
+	return &acct, nil
+}
+
+func (r *AccountsRepository) GetByIDForUpdate(ctx context.Context, db Queryer, id string) (*Account, error) {
+	const query = `
+select id, organization_id, email, display_name, password_salt, password_hash, account_token, role, status, created_at, updated_at
+from accounts
+where id = $1
+for update`
+
+	var acct Account
+	if err := db.GetContext(ctx, &acct, query, id); err != nil {
+		if isNotFound(err) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("get account for update: %w", err)
 	}
 	return &acct, nil
 }
@@ -408,14 +445,17 @@ func (r *TunnelsRepository) Create(ctx context.Context, db Queryer, tunnel Tunne
 	if tunnel.Mode == "" {
 		tunnel.Mode = TunnelModeHTTP
 	}
+	if tunnel.Kind == "" {
+		tunnel.Kind = TunnelKindProxy
+	}
 
 	const query = `
 insert into tunnels (
-	id, organization_id, account_id, environment_id, name, mode, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
+	id, organization_id, account_id, environment_id, name, mode, kind, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
 ) values (
-	$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+	$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
 )
-returning id, organization_id, account_id, environment_id, name, mode, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at`
+returning id, organization_id, account_id, environment_id, name, mode, kind, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at`
 
 	var created Tunnel
 	if err := db.GetContext(
@@ -428,6 +468,7 @@ returning id, organization_id, account_id, environment_id, name, mode, backend_t
 		tunnel.EnvironmentID,
 		tunnel.Name,
 		tunnel.Mode,
+		tunnel.Kind,
 		tunnel.BackendTarget,
 		tunnel.ZitiServiceID,
 		tunnel.BindPolicyID,
@@ -444,7 +485,7 @@ returning id, organization_id, account_id, environment_id, name, mode, backend_t
 
 func (r *TunnelsRepository) GetByID(ctx context.Context, db Queryer, id string) (*Tunnel, error) {
 	const query = `
-select id, organization_id, account_id, environment_id, name, mode, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
+select id, organization_id, account_id, environment_id, name, mode, kind, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
 from tunnels
 where id = $1 and not deleted`
 
@@ -460,7 +501,7 @@ where id = $1 and not deleted`
 
 func (r *TunnelsRepository) GetByName(ctx context.Context, db Queryer, organizationID, name string) (*Tunnel, error) {
 	const query = `
-select id, organization_id, account_id, environment_id, name, mode, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
+select id, organization_id, account_id, environment_id, name, mode, kind, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
 from tunnels
 where organization_id = $1 and lower(name) = lower($2) and not deleted`
 
@@ -481,12 +522,12 @@ where organization_id = $1 and lower(name) = lower($2) and not deleted`
 // granted access to a tunnel owned by the provider's organization.
 func (r *TunnelsRepository) GetByNameGrantedToAccount(ctx context.Context, db Queryer, name, accountID string) (*Tunnel, error) {
 	const query = `
-select t.id, t.organization_id, t.account_id, t.environment_id, t.name, t.mode, t.backend_target,
+select t.id, t.organization_id, t.account_id, t.environment_id, t.name, t.mode, t.kind, t.backend_target,
        t.ziti_service_id, t.bind_policy_id, t.service_edge_router_policy_id, t.state, t.deleted,
        t.created_at, t.updated_at
 from tunnels t
 join tunnel_account_grants g on g.tunnel_id = t.id
-where lower(t.name) = lower($1) and g.account_id = $2 and not t.deleted
+where lower(t.name) = lower($1) and g.account_id = $2 and not g.deleted and not t.deleted
 limit 1`
 
 	var tunnel Tunnel
@@ -499,9 +540,31 @@ limit 1`
 	return &tunnel, nil
 }
 
+func (r *TunnelsRepository) ListAccessibleByName(ctx context.Context, db Queryer, name, organizationID, accountID string) ([]Tunnel, error) {
+	const query = `
+select distinct
+	t.id, t.organization_id, t.account_id, t.environment_id, t.name, t.mode, t.kind, t.backend_target,
+	t.ziti_service_id, t.bind_policy_id, t.service_edge_router_policy_id, t.state, t.deleted, t.created_at, t.updated_at
+from tunnels t
+left join tunnel_account_grants g on g.tunnel_id = t.id and g.account_id = $3 and not g.deleted
+where lower(t.name) = lower($1)
+  and not t.deleted
+  and (
+    (t.organization_id = $2 and t.account_id = $3)
+    or g.account_id is not null
+  )
+order by t.organization_id asc, t.name asc`
+
+	var tunnels []Tunnel
+	if err := db.SelectContext(ctx, &tunnels, query, strings.TrimSpace(name), organizationID, accountID); err != nil {
+		return nil, fmt.Errorf("list accessible tunnels by name: %w", err)
+	}
+	return tunnels, nil
+}
+
 func (r *TunnelsRepository) ListByOrganization(ctx context.Context, db Queryer, organizationID string) ([]Tunnel, error) {
 	const query = `
-select id, organization_id, account_id, environment_id, name, mode, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
+select id, organization_id, account_id, environment_id, name, mode, kind, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
 from tunnels
 where organization_id = $1 and not deleted
 order by name asc`
@@ -515,7 +578,7 @@ order by name asc`
 
 func (r *TunnelsRepository) ListOwnedByAccount(ctx context.Context, db Queryer, organizationID, accountID string) ([]Tunnel, error) {
 	const query = `
-select id, organization_id, account_id, environment_id, name, mode, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
+select id, organization_id, account_id, environment_id, name, mode, kind, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
 from tunnels
 where organization_id = $1 and account_id = $2 and not deleted
 order by name asc`
@@ -530,7 +593,7 @@ order by name asc`
 func (r *TunnelsRepository) ListAccessibleByAccount(ctx context.Context, db Queryer, organizationID, accountID string, includeOwned bool) ([]Tunnel, error) {
 	query := `
 select distinct
-	t.id, t.organization_id, t.account_id, t.environment_id, t.name, t.mode, t.backend_target, t.ziti_service_id, t.bind_policy_id, t.service_edge_router_policy_id, t.state, t.deleted, t.created_at, t.updated_at
+	t.id, t.organization_id, t.account_id, t.environment_id, t.name, t.mode, t.kind, t.backend_target, t.ziti_service_id, t.bind_policy_id, t.service_edge_router_policy_id, t.state, t.deleted, t.created_at, t.updated_at
 from tunnels t
 left join tunnel_account_grants g on g.tunnel_id = t.id and g.account_id = $2 and not g.deleted
 where t.organization_id = $1 and not t.deleted`
@@ -579,7 +642,7 @@ where id = $1 and organization_id = $2 and not deleted`
 
 func (r *TunnelsRepository) ListByEnvironment(ctx context.Context, db Queryer, environmentID, organizationID string) ([]Tunnel, error) {
 	const query = `
-select id, organization_id, account_id, environment_id, name, mode, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
+select id, organization_id, account_id, environment_id, name, mode, kind, backend_target, ziti_service_id, bind_policy_id, service_edge_router_policy_id, state, deleted, created_at, updated_at
 from tunnels
 where environment_id = $1 and organization_id = $2 and not deleted
 order by name asc`
@@ -672,6 +735,27 @@ where tunnel_id = $1 and account_id = $2 and organization_id = $3 and not delete
 	return nil
 }
 
+func (r *TunnelGrantsRepository) DeleteCrossOrg(ctx context.Context, db Queryer, tunnelID, accountID string) error {
+	const query = `
+update tunnel_account_grants
+set deleted = true, updated_at = $3
+where tunnel_id = $1 and account_id = $2 and not deleted`
+
+	updatedAt := time.Now().UTC()
+	result, err := db.ExecContext(ctx, query, tunnelID, accountID, updatedAt)
+	if err != nil {
+		return fmt.Errorf("delete tunnel grant cross-org: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("delete tunnel grant cross-org rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
 func (r *TunnelGrantsRepository) DeleteByTunnel(ctx context.Context, db Queryer, tunnelID, organizationID string) error {
 	const query = `
 update tunnel_account_grants
@@ -680,6 +764,18 @@ where tunnel_id = $1 and organization_id = $2 and not deleted`
 
 	if _, err := db.ExecContext(ctx, query, tunnelID, organizationID, time.Now().UTC()); err != nil {
 		return fmt.Errorf("delete tunnel grants by tunnel: %w", err)
+	}
+	return nil
+}
+
+func (r *TunnelGrantsRepository) DeleteByTunnelCrossOrg(ctx context.Context, db Queryer, tunnelID string) error {
+	const query = `
+update tunnel_account_grants
+set deleted = true, updated_at = $2
+where tunnel_id = $1 and not deleted`
+
+	if _, err := db.ExecContext(ctx, query, tunnelID, time.Now().UTC()); err != nil {
+		return fmt.Errorf("delete tunnel grants by tunnel cross-org: %w", err)
 	}
 	return nil
 }
@@ -699,14 +795,17 @@ func (r *TunnelAttachmentsRepository) Create(ctx context.Context, db Queryer, at
 	if attachment.State == "" {
 		attachment.State = TunnelAttachmentStateActive
 	}
+	if attachment.Kind == "" {
+		attachment.Kind = TunnelAttachmentKindProxy
+	}
 
 	const query = `
 insert into tunnel_attachments (
-	id, tunnel_id, organization_id, account_id, environment_id, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
+	id, tunnel_id, organization_id, account_id, environment_id, kind, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
 ) values (
-	$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13
+	$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
 )
-returning id, tunnel_id, organization_id, account_id, environment_id, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at`
+returning id, tunnel_id, organization_id, account_id, environment_id, kind, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at`
 
 	var created TunnelAttachment
 	if err := db.GetContext(
@@ -718,6 +817,7 @@ returning id, tunnel_id, organization_id, account_id, environment_id, listen_add
 		attachment.OrganizationID,
 		attachment.AccountID,
 		attachment.EnvironmentID,
+		attachment.Kind,
 		attachment.ListenAddress,
 		attachment.DialPolicyID,
 		attachment.State,
@@ -734,7 +834,7 @@ returning id, tunnel_id, organization_id, account_id, environment_id, listen_add
 
 func (r *TunnelAttachmentsRepository) GetByID(ctx context.Context, db Queryer, id string) (*TunnelAttachment, error) {
 	const query = `
-select id, tunnel_id, organization_id, account_id, environment_id, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
+select id, tunnel_id, organization_id, account_id, environment_id, kind, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
 from tunnel_attachments
 where id = $1 and not deleted`
 
@@ -750,7 +850,7 @@ where id = $1 and not deleted`
 
 func (r *TunnelAttachmentsRepository) GetByIDForAccount(ctx context.Context, db Queryer, id, organizationID, accountID string) (*TunnelAttachment, error) {
 	const query = `
-select id, tunnel_id, organization_id, account_id, environment_id, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
+select id, tunnel_id, organization_id, account_id, environment_id, kind, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
 from tunnel_attachments
 where id = $1 and organization_id = $2 and account_id = $3 and not deleted`
 
@@ -767,7 +867,7 @@ where id = $1 and organization_id = $2 and account_id = $3 and not deleted`
 func (r *TunnelAttachmentsRepository) ListByTunnel(ctx context.Context, db Queryer, tunnelID, organizationID string) ([]TunnelAttachmentDetail, error) {
 	const query = `
 select
-	a.id, a.tunnel_id, a.organization_id, a.account_id, a.environment_id, a.listen_address, a.dial_policy_id, a.state, a.last_heartbeat_at, a.disconnected_at, a.deleted, a.created_at, a.updated_at,
+	a.id, a.tunnel_id, a.organization_id, a.account_id, a.environment_id, a.kind, a.listen_address, a.dial_policy_id, a.state, a.last_heartbeat_at, a.disconnected_at, a.deleted, a.created_at, a.updated_at,
 	ac.email as account_email,
 	t.name as tunnel_name,
 	t.mode as tunnel_mode
@@ -786,7 +886,7 @@ order by a.created_at desc`
 
 func (r *TunnelAttachmentsRepository) ListByTunnelAndAccount(ctx context.Context, db Queryer, tunnelID, organizationID, accountID string) ([]TunnelAttachment, error) {
 	const query = `
-select id, tunnel_id, organization_id, account_id, environment_id, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
+select id, tunnel_id, organization_id, account_id, environment_id, kind, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
 from tunnel_attachments
 where tunnel_id = $1 and organization_id = $2 and account_id = $3 and not deleted and state <> 'disconnected'
 order by created_at desc`
@@ -798,11 +898,74 @@ order by created_at desc`
 	return attachments, nil
 }
 
+func (r *TunnelAttachmentsRepository) GetActiveDialerByEnvironmentAndTunnel(ctx context.Context, db Queryer, environmentID, tunnelID string) (*TunnelAttachment, error) {
+	const query = `
+select id, tunnel_id, organization_id, account_id, environment_id, kind, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
+from tunnel_attachments
+where environment_id = $1
+  and tunnel_id = $2
+  and kind = 'dialer'
+  and state = 'active'
+  and not deleted
+  and dial_policy_id is not null`
+
+	var attachment TunnelAttachment
+	if err := db.GetContext(ctx, &attachment, query, environmentID, tunnelID); err != nil {
+		if isNotFound(err) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("get active dialer attachment: %w", err)
+	}
+	return &attachment, nil
+}
+
+func (r *TunnelAttachmentsRepository) ListByTunnelCrossOrg(ctx context.Context, db Queryer, tunnelID string) ([]TunnelAttachment, error) {
+	const query = `
+select id, tunnel_id, organization_id, account_id, environment_id, kind, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
+from tunnel_attachments
+where tunnel_id = $1 and not deleted
+order by created_at desc`
+
+	var attachments []TunnelAttachment
+	if err := db.SelectContext(ctx, &attachments, query, tunnelID); err != nil {
+		return nil, fmt.Errorf("list tunnel attachments cross-org: %w", err)
+	}
+	return attachments, nil
+}
+
+func (r *TunnelAttachmentsRepository) ListByTunnelAndAccountCrossOrg(ctx context.Context, db Queryer, tunnelID, accountID string) ([]TunnelAttachment, error) {
+	const query = `
+select id, tunnel_id, organization_id, account_id, environment_id, kind, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
+from tunnel_attachments
+where tunnel_id = $1 and account_id = $2 and not deleted and state <> 'disconnected'
+order by created_at desc`
+
+	var attachments []TunnelAttachment
+	if err := db.SelectContext(ctx, &attachments, query, tunnelID, accountID); err != nil {
+		return nil, fmt.Errorf("list tunnel attachments by account cross-org: %w", err)
+	}
+	return attachments, nil
+}
+
+func (r *TunnelAttachmentsRepository) ListConsumerAttachmentsWithPolicy(ctx context.Context, db Queryer, environmentID string) ([]TunnelAttachment, error) {
+	const query = `
+select id, tunnel_id, organization_id, account_id, environment_id, kind, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
+from tunnel_attachments
+where environment_id = $1 and not deleted and dial_policy_id is not null
+order by created_at desc`
+
+	var attachments []TunnelAttachment
+	if err := db.SelectContext(ctx, &attachments, query, environmentID); err != nil {
+		return nil, fmt.Errorf("list consumer attachments with policy: %w", err)
+	}
+	return attachments, nil
+}
+
 func (r *TunnelAttachmentsRepository) ListExpiredActive(ctx context.Context, db Queryer, before time.Time) ([]TunnelAttachment, error) {
 	const query = `
-select id, tunnel_id, organization_id, account_id, environment_id, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
+select id, tunnel_id, organization_id, account_id, environment_id, kind, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
 from tunnel_attachments
-where not deleted and state = 'active' and last_heartbeat_at < $1
+where not deleted and state = 'active' and kind = 'proxy' and last_heartbeat_at < $1
 order by last_heartbeat_at asc`
 
 	var attachments []TunnelAttachment
@@ -849,6 +1012,41 @@ where id = $1 and not deleted`
 	}
 	if rows == 0 {
 		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *TunnelAttachmentsRepository) SoftDeleteByID(ctx context.Context, db Queryer, id string) error {
+	const query = `
+update tunnel_attachments
+set deleted = true, updated_at = $2
+where id = $1 and not deleted`
+
+	result, err := db.ExecContext(ctx, query, id, time.Now().UTC())
+	if err != nil {
+		return fmt.Errorf("soft-delete tunnel attachment: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("soft-delete tunnel attachment rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *TunnelAttachmentsRepository) SoftDeleteByIDs(ctx context.Context, db Queryer, ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	const query = `
+update tunnel_attachments
+set deleted = true, updated_at = $2
+where id = any($1) and not deleted`
+
+	if _, err := db.ExecContext(ctx, query, pq.Array(ids), time.Now().UTC()); err != nil {
+		return fmt.Errorf("soft-delete tunnel attachments: %w", err)
 	}
 	return nil
 }

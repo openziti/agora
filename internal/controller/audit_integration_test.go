@@ -98,7 +98,7 @@ func TestAuditEventsControllerSessionAttachmentAndCatalogFlow(t *testing.T) {
 	connectRes, err := bob.ConnectTunnel(env.ctx, &api.ConnectTunnelRequest{
 		Name:          "session-" + sess.ID,
 		EnvironmentId: bobEnvID,
-		ListenAddress: "127.0.0.1:0",
+		ListenAddress: api.NewOptString("127.0.0.1:0"),
 	})
 	if err != nil {
 		t.Fatalf("connect tunnel: %v", err)

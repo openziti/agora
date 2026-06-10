@@ -1153,6 +1153,132 @@ func (s *AcknowledgeWorkgroupInvitationResponse) UnmarshalJSON(data []byte) erro
 	return s.Decode(d)
 }
 
+// Encode implements json.Marshaler.
+func (s *ActiveDialerAttachment) Encode(e *jx.Encoder) {
+	e.ObjStart()
+	s.encodeFields(e)
+	e.ObjEnd()
+}
+
+// encodeFields encodes fields.
+func (s *ActiveDialerAttachment) encodeFields(e *jx.Encoder) {
+	{
+		e.FieldStart("attachment")
+		s.Attachment.Encode(e)
+	}
+	{
+		e.FieldStart("tunnelId")
+		e.Str(s.TunnelId)
+	}
+	{
+		e.FieldStart("tunnelMode")
+		s.TunnelMode.Encode(e)
+	}
+}
+
+var jsonFieldsNameOfActiveDialerAttachment = [3]string{
+	0: "attachment",
+	1: "tunnelId",
+	2: "tunnelMode",
+}
+
+// Decode decodes ActiveDialerAttachment from json.
+func (s *ActiveDialerAttachment) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode ActiveDialerAttachment to nil")
+	}
+	var requiredBitSet [1]uint8
+
+	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
+		switch string(k) {
+		case "attachment":
+			requiredBitSet[0] |= 1 << 0
+			if err := func() error {
+				if err := s.Attachment.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"attachment\"")
+			}
+		case "tunnelId":
+			requiredBitSet[0] |= 1 << 1
+			if err := func() error {
+				v, err := d.Str()
+				s.TunnelId = string(v)
+				if err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"tunnelId\"")
+			}
+		case "tunnelMode":
+			requiredBitSet[0] |= 1 << 2
+			if err := func() error {
+				if err := s.TunnelMode.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"tunnelMode\"")
+			}
+		default:
+			return d.Skip()
+		}
+		return nil
+	}); err != nil {
+		return errors.Wrap(err, "decode ActiveDialerAttachment")
+	}
+	// Validate required fields.
+	var failures []validate.FieldError
+	for i, mask := range [1]uint8{
+		0b00000111,
+	} {
+		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
+			// Mask only required fields and check equality to mask using XOR.
+			//
+			// If XOR result is not zero, result is not equal to expected, so some fields are missed.
+			// Bits of fields which would be set are actually bits of missed fields.
+			missed := bits.OnesCount8(result)
+			for bitN := 0; bitN < missed; bitN++ {
+				bitIdx := bits.TrailingZeros8(result)
+				fieldIdx := i*8 + bitIdx
+				var name string
+				if fieldIdx < len(jsonFieldsNameOfActiveDialerAttachment) {
+					name = jsonFieldsNameOfActiveDialerAttachment[fieldIdx]
+				} else {
+					name = strconv.Itoa(fieldIdx)
+				}
+				failures = append(failures, validate.FieldError{
+					Name:  name,
+					Error: validate.ErrFieldRequired,
+				})
+				// Reset bit.
+				result &^= 1 << bitIdx
+			}
+		}
+	}
+	if len(failures) > 0 {
+		return &validate.Error{Fields: failures}
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *ActiveDialerAttachment) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *ActiveDialerAttachment) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes AddTunnelGrantConflict as json.
 func (s *AddTunnelGrantConflict) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -4294,8 +4420,10 @@ func (s *ConnectTunnelRequest) encodeFields(e *jx.Encoder) {
 		e.Str(s.Name)
 	}
 	{
-		e.FieldStart("listenAddress")
-		e.Str(s.ListenAddress)
+		if s.ListenAddress.Set {
+			e.FieldStart("listenAddress")
+			s.ListenAddress.Encode(e)
+		}
 	}
 }
 
@@ -4339,11 +4467,9 @@ func (s *ConnectTunnelRequest) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"name\"")
 			}
 		case "listenAddress":
-			requiredBitSet[0] |= 1 << 2
 			if err := func() error {
-				v, err := d.Str()
-				s.ListenAddress = string(v)
-				if err != nil {
+				s.ListenAddress.Reset()
+				if err := s.ListenAddress.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -4360,7 +4486,7 @@ func (s *ConnectTunnelRequest) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000111,
+		0b00000011,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -6447,8 +6573,10 @@ func (s *CreateTunnelRequest) encodeFields(e *jx.Encoder) {
 		s.Mode.Encode(e)
 	}
 	{
-		e.FieldStart("backendTarget")
-		e.Str(s.BackendTarget)
+		if s.BackendTarget.Set {
+			e.FieldStart("backendTarget")
+			s.BackendTarget.Encode(e)
+		}
 	}
 	{
 		if s.GrantEmails != nil {
@@ -6514,11 +6642,9 @@ func (s *CreateTunnelRequest) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"mode\"")
 			}
 		case "backendTarget":
-			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
-				v, err := d.Str()
-				s.BackendTarget = string(v)
-				if err != nil {
+				s.BackendTarget.Reset()
+				if err := s.BackendTarget.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -6554,7 +6680,7 @@ func (s *CreateTunnelRequest) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00001111,
+		0b00000111,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -9687,6 +9813,196 @@ func (s *DeleteWorkgroupUnauthorized) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes DetachDialerAttachmentConflict as json.
+func (s *DetachDialerAttachmentConflict) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes DetachDialerAttachmentConflict from json.
+func (s *DetachDialerAttachmentConflict) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DetachDialerAttachmentConflict to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = DetachDialerAttachmentConflict(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *DetachDialerAttachmentConflict) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DetachDialerAttachmentConflict) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes DetachDialerAttachmentForbidden as json.
+func (s *DetachDialerAttachmentForbidden) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes DetachDialerAttachmentForbidden from json.
+func (s *DetachDialerAttachmentForbidden) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DetachDialerAttachmentForbidden to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = DetachDialerAttachmentForbidden(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *DetachDialerAttachmentForbidden) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DetachDialerAttachmentForbidden) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes DetachDialerAttachmentInternalServerError as json.
+func (s *DetachDialerAttachmentInternalServerError) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes DetachDialerAttachmentInternalServerError from json.
+func (s *DetachDialerAttachmentInternalServerError) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DetachDialerAttachmentInternalServerError to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = DetachDialerAttachmentInternalServerError(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *DetachDialerAttachmentInternalServerError) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DetachDialerAttachmentInternalServerError) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes DetachDialerAttachmentNotFound as json.
+func (s *DetachDialerAttachmentNotFound) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes DetachDialerAttachmentNotFound from json.
+func (s *DetachDialerAttachmentNotFound) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DetachDialerAttachmentNotFound to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = DetachDialerAttachmentNotFound(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *DetachDialerAttachmentNotFound) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DetachDialerAttachmentNotFound) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes DetachDialerAttachmentUnauthorized as json.
+func (s *DetachDialerAttachmentUnauthorized) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes DetachDialerAttachmentUnauthorized from json.
+func (s *DetachDialerAttachmentUnauthorized) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode DetachDialerAttachmentUnauthorized to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = DetachDialerAttachmentUnauthorized(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *DetachDialerAttachmentUnauthorized) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *DetachDialerAttachmentUnauthorized) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode encodes DisableEnvironmentInternalServerError as json.
 func (s *DisableEnvironmentInternalServerError) Encode(e *jx.Encoder) {
 	unwrapped := (*Error)(s)
@@ -10579,6 +10895,196 @@ func (s *GetAccountTokenUnauthorized) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *GetAccountTokenUnauthorized) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes GetActiveDialerAttachmentConflict as json.
+func (s *GetActiveDialerAttachmentConflict) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes GetActiveDialerAttachmentConflict from json.
+func (s *GetActiveDialerAttachmentConflict) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GetActiveDialerAttachmentConflict to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = GetActiveDialerAttachmentConflict(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *GetActiveDialerAttachmentConflict) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GetActiveDialerAttachmentConflict) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes GetActiveDialerAttachmentForbidden as json.
+func (s *GetActiveDialerAttachmentForbidden) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes GetActiveDialerAttachmentForbidden from json.
+func (s *GetActiveDialerAttachmentForbidden) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GetActiveDialerAttachmentForbidden to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = GetActiveDialerAttachmentForbidden(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *GetActiveDialerAttachmentForbidden) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GetActiveDialerAttachmentForbidden) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes GetActiveDialerAttachmentInternalServerError as json.
+func (s *GetActiveDialerAttachmentInternalServerError) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes GetActiveDialerAttachmentInternalServerError from json.
+func (s *GetActiveDialerAttachmentInternalServerError) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GetActiveDialerAttachmentInternalServerError to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = GetActiveDialerAttachmentInternalServerError(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *GetActiveDialerAttachmentInternalServerError) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GetActiveDialerAttachmentInternalServerError) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes GetActiveDialerAttachmentNotFound as json.
+func (s *GetActiveDialerAttachmentNotFound) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes GetActiveDialerAttachmentNotFound from json.
+func (s *GetActiveDialerAttachmentNotFound) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GetActiveDialerAttachmentNotFound to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = GetActiveDialerAttachmentNotFound(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *GetActiveDialerAttachmentNotFound) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GetActiveDialerAttachmentNotFound) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes GetActiveDialerAttachmentUnauthorized as json.
+func (s *GetActiveDialerAttachmentUnauthorized) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes GetActiveDialerAttachmentUnauthorized from json.
+func (s *GetActiveDialerAttachmentUnauthorized) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode GetActiveDialerAttachmentUnauthorized to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = GetActiveDialerAttachmentUnauthorized(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *GetActiveDialerAttachmentUnauthorized) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *GetActiveDialerAttachmentUnauthorized) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -17940,8 +18446,14 @@ func (s *Tunnel) encodeFields(e *jx.Encoder) {
 		s.Mode.Encode(e)
 	}
 	{
-		e.FieldStart("backendTarget")
-		e.Str(s.BackendTarget)
+		e.FieldStart("kind")
+		s.Kind.Encode(e)
+	}
+	{
+		if s.BackendTarget.Set {
+			e.FieldStart("backendTarget")
+			s.BackendTarget.Encode(e)
+		}
 	}
 	{
 		if s.ZitiServiceId.Set {
@@ -17975,20 +18487,21 @@ func (s *Tunnel) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfTunnel = [13]string{
+var jsonFieldsNameOfTunnel = [14]string{
 	0:  "id",
 	1:  "organizationId",
 	2:  "accountId",
 	3:  "environmentId",
 	4:  "name",
 	5:  "mode",
-	6:  "backendTarget",
-	7:  "zitiServiceId",
-	8:  "bindPolicyId",
-	9:  "serviceEdgeRouterPolicyId",
-	10: "state",
-	11: "createdAt",
-	12: "updatedAt",
+	6:  "kind",
+	7:  "backendTarget",
+	8:  "zitiServiceId",
+	9:  "bindPolicyId",
+	10: "serviceEdgeRouterPolicyId",
+	11: "state",
+	12: "createdAt",
+	13: "updatedAt",
 }
 
 // Decode decodes Tunnel from json.
@@ -18070,12 +18583,20 @@ func (s *Tunnel) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"mode\"")
 			}
-		case "backendTarget":
+		case "kind":
 			requiredBitSet[0] |= 1 << 6
 			if err := func() error {
-				v, err := d.Str()
-				s.BackendTarget = string(v)
-				if err != nil {
+				if err := s.Kind.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"kind\"")
+			}
+		case "backendTarget":
+			if err := func() error {
+				s.BackendTarget.Reset()
+				if err := s.BackendTarget.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -18113,7 +18634,7 @@ func (s *Tunnel) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"serviceEdgeRouterPolicyId\"")
 			}
 		case "state":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				if err := s.State.Decode(d); err != nil {
 					return err
@@ -18123,7 +18644,7 @@ func (s *Tunnel) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"state\"")
 			}
 		case "createdAt":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CreatedAt = v
@@ -18135,7 +18656,7 @@ func (s *Tunnel) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"createdAt\"")
 			}
 		case "updatedAt":
-			requiredBitSet[1] |= 1 << 4
+			requiredBitSet[1] |= 1 << 5
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.UpdatedAt = v
@@ -18157,7 +18678,7 @@ func (s *Tunnel) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b01111111,
-		0b00011100,
+		0b00111000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -18251,8 +18772,14 @@ func (s *TunnelAttachment) encodeFields(e *jx.Encoder) {
 		}
 	}
 	{
-		e.FieldStart("listenAddress")
-		e.Str(s.ListenAddress)
+		e.FieldStart("kind")
+		s.Kind.Encode(e)
+	}
+	{
+		if s.ListenAddress.Set {
+			e.FieldStart("listenAddress")
+			s.ListenAddress.Encode(e)
+		}
 	}
 	{
 		if s.DialPolicyId.Set {
@@ -18284,7 +18811,7 @@ func (s *TunnelAttachment) encodeFields(e *jx.Encoder) {
 	}
 }
 
-var jsonFieldsNameOfTunnelAttachment = [15]string{
+var jsonFieldsNameOfTunnelAttachment = [16]string{
 	0:  "id",
 	1:  "tunnelId",
 	2:  "organizationId",
@@ -18293,13 +18820,14 @@ var jsonFieldsNameOfTunnelAttachment = [15]string{
 	5:  "accountEmail",
 	6:  "tunnelName",
 	7:  "tunnelMode",
-	8:  "listenAddress",
-	9:  "dialPolicyId",
-	10: "state",
-	11: "lastHeartbeatAt",
-	12: "disconnectedAt",
-	13: "createdAt",
-	14: "updatedAt",
+	8:  "kind",
+	9:  "listenAddress",
+	10: "dialPolicyId",
+	11: "state",
+	12: "lastHeartbeatAt",
+	13: "disconnectedAt",
+	14: "createdAt",
+	15: "updatedAt",
 }
 
 // Decode decodes TunnelAttachment from json.
@@ -18401,12 +18929,20 @@ func (s *TunnelAttachment) Decode(d *jx.Decoder) error {
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"tunnelMode\"")
 			}
-		case "listenAddress":
+		case "kind":
 			requiredBitSet[1] |= 1 << 0
 			if err := func() error {
-				v, err := d.Str()
-				s.ListenAddress = string(v)
-				if err != nil {
+				if err := s.Kind.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"kind\"")
+			}
+		case "listenAddress":
+			if err := func() error {
+				s.ListenAddress.Reset()
+				if err := s.ListenAddress.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -18424,7 +18960,7 @@ func (s *TunnelAttachment) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"dialPolicyId\"")
 			}
 		case "state":
-			requiredBitSet[1] |= 1 << 2
+			requiredBitSet[1] |= 1 << 3
 			if err := func() error {
 				if err := s.State.Decode(d); err != nil {
 					return err
@@ -18434,7 +18970,7 @@ func (s *TunnelAttachment) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"state\"")
 			}
 		case "lastHeartbeatAt":
-			requiredBitSet[1] |= 1 << 3
+			requiredBitSet[1] |= 1 << 4
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.LastHeartbeatAt = v
@@ -18456,7 +18992,7 @@ func (s *TunnelAttachment) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"disconnectedAt\"")
 			}
 		case "createdAt":
-			requiredBitSet[1] |= 1 << 5
+			requiredBitSet[1] |= 1 << 6
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.CreatedAt = v
@@ -18468,7 +19004,7 @@ func (s *TunnelAttachment) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"createdAt\"")
 			}
 		case "updatedAt":
-			requiredBitSet[1] |= 1 << 6
+			requiredBitSet[1] |= 1 << 7
 			if err := func() error {
 				v, err := json.DecodeDateTime(d)
 				s.UpdatedAt = v
@@ -18490,7 +19026,7 @@ func (s *TunnelAttachment) Decode(d *jx.Decoder) error {
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
 		0b00011111,
-		0b01101101,
+		0b11011001,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -18532,6 +19068,46 @@ func (s *TunnelAttachment) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *TunnelAttachment) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes TunnelAttachmentKind as json.
+func (s TunnelAttachmentKind) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes TunnelAttachmentKind from json.
+func (s *TunnelAttachmentKind) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TunnelAttachmentKind to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch TunnelAttachmentKind(v) {
+	case TunnelAttachmentKindProxy:
+		*s = TunnelAttachmentKindProxy
+	case TunnelAttachmentKindDialer:
+		*s = TunnelAttachmentKindDialer
+	default:
+		*s = TunnelAttachmentKind(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s TunnelAttachmentKind) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TunnelAttachmentKind) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }
@@ -18721,6 +19297,46 @@ func (s *TunnelGrant) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON implements stdjson.Unmarshaler.
 func (s *TunnelGrant) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes TunnelKind as json.
+func (s TunnelKind) Encode(e *jx.Encoder) {
+	e.Str(string(s))
+}
+
+// Decode decodes TunnelKind from json.
+func (s *TunnelKind) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TunnelKind to nil")
+	}
+	v, err := d.StrBytes()
+	if err != nil {
+		return err
+	}
+	// Try to use constant string.
+	switch TunnelKind(v) {
+	case TunnelKindProxy:
+		*s = TunnelKindProxy
+	case TunnelKindDirect:
+		*s = TunnelKindDirect
+	default:
+		*s = TunnelKind(v)
+	}
+
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s TunnelKind) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TunnelKind) UnmarshalJSON(data []byte) error {
 	d := jx.DecodeBytes(data)
 	return s.Decode(d)
 }

@@ -39,6 +39,9 @@ func TestEnvironmentEnableAndDisable(t *testing.T) {
 	if identity.created == nil || identity.created.Name != "env-1" {
 		t.Fatalf("expected created identity options to be captured")
 	}
+	if erp.created == nil || len(erp.created.EdgeRouterRoles) != 1 || erp.created.EdgeRouterRoles[0] != defaultEdgeRouterRole {
+		t.Fatalf("expected default edge-router role %q, got %#v", defaultEdgeRouterRole, erp.created)
+	}
 
 	if err := provisioner.Disable(context.Background(), DeprovisionEnvironmentSpec{
 		IdentityID:         result.IdentityID,
@@ -115,6 +118,9 @@ func TestTunnelProvisionAndDeprovision(t *testing.T) {
 	}
 	if serp.created == nil || serp.created.Name != "tt_test00000003-serp" {
 		t.Fatalf("expected service-edge-router policy name to be tunnel-id based, got %#v", serp.created)
+	}
+	if len(serp.created.EdgeRouterRoles) != 1 || serp.created.EdgeRouterRoles[0] != defaultEdgeRouterRole {
+		t.Fatalf("expected default edge-router role %q, got %#v", defaultEdgeRouterRole, serp.created.EdgeRouterRoles)
 	}
 
 	if err := provisioner.Deprovision(context.Background(), DeprovisionTunnelSpec{
@@ -305,10 +311,12 @@ func (f *fakeIdentityOperations) Enroll(context.Context, string) ([]byte, error)
 type fakeEdgeRouterPolicyOperations struct {
 	createID  string
 	createErr error
+	created   *EdgeRouterPolicyOptions
 	deleted   []string
 }
 
-func (f *fakeEdgeRouterPolicyOperations) Create(context.Context, *EdgeRouterPolicyOptions) (string, error) {
+func (f *fakeEdgeRouterPolicyOperations) Create(_ context.Context, opts *EdgeRouterPolicyOptions) (string, error) {
+	f.created = opts
 	return f.createID, f.createErr
 }
 func (f *fakeEdgeRouterPolicyOperations) Delete(_ context.Context, id string) error {

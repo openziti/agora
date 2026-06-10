@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/michaelquigley/df/dl"
 	"github.com/openziti/agora/internal/api"
@@ -72,46 +73,73 @@ func (s *Service) teardownSession(ctx context.Context, sess *persistence.Session
 	if sess.State == persistence.SessionStateClosed {
 		return nil
 	}
-	closedSess := sess
-	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+	disconnectedAt := time.Now().UTC()
+	return s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+		var tunnel *persistence.Tunnel
+		attachments := []persistence.TunnelAttachment{}
+		if sess.TunnelID != nil {
+			if err := lockTunnelScope(ctx, tx, *sess.TunnelID); err != nil {
+				return err
+			}
+			var err error
+			tunnel, err = s.store.Tunnels.GetByID(ctx, tx, *sess.TunnelID)
+			if err != nil && !errors.Is(err, persistence.ErrNotFound) {
+				return err
+			}
+			if tunnel != nil {
+				attachments, err = s.store.TunnelAttachments.ListByTunnelCrossOrg(ctx, tx, tunnel.ID)
+				if err != nil {
+					return err
+				}
+				_, tunnelLifecycle, err := s.lifecycleFactory(ctx)
+				if err != nil {
+					return err
+				}
+				if err := deprovisionAttachmentPolicies(ctx, tunnelLifecycle, attachments); err != nil {
+					return err
+				}
+				spec := automation.DeprovisionTunnelSpec{}
+				if tunnel.ZitiServiceID != nil {
+					spec.ServiceID = *tunnel.ZitiServiceID
+				}
+				if tunnel.BindPolicyID != nil {
+					spec.BindPolicyID = *tunnel.BindPolicyID
+				}
+				if tunnel.ServiceEdgeRouterPolicyID != nil {
+					spec.ServiceEdgeRouterPolicyID = *tunnel.ServiceEdgeRouterPolicyID
+				}
+				if err := tunnelLifecycle.Deprovision(ctx, spec); err != nil {
+					return err
+				}
+			}
+		}
+		if tunnel != nil {
+			activeServe, err := s.store.TunnelServes.GetActiveByTunnel(ctx, tx, tunnel.ID, tunnel.OrganizationID)
+			if err != nil && !errors.Is(err, persistence.ErrNotFound) {
+				return err
+			}
+			if err == nil {
+				if err := s.store.TunnelServes.UpdateState(ctx, tx, activeServe.ID, persistence.TunnelServeStateDisconnected, &disconnectedAt); err != nil {
+					return err
+				}
+			}
+			if err := s.store.TunnelServes.DeleteByTunnel(ctx, tx, tunnel.ID, tunnel.OrganizationID); err != nil {
+				return err
+			}
+			if err := s.detachAndSoftDeleteAttachments(ctx, tx, attachments, persistence.TunnelAttachmentStateDisconnected, disconnectedAt); err != nil {
+				return err
+			}
+			if err := s.store.TunnelGrants.DeleteByTunnelCrossOrg(ctx, tx, tunnel.ID); err != nil {
+				return err
+			}
+			if err := s.store.Tunnels.Delete(ctx, tx, tunnel.ID, tunnel.OrganizationID); err != nil {
+				return err
+			}
+		}
 		closed, err := s.store.Sessions.MarkClosed(ctx, tx, sess.ID, reason, detail)
 		if err != nil {
 			return err
 		}
-		closedSess = closed
 		return s.recordSessionClosed(ctx, tx, closed, reason, detail)
-	}); err != nil {
-		return err
-	}
-	if closedSess.TunnelID == nil {
-		return nil
-	}
-	tunnel, err := s.store.Tunnels.GetByID(ctx, s.store.DB(), *closedSess.TunnelID)
-	if err != nil {
-		if errors.Is(err, persistence.ErrNotFound) {
-			return nil
-		}
-		return err
-	}
-	_, tunnelLifecycle, err := s.lifecycleFactory(ctx)
-	if err != nil {
-		return err
-	}
-	spec := automation.DeprovisionTunnelSpec{}
-	if tunnel.ZitiServiceID != nil {
-		spec.ServiceID = *tunnel.ZitiServiceID
-	}
-	if tunnel.BindPolicyID != nil {
-		spec.BindPolicyID = *tunnel.BindPolicyID
-	}
-	if tunnel.ServiceEdgeRouterPolicyID != nil {
-		spec.ServiceEdgeRouterPolicyID = *tunnel.ServiceEdgeRouterPolicyID
-	}
-	if err := tunnelLifecycle.Deprovision(ctx, spec); err != nil {
-		return err
-	}
-	if err := s.store.Tunnels.Delete(ctx, s.store.DB(), tunnel.ID, tunnel.OrganizationID); err != nil {
-		return err
-	}
-	return nil
+	})
 }

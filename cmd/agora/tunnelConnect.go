@@ -89,7 +89,7 @@ func (cmd *tunnelConnectCommand) runForeground(args []string) {
 	res, err := client.ConnectTunnel(context.Background(), &api.ConnectTunnelRequest{
 		EnvironmentId: env.EnvironmentID,
 		Name:          args[0],
-		ListenAddress: cmd.listen,
+		ListenAddress: api.NewOptString(cmd.listen),
 	})
 	panicIfErr(err)
 
@@ -116,6 +116,10 @@ func (cmd *tunnelConnectCommand) runForeground(args []string) {
 	startAttachmentHeartbeats(ctx, client, connect.Attachment.ID)
 
 	identityPath := requireEnvironmentIdentityPath(root)
-	fmt.Printf("connected tunnel '%s' mode='%s' listen='%s'\n", connect.Tunnel.Name, connect.Tunnel.Mode, connect.Attachment.ListenAddress)
-	panicIfErr(runConnectRuntime(ctx, identityPath, &connect.Tunnel, connect.Attachment.ListenAddress))
+	listenAddress, ok := connect.Attachment.ListenAddress.Get()
+	if !ok {
+		panic("connected tunnel response is missing listen address")
+	}
+	fmt.Printf("connected tunnel '%s' mode='%s' listen='%s'\n", connect.Tunnel.Name, connect.Tunnel.Mode, listenAddress)
+	panicIfErr(runConnectRuntime(ctx, identityPath, &connect.Tunnel, listenAddress))
 }

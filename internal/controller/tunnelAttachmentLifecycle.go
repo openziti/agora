@@ -53,6 +53,17 @@ func (s *Service) DeleteTunnelAttachment(ctx context.Context, params api.DeleteT
 	if err != nil {
 		return &api.DeleteTunnelAttachmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
+	if attachment.Kind == persistence.TunnelAttachmentKindDialer {
+		deleted, err := s.detachDialerAttachmentByID(ctx, tunnelLifecycle, principal, attachment.ID)
+		if err != nil {
+			if errors.Is(err, persistence.ErrNotFound) {
+				return &api.DeleteTunnelAttachmentNotFound{Code: "not_found", Message: "attachment not found"}, nil
+			}
+			return &api.DeleteTunnelAttachmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+		}
+		dl.Infof("deleted dialer attachment attachment_id='%s' tunnel_id='%s' %s", deleted.ID, deleted.TunnelID, principalLogFields(principal))
+		return &api.DeleteTunnelAttachmentNoContent{}, nil
+	}
 	if attachment.DialPolicyID != nil {
 		if err := tunnelLifecycle.Deprovision(ctx, automation.DeprovisionTunnelSpec{DialPolicyID: *attachment.DialPolicyID}); err != nil {
 			return &api.DeleteTunnelAttachmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil

@@ -17,58 +17,107 @@ func (s *Service) DisableEnvironment(ctx context.Context, params api.DisableEnvi
 		dl.Warnf("unauthorized disable environment request environment_id='%s'", params.EnvironmentId)
 		return &api.DisableEnvironmentUnauthorized{Code: "unauthorized", Message: "unauthorized"}, nil
 	}
-	dl.Infof("disabling environment environment_id='%s' %s", params.EnvironmentId, principalLogFields(principal))
+	logFields := principalLogFields(principal)
+	dl.Infof("disabling environment environment_id='%s' %s", params.EnvironmentId, logFields)
 
 	env, err := s.store.Environments.GetByID(ctx, s.store.DB(), params.EnvironmentId)
 	if err != nil {
 		if errors.Is(err, persistence.ErrNotFound) {
-			dl.Warnf("disable environment not found environment_id='%s' %s", params.EnvironmentId, principalLogFields(principal))
+			dl.Warnf("disable environment not found environment_id='%s' %s", params.EnvironmentId, logFields)
 			return &api.DisableEnvironmentNotFound{Code: "not_found", Message: "environment not found"}, nil
 		}
-		dl.Errorf("disable environment lookup failed environment_id='%s' %s: %v", params.EnvironmentId, principalLogFields(principal), err)
+		dl.Errorf("disable environment lookup failed environment_id='%s' %s: %v", params.EnvironmentId, logFields, err)
 		return &api.DisableEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
 	if env.OrganizationID != principal.OrganizationID || env.AccountID != principal.AccountID {
-		dl.Warnf("disable environment rejected for non-owned environment environment_id='%s' %s", params.EnvironmentId, principalLogFields(principal))
+		dl.Warnf("disable environment rejected for non-owned environment environment_id='%s' %s", params.EnvironmentId, logFields)
 		return &api.DisableEnvironmentNotFound{Code: "not_found", Message: "environment not found"}, nil
 	}
 
-	tunnels, err := s.store.Tunnels.ListByEnvironment(ctx, s.store.DB(), env.ID, env.OrganizationID)
-	if err != nil {
-		dl.Errorf("disable environment tunnel lookup failed environment_id='%s' %s: %v", env.ID, principalLogFields(principal), err)
+	if err := s.disableEnvironmentInternal(ctx, env, logFields); err != nil {
+		dl.Errorf("disable environment cleanup failed environment_id='%s' %s: %v", env.ID, logFields, err)
 		return &api.DisableEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
-	dl.Infof("disable environment found %d tunnel(s) for environment_id='%s' %s", len(tunnels), env.ID, principalLogFields(principal))
+	dl.Infof("disabled environment environment_id='%s' %s", env.ID, logFields)
+
+	return &api.DisableEnvironmentNoContent{}, nil
+}
+
+func (s *Service) disableEnvironmentInternal(ctx context.Context, env *persistence.Environment, logFields string) error {
+	return s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+		return s.disableEnvironmentWithLocks(ctx, tx, env.ID, env.OrganizationID, env.AccountID, logFields)
+	})
+}
+
+func (s *Service) disableEnvironmentWithLocks(ctx context.Context, tx persistence.Queryer, environmentID, organizationID, accountID, logFields string) error {
+	if err := lockEnvironmentScope(ctx, tx, environmentID); err != nil {
+		return err
+	}
+	env, err := s.store.Environments.GetByID(ctx, tx, environmentID)
+	if err != nil {
+		return err
+	}
+	if env.OrganizationID != organizationID || env.AccountID != accountID {
+		return persistence.ErrNotFound
+	}
+
+	tunnels, err := s.store.Tunnels.ListByEnvironment(ctx, tx, env.ID, env.OrganizationID)
+	if err != nil {
+		return err
+	}
+	dl.Infof("disable environment found %d tunnel(s) for environment_id='%s' %s", len(tunnels), env.ID, logFields)
+
+	consumerAttachments, err := s.store.TunnelAttachments.ListConsumerAttachmentsWithPolicy(ctx, tx, env.ID)
+	if err != nil {
+		return err
+	}
+	tunnelIDs := make([]string, 0, len(tunnels)+len(consumerAttachments))
+	for i := range tunnels {
+		tunnelIDs = append(tunnelIDs, tunnels[i].ID)
+	}
+	for i := range consumerAttachments {
+		tunnelIDs = append(tunnelIDs, consumerAttachments[i].TunnelID)
+	}
+	if err := lockTunnelScopes(ctx, tx, tunnelIDs); err != nil {
+		return err
+	}
+
+	tunnels, err = s.store.Tunnels.ListByEnvironment(ctx, tx, env.ID, env.OrganizationID)
+	if err != nil {
+		return err
+	}
+	consumerAttachments, err = s.store.TunnelAttachments.ListConsumerAttachmentsWithPolicy(ctx, tx, env.ID)
+	if err != nil {
+		return err
+	}
+	ownedTunnelAttachments := []persistence.TunnelAttachment{}
+	for i := range tunnels {
+		attachments, err := s.store.TunnelAttachments.ListByTunnelCrossOrg(ctx, tx, tunnels[i].ID)
+		if err != nil {
+			return err
+		}
+		ownedTunnelAttachments = append(ownedTunnelAttachments, attachments...)
+	}
+	attachments := uniqueTunnelAttachments(ownedTunnelAttachments, consumerAttachments)
 
 	envLifecycle, tunnelLifecycle, err := s.lifecycleFactory(ctx)
 	if err != nil {
-		dl.Errorf("disable environment lifecycle initialization failed environment_id='%s' %s: %v", env.ID, principalLogFields(principal), err)
-		return &api.DisableEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+		return err
+	}
+
+	if err := deprovisionAttachmentPolicies(ctx, tunnelLifecycle, attachments); err != nil {
+		return err
 	}
 
 	for i := range tunnels {
 		tunnel := tunnels[i]
-		attachments, err := s.store.TunnelAttachments.ListByTunnel(ctx, s.store.DB(), tunnel.ID, tunnel.OrganizationID)
-		if err != nil {
-			dl.Errorf("disable environment tunnel attachment lookup failed tunnel_id='%s' environment_id='%s' %s: %v", tunnel.ID, env.ID, principalLogFields(principal), err)
-			return &api.DisableEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
-		}
-		for j := range attachments {
-			if attachments[j].DialPolicyID != nil {
-				if err := tunnelLifecycle.Deprovision(ctx, automation.DeprovisionTunnelSpec{DialPolicyID: *attachments[j].DialPolicyID}); err != nil {
-					dl.Errorf("disable environment attachment deprovision failed attachment_id='%s' tunnel_id='%s' %s: %v", attachments[j].ID, tunnel.ID, principalLogFields(principal), err)
-					return &api.DisableEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
-				}
-			}
-		}
-		dl.Infof("deprovisioning tunnel tunnel_id='%s' environment_id='%s' %s", tunnel.ID, env.ID, principalLogFields(principal))
+		dl.Infof("deprovisioning tunnel tunnel_id='%s' environment_id='%s' %s", tunnel.ID, env.ID, logFields)
 		if err := tunnelLifecycle.Deprovision(ctx, automation.DeprovisionTunnelSpec{
 			ServiceID:                 optionalStringValue(tunnel.ZitiServiceID),
 			BindPolicyID:              optionalStringValue(tunnel.BindPolicyID),
 			ServiceEdgeRouterPolicyID: optionalStringValue(tunnel.ServiceEdgeRouterPolicyID),
 		}); err != nil {
-			dl.Errorf("disable environment tunnel deprovision failed tunnel_id='%s' environment_id='%s' %s: %v", tunnel.ID, env.ID, principalLogFields(principal), err)
-			return &api.DisableEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+			return err
 		}
 	}
 
@@ -77,50 +126,32 @@ func (s *Service) DisableEnvironment(ctx context.Context, params api.DisableEnvi
 		disableSpec.EdgeRouterPolicyID = *env.EdgeRouterPolicyID
 	}
 	if err := envLifecycle.Disable(ctx, disableSpec); err != nil {
-		dl.Errorf("disable environment deprovision failed environment_id='%s' ziti_identity_id='%s' %s: %v", env.ID, env.ZitiIdentityID, principalLogFields(principal), err)
-		return &api.DisableEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+		return err
 	}
 
 	disconnectedAt := time.Now().UTC()
-	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
-		for i := range tunnels {
-			activeServe, err := s.store.TunnelServes.GetActiveByTunnel(ctx, tx, tunnels[i].ID, env.OrganizationID)
-			if err != nil && !errors.Is(err, persistence.ErrNotFound) {
-				return err
-			}
-			if err == nil {
-				if err := s.store.TunnelServes.UpdateState(ctx, tx, activeServe.ID, persistence.TunnelServeStateDisconnected, &disconnectedAt); err != nil {
-					return err
-				}
-			}
-			if err := s.store.TunnelServes.DeleteByTunnel(ctx, tx, tunnels[i].ID, env.OrganizationID); err != nil {
-				return err
-			}
-			attachments, err := s.store.TunnelAttachments.ListByTunnel(ctx, tx, tunnels[i].ID, env.OrganizationID)
-			if err != nil {
-				return err
-			}
-			for j := range attachments {
-				if err := s.detachTunnel(ctx, tx, attachments[j].TunnelAttachment, persistence.TunnelAttachmentStateDisconnected, &disconnectedAt); err != nil {
-					return err
-				}
-			}
-			if err := s.store.TunnelAttachments.DeleteByTunnel(ctx, tx, tunnels[i].ID, env.OrganizationID); err != nil {
-				return err
-			}
-			if err := s.store.TunnelGrants.DeleteByTunnel(ctx, tx, tunnels[i].ID, env.OrganizationID); err != nil {
-				return err
-			}
-			if err := s.store.Tunnels.Delete(ctx, tx, tunnels[i].ID, env.OrganizationID); err != nil {
+	if err := s.detachAndSoftDeleteAttachments(ctx, tx, attachments, persistence.TunnelAttachmentStateDisconnected, disconnectedAt); err != nil {
+		return err
+	}
+	for i := range tunnels {
+		activeServe, err := s.store.TunnelServes.GetActiveByTunnel(ctx, tx, tunnels[i].ID, env.OrganizationID)
+		if err != nil && !errors.Is(err, persistence.ErrNotFound) {
+			return err
+		}
+		if err == nil {
+			if err := s.store.TunnelServes.UpdateState(ctx, tx, activeServe.ID, persistence.TunnelServeStateDisconnected, &disconnectedAt); err != nil {
 				return err
 			}
 		}
-		return s.store.Environments.Delete(ctx, tx, env.ID, env.OrganizationID)
-	}); err != nil {
-		dl.Errorf("disable environment persistence cleanup failed environment_id='%s' %s: %v", env.ID, principalLogFields(principal), err)
-		return &api.DisableEnvironmentInternalServerError{Code: "internal_error", Message: err.Error()}, nil
+		if err := s.store.TunnelServes.DeleteByTunnel(ctx, tx, tunnels[i].ID, env.OrganizationID); err != nil {
+			return err
+		}
+		if err := s.store.TunnelGrants.DeleteByTunnelCrossOrg(ctx, tx, tunnels[i].ID); err != nil {
+			return err
+		}
+		if err := s.store.Tunnels.Delete(ctx, tx, tunnels[i].ID, env.OrganizationID); err != nil {
+			return err
+		}
 	}
-	dl.Infof("disabled environment environment_id='%s' %s", env.ID, principalLogFields(principal))
-
-	return &api.DisableEnvironmentNoContent{}, nil
+	return s.store.Environments.Delete(ctx, tx, env.ID, env.OrganizationID)
 }

@@ -53,6 +53,8 @@ paths:
     $ref: "tunnels/paths.yml#/~1tunnels~1{tunnelId}~1grants~1{accountId}"
   /tunnels/{tunnelId}/attachments:
     $ref: "tunnels/paths.yml#/~1tunnels~1{tunnelId}~1attachments"
+  /dialer-attachments:
+    $ref: "tunnels/paths.yml#/~1dialer-attachments"
   /tunnel-attachments/{attachmentId}/heartbeat:
     $ref: "tunnels/paths.yml#/~1tunnel-attachments~1{attachmentId}~1heartbeat"
   /tunnel-attachments/{attachmentId}:
@@ -184,6 +186,8 @@ components:
       $ref: "tunnels/schemas.yml#/tunnelAttachment"
     listTunnelAttachmentsResponse:
       $ref: "tunnels/schemas.yml#/listTunnelAttachmentsResponse"
+    activeDialerAttachment:
+      $ref: "tunnels/schemas.yml#/activeDialerAttachment"
     tunnelServe:
       $ref: "tunnels/schemas.yml#/tunnelServe"
     workgroup:

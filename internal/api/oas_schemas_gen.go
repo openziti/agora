@@ -355,6 +355,45 @@ func (s *AcknowledgeWorkgroupInvitationResponse) SetWorkgroup(val Workgroup) {
 func (*AcknowledgeWorkgroupInvitationResponse) acceptWorkgroupInvitationRes()  {}
 func (*AcknowledgeWorkgroupInvitationResponse) declineWorkgroupInvitationRes() {}
 
+// Ref: #/activeDialerAttachment
+type ActiveDialerAttachment struct {
+	Attachment TunnelAttachment `json:"attachment"`
+	TunnelId   string           `json:"tunnelId"`
+	TunnelMode TunnelMode       `json:"tunnelMode"`
+}
+
+// GetAttachment returns the value of Attachment.
+func (s *ActiveDialerAttachment) GetAttachment() TunnelAttachment {
+	return s.Attachment
+}
+
+// GetTunnelId returns the value of TunnelId.
+func (s *ActiveDialerAttachment) GetTunnelId() string {
+	return s.TunnelId
+}
+
+// GetTunnelMode returns the value of TunnelMode.
+func (s *ActiveDialerAttachment) GetTunnelMode() TunnelMode {
+	return s.TunnelMode
+}
+
+// SetAttachment sets the value of Attachment.
+func (s *ActiveDialerAttachment) SetAttachment(val TunnelAttachment) {
+	s.Attachment = val
+}
+
+// SetTunnelId sets the value of TunnelId.
+func (s *ActiveDialerAttachment) SetTunnelId(val string) {
+	s.TunnelId = val
+}
+
+// SetTunnelMode sets the value of TunnelMode.
+func (s *ActiveDialerAttachment) SetTunnelMode(val TunnelMode) {
+	s.TunnelMode = val
+}
+
+func (*ActiveDialerAttachment) getActiveDialerAttachmentRes() {}
+
 type AddTunnelGrantConflict Error
 
 func (*AddTunnelGrantConflict) addTunnelGrantRes() {}
@@ -1355,9 +1394,9 @@ func (*ConnectTunnelNotFound) connectTunnelRes() {}
 
 // Ref: #/connectTunnelRequest
 type ConnectTunnelRequest struct {
-	EnvironmentId string `json:"environmentId"`
-	Name          string `json:"name"`
-	ListenAddress string `json:"listenAddress"`
+	EnvironmentId string    `json:"environmentId"`
+	Name          string    `json:"name"`
+	ListenAddress OptString `json:"listenAddress"`
 }
 
 // GetEnvironmentId returns the value of EnvironmentId.
@@ -1371,7 +1410,7 @@ func (s *ConnectTunnelRequest) GetName() string {
 }
 
 // GetListenAddress returns the value of ListenAddress.
-func (s *ConnectTunnelRequest) GetListenAddress() string {
+func (s *ConnectTunnelRequest) GetListenAddress() OptString {
 	return s.ListenAddress
 }
 
@@ -1386,7 +1425,7 @@ func (s *ConnectTunnelRequest) SetName(val string) {
 }
 
 // SetListenAddress sets the value of ListenAddress.
-func (s *ConnectTunnelRequest) SetListenAddress(val string) {
+func (s *ConnectTunnelRequest) SetListenAddress(val OptString) {
 	s.ListenAddress = val
 }
 
@@ -2097,7 +2136,7 @@ type CreateTunnelRequest struct {
 	EnvironmentId string     `json:"environmentId"`
 	Name          string     `json:"name"`
 	Mode          TunnelMode `json:"mode"`
-	BackendTarget string     `json:"backendTarget"`
+	BackendTarget OptString  `json:"backendTarget"`
 	GrantEmails   []string   `json:"grantEmails"`
 }
 
@@ -2117,7 +2156,7 @@ func (s *CreateTunnelRequest) GetMode() TunnelMode {
 }
 
 // GetBackendTarget returns the value of BackendTarget.
-func (s *CreateTunnelRequest) GetBackendTarget() string {
+func (s *CreateTunnelRequest) GetBackendTarget() OptString {
 	return s.BackendTarget
 }
 
@@ -2142,7 +2181,7 @@ func (s *CreateTunnelRequest) SetMode(val TunnelMode) {
 }
 
 // SetBackendTarget sets the value of BackendTarget.
-func (s *CreateTunnelRequest) SetBackendTarget(val string) {
+func (s *CreateTunnelRequest) SetBackendTarget(val OptString) {
 	s.BackendTarget = val
 }
 
@@ -3062,6 +3101,31 @@ type DeleteWorkgroupUnauthorized Error
 
 func (*DeleteWorkgroupUnauthorized) deleteWorkgroupRes() {}
 
+type DetachDialerAttachmentConflict Error
+
+func (*DetachDialerAttachmentConflict) detachDialerAttachmentRes() {}
+
+type DetachDialerAttachmentForbidden Error
+
+func (*DetachDialerAttachmentForbidden) detachDialerAttachmentRes() {}
+
+type DetachDialerAttachmentInternalServerError Error
+
+func (*DetachDialerAttachmentInternalServerError) detachDialerAttachmentRes() {}
+
+// DetachDialerAttachmentNoContent is response for DetachDialerAttachment operation.
+type DetachDialerAttachmentNoContent struct{}
+
+func (*DetachDialerAttachmentNoContent) detachDialerAttachmentRes() {}
+
+type DetachDialerAttachmentNotFound Error
+
+func (*DetachDialerAttachmentNotFound) detachDialerAttachmentRes() {}
+
+type DetachDialerAttachmentUnauthorized Error
+
+func (*DetachDialerAttachmentUnauthorized) detachDialerAttachmentRes() {}
+
 type DisableEnvironmentInternalServerError Error
 
 func (*DisableEnvironmentInternalServerError) disableEnvironmentRes() {}
@@ -3335,6 +3399,26 @@ func (*GetAccountTokenInternalServerError) getAccountTokenRes() {}
 type GetAccountTokenUnauthorized Error
 
 func (*GetAccountTokenUnauthorized) getAccountTokenRes() {}
+
+type GetActiveDialerAttachmentConflict Error
+
+func (*GetActiveDialerAttachmentConflict) getActiveDialerAttachmentRes() {}
+
+type GetActiveDialerAttachmentForbidden Error
+
+func (*GetActiveDialerAttachmentForbidden) getActiveDialerAttachmentRes() {}
+
+type GetActiveDialerAttachmentInternalServerError Error
+
+func (*GetActiveDialerAttachmentInternalServerError) getActiveDialerAttachmentRes() {}
+
+type GetActiveDialerAttachmentNotFound Error
+
+func (*GetActiveDialerAttachmentNotFound) getActiveDialerAttachmentRes() {}
+
+type GetActiveDialerAttachmentUnauthorized Error
+
+func (*GetActiveDialerAttachmentUnauthorized) getActiveDialerAttachmentRes() {}
 
 type GetAdvertisementInternalServerError Error
 
@@ -5779,7 +5863,8 @@ type Tunnel struct {
 	EnvironmentId             string      `json:"environmentId"`
 	Name                      string      `json:"name"`
 	Mode                      TunnelMode  `json:"mode"`
-	BackendTarget             string      `json:"backendTarget"`
+	Kind                      TunnelKind  `json:"kind"`
+	BackendTarget             OptString   `json:"backendTarget"`
 	ZitiServiceId             OptString   `json:"zitiServiceId"`
 	BindPolicyId              OptString   `json:"bindPolicyId"`
 	ServiceEdgeRouterPolicyId OptString   `json:"serviceEdgeRouterPolicyId"`
@@ -5818,8 +5903,13 @@ func (s *Tunnel) GetMode() TunnelMode {
 	return s.Mode
 }
 
+// GetKind returns the value of Kind.
+func (s *Tunnel) GetKind() TunnelKind {
+	return s.Kind
+}
+
 // GetBackendTarget returns the value of BackendTarget.
-func (s *Tunnel) GetBackendTarget() string {
+func (s *Tunnel) GetBackendTarget() OptString {
 	return s.BackendTarget
 }
 
@@ -5883,8 +5973,13 @@ func (s *Tunnel) SetMode(val TunnelMode) {
 	s.Mode = val
 }
 
+// SetKind sets the value of Kind.
+func (s *Tunnel) SetKind(val TunnelKind) {
+	s.Kind = val
+}
+
 // SetBackendTarget sets the value of BackendTarget.
-func (s *Tunnel) SetBackendTarget(val string) {
+func (s *Tunnel) SetBackendTarget(val OptString) {
 	s.BackendTarget = val
 }
 
@@ -5931,7 +6026,8 @@ type TunnelAttachment struct {
 	AccountEmail    OptString             `json:"accountEmail"`
 	TunnelName      OptString             `json:"tunnelName"`
 	TunnelMode      OptTunnelMode         `json:"tunnelMode"`
-	ListenAddress   string                `json:"listenAddress"`
+	Kind            TunnelAttachmentKind  `json:"kind"`
+	ListenAddress   OptString             `json:"listenAddress"`
 	DialPolicyId    OptString             `json:"dialPolicyId"`
 	State           TunnelAttachmentState `json:"state"`
 	LastHeartbeatAt time.Time             `json:"lastHeartbeatAt"`
@@ -5980,8 +6076,13 @@ func (s *TunnelAttachment) GetTunnelMode() OptTunnelMode {
 	return s.TunnelMode
 }
 
+// GetKind returns the value of Kind.
+func (s *TunnelAttachment) GetKind() TunnelAttachmentKind {
+	return s.Kind
+}
+
 // GetListenAddress returns the value of ListenAddress.
-func (s *TunnelAttachment) GetListenAddress() string {
+func (s *TunnelAttachment) GetListenAddress() OptString {
 	return s.ListenAddress
 }
 
@@ -6055,8 +6156,13 @@ func (s *TunnelAttachment) SetTunnelMode(val OptTunnelMode) {
 	s.TunnelMode = val
 }
 
+// SetKind sets the value of Kind.
+func (s *TunnelAttachment) SetKind(val TunnelAttachmentKind) {
+	s.Kind = val
+}
+
 // SetListenAddress sets the value of ListenAddress.
-func (s *TunnelAttachment) SetListenAddress(val string) {
+func (s *TunnelAttachment) SetListenAddress(val OptString) {
 	s.ListenAddress = val
 }
 
@@ -6088,6 +6194,47 @@ func (s *TunnelAttachment) SetCreatedAt(val time.Time) {
 // SetUpdatedAt sets the value of UpdatedAt.
 func (s *TunnelAttachment) SetUpdatedAt(val time.Time) {
 	s.UpdatedAt = val
+}
+
+type TunnelAttachmentKind string
+
+const (
+	TunnelAttachmentKindProxy  TunnelAttachmentKind = "proxy"
+	TunnelAttachmentKindDialer TunnelAttachmentKind = "dialer"
+)
+
+// AllValues returns all TunnelAttachmentKind values.
+func (TunnelAttachmentKind) AllValues() []TunnelAttachmentKind {
+	return []TunnelAttachmentKind{
+		TunnelAttachmentKindProxy,
+		TunnelAttachmentKindDialer,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TunnelAttachmentKind) MarshalText() ([]byte, error) {
+	switch s {
+	case TunnelAttachmentKindProxy:
+		return []byte(s), nil
+	case TunnelAttachmentKindDialer:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TunnelAttachmentKind) UnmarshalText(data []byte) error {
+	switch TunnelAttachmentKind(data) {
+	case TunnelAttachmentKindProxy:
+		*s = TunnelAttachmentKindProxy
+		return nil
+	case TunnelAttachmentKindDialer:
+		*s = TunnelAttachmentKindDialer
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
 }
 
 type TunnelAttachmentState string
@@ -6187,6 +6334,47 @@ func (s *TunnelGrant) SetCreatedAt(val time.Time) {
 }
 
 func (*TunnelGrant) addTunnelGrantRes() {}
+
+type TunnelKind string
+
+const (
+	TunnelKindProxy  TunnelKind = "proxy"
+	TunnelKindDirect TunnelKind = "direct"
+)
+
+// AllValues returns all TunnelKind values.
+func (TunnelKind) AllValues() []TunnelKind {
+	return []TunnelKind{
+		TunnelKindProxy,
+		TunnelKindDirect,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s TunnelKind) MarshalText() ([]byte, error) {
+	switch s {
+	case TunnelKindProxy:
+		return []byte(s), nil
+	case TunnelKindDirect:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *TunnelKind) UnmarshalText(data []byte) error {
+	switch TunnelKind(data) {
+	case TunnelKindProxy:
+		*s = TunnelKindProxy
+		return nil
+	case TunnelKindDirect:
+		*s = TunnelKindDirect
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
 
 // Ref: #/tunnelMode
 type TunnelMode string

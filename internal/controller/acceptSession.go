@@ -37,14 +37,6 @@ func (s *Service) AcceptSession(ctx context.Context, req *api.AcceptSessionReque
 		return &api.AcceptSessionConflict{Code: "invalid_state", Message: fmt.Sprintf("session is in state '%s'", sess.State)}, nil
 	}
 
-	env, err := s.requireOwnedEnvironment(ctx, principal, req.EnvironmentId)
-	if err != nil {
-		if errors.Is(err, persistence.ErrNotFound) {
-			return &api.AcceptSessionBadRequest{Code: "unknown_environment", Message: "environmentId is not enrolled to the provider account"}, nil
-		}
-		return &api.AcceptSessionInternalServerError{Code: "internal_error", Message: err.Error()}, nil
-	}
-
 	// Evaluate contract admission if the advertisement references one.
 	var snapshotJSON []byte
 	ad, err := s.store.Advertisements.GetByID(ctx, s.store.DB(), sess.AdvertisementID)
@@ -84,10 +76,6 @@ func (s *Service) AcceptSession(ctx context.Context, req *api.AcceptSessionReque
 		}
 	}
 
-	if _, err := s.store.Sessions.MarkAccepting(ctx, s.store.DB(), sess.ID); err != nil {
-		return &api.AcceptSessionInternalServerError{Code: "internal_error", Message: err.Error()}, nil
-	}
-
 	tunnelID := persistence.NewResourceID(persistence.PrefixTunnel)
 	serviceName := tunnelServiceName(tunnelID)
 	tunnelName := fmt.Sprintf("session-%s", sess.ID)
@@ -104,46 +92,62 @@ func (s *Service) AcceptSession(ctx context.Context, req *api.AcceptSessionReque
 		return &api.AcceptSessionInternalServerError{Code: "tunnel_provisioning_failed", Message: detail}, nil
 	}
 
-	provisioned, err := tunnelLifecycle.Provision(ctx, automation.TunnelSpec{
-		OrganizationID:        principal.OrganizationID,
-		AccountID:             principal.AccountID,
-		EnvironmentID:         env.ID,
-		TunnelID:              tunnelID,
-		TunnelName:            tunnelName,
-		ServiceName:           serviceName,
-		EnvironmentIdentityID: env.ZitiIdentityID,
-		Version:               automation.DefaultAgoraVersion,
-	})
-	if err != nil {
-		if closeErr := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
-			_, markErr := s.markSessionClosedWithAudit(ctx, tx, sess.ID, persistence.SessionCloseReasonTunnelFailed, err.Error())
-			return markErr
-		}); closeErr != nil {
-			return &api.AcceptSessionInternalServerError{Code: "internal_error", Message: closeErr.Error()}, nil
-		}
-		return &api.AcceptSessionInternalServerError{Code: "tunnel_provisioning_failed", Message: err.Error()}, nil
-	}
-
 	backendTarget := fmt.Sprintf("session:%s", sess.ID)
 	if req.BackendAddress.Set && req.BackendAddress.Value != "" {
 		backendTarget = req.BackendAddress.Value
 	}
-	tunnel := persistence.Tunnel{
-		ID:                        tunnelID,
-		OrganizationID:            principal.OrganizationID,
-		AccountID:                 principal.AccountID,
-		EnvironmentID:             env.ID,
-		Name:                      tunnelName,
-		Mode:                      sess.TunnelMode,
-		BackendTarget:             backendTarget,
-		ZitiServiceID:             &provisioned.ServiceID,
-		BindPolicyID:              &provisioned.BindPolicyID,
-		ServiceEdgeRouterPolicyID: &provisioned.ServiceEdgeRouterPolicyID,
-		State:                     persistence.TunnelStateActive,
-	}
 
 	var activeSess *persistence.Session
+	var env *persistence.Environment
+	var provisioned *automation.ProvisionedTunnel
+	tunnel := persistence.Tunnel{}
 	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
+		if err := lockEnvironmentScope(ctx, tx, req.EnvironmentId); err != nil {
+			return err
+		}
+		var err error
+		env, err = s.requireOwnedEnvironmentWithQuery(ctx, tx, principal, req.EnvironmentId)
+		if err != nil {
+			if errors.Is(err, persistence.ErrNotFound) {
+				return errAcceptUnknownEnvironment
+			}
+			return err
+		}
+		accepting, err := s.store.Sessions.MarkAccepting(ctx, tx, sess.ID)
+		if err != nil {
+			return err
+		}
+		if accepting.State != persistence.SessionStateAccepting {
+			return errAcceptInvalidState
+		}
+
+		provisioned, err = tunnelLifecycle.Provision(ctx, automation.TunnelSpec{
+			OrganizationID:        principal.OrganizationID,
+			AccountID:             principal.AccountID,
+			EnvironmentID:         env.ID,
+			TunnelID:              tunnelID,
+			TunnelName:            tunnelName,
+			ServiceName:           serviceName,
+			EnvironmentIdentityID: env.ZitiIdentityID,
+			Version:               automation.DefaultAgoraVersion,
+		})
+		if err != nil {
+			return err
+		}
+
+		tunnel = persistence.Tunnel{
+			ID:                        tunnelID,
+			OrganizationID:            principal.OrganizationID,
+			AccountID:                 principal.AccountID,
+			EnvironmentID:             env.ID,
+			Name:                      tunnelName,
+			Mode:                      sess.TunnelMode,
+			BackendTarget:             stringPtr(backendTarget),
+			ZitiServiceID:             &provisioned.ServiceID,
+			BindPolicyID:              &provisioned.BindPolicyID,
+			ServiceEdgeRouterPolicyID: &provisioned.ServiceEdgeRouterPolicyID,
+			State:                     persistence.TunnelStateActive,
+		}
 		if _, err := s.store.Tunnels.Create(ctx, tx, tunnel); err != nil {
 			return err
 		}
@@ -168,11 +172,19 @@ func (s *Service) AcceptSession(ctx context.Context, req *api.AcceptSessionReque
 		activeSess = out
 		return s.recordSessionAccepted(ctx, tx, activeSess, ad.ContractID)
 	}); err != nil {
-		_ = tunnelLifecycle.Deprovision(ctx, automation.DeprovisionTunnelSpec{
-			ServiceID:                 provisioned.ServiceID,
-			BindPolicyID:              provisioned.BindPolicyID,
-			ServiceEdgeRouterPolicyID: provisioned.ServiceEdgeRouterPolicyID,
-		})
+		if errors.Is(err, errAcceptUnknownEnvironment) {
+			return &api.AcceptSessionBadRequest{Code: "unknown_environment", Message: "environmentId is not enrolled to the provider account"}, nil
+		}
+		if errors.Is(err, errAcceptInvalidState) {
+			return &api.AcceptSessionConflict{Code: "invalid_state", Message: "session is no longer proposed"}, nil
+		}
+		if provisioned != nil {
+			_ = tunnelLifecycle.Deprovision(ctx, automation.DeprovisionTunnelSpec{
+				ServiceID:                 provisioned.ServiceID,
+				BindPolicyID:              provisioned.BindPolicyID,
+				ServiceEdgeRouterPolicyID: provisioned.ServiceEdgeRouterPolicyID,
+			})
+		}
 		if closeErr := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
 			_, markErr := s.markSessionClosedWithAudit(ctx, tx, sess.ID, persistence.SessionCloseReasonTunnelFailed, err.Error())
 			return markErr
@@ -192,3 +204,8 @@ func (s *Service) AcceptSession(ctx context.Context, req *api.AcceptSessionReque
 	}
 	return mapSession(activeWithDisplay, principal.OrganizationID), nil
 }
+
+var (
+	errAcceptUnknownEnvironment = errors.New("accept session unknown environment")
+	errAcceptInvalidState       = errors.New("accept session invalid state")
+)

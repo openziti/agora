@@ -36,6 +36,7 @@ type Agent struct {
 	appName      string
 	root         env_core.Root
 	env          *env_core.Environment
+	identityPath string
 	accountID    string
 	api          *api.Client
 	runtime      *Runtime
@@ -159,21 +160,22 @@ func (app *App) Run(fn func(context.Context, *Agent) error) error {
 	if err != nil {
 		return fmt.Errorf("build controller api client: %w", err)
 	}
+	identityPath, err := root.ZitiIdentityNamed(environmentIdentityName)
+	if err != nil {
+		return fmt.Errorf("locate environment identity: %w", err)
+	}
 
 	a := &Agent{
-		appName:   app.name,
-		root:      root,
-		env:       env,
-		accountID: env.EnvironmentID,
-		api:       apiClient,
-		live:      fLive,
+		appName:      app.name,
+		root:         root,
+		env:          env,
+		identityPath: identityPath,
+		accountID:    env.EnvironmentID,
+		api:          apiClient,
+		live:         fLive,
 	}
 
 	if app.wantRuntime {
-		identityPath, idErr := root.ZitiIdentityNamed(environmentIdentityName)
-		if idErr != nil {
-			return fmt.Errorf("locate environment identity: %w", idErr)
-		}
 		rt, rtErr := NewEmbedded(EmbeddedOptions{
 			Environment:  env,
 			IdentityPath: identityPath,
@@ -215,6 +217,15 @@ func (a *Agent) Name() string { return a.appName }
 
 // EnvRoot returns the loaded local environment root.
 func (a *Agent) EnvRoot() env_core.Root { return a.root }
+
+// EnvironmentIdentityPath returns the enrolled OpenZiti identity path
+// resolved when the agent was constructed.
+func (a *Agent) EnvironmentIdentityPath() string {
+	if a == nil {
+		return ""
+	}
+	return a.identityPath
+}
 
 // Environment returns the enrolled environment record.
 func (a *Agent) Environment() *env_core.Environment { return a.env }

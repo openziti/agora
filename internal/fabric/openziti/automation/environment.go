@@ -7,6 +7,8 @@ import (
 	"github.com/openziti/edge-api/rest_model"
 )
 
+const defaultEdgeRouterRole = "#all"
+
 type EnvironmentSpec struct {
 	OrganizationID string
 	AccountID      string
@@ -66,7 +68,7 @@ func (p *EnvironmentProvisioner) Enable(ctx context.Context, spec EnvironmentSpe
 			Tags: tags,
 		},
 		IdentityRoles:   []string{"@" + identityID},
-		EdgeRouterRoles: []string{"#all"},
+		EdgeRouterRoles: []string{defaultEdgeRouterRole},
 		Semantic:        rest_model.SemanticAllOf,
 	})
 	if err != nil {
