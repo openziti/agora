@@ -5,6 +5,8 @@ clean:
 	rm -f $(GOPATH)/bin/*
 
 build:
+	npm --prefix ui install
+	npm --prefix ui run build
 	go install ./...
 
 test:

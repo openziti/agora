@@ -485,6 +485,40 @@ func TestListenResolvesIDThroughGetTunnel(t *testing.T) {
 	}
 }
 
+func TestGetResolvesTunnelByName(t *testing.T) {
+	controller := &fakePrimitiveController{
+		listTunnels: func(_ context.Context, params api.ListTunnelsParams) (api.ListTunnelsRes, error) {
+			return &api.ListTunnelsResponse{{
+				ID:            "tt_abcdefghijkl",
+				Name:          "gateway",
+				Mode:          api.TunnelModeTCP,
+				Kind:          api.TunnelKindDirect,
+				EnvironmentId: "ev_test00000001",
+			}}, nil
+		},
+	}
+	tun, err := get(context.Background(), controller, "gateway")
+	if err != nil {
+		t.Fatalf("get by name: %v", err)
+	}
+	if tun.Mode != ModeTCP {
+		t.Fatalf("mode = %q, want tcp", tun.Mode)
+	}
+	if tun.ID != "tt_abcdefghijkl" {
+		t.Fatalf("id = %q", tun.ID)
+	}
+}
+
+func TestGetNotFound(t *testing.T) {
+	controller := &fakePrimitiveController{
+		listTunnels: func(context.Context, api.ListTunnelsParams) (api.ListTunnelsRes, error) {
+			return &api.ListTunnelsResponse{}, nil
+		},
+	}
+	_, err := get(context.Background(), controller, "missing")
+	assertErrorIs(t, err, ErrNotFound)
+}
+
 func TestCreateValidation(t *testing.T) {
 	_, err := create(context.Background(), fakePrimitiveAgent{envID: "ev_test00000001"}, Spec{Name: "gateway"})
 	assertErrorIs(t, err, ErrInvalidSpec)

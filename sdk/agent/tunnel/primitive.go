@@ -16,6 +16,7 @@ import (
 const (
 	createOp                  = "tunnel.Create"
 	deleteOp                  = "tunnel.Delete"
+	getOp                     = "tunnel.Get"
 	listenOp                  = "tunnel.Listen"
 	attachOp                  = "tunnel.Attach"
 	detachOp                  = "tunnel.Detach"
@@ -154,6 +155,29 @@ func Listen(ctx context.Context, a *agent.Agent, nameOrID string) (net.Listener,
 		return nil, invalidSpec("%s: agent is required", listenOp)
 	}
 	return listen(ctx, realPrimitiveAgent{agent: a}, defaultOverlayFactory, nameOrID)
+}
+
+// Get resolves a direct tunnel record by name or ID without opening a
+// listener or attachment. It returns ErrNotFound when no tunnel matches,
+// letting callers inspect a tunnel's mode (e.g. before binding to an
+// operator-provisioned share).
+func Get(ctx context.Context, a *agent.Agent, nameOrID string) (*Tunnel, error) {
+	if a == nil {
+		return nil, invalidSpec("%s: agent is required", getOp)
+	}
+	return get(ctx, realPrimitiveAgent{agent: a}.controller(), nameOrID)
+}
+
+func get(ctx context.Context, controller primitiveController, nameOrID string) (*Tunnel, error) {
+	ref := strings.TrimSpace(nameOrID)
+	if ref == "" {
+		return nil, invalidSpec("%s: tunnel name or id is required", getOp)
+	}
+	apiTunnel, err := resolveListenTunnel(ctx, controller, ref)
+	if err != nil {
+		return nil, err
+	}
+	return fromAPITunnel(apiTunnel), nil
 }
 
 func listen(ctx context.Context, a primitiveAgent, factory overlayFactory, nameOrID string) (net.Listener, error) {

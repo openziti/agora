@@ -1,5 +1,9 @@
 # CHANGELOG
 
+# v0.1.3
+
+FEATURE: New SDK primitives supporting low-level `Dial` and `Listen` access to layer 1 tunnels.
+
 # v0.1.2
 
 CHANGE: Do not push docker images.
