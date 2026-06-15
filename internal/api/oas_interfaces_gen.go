@@ -145,6 +145,10 @@ type GetTunnelServeRes interface {
 	getTunnelServeRes()
 }
 
+type GetVersionRes interface {
+	getVersionRes()
+}
+
 type GetWorkgroupRes interface {
 	getWorkgroupRes()
 }
