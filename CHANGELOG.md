@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.1.4
+
 - FIX: Updated dashboard ui dependencies, including a major upgrade of the `vite` build tooling from 7.3.2 to 8.0.16.
 
 ## v0.1.3
