@@ -4,6 +4,10 @@
 
 ## v0.1.4
 
+- FEATURE: New unauthenticated `GET /v1/version` API endpoint for interrogating the controller's build version.
+
+- CHANGE: Adopted `github.com/michaelquigley/push` for the `agora version` command and build-metadata stamping. `agora version` now reports full build detail (version, commit, build date, branch, builder), and CI builds are version-stamped.
+
 - FIX: Updated dashboard ui dependencies, including a major upgrade of the `vite` build tooling from 7.3.2 to 8.0.16.
 
 ## v0.1.3

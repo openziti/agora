@@ -120,6 +120,9 @@ paths:
   /contracts/{contractId}:
     $ref: "contracts/paths.yml#/~1contracts~1{contractId}"
 
+  /version:
+    $ref: "common/paths.yml#/~1version"
+
 components:
   securitySchemes:
     accountTokenAuth:
@@ -134,6 +137,8 @@ components:
   schemas:
     error:
       $ref: "common/schemas.yml#/error"
+    versionInfo:
+      $ref: "common/schemas.yml#/versionInfo"
     organization:
       $ref: "admin/schemas.yml#/organization"
     createOrganizationRequest:

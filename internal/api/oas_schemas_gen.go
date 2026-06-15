@@ -3392,6 +3392,8 @@ func (s *Error) SetMessage(val string) {
 	s.Message = val
 }
 
+func (*Error) getVersionRes() {}
+
 type GetAccountTokenInternalServerError Error
 
 func (*GetAccountTokenInternalServerError) getAccountTokenRes() {}
@@ -6895,6 +6897,67 @@ func (s *UpdateContractRequest) SetAccessMode(val OptContractAccessMode) {
 type UpdateContractUnauthorized Error
 
 func (*UpdateContractUnauthorized) updateContractRes() {}
+
+// Ref: #/versionInfo
+type VersionInfo struct {
+	Version string    `json:"version"`
+	Hash    OptString `json:"hash"`
+	Date    OptString `json:"date"`
+	Builder OptString `json:"builder"`
+	Branch  OptString `json:"branch"`
+}
+
+// GetVersion returns the value of Version.
+func (s *VersionInfo) GetVersion() string {
+	return s.Version
+}
+
+// GetHash returns the value of Hash.
+func (s *VersionInfo) GetHash() OptString {
+	return s.Hash
+}
+
+// GetDate returns the value of Date.
+func (s *VersionInfo) GetDate() OptString {
+	return s.Date
+}
+
+// GetBuilder returns the value of Builder.
+func (s *VersionInfo) GetBuilder() OptString {
+	return s.Builder
+}
+
+// GetBranch returns the value of Branch.
+func (s *VersionInfo) GetBranch() OptString {
+	return s.Branch
+}
+
+// SetVersion sets the value of Version.
+func (s *VersionInfo) SetVersion(val string) {
+	s.Version = val
+}
+
+// SetHash sets the value of Hash.
+func (s *VersionInfo) SetHash(val OptString) {
+	s.Hash = val
+}
+
+// SetDate sets the value of Date.
+func (s *VersionInfo) SetDate(val OptString) {
+	s.Date = val
+}
+
+// SetBuilder sets the value of Builder.
+func (s *VersionInfo) SetBuilder(val OptString) {
+	s.Builder = val
+}
+
+// SetBranch sets the value of Branch.
+func (s *VersionInfo) SetBranch(val OptString) {
+	s.Branch = val
+}
+
+func (*VersionInfo) getVersionRes() {}
 
 type WhoamiInternalServerError Error
 

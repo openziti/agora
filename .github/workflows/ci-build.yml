@@ -17,6 +17,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
+        with:
+          # push's ci/version.sh runs `git describe --tags`; full history + tags required
+          fetch-depth: 0
 
       - name: setup-go
         uses: actions/setup-go@v5
@@ -37,8 +40,25 @@ jobs:
           npm run lint
           npm run build
 
+      # clone push's ci scripts at the pinned tag to stamp build metadata into the
+      # agora binary (push's ldflags.sh hardcodes PKG=github.com/michaelquigley/push/build,
+      # which agora consumes directly).
+      - name: fetch push ci scripts
+        run: git clone --branch v0.2.1 --depth 1 https://github.com/michaelquigley/push.git _push
+
       - name: install
-        run: go install ./...
+        run: |
+          LDFLAGS=$(_push/ci/ldflags.sh)
+          go install -ldflags "${LDFLAGS}" ./...
+
+      # fail the build if the binary is unstamped, so dev/branch artifacts carry a real version
+      - name: verify stamp
+        run: |
+          out=$("$(go env GOPATH)/bin/agora" version)
+          if [ -z "${out}" ] || printf '%s\n' "${out}" | grep -F '[developer build]'; then
+            printf '%s\n' "${out}"
+            exit 1
+          fi
 
       - name: test
         run: |

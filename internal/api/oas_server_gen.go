@@ -152,6 +152,10 @@ type Handler interface {
 	//
 	// GET /tunnels/{tunnelId}/serve
 	GetTunnelServe(ctx context.Context, params GetTunnelServeParams) (GetTunnelServeRes, error)
+	// GetVersion implements getVersion operation.
+	//
+	// GET /version
+	GetVersion(ctx context.Context) (GetVersionRes, error)
 	// GetWorkgroup implements getWorkgroup operation.
 	//
 	// GET /workgroups/{workgroupId}
