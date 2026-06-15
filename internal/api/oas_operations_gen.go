@@ -42,6 +42,7 @@ const (
 	GetSessionOperation                    OperationName = "GetSession"
 	GetTunnelOperation                     OperationName = "GetTunnel"
 	GetTunnelServeOperation                OperationName = "GetTunnelServe"
+	GetVersionOperation                    OperationName = "GetVersion"
 	GetWorkgroupOperation                  OperationName = "GetWorkgroup"
 	GetWorkgroupsActivityOperation         OperationName = "GetWorkgroupsActivity"
 	HeartbeatEnvironmentOperation          OperationName = "HeartbeatEnvironment"

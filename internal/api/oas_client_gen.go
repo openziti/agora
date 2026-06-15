@@ -165,6 +165,10 @@ type Invoker interface {
 	//
 	// GET /tunnels/{tunnelId}/serve
 	GetTunnelServe(ctx context.Context, params GetTunnelServeParams) (GetTunnelServeRes, error)
+	// GetVersion invokes getVersion operation.
+	//
+	// GET /version
+	GetVersion(ctx context.Context) (GetVersionRes, error)
 	// GetWorkgroup invokes getWorkgroup operation.
 	//
 	// GET /workgroups/{workgroupId}
@@ -3549,6 +3553,40 @@ func (c *Client) sendGetTunnelServe(ctx context.Context, params GetTunnelServePa
 	defer resp.Body.Close()
 
 	result, err := decodeGetTunnelServeResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// GetVersion invokes getVersion operation.
+//
+// GET /version
+func (c *Client) GetVersion(ctx context.Context) (GetVersionRes, error) {
+	res, err := c.sendGetVersion(ctx)
+	return res, err
+}
+
+func (c *Client) sendGetVersion(ctx context.Context) (res GetVersionRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [1]string
+	pathParts[0] = "/version"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "GET", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeGetVersionResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

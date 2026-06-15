@@ -12,6 +12,7 @@ require (
 	github.com/lib/pq v1.12.3
 	github.com/michaelquigley/df v0.3.14
 	github.com/michaelquigley/pfxlog v0.6.10
+	github.com/michaelquigley/push v0.2.1
 	github.com/ogen-go/ogen v1.15.1
 	github.com/openziti/edge-api v0.27.5
 	github.com/openziti/sdk-golang v1.5.4
@@ -96,6 +97,7 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mgutz/ansi v0.0.0-20200706080929-d51e80ef957d // indirect
+	github.com/michaelquigley/figlet v0.1.0 // indirect
 	github.com/miekg/pkcs11 v1.1.2 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect

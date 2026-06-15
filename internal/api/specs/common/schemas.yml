@@ -8,3 +8,19 @@ error:
       type: string
     message:
       type: string
+
+versionInfo:
+  type: object
+  required:
+    - version
+  properties:
+    version:
+      type: string
+    hash:
+      type: string
+    date:
+      type: string
+    builder:
+      type: string
+    branch:
+      type: string

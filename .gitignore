@@ -19,6 +19,9 @@ node_modules/
 /dist/
 /.goreleaser-dist/
 
+# transient clone of push ci scripts (see .github/workflows/ci-build.yml)
+/_push/
+
 # Stray Go build outputs at repo root (from `go build ./path/to/cmd`).
 # Prefer `go build -o /dev/null ./...` or `go vet ./...` for verification so
 # these never land on disk — see AGENTS.md "Build verification".

@@ -2429,6 +2429,37 @@ func encodeGetTunnelServeResponse(response GetTunnelServeRes, w http.ResponseWri
 	}
 }
 
+func encodeGetVersionResponse(response GetVersionRes, w http.ResponseWriter) error {
+	switch response := response.(type) {
+	case *VersionInfo:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(200)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *Error:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(500)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
 func encodeGetWorkgroupResponse(response GetWorkgroupRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *Workgroup:

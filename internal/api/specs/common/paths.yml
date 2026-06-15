@@ -1,0 +1,18 @@
+/version:
+  get:
+    tags:
+      - version
+    operationId: getVersion
+    responses:
+      200:
+        description: ok
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/versionInfo"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
