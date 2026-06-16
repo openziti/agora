@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/openziti/agora/environment/env_core"
 	"github.com/openziti/agora/internal/api"
 	"github.com/openziti/agora/sdk/agent/networkpb"
 	"github.com/spf13/cobra"
@@ -28,12 +29,10 @@ func newTunnelServeCommand() *tunnelServeCommand {
 		Args:  cobra.ExactArgs(1),
 	}
 	command := &tunnelServeCommand{cmd: cmd}
-	cmd.Flags().StringVar(&command.mode, "mode", "", "Tunnel mode: http, tcp, or udp")
-	cmd.Flags().StringVar(&command.backend, "backend", "", "Backend target for the local provider")
+	cmd.Flags().StringVar(&command.mode, "mode", "", "Tunnel mode: http, tcp, or udp (required when creating a new tunnel)")
+	cmd.Flags().StringVar(&command.backend, "backend", "", "Backend target for the local provider (required when creating a new tunnel)")
 	cmd.Flags().BoolVar(&command.foreground, "foreground", false, "Run the tunnel runtime directly instead of using the local network agent")
 	cmd.Flags().StringSliceVar(&command.grantEmails, "grant", nil, "Grant access to an account email (repeatable)")
-	panicIfErr(cmd.MarkFlagRequired("mode"))
-	panicIfErr(cmd.MarkFlagRequired("backend"))
 	cmd.RunE = command.runE
 	return command
 }
@@ -60,23 +59,38 @@ func (cmd *tunnelServeCommand) runE(_ *cobra.Command, args []string) (err error)
 }
 
 func (cmd *tunnelServeCommand) run(args []string) {
-	panicIfUnsupportedMode(cmd.mode)
-	mode := api.TunnelMode(cmd.mode)
-	panicIfErr(validateModeAndTarget(mode, cmd.backend))
+	name := args[0]
+	root := requireEnabledRoot()
+	client := openEnvironmentAPIClient(root)
+
+	existing := resolveTunnelByName(client, name, api.ListTunnelsScopeAll)
+	mode, backend, create, err := resolveServePlan(existing, cmd.mode, cmd.backend)
+	panicIfErr(err)
+	panicIfUnsupportedMode(mode)
+	panicIfErr(validateModeAndTarget(api.TunnelMode(mode), backend))
 
 	if cmd.foreground {
-		cmd.runForeground(args)
+		tunnel := existing
+		if create {
+			tunnel = ensureTunnelCreatedOrReused(client, &api.CreateTunnelRequest{
+				EnvironmentId: root.Environment().EnvironmentID,
+				Name:          name,
+				Mode:          api.TunnelMode(mode),
+				BackendTarget: api.NewOptString(backend),
+				GrantEmails:   cmd.grantEmails,
+			}, root.Environment().EnvironmentID)
+		}
+		cmd.runForeground(root, client, tunnel)
 		return
 	}
 
-	root := requireEnabledRoot()
-	client, cleanup := requireRunningNetworkClient(root)
+	netClient, cleanup := requireRunningNetworkClient(root)
 	defer cleanup()
 
-	res, err := client.EnsureServe(context.Background(), &networkpb.EnsureServeRequest{
-		Name:          args[0],
-		Mode:          cmd.mode,
-		BackendTarget: cmd.backend,
+	res, err := netClient.EnsureServe(context.Background(), &networkpb.EnsureServeRequest{
+		Name:          name,
+		Mode:          mode,
+		BackendTarget: backend,
 		GrantEmails:   append([]string(nil), cmd.grantEmails...),
 	})
 	panicIfErr(err)
@@ -90,19 +104,8 @@ func (cmd *tunnelServeCommand) run(args []string) {
 	)
 }
 
-func (cmd *tunnelServeCommand) runForeground(args []string) {
-	mode := api.TunnelMode(cmd.mode)
-	root := requireEnabledRoot()
+func (cmd *tunnelServeCommand) runForeground(root env_core.Root, client *api.Client, tunnel *api.Tunnel) {
 	env := root.Environment()
-	client := openEnvironmentAPIClient(root)
-
-	tunnel := ensureTunnelCreatedOrReused(client, &api.CreateTunnelRequest{
-		EnvironmentId: env.EnvironmentID,
-		Name:          args[0],
-		Mode:          mode,
-		BackendTarget: api.NewOptString(cmd.backend),
-		GrantEmails:   cmd.grantEmails,
-	}, env.EnvironmentID)
 	for _, email := range cmd.grantEmails {
 		ignoreConflictGrantAdd(client, tunnel.ID, email)
 	}

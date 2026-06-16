@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- FEATURE: New `agora tunnel create` command provisions a durable tunnel resource (direct or proxy, via `--backend`) without serving it, and `agora tunnel serve <name>` now serves an already-created proxy tunnel with `--mode`/`--backend` optional.
+
 ## v0.1.4
 
 - FEATURE: New unauthenticated `GET /v1/version` API endpoint for interrogating the controller's build version.
