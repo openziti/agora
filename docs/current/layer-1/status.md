@@ -28,6 +28,7 @@ Implemented Layer 1 behavior includes:
 - agent-backed `serve` and `connect` by default, with `--foreground` direct-runtime bypass for debugging
 - SDK-native direct provider tunnels through `tunnel.Create`, `tunnel.Listen`, and `tunnel.Delete`, returning a raw `net.Listener` without the managed runtime
 - SDK-native direct consumer dialers through `tunnel.Attach`, `tunnel.Detach`, and `tunnel.Dial`, returning a raw `net.Conn` without a managed connect actor or local proxy port
+- standalone `agora tunnel create` for provisioning durable tunnel resources (direct or proxy) without serving, and `agora tunnel serve` reuse of an already-created proxy tunnel
 - unified tunnel delete semantics for both durable tunnel resources and managed runtime state
 - composite `agora status` covering local root state, local agent state, controller environment state, owned tunnels, active serve details, and attachment counts
 - meaningful provider-side and consumer-side request/session logging

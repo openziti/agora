@@ -254,6 +254,32 @@ func ensureTunnelCreatedOrReused(client *api.Client, req *api.CreateTunnelReques
 	}
 }
 
+// resolveServePlan decides the mode and backend to serve with, given the named
+// tunnel (nil when it does not yet exist) and the command flags. When the tunnel
+// is absent it must be created, so --mode and --backend are required; when it
+// already exists its stored mode/backend are used (and any provided flags must
+// match). Direct tunnels cannot be served by the CLI runtime.
+func resolveServePlan(existing *api.Tunnel, flagMode, flagBackend string) (mode, backend string, create bool, err error) {
+	if existing == nil {
+		if flagMode == "" || flagBackend == "" {
+			return "", "", false, fmt.Errorf("tunnel does not exist; --mode and --backend are required to create it")
+		}
+		return flagMode, flagBackend, true, nil
+	}
+	if existing.Kind != api.TunnelKindProxy {
+		return "", "", false, fmt.Errorf("tunnel '%s' is direct; serve it from your application via tunnel.Listen", existing.Name)
+	}
+	effMode := string(existing.Mode)
+	effBackend := existing.BackendTarget.Or("")
+	if flagMode != "" && flagMode != effMode {
+		return "", "", false, fmt.Errorf("tunnel '%s' has mode '%s'; omit --mode or pass --mode %s", existing.Name, effMode, effMode)
+	}
+	if flagBackend != "" && flagBackend != effBackend {
+		return "", "", false, fmt.Errorf("tunnel '%s' has backend '%s'; omit --backend or pass the matching value", existing.Name, effBackend)
+	}
+	return effMode, effBackend, false, nil
+}
+
 func findGrantByEmail(grants *api.ListTunnelGrantsResponse, email string) *api.TunnelGrant {
 	for _, grant := range *grants {
 		if strings.EqualFold(grant.Email, email) {

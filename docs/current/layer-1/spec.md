@@ -65,20 +65,25 @@ Supported tunnel modes in the current Layer 1 surface are:
 
 The user-facing verbs are:
 
+- `create`: provision a durable tunnel resource without serving or connecting
 - `serve`: provider-side runtime ownership
 - `connect`: consumer-side runtime ownership
+
+`agora tunnel create <name>` provisions a durable tunnel resource and its fabric policy without serving or connecting to it. Omitting `--backend` creates a direct tunnel; supplying `--backend` creates a proxy tunnel. Creation fails on a name conflict rather than reusing an existing tunnel.
 
 By default, `agora tunnel serve` and `agora tunnel connect` delegate to the local `agora network` runtime. Both commands support `--foreground` as a debug bypass that runs the runtime directly in the CLI process and does not alter agent-managed desired state.
 
 Proxy tunnels are the managed runtime shape. They require a backend target,
 create tunnel serve records when hosted, and are the shape used by
-`agora tunnel serve` and `tunnel.EnsureServed`.
+`agora tunnel serve` and `tunnel.EnsureServed`. `agora tunnel serve` creates the
+proxy tunnel from `--mode`/`--backend` when it does not yet exist, or serves an
+already-created proxy tunnel (with those flags optional).
 
 Direct tunnels are the SDK-native provider shape. They have no backend
 target because the embedding process serves the overlay listener itself.
-They are provisioned explicitly through `sdk/agent/tunnel.Create`, listened
-through `sdk/agent/tunnel.Listen`, and deleted through
-`sdk/agent/tunnel.Delete`. `Listen` returns a raw `net.Listener` and does
+They are provisioned through `agora tunnel create` (without `--backend`) or
+`sdk/agent/tunnel.Create`, listened through `sdk/agent/tunnel.Listen`, and
+deleted through `agora tunnel delete` or `sdk/agent/tunnel.Delete`. `Listen` returns a raw `net.Listener` and does
 not create a tunnel serve record or heartbeat. Direct tunnels currently
 support stream modes (`http` and `tcp`) for listening; packet-shaped direct
 UDP is deferred.

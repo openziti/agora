@@ -215,7 +215,8 @@ Current command behavior is:
 
 - `agora enable`: controller-direct plus local-root mutation, then best-effort runtime reload
 - `agora disable`: asks the runtime to stop managed activity and clear desired state, then disables the controller-side environment and removes local state
-- `agora tunnel serve`: delegates to the runtime by default, with `--foreground` as a debug bypass
+- `agora tunnel create <name> --mode <mode> [--backend <target>]`: controller-direct creation of a durable tunnel resource without serving it. Omitting `--backend` creates a direct tunnel (served by an application via the SDK `tunnel.Listen`); supplying `--backend` creates a proxy tunnel that `agora tunnel serve` can run later. Fails on name conflict (does not reuse)
+- `agora tunnel serve <name>`: delegates to the runtime by default, with `--foreground` as a debug bypass. When `<name>` already exists as a proxy tunnel its stored mode/backend are reused and `--mode`/`--backend` are optional; otherwise both are required and the tunnel is created and served in one step. Serving a direct tunnel is rejected (those are served by the owning application via `tunnel.Listen`)
 - `agora tunnel connect`: delegates to the runtime by default, with `--foreground` as a debug bypass
 - `agora tunnel delete <name|tt_...>`: coordinates with the runtime before removing controller-side resources
 - `agora tunnel delete serve <name|tt_...>`: removes managed provider-side desired state and stops it if live
