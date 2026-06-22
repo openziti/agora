@@ -35,7 +35,7 @@ The change in model is one sentence: a tunnel belongs to its account, and an env
 - **Hosting** is the only place an environment appears, and how it's visible depends on the shape: a proxy tunnel records which environment is currently serving (the serve record); a direct tunnel keeps no such record — its host is observable only as the live listener on the fabric. Either way the environment is a *current fact about the tunnel*, not a property of it, and it changes when hosting moves.
 - **Retiring an environment** tears down that environment's hosting and connections — its participation — and leaves the account's tunnels standing.
 
-Provisioning falls out cleanly: because the right to host is now account-level, creating a tunnel no longer needs a particular environment's identity, so the tunnel needs no environment at all to exist. The model gets smaller, not larger — this is a subtraction (a tunnel stops being owned by an environment), not new machinery.
+Provisioning falls out cleanly: because the right to host is now account-level, creating a tunnel no longer needs a particular environment's identity, so the tunnel needs no environment at all to exist. The model gets smaller, not larger — this is a subtraction (a tunnel stops being owned by an environment), not new machinery. The lone exception is `--takeover`, which deliberately *adds* machinery: controller-driven eviction of the current host's terminators on the fabric.
 
 ## Moving and reclaiming the host
 

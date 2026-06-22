@@ -34,6 +34,19 @@ The complete fix lets deletion *proceed* by tearing sessions down first, instead
 
 This is deliberately a **Layer 2 deletion-lifecycle** work item, not an extension of the L1 cleanup matrix. It has to reason about the session state machine (proposed / accepting / active / closed), the provider↔consumer relationship, and the ordering against `teardownSession` — concerns that belong to Layer 2, not to the Layer 1 `Listen`/`Dial` primitives that merely surfaced the gap. Doing it properly is why it was carved out rather than bolted onto the L1 work order.
 
+## Related: account-owned standalone tunnels
+
+Account-owned standalone tunnels (see
+[`../account-owned-tunnels-work-order.md`](../account-owned-tunnels-work-order.md)) join this same
+family. Once a standalone tunnel carries no `environment_id`, environment retirement no longer
+deprovisions it, so account/org deletion becomes the parent delete that must not strand its OpenZiti
+service, bind policy, and terminators. The interim mitigation is the same shape as above: account
+deletion is **guarded** — it refuses while the account still owns a standalone tunnel — so the
+operator deletes the tunnels first (each deprovisioned via the normal `deleteTunnel` path) and
+nothing strands. The deferred full teardown is the same as for session backing tunnels: enumerate
+the account's standalone tunnels, deprovision their fabric, then delete — folded into this doc's
+deferred work rather than tracked separately.
+
 ## Related: the account-delete / org-delete asymmetry
 
 Account deletion **cascades** (it tears down the account's owned environments and their tunnels); organization deletion is **guarded** (it refuses while accounts remain). That asymmetry is a conscious choice — the destructive one-call cascade is permitted at account scope but withheld at the tenant (org) scope, where a single call would otherwise destroy an entire multi-account tenant.
