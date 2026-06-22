@@ -46,17 +46,17 @@ func (s *Service) StartTunnelServe(ctx context.Context, req *api.StartTunnelServ
 		return &api.StartTunnelServeInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
 
-	if tunnel.EnvironmentID != env.ID {
+	if optionalStringValue(tunnel.EnvironmentID) != env.ID {
 		dl.Warnf(
 			"start tunnel serve rejected due to environment mismatch tunnel_id='%s' tunnel_environment_id='%s' requested_environment_id='%s' %s",
 			tunnel.ID,
-			tunnel.EnvironmentID,
+			optionalStringValue(tunnel.EnvironmentID),
 			env.ID,
 			principalLogFields(principal),
 		)
 		return &api.StartTunnelServeConflict{
 			Code:    "conflict",
-			Message: fmt.Sprintf("tunnel '%s' is bound to environment '%s'", tunnel.Name, tunnel.EnvironmentID),
+			Message: fmt.Sprintf("tunnel '%s' is bound to environment '%s'", tunnel.Name, optionalStringValue(tunnel.EnvironmentID)),
 		}, nil
 	}
 

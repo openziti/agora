@@ -181,7 +181,7 @@ func mapTunnel(tunnel *persistence.Tunnel) *api.Tunnel {
 		ID:             tunnel.ID,
 		OrganizationId: tunnel.OrganizationID,
 		AccountId:      tunnel.AccountID,
-		EnvironmentId:  tunnel.EnvironmentID,
+		EnvironmentId:  optionalStringValue(tunnel.EnvironmentID),
 		Name:           tunnel.Name,
 		Mode:           api.TunnelMode(tunnel.Mode),
 		Kind:           api.TunnelKind(kind),

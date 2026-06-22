@@ -549,7 +549,7 @@ func createAggregationTunnel(t *testing.T, ctx context.Context, store *Store, or
 	tunnel, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
 		OrganizationID: org.ID,
 		AccountID:      acct.ID,
-		EnvironmentID:  env.ID,
+		EnvironmentID:  stringPtr(env.ID),
 		Name:           "tunnel-" + NewResourceID(PrefixTunnel),
 		Mode:           TunnelModeTCP,
 		BackendTarget:  stringPtr("127.0.0.1:9000"),

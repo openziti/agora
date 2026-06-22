@@ -38,7 +38,7 @@ func (s *Service) CreateTunnel(ctx context.Context, req *api.CreateTunnelRequest
 			"create tunnel rejected due to existing name name='%s' existing_tunnel_id='%s' existing_environment_id='%s' %s",
 			req.Name,
 			existing.ID,
-			existing.EnvironmentID,
+			optionalStringValue(existing.EnvironmentID),
 			principalLogFields(principal),
 		)
 		return &api.CreateTunnelConflict{Code: "conflict", Message: "tunnel name already exists"}, nil
@@ -102,7 +102,7 @@ func (s *Service) CreateTunnel(ctx context.Context, req *api.CreateTunnelRequest
 			ID:                        tunnelID,
 			OrganizationID:            principal.OrganizationID,
 			AccountID:                 principal.AccountID,
-			EnvironmentID:             env.ID,
+			EnvironmentID:             stringPtr(env.ID),
 			Name:                      req.Name,
 			Mode:                      persistence.TunnelMode(req.Mode),
 			Kind:                      kind,
@@ -146,7 +146,7 @@ func (s *Service) CreateTunnel(ctx context.Context, req *api.CreateTunnelRequest
 		return &api.CreateTunnelConflict{Code: "conflict", Message: err.Error()}, nil
 	}
 
-	dl.Infof("created tunnel id='%s' name='%s' environment_id='%s' %s", created.ID, created.Name, created.EnvironmentID, principalLogFields(principal))
+	dl.Infof("created tunnel id='%s' name='%s' environment_id='%s' %s", created.ID, created.Name, optionalStringValue(created.EnvironmentID), principalLogFields(principal))
 	return mapTunnel(created), nil
 }
 

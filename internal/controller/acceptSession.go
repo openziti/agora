@@ -139,7 +139,7 @@ func (s *Service) AcceptSession(ctx context.Context, req *api.AcceptSessionReque
 			ID:                        tunnelID,
 			OrganizationID:            principal.OrganizationID,
 			AccountID:                 principal.AccountID,
-			EnvironmentID:             env.ID,
+			EnvironmentID:             stringPtr(env.ID),
 			Name:                      tunnelName,
 			Mode:                      sess.TunnelMode,
 			BackendTarget:             stringPtr(backendTarget),

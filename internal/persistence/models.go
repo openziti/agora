@@ -134,7 +134,7 @@ type Tunnel struct {
 	ID                        string      `db:"id"`
 	OrganizationID            string      `db:"organization_id"`
 	AccountID                 string      `db:"account_id"`
-	EnvironmentID             string      `db:"environment_id"`
+	EnvironmentID             *string     `db:"environment_id"`
 	Name                      string      `db:"name"`
 	Mode                      TunnelMode  `db:"mode"`
 	Kind                      TunnelKind  `db:"kind"`
