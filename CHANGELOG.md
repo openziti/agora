@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.1.5
+
 - FEATURE: Standalone tunnels are now owned by the account rather than by the environment that created them. A tunnel survives retirement of any environment, and any of the owning account's environments may host (serve) it. The new `agora tunnel takeover <name>` command, and `agora tunnel serve --takeover`, reclaim a tunnel by evicting whatever is currently hosting it (deleting its fabric terminators and, for a proxy tunnel, clearing the serve record). Layer 2 session tunnels remain environment-owned.
 
 - FEATURE: New `agora tunnel create` command provisions a durable tunnel resource (direct or proxy, via `--backend`) without serving it, and `agora tunnel serve <name>` now serves an already-created proxy tunnel with `--mode`/`--backend` optional.
