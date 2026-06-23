@@ -2133,7 +2133,7 @@ func (*CreateTunnelNotFound) createTunnelRes() {}
 
 // Ref: #/createTunnelRequest
 type CreateTunnelRequest struct {
-	EnvironmentId string     `json:"environmentId"`
+	EnvironmentId OptString  `json:"environmentId"`
 	Name          string     `json:"name"`
 	Mode          TunnelMode `json:"mode"`
 	BackendTarget OptString  `json:"backendTarget"`
@@ -2141,7 +2141,7 @@ type CreateTunnelRequest struct {
 }
 
 // GetEnvironmentId returns the value of EnvironmentId.
-func (s *CreateTunnelRequest) GetEnvironmentId() string {
+func (s *CreateTunnelRequest) GetEnvironmentId() OptString {
 	return s.EnvironmentId
 }
 
@@ -2166,7 +2166,7 @@ func (s *CreateTunnelRequest) GetGrantEmails() []string {
 }
 
 // SetEnvironmentId sets the value of EnvironmentId.
-func (s *CreateTunnelRequest) SetEnvironmentId(val string) {
+func (s *CreateTunnelRequest) SetEnvironmentId(val OptString) {
 	s.EnvironmentId = val
 }
 
@@ -5857,12 +5857,33 @@ type StartTunnelServeUnauthorized Error
 
 func (*StartTunnelServeUnauthorized) startTunnelServeRes() {}
 
+type TakeoverTunnelConflict Error
+
+func (*TakeoverTunnelConflict) takeoverTunnelRes() {}
+
+type TakeoverTunnelInternalServerError Error
+
+func (*TakeoverTunnelInternalServerError) takeoverTunnelRes() {}
+
+// TakeoverTunnelNoContent is response for TakeoverTunnel operation.
+type TakeoverTunnelNoContent struct{}
+
+func (*TakeoverTunnelNoContent) takeoverTunnelRes() {}
+
+type TakeoverTunnelNotFound Error
+
+func (*TakeoverTunnelNotFound) takeoverTunnelRes() {}
+
+type TakeoverTunnelUnauthorized Error
+
+func (*TakeoverTunnelUnauthorized) takeoverTunnelRes() {}
+
 // Ref: #/tunnel
 type Tunnel struct {
 	ID                        string      `json:"id"`
 	OrganizationId            string      `json:"organizationId"`
 	AccountId                 string      `json:"accountId"`
-	EnvironmentId             string      `json:"environmentId"`
+	EnvironmentId             OptString   `json:"environmentId"`
 	Name                      string      `json:"name"`
 	Mode                      TunnelMode  `json:"mode"`
 	Kind                      TunnelKind  `json:"kind"`
@@ -5891,7 +5912,7 @@ func (s *Tunnel) GetAccountId() string {
 }
 
 // GetEnvironmentId returns the value of EnvironmentId.
-func (s *Tunnel) GetEnvironmentId() string {
+func (s *Tunnel) GetEnvironmentId() OptString {
 	return s.EnvironmentId
 }
 
@@ -5961,7 +5982,7 @@ func (s *Tunnel) SetAccountId(val string) {
 }
 
 // SetEnvironmentId sets the value of EnvironmentId.
-func (s *Tunnel) SetEnvironmentId(val string) {
+func (s *Tunnel) SetEnvironmentId(val OptString) {
 	s.EnvironmentId = val
 }
 

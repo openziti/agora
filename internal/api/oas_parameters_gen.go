@@ -5649,6 +5649,87 @@ func decodeStartTunnelServeParams(args [1]string, argsEscaped bool, r *http.Requ
 	return params, nil
 }
 
+// TakeoverTunnelParams is parameters of takeoverTunnel operation.
+type TakeoverTunnelParams struct {
+	TunnelId string
+}
+
+func unpackTakeoverTunnelParams(packed middleware.Parameters) (params TakeoverTunnelParams) {
+	{
+		key := middleware.ParameterKey{
+			Name: "tunnelId",
+			In:   "path",
+		}
+		params.TunnelId = packed[key].(string)
+	}
+	return params
+}
+
+func decodeTakeoverTunnelParams(args [1]string, argsEscaped bool, r *http.Request) (params TakeoverTunnelParams, _ error) {
+	// Decode path: tunnelId.
+	if err := func() error {
+		param := args[0]
+		if argsEscaped {
+			unescaped, err := url.PathUnescape(args[0])
+			if err != nil {
+				return errors.Wrap(err, "unescape path")
+			}
+			param = unescaped
+		}
+		if len(param) > 0 {
+			d := uri.NewPathDecoder(uri.PathDecoderConfig{
+				Param:   "tunnelId",
+				Value:   param,
+				Style:   uri.PathStyleSimple,
+				Explode: false,
+			})
+
+			if err := func() error {
+				val, err := d.DecodeValue()
+				if err != nil {
+					return err
+				}
+
+				c, err := conv.ToString(val)
+				if err != nil {
+					return err
+				}
+
+				params.TunnelId = c
+				return nil
+			}(); err != nil {
+				return err
+			}
+			if err := func() error {
+				if err := (validate.String{
+					MinLength:    0,
+					MinLengthSet: false,
+					MaxLength:    0,
+					MaxLengthSet: false,
+					Email:        false,
+					Hostname:     false,
+					Regex:        regexMap["^tt_[a-z0-9]{12}$"],
+				}).Validate(string(params.TunnelId)); err != nil {
+					return errors.Wrap(err, "string")
+				}
+				return nil
+			}(); err != nil {
+				return err
+			}
+		} else {
+			return validate.ErrFieldRequired
+		}
+		return nil
+	}(); err != nil {
+		return params, &ogenerrors.DecodeParamError{
+			Name: "tunnelId",
+			In:   "path",
+			Err:  err,
+		}
+	}
+	return params, nil
+}
+
 // UpdateAdvertisementParams is parameters of updateAdvertisement operation.
 type UpdateAdvertisementParams struct {
 	AdvertisementId string

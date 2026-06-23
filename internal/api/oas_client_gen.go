@@ -293,6 +293,10 @@ type Invoker interface {
 	//
 	// POST /tunnels/{tunnelId}/serve
 	StartTunnelServe(ctx context.Context, request *StartTunnelServeRequest, params StartTunnelServeParams) (StartTunnelServeRes, error)
+	// TakeoverTunnel invokes takeoverTunnel operation.
+	//
+	// POST /tunnels/{tunnelId}/takeover
+	TakeoverTunnel(ctx context.Context, params TakeoverTunnelParams) (TakeoverTunnelRes, error)
 	// UpdateAdvertisement invokes updateAdvertisement operation.
 	//
 	// PATCH /advertisements/{advertisementId}
@@ -6474,6 +6478,92 @@ func (c *Client) sendStartTunnelServe(ctx context.Context, request *StartTunnelS
 	defer resp.Body.Close()
 
 	result, err := decodeStartTunnelServeResponse(resp)
+	if err != nil {
+		return res, errors.Wrap(err, "decode response")
+	}
+
+	return result, nil
+}
+
+// TakeoverTunnel invokes takeoverTunnel operation.
+//
+// POST /tunnels/{tunnelId}/takeover
+func (c *Client) TakeoverTunnel(ctx context.Context, params TakeoverTunnelParams) (TakeoverTunnelRes, error) {
+	res, err := c.sendTakeoverTunnel(ctx, params)
+	return res, err
+}
+
+func (c *Client) sendTakeoverTunnel(ctx context.Context, params TakeoverTunnelParams) (res TakeoverTunnelRes, err error) {
+
+	u := uri.Clone(c.requestURL(ctx))
+	var pathParts [3]string
+	pathParts[0] = "/tunnels/"
+	{
+		// Encode "tunnelId" parameter.
+		e := uri.NewPathEncoder(uri.PathEncoderConfig{
+			Param:   "tunnelId",
+			Style:   uri.PathStyleSimple,
+			Explode: false,
+		})
+		if err := func() error {
+			return e.EncodeValue(conv.StringToString(params.TunnelId))
+		}(); err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		encoded, err := e.Result()
+		if err != nil {
+			return res, errors.Wrap(err, "encode path")
+		}
+		pathParts[1] = encoded
+	}
+	pathParts[2] = "/takeover"
+	uri.AddPathParts(u, pathParts[:]...)
+
+	r, err := ht.NewRequest(ctx, "POST", u)
+	if err != nil {
+		return res, errors.Wrap(err, "create request")
+	}
+
+	{
+		type bitset = [1]uint8
+		var satisfied bitset
+		{
+
+			switch err := c.securityAccountTokenAuth(ctx, TakeoverTunnelOperation, r); {
+			case err == nil: // if NO error
+				satisfied[0] |= 1 << 0
+			case errors.Is(err, ogenerrors.ErrSkipClientSecurity):
+				// Skip this security.
+			default:
+				return res, errors.Wrap(err, "security \"AccountTokenAuth\"")
+			}
+		}
+
+		if ok := func() bool {
+		nextRequirement:
+			for _, requirement := range []bitset{
+				{0b00000001},
+			} {
+				for i, mask := range requirement {
+					if satisfied[i]&mask != mask {
+						continue nextRequirement
+					}
+				}
+				return true
+			}
+			return false
+		}(); !ok {
+			return res, ogenerrors.ErrSecurityRequirementIsNotSatisfied
+		}
+	}
+
+	resp, err := c.cfg.Client.Do(r)
+	if err != nil {
+		return res, errors.Wrap(err, "do request")
+	}
+	defer resp.Body.Close()
+
+	result, err := decodeTakeoverTunnelResponse(resp)
 	if err != nil {
 		return res, errors.Wrap(err, "decode response")
 	}

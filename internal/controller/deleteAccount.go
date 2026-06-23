@@ -9,6 +9,8 @@ import (
 	"github.com/openziti/agora/internal/persistence"
 )
 
+var errAccountOwnsStandaloneTunnels = errors.New("account still owns standalone tunnels")
+
 func (s *Service) DeleteAccount(ctx context.Context, params api.DeleteAccountParams) (api.DeleteAccountRes, error) {
 	if _, err := requireAdminPrincipal(ctx); err != nil {
 		dl.Warn("unauthorized delete account request")
@@ -34,6 +36,18 @@ func (s *Service) DeleteAccount(ctx context.Context, params api.DeleteAccountPar
 		if active {
 			return persistence.ErrConflict
 		}
+		// account-owning a standalone tunnel makes the account the deprovision-responsible party.
+		// standalone tunnels (NULL env_id) are not reached by environment-retire cleanup below, so a
+		// bare account cascade would strand their OpenZiti service / bind policy / terminators. refuse
+		// while any remain; the operator deletes them first via deleteTunnel, which deprovisions their
+		// fabric objects (finding R2-C2). full automatic teardown is deferred.
+		standalone, err := s.store.Tunnels.HasStandaloneByAccount(ctx, tx, locked.ID)
+		if err != nil {
+			return err
+		}
+		if standalone {
+			return errAccountOwnsStandaloneTunnels
+		}
 		envs, err := s.store.Environments.ListByAccount(ctx, tx, locked.ID)
 		if err != nil {
 			return err
@@ -51,6 +65,10 @@ func (s *Service) DeleteAccount(ctx context.Context, params api.DeleteAccountPar
 		if errors.Is(err, persistence.ErrNotFound) {
 			dl.Warnf("delete account not found account_id='%s' organization_id='%s'", params.AccountId, params.OrganizationId)
 			return &api.DeleteAccountNotFound{Code: "not_found", Message: "account not found"}, nil
+		}
+		if errors.Is(err, errAccountOwnsStandaloneTunnels) {
+			dl.Warnf("delete account conflict account_id='%s' organization_id='%s': standalone tunnels remain", params.AccountId, params.OrganizationId)
+			return &api.DeleteAccountConflict{Code: "conflict", Message: "account still owns standalone tunnels; delete them first"}, nil
 		}
 		if errors.Is(err, persistence.ErrConflict) {
 			dl.Warnf("delete account conflict account_id='%s' organization_id='%s': active sessions remain", params.AccountId, params.OrganizationId)

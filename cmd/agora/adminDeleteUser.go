@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/openziti/agora/internal/api"
 	"github.com/spf13/cobra"
@@ -23,17 +24,33 @@ func newAdminDeleteUserCommand() *adminDeleteUserCommand {
 		Args:    cobra.ExactArgs(2),
 	}
 	command := &adminDeleteUserCommand{cmd: cmd}
-	cmd.Run = command.run
+	cmd.RunE = command.runE
 	return command
 }
 
-func (cmd *adminDeleteUserCommand) run(_ *cobra.Command, args []string) {
+func (cmd *adminDeleteUserCommand) runE(_ *cobra.Command, args []string) error {
 	client := openAdminAPIClient()
 
-	if _, err := client.DeleteAccount(context.Background(), api.DeleteAccountParams{
+	res, err := client.DeleteAccount(context.Background(), api.DeleteAccountParams{
 		OrganizationId: args[0],
 		AccountId:      args[1],
-	}); err != nil {
-		panic(err)
+	})
+	if err != nil {
+		return err
+	}
+	switch typed := res.(type) {
+	case *api.DeleteAccountNoContent:
+		fmt.Printf("deleted account '%s'\n", args[1])
+		return nil
+	case *api.DeleteAccountConflict:
+		return fmt.Errorf("%s", typed.Message)
+	case *api.DeleteAccountNotFound:
+		return fmt.Errorf("%s", typed.Message)
+	case *api.DeleteAccountUnauthorized:
+		return fmt.Errorf("%s", typed.Message)
+	case *api.DeleteAccountInternalServerError:
+		return fmt.Errorf("%s", typed.Message)
+	default:
+		return fmt.Errorf("unexpected delete account response: %T", res)
 	}
 }

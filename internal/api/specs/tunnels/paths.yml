@@ -211,6 +211,48 @@
             schema:
               $ref: "../agora.yml#/components/schemas/error"
 
+/tunnels/{tunnelId}/takeover:
+  post:
+    tags:
+      - tunnels
+    operationId: takeoverTunnel
+    security:
+      - accountTokenAuth: []
+    parameters:
+      - name: tunnelId
+        in: path
+        required: true
+        schema:
+          type: string
+          pattern: '^tt_[a-z0-9]{12}$'
+    responses:
+      204:
+        description: taken over
+      401:
+        description: unauthorized
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      404:
+        description: not found
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      409:
+        description: conflict
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+      500:
+        description: internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "../agora.yml#/components/schemas/error"
+
 /tunnels/{tunnelId}:
   get:
     tags:

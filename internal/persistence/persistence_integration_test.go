@@ -24,8 +24,8 @@ func TestMigrateUpAndCompatibilityCurrent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migrate up: %v", err)
 	}
-	if applied != 11 {
-		t.Fatalf("expected 11 migrations applied, got %d", applied)
+	if applied != 12 {
+		t.Fatalf("expected 12 migrations applied, got %d", applied)
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); err != nil {
@@ -51,8 +51,8 @@ func TestCheckSchemaCompatibilityBehindBinary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("migration status: %v", err)
 	}
-	if len(statuses) != 11 {
-		t.Fatalf("expected 11 migration statuses, got %d", len(statuses))
+	if len(statuses) != 12 {
+		t.Fatalf("expected 12 migration statuses, got %d", len(statuses))
 	}
 
 	if err := CheckSchemaCompatibility(ctx, store); !errors.Is(err, ErrSchemaBehindBinary) {
@@ -84,10 +84,10 @@ func TestAuditEventsMigrationDownDropsTable(t *testing.T) {
 		t.Fatal("expected audit_events table after migrate up")
 	}
 
-	if applied, err := MigrateDown(ctx, store, 3); err != nil {
+	if applied, err := MigrateDown(ctx, store, 4); err != nil {
 		t.Fatalf("migrate down: %v", err)
-	} else if applied != 3 {
-		t.Fatalf("expected 3 down migrations applied, got %d", applied)
+	} else if applied != 4 {
+		t.Fatalf("expected 4 down migrations applied, got %d", applied)
 	}
 	if tableExists(t, ctx, store, "audit_events") {
 		t.Fatal("expected audit_events table to be dropped")
@@ -95,8 +95,8 @@ func TestAuditEventsMigrationDownDropsTable(t *testing.T) {
 
 	if applied, err := MigrateUp(ctx, store); err != nil {
 		t.Fatalf("migrate up again: %v", err)
-	} else if applied != 3 {
-		t.Fatalf("expected 3 migrations reapplied, got %d", applied)
+	} else if applied != 4 {
+		t.Fatalf("expected 4 migrations reapplied, got %d", applied)
 	}
 	if !tableExists(t, ctx, store, "audit_events") {
 		t.Fatal("expected audit_events table after reapply")
@@ -116,7 +116,7 @@ func TestRepositoriesCRUDAndConstraints(t *testing.T) {
 	tunnel, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
 		OrganizationID: org.ID,
 		AccountID:      acct.ID,
-		EnvironmentID:  env.ID,
+		EnvironmentID:  stringPtr(env.ID),
 		Name:           tunnelName,
 		Mode:           TunnelModeTCP,
 		BackendTarget:  stringPtr("127.0.0.1:8443"),
@@ -145,7 +145,7 @@ func TestRepositoriesCRUDAndConstraints(t *testing.T) {
 	direct, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
 		OrganizationID: org.ID,
 		AccountID:      acct.ID,
-		EnvironmentID:  env.ID,
+		EnvironmentID:  stringPtr(env.ID),
 		Name:           "direct-gateway",
 		Mode:           TunnelModeHTTP,
 		Kind:           TunnelKindDirect,
@@ -160,7 +160,7 @@ func TestRepositoriesCRUDAndConstraints(t *testing.T) {
 	if _, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
 		OrganizationID: org.ID,
 		AccountID:      acct.ID,
-		EnvironmentID:  env.ID,
+		EnvironmentID:  stringPtr(env.ID),
 		Name:           "proxy-without-backend",
 		Mode:           TunnelModeHTTP,
 		Kind:           TunnelKindProxy,
@@ -171,7 +171,7 @@ func TestRepositoriesCRUDAndConstraints(t *testing.T) {
 	if _, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
 		OrganizationID: org.ID,
 		AccountID:      acct.ID,
-		EnvironmentID:  env.ID,
+		EnvironmentID:  stringPtr(env.ID),
 		Name:           "direct-with-backend",
 		Mode:           TunnelModeHTTP,
 		Kind:           TunnelKindDirect,
@@ -213,7 +213,7 @@ func TestRepositoriesCRUDAndConstraints(t *testing.T) {
 	if _, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
 		OrganizationID: org.ID,
 		AccountID:      acct.ID,
-		EnvironmentID:  env.ID,
+		EnvironmentID:  stringPtr(env.ID),
 		Name:           tunnelName,
 		Mode:           TunnelModeTCP,
 		BackendTarget:  stringPtr("127.0.0.1:9443"),
@@ -224,7 +224,7 @@ func TestRepositoriesCRUDAndConstraints(t *testing.T) {
 	if _, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
 		OrganizationID: org.ID,
 		AccountID:      acct.ID,
-		EnvironmentID:  env.ID,
+		EnvironmentID:  stringPtr(env.ID),
 		Name:           strings.ToUpper(tunnelName),
 		Mode:           TunnelModeTCP,
 		BackendTarget:  stringPtr("127.0.0.1:10443"),
@@ -498,7 +498,7 @@ func TestEnvironmentAndTunnelSoftDeleteBehavior(t *testing.T) {
 	tunnel, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
 		OrganizationID: org.ID,
 		AccountID:      acct.ID,
-		EnvironmentID:  env.ID,
+		EnvironmentID:  stringPtr(env.ID),
 		Name:           "llm-gateway",
 		Mode:           TunnelModeTCP,
 		BackendTarget:  stringPtr("127.0.0.1:8443"),
@@ -517,7 +517,7 @@ func TestEnvironmentAndTunnelSoftDeleteBehavior(t *testing.T) {
 	if _, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
 		OrganizationID: org.ID,
 		AccountID:      acct.ID,
-		EnvironmentID:  env.ID,
+		EnvironmentID:  stringPtr(env.ID),
 		Name:           "llm-gateway",
 		Mode:           TunnelModeTCP,
 		BackendTarget:  stringPtr("127.0.0.1:9443"),
@@ -1541,7 +1541,7 @@ func TestSessionAcceptFlow(t *testing.T) {
 	tunnel, err := store.Tunnels.Create(ctx, store.DB(), Tunnel{
 		OrganizationID: providerOrg.ID,
 		AccountID:      providerAcct.ID,
-		EnvironmentID:  providerEnv.ID,
+		EnvironmentID:  stringPtr(providerEnv.ID),
 		Name:           "session-tun",
 		Mode:           TunnelModeTCP,
 		BackendTarget:  stringPtr("localhost:9000"),

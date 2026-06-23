@@ -19,6 +19,7 @@ type Client struct {
 	EdgeRouterPolicies        EdgeRouterPolicyOperations
 	ServicePolicies           ServicePolicyManagerOperations
 	ServiceEdgeRouterPolicies ServiceEdgeRouterPolicyOperations
+	Terminators               TerminatorOperations
 }
 
 func NewClient(ctx context.Context, cfg *Config) (*Client, error) {
@@ -60,6 +61,7 @@ func newClient(_ context.Context, cfg *Config, auth Authenticator) (*Client, err
 	client.EdgeRouterPolicies = NewEdgeRouterPolicyManager(client)
 	client.ServicePolicies = NewServicePolicyManager(client)
 	client.ServiceEdgeRouterPolicies = NewServiceEdgeRouterPolicyManager(client)
+	client.Terminators = NewTerminatorManager(client)
 	return client, nil
 }
 

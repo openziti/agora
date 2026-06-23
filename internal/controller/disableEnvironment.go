@@ -121,6 +121,16 @@ func (s *Service) disableEnvironmentWithLocks(ctx context.Context, tx persistenc
 		}
 	}
 
+	// explicitly evict the retiring environment's fabric terminators before its identity is deleted. the
+	// environment may have been hosting account-owned standalone tunnels -- which are NOT in `tunnels`
+	// (that lists only this environment's session tunnels) and survive retirement -- so their host
+	// terminators are keyed by this environment's identity and would otherwise be stranded. this is
+	// especially necessary for direct tunnels, which keep no serve row the DB could enumerate them from
+	// (finding C2).
+	if err := tunnelLifecycle.EvictTerminatorsByIdentity(ctx, env.ZitiIdentityID); err != nil {
+		return err
+	}
+
 	disableSpec := automation.DeprovisionEnvironmentSpec{IdentityID: env.ZitiIdentityID}
 	if env.EdgeRouterPolicyID != nil {
 		disableSpec.EdgeRouterPolicyID = *env.EdgeRouterPolicyID
@@ -152,6 +162,14 @@ func (s *Service) disableEnvironmentWithLocks(ctx context.Context, tx persistenc
 		if err := s.store.Tunnels.Delete(ctx, tx, tunnels[i].ID, env.OrganizationID); err != nil {
 			return err
 		}
+	}
+	// tear down the environment's serve records on the account-owned standalone tunnels it was hosting.
+	// those tunnels are not in `tunnels` (ListByEnvironment returns only session tunnels) and survive
+	// retirement, and the tunnel_serves env-FK cascade does not fire because Environments.Delete is a
+	// soft delete -- so without this an `active` serve record would linger and block re-serve from
+	// another environment until the reaper stales it.
+	if err := s.store.TunnelServes.DisconnectAndDeleteByEnvironment(ctx, tx, env.ID, env.OrganizationID, disconnectedAt); err != nil {
+		return err
 	}
 	return s.store.Environments.Delete(ctx, tx, env.ID, env.OrganizationID)
 }

@@ -28,6 +28,8 @@ type tunnelLifecycle interface {
 	Provision(context.Context, automation.TunnelSpec) (*automation.ProvisionedTunnel, error)
 	CreateAttachmentDialPolicy(context.Context, automation.TunnelAccessSpec) (string, error)
 	Deprovision(context.Context, automation.DeprovisionTunnelSpec) error
+	EvictTerminatorsByService(context.Context, string) error
+	EvictTerminatorsByIdentity(context.Context, string) error
 }
 
 type environmentLifecycleFactory func(context.Context) (environmentLifecycle, tunnelLifecycle, error)
@@ -181,13 +183,17 @@ func mapTunnel(tunnel *persistence.Tunnel) *api.Tunnel {
 		ID:             tunnel.ID,
 		OrganizationId: tunnel.OrganizationID,
 		AccountId:      tunnel.AccountID,
-		EnvironmentId:  tunnel.EnvironmentID,
 		Name:           tunnel.Name,
 		Mode:           api.TunnelMode(tunnel.Mode),
 		Kind:           api.TunnelKind(kind),
 		State:          api.TunnelState(tunnel.State),
 		CreatedAt:      tunnel.CreatedAt,
 		UpdatedAt:      tunnel.UpdatedAt,
+	}
+	// environment_id is set only for Layer 2 session tunnels; a standalone (account-owned) tunnel
+	// leaves it absent.
+	if tunnel.EnvironmentID != nil {
+		result.EnvironmentId.SetTo(*tunnel.EnvironmentID)
 	}
 	if tunnel.BackendTarget != nil {
 		result.BackendTarget.SetTo(*tunnel.BackendTarget)

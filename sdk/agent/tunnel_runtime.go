@@ -47,6 +47,14 @@ func (a *Runtime) EnsureServe(ctx context.Context, req *networkpb.EnsureServeReq
 		return nil, err
 	}
 
+	// takeover is a one-shot directive applied here, at the explicit EnsureServe call, rather than
+	// carried in the persisted desired serve -- it must not re-evict on daemon restart or serve retry.
+	if req.Takeover {
+		if err := a.takeoverForServe(ctx, desired.Name); err != nil {
+			return nil, err
+		}
+	}
+
 	actor, oldServe, err := a.prepareServeEnsure(desired)
 	if err != nil {
 		return nil, err
@@ -179,6 +187,17 @@ func (a *Runtime) prepareConnectEnsure(desired env_core.ManagedConnect) (*manage
 	a.connects[connectKey(desired)] = actor
 
 	return actor, old, nil
+}
+
+func (a *Runtime) takeoverForServe(ctx context.Context, name string) error {
+	a.mu.Lock()
+	if a.env == nil {
+		a.mu.Unlock()
+		return errors.New("no environment is enabled")
+	}
+	env := cloneEnvironment(a.env)
+	a.mu.Unlock()
+	return a.controller.Takeover(ctx, env, name)
 }
 
 func (a *Runtime) runServeAttempt(ctx context.Context, actor *managedServe, expectedGeneration uint64, scheduleRetry bool) error {

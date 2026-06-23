@@ -590,6 +590,20 @@ order by name asc`
 	return tunnels, nil
 }
 
+// HasStandaloneByAccount reports whether the account owns any standalone (account-owned) tunnel: one
+// with a NULL environment_id. These survive environment retirement, so account deletion must refuse
+// while any remain rather than strand their fabric objects on a bare DB cascade.
+func (r *TunnelsRepository) HasStandaloneByAccount(ctx context.Context, db Queryer, accountID string) (bool, error) {
+	const query = `select exists(
+	select 1 from tunnels where account_id = $1 and environment_id is null and not deleted
+)`
+	var exists bool
+	if err := db.GetContext(ctx, &exists, query, accountID); err != nil {
+		return false, fmt.Errorf("check standalone tunnels for account: %w", err)
+	}
+	return exists, nil
+}
+
 func (r *TunnelsRepository) ListAccessibleByAccount(ctx context.Context, db Queryer, organizationID, accountID string, includeOwned bool) ([]Tunnel, error) {
 	query := `
 select distinct
@@ -1212,6 +1226,28 @@ where tunnel_id = $1 and organization_id = $2 and not deleted`
 
 	if _, err := db.ExecContext(ctx, query, tunnelID, organizationID, time.Now().UTC()); err != nil {
 		return fmt.Errorf("delete tunnel serves by tunnel: %w", err)
+	}
+	return nil
+}
+
+// DisconnectAndDeleteByEnvironment marks the environment's active serve records disconnected and
+// soft-deletes all of its serve records, regardless of the served tunnel's kind. Environment
+// retirement uses this to tear down hosting on the account-owned standalone tunnels the environment
+// was serving: those tunnels are not enumerated by Tunnels.ListByEnvironment, and the tunnel_serves
+// env-FK cascade does not fire because environment deletion is a soft delete. Without it, a retired
+// environment's serve record on a standalone tunnel lingers 'active' and blocks re-serve from another
+// environment until the reaper stales it.
+func (r *TunnelServesRepository) DisconnectAndDeleteByEnvironment(ctx context.Context, db Queryer, environmentID, organizationID string, disconnectedAt time.Time) error {
+	const query = `
+update tunnel_serves
+set state = case when state = 'active' then 'disconnected' else state end,
+    disconnected_at = coalesce(disconnected_at, $3),
+    deleted = true,
+    updated_at = $3
+where environment_id = $1 and organization_id = $2 and not deleted`
+
+	if _, err := db.ExecContext(ctx, query, environmentID, organizationID, disconnectedAt); err != nil {
+		return fmt.Errorf("disconnect and delete tunnel serves by environment: %w", err)
 	}
 	return nil
 }

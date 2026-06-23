@@ -46,17 +46,22 @@ func (s *Service) StartTunnelServe(ctx context.Context, req *api.StartTunnelServ
 		return &api.StartTunnelServeInternalServerError{Code: "internal_error", Message: err.Error()}, nil
 	}
 
-	if tunnel.EnvironmentID != env.ID {
+	// hosting is owning-account-only: any environment of the owning account may serve the tunnel
+	// (account-owned hosting), but no other account's environment may. grants govern reach, not host.
+	// requireManagedTunnel + requireOwnedEnvironment already constrain to the principal's account; this
+	// explicit check closes the admin-managing-another-account's-tunnel edge.
+	if env.AccountID != tunnel.AccountID || env.OrganizationID != tunnel.OrganizationID {
 		dl.Warnf(
-			"start tunnel serve rejected due to environment mismatch tunnel_id='%s' tunnel_environment_id='%s' requested_environment_id='%s' %s",
+			"start tunnel serve rejected: serving environment does not own tunnel tunnel_id='%s' tunnel_account_id='%s' environment_id='%s' environment_account_id='%s' %s",
 			tunnel.ID,
-			tunnel.EnvironmentID,
+			tunnel.AccountID,
 			env.ID,
+			env.AccountID,
 			principalLogFields(principal),
 		)
 		return &api.StartTunnelServeConflict{
 			Code:    "conflict",
-			Message: fmt.Sprintf("tunnel '%s' is bound to environment '%s'", tunnel.Name, tunnel.EnvironmentID),
+			Message: fmt.Sprintf("tunnel '%s' is owned by another account", tunnel.Name),
 		}, nil
 	}
 

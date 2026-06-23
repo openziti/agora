@@ -53,8 +53,8 @@ A tunnel is the Layer 1 connectivity primitive. Tunnels are:
 
 - persistent
 - named
-- owned by an account within an organization
-- bound to the environment that serves them
+- owned by an account within an organization, not by any environment
+- hostable from any of the owning account's environments (an environment only hosts a tunnel; it does not own it, and retiring an environment does not delete the account's tunnels)
 - one of two provider shapes: `proxy` or `direct`
 
 Supported tunnel modes in the current Layer 1 surface are:
@@ -112,10 +112,13 @@ Layer 1 tunnel authorization follows these rules:
 
 - the owning account manages its own tunnels
 - tunnel names are unique within an organization among active tunnels, using case-insensitive matching
-- the owning environment serves its own tunnel; serve is environment-bound
+- hosting is account-owned: any environment of the owning account may serve the tunnel (hosting may move between the account's environments), and no other account's environment may host it
+- the controller recognizes one current host at a time -- for a proxy tunnel the serve record, for a direct tunnel the live listener on the fabric. A single active host is *assumed*, not enforced; enforcing it is deferred to single-active-listen
 - any environment enrolled to the owning account may connect to the account's tunnels
 - same-organization accounts may connect only when explicitly granted
 - active access is represented by controller-visible attachment records rather than inferred from low-level fabric state
+
+`agora tunnel takeover <name>` reclaims a tunnel by evicting whatever is currently hosting it: it deletes the host's terminators on the fabric and, for a proxy tunnel, clears the active serve record. Takeover is unconditional -- it displaces whatever it finds without checking the current host's health -- and applies only to account-owned standalone tunnels. `agora tunnel serve --takeover` performs the same eviction before serving, and `tunnel takeover` is how a direct tunnel (hosted by the SDK runtime, with no serve record) is reclaimed. Retiring or disabling an environment tears down that environment's hosting and connections only; it does not delete the account's standalone tunnels.
 
 This keeps authorization and observability at the Agora level instead of pushing policy reasoning down into raw OpenZiti inspection.
 

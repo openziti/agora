@@ -88,6 +88,7 @@ var operationRolesAccountTokenAuth = map[string][]string{
 	RetractAdvertisementOperation:          []string{},
 	SearchCatalogOperation:                 []string{},
 	StartTunnelServeOperation:              []string{},
+	TakeoverTunnelOperation:                []string{},
 	UpdateAdvertisementOperation:           []string{},
 	UpdateContractOperation:                []string{},
 	WhoamiOperation:                        []string{},

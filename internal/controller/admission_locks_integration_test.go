@@ -31,7 +31,7 @@ func TestAdmissionTunnelLockSerializesAttachAgainstGrantRemoval(t *testing.T) {
 	aliceEnvID := env.enableEnvironment(t, aliceToken)
 	bobEnvID := env.enableEnvironment(t, bobToken)
 	createRes, err := alice.CreateTunnel(env.ctx, &api.CreateTunnelRequest{
-		EnvironmentId: aliceEnvID,
+		EnvironmentId: api.NewOptString(aliceEnvID),
 		Name:          "grant-removal-race",
 		Mode:          api.TunnelModeTCP,
 	})
@@ -102,7 +102,7 @@ func TestAdmissionAttachLockSerializesConcurrentAttachByNaturalKey(t *testing.T)
 
 	envID := env.enableEnvironment(t, aliceToken)
 	createRes, err := alice.CreateTunnel(env.ctx, &api.CreateTunnelRequest{
-		EnvironmentId: envID,
+		EnvironmentId: api.NewOptString(envID),
 		Name:          "attach-race",
 		Mode:          api.TunnelModeTCP,
 	})
@@ -171,7 +171,7 @@ func TestAdmissionEnvironmentLockSerializesCreateTunnelAgainstDisable(t *testing
 	createDone := make(chan admissionOpResult, 1)
 	go func() {
 		res, err := alice.CreateTunnel(env.ctx, &api.CreateTunnelRequest{
-			EnvironmentId: envID,
+			EnvironmentId: api.NewOptString(envID),
 			Name:          "disable-race",
 			Mode:          api.TunnelModeTCP,
 		})
@@ -202,11 +202,14 @@ func TestAdmissionEnvironmentLockSerializesCreateTunnelAgainstDisable(t *testing
 	if _, ok := disableResult.res.(*api.DisableEnvironmentNoContent); !ok {
 		t.Fatalf("expected disable environment 204, got %T", disableResult.res)
 	}
-	if _, err := env.store.Tunnels.GetByID(env.ctx, env.store.DB(), created.ID); !errors.Is(err, persistence.ErrNotFound) {
-		t.Fatalf("expected created tunnel to be removed by disable, got err=%v", err)
+	// the tunnel is account-owned (standalone), so retiring the environment that created it leaves it
+	// standing and does not deprovision it. the lock serialization above is what this test asserts; the
+	// survival here confirms the account-owned ownership change.
+	if _, err := env.store.Tunnels.GetByID(env.ctx, env.store.DB(), created.ID); err != nil {
+		t.Fatalf("expected account-owned tunnel to survive environment disable, got err=%v", err)
 	}
-	if len(tunnelLC.deprovisionCalls()) == 0 {
-		t.Fatalf("expected disable environment to deprovision the created tunnel")
+	if len(tunnelLC.deprovisionCalls()) != 0 {
+		t.Fatalf("expected disable not to deprovision the account-owned tunnel, got %d deprovision calls", len(tunnelLC.deprovisionCalls()))
 	}
 }
 
@@ -410,6 +413,14 @@ func (f *admissionTunnelLifecycle) Deprovision(ctx context.Context, spec automat
 			return err
 		}
 	}
+	return nil
+}
+
+func (f *admissionTunnelLifecycle) EvictTerminatorsByService(context.Context, string) error {
+	return nil
+}
+
+func (f *admissionTunnelLifecycle) EvictTerminatorsByIdentity(context.Context, string) error {
 	return nil
 }
 

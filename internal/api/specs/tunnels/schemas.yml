@@ -4,7 +4,6 @@ tunnel:
     - id
     - organizationId
     - accountId
-    - environmentId
     - name
     - mode
     - kind
@@ -56,7 +55,6 @@ tunnelMode:
 createTunnelRequest:
   type: object
   required:
-    - environmentId
     - name
     - mode
   properties:

@@ -588,7 +588,7 @@ func mapControllerTunnel(tunnel *api.Tunnel) controllerTunnel {
 		ID:             tunnel.ID,
 		OrganizationID: tunnel.OrganizationId,
 		AccountID:      tunnel.AccountId,
-		EnvironmentID:  tunnel.EnvironmentId,
+		EnvironmentID:  tunnel.EnvironmentId.Or(""),
 		Name:           tunnel.Name,
 		Mode:           string(tunnel.Mode),
 		Kind:           string(tunnel.Kind),

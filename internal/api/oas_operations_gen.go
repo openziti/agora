@@ -74,6 +74,7 @@ const (
 	RetractAdvertisementOperation          OperationName = "RetractAdvertisement"
 	SearchCatalogOperation                 OperationName = "SearchCatalog"
 	StartTunnelServeOperation              OperationName = "StartTunnelServe"
+	TakeoverTunnelOperation                OperationName = "TakeoverTunnel"
 	UpdateAdvertisementOperation           OperationName = "UpdateAdvertisement"
 	UpdateContractOperation                OperationName = "UpdateContract"
 	WhoamiOperation                        OperationName = "Whoami"

@@ -28,6 +28,7 @@ func (accountSecuritySource) AdminTokenAuth(context.Context, api.OperationName) 
 
 type tunnelController interface {
 	StartServe(context.Context, *env_core.Environment, env_core.ManagedServe) (*api.Tunnel, *api.TunnelServe, error)
+	Takeover(context.Context, *env_core.Environment, string) error
 	HeartbeatServe(context.Context, *env_core.Environment, string) error
 	StopServe(context.Context, *env_core.Environment, string) error
 	StartConnect(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error)
@@ -84,12 +85,11 @@ func (apiTunnelController) StartServe(ctx context.Context, env *env_core.Environ
 	}
 
 	tunnel, err := ensureTunnelCreatedOrReused(client, &api.CreateTunnelRequest{
-		EnvironmentId: env.EnvironmentID,
 		Name:          desired.Name,
 		Mode:          api.TunnelMode(desired.Mode),
 		BackendTarget: api.NewOptString(desired.BackendTarget),
 		GrantEmails:   append([]string(nil), desired.GrantEmails...),
-	}, env.EnvironmentID)
+	})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -119,6 +119,44 @@ func (apiTunnelController) StartServe(ctx context.Context, env *env_core.Environ
 		return tunnel, nil, fmt.Errorf("%s", typed.Message)
 	default:
 		return tunnel, nil, fmt.Errorf("unexpected start tunnel serve response: %T", res)
+	}
+}
+
+// Takeover reclaims the named tunnel by evicting whatever is currently hosting it. If the tunnel does
+// not exist yet, there is nothing to take over and it returns nil so the serve flow can create it.
+func (apiTunnelController) Takeover(ctx context.Context, env *env_core.Environment, name string) error {
+	client, err := newControllerClient(env)
+	if err != nil {
+		return err
+	}
+	tunnel, err := resolveTunnelByName(client, name, api.ListTunnelsScopeOwned)
+	if err != nil {
+		return err
+	}
+	if tunnel == nil {
+		return nil
+	}
+	return takeoverTunnel(ctx, client, tunnel.ID)
+}
+
+func takeoverTunnel(ctx context.Context, client *api.Client, tunnelID string) error {
+	res, err := client.TakeoverTunnel(ctx, api.TakeoverTunnelParams{TunnelId: tunnelID})
+	if err != nil {
+		return err
+	}
+	switch typed := res.(type) {
+	case *api.TakeoverTunnelNoContent:
+		return nil
+	case *api.TakeoverTunnelNotFound:
+		return fmt.Errorf("%s", typed.Message)
+	case *api.TakeoverTunnelConflict:
+		return fmt.Errorf("%s", typed.Message)
+	case *api.TakeoverTunnelUnauthorized:
+		return fmt.Errorf("%s", typed.Message)
+	case *api.TakeoverTunnelInternalServerError:
+		return fmt.Errorf("%s", typed.Message)
+	default:
+		return fmt.Errorf("unexpected takeover tunnel response: %T", res)
 	}
 }
 
@@ -252,7 +290,7 @@ func newControllerClient(env *env_core.Environment) (*api.Client, error) {
 	return newAccountAPIClient(env.APIEndpoint, env.AccountToken)
 }
 
-func ensureTunnelCreatedOrReused(client *api.Client, req *api.CreateTunnelRequest, environmentID string) (*api.Tunnel, error) {
+func ensureTunnelCreatedOrReused(client *api.Client, req *api.CreateTunnelRequest) (*api.Tunnel, error) {
 	res, err := client.CreateTunnel(context.Background(), req)
 	if err != nil {
 		return nil, err
@@ -262,15 +300,14 @@ func ensureTunnelCreatedOrReused(client *api.Client, req *api.CreateTunnelReques
 	case *api.Tunnel:
 		return typed, nil
 	case *api.CreateTunnelConflict:
-		existing, err := resolveTunnelByName(client, req.Name, api.ListTunnelsScopeAll)
+		// a standalone tunnel is account-owned; reuse only one this account owns (scope owned), and no
+		// longer key reuse on a hosting environment.
+		existing, err := resolveTunnelByName(client, req.Name, api.ListTunnelsScopeOwned)
 		if err != nil {
 			return nil, err
 		}
 		if existing == nil {
 			return nil, fmt.Errorf("%s", typed.Message)
-		}
-		if existing.EnvironmentId != environmentID {
-			return nil, fmt.Errorf("existing tunnel is not owned by the current environment")
 		}
 		if existing.Kind != api.TunnelKindProxy || existing.Mode != req.Mode || existing.BackendTarget.Or("") != req.BackendTarget.Or("") {
 			return nil, fmt.Errorf("existing tunnel configuration does not match requested mode/backend")

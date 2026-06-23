@@ -96,13 +96,13 @@ func TestTunnelProvisionAndDeprovision(t *testing.T) {
 	}
 
 	result, err := provisioner.Provision(context.Background(), TunnelSpec{
-		OrganizationID:        "org_test00000003",
-		AccountID:             "ac_test00000003",
-		EnvironmentID:         "ev_test00000003",
-		TunnelID:              "tt_test00000003",
-		TunnelName:            "llm-gateway",
-		ServiceName:           "tt_test00000003",
-		EnvironmentIdentityID: "identity-1",
+		OrganizationID:    "org_test00000003",
+		AccountID:         "ac_test00000003",
+		EnvironmentID:     "ev_test00000003",
+		TunnelID:          "tt_test00000003",
+		TunnelName:        "llm-gateway",
+		ServiceName:       "tt_test00000003",
+		BindIdentityRoles: []string{"@identity-1"},
 	})
 	if err != nil {
 		t.Fatalf("provision: %v", err)
@@ -132,6 +132,39 @@ func TestTunnelProvisionAndDeprovision(t *testing.T) {
 	}
 	if len(services.deleted) != 1 || services.deleted[0] != "service-1" {
 		t.Fatalf("expected service delete, got %#v", services.deleted)
+	}
+}
+
+type fakeTerminatorOperations struct {
+	deleteFilters []string
+}
+
+func (f *fakeTerminatorOperations) Find(context.Context, *FilterOptions) ([]*rest_model.TerminatorDetail, error) {
+	return nil, nil
+}
+func (f *fakeTerminatorOperations) Delete(context.Context, string) error { return nil }
+func (f *fakeTerminatorOperations) DeleteWithFilter(_ context.Context, filter string) error {
+	f.deleteFilters = append(f.deleteFilters, filter)
+	return nil
+}
+
+// pins the OpenZiti terminator filter syntax: takeover evicts by service id, retirement evicts by
+// hostId (the binding identity). hostId -- not identity -- is the filterable field; filtering on
+// 'identity' returns 400 INVALID_FILTER from the real fabric.
+func TestEvictTerminatorsUsesCorrectFilters(t *testing.T) {
+	term := &fakeTerminatorOperations{}
+	p := &TunnelProvisioner{terminators: term}
+
+	if err := p.EvictTerminatorsByService(context.Background(), "svc-1"); err != nil {
+		t.Fatalf("evict by service: %v", err)
+	}
+	if err := p.EvictTerminatorsByIdentity(context.Background(), "id-1"); err != nil {
+		t.Fatalf("evict by identity: %v", err)
+	}
+
+	want := []string{`service="svc-1"`, `hostId="id-1"`}
+	if len(term.deleteFilters) != 2 || term.deleteFilters[0] != want[0] || term.deleteFilters[1] != want[1] {
+		t.Fatalf("expected filters %v, got %v", want, term.deleteFilters)
 	}
 }
 
@@ -223,13 +256,13 @@ func TestTunnelProvisionCleansUpOnServiceEdgeRouterPolicyFailure(t *testing.T) {
 	}
 
 	if _, err := provisioner.Provision(context.Background(), TunnelSpec{
-		OrganizationID:        "org_test00000004",
-		AccountID:             "ac_test00000004",
-		EnvironmentID:         "ev_test00000004",
-		TunnelID:              "tt_test00000004",
-		TunnelName:            "llm-gateway",
-		ServiceName:           "tt_test00000004",
-		EnvironmentIdentityID: "identity-1",
+		OrganizationID:    "org_test00000004",
+		AccountID:         "ac_test00000004",
+		EnvironmentID:     "ev_test00000004",
+		TunnelID:          "tt_test00000004",
+		TunnelName:        "llm-gateway",
+		ServiceName:       "tt_test00000004",
+		BindIdentityRoles: []string{"@identity-1"},
 	}); err == nil {
 		t.Fatal("expected provision failure")
 	}
