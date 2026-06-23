@@ -50,7 +50,6 @@ const DRAWER_NAV_ITEMS = [
 
 export function AppShell({
   product = 'agora',
-  organizationName,
   activeTab,
   navItems,
   status = 'success',
