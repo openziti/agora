@@ -226,6 +226,10 @@ export default function Dashboard() {
               hasActivity={chartData.length > 0}
               workgroups={workgroupsResource.data ?? []}
               advertisements={agentRows}
+              error={advertisements.error}
+              loading={advertisements.loading}
+              lastUpdated={advertisements.lastUpdated}
+              onRetry={advertisements.refetch}
             />
 
             <SectionPanel
@@ -956,13 +960,33 @@ function NetworkOverviewPanel({
   hasActivity,
   workgroups,
   advertisements,
+  error,
+  loading,
+  lastUpdated,
+  onRetry,
 }: {
   hubOrgName: string;
   orgStatuses: Map<string, OrgHealthStatus>;
   hasActivity: boolean;
   workgroups: Workgroup[];
   advertisements: Advertisement[];
+  error: unknown;
+  loading: boolean;
+  lastUpdated: Date | null;
+  onRetry: () => void;
 }) {
+  // the topology has two kinds of data: structure (orgs/channels — still valid
+  // when stale) and liveness (the status dots — invalid the moment the backend is
+  // unreachable). split the fetch state accordingly:
+  // - error + no cached data  -> first-load failure, nothing to show (ErrorPanel)
+  // - error + cached data      -> backend dropped, show stale structure, grey the
+  //                               liveness dots, and flag the staleness
+  // - loading + no data        -> first load
+  // - otherwise                -> live success render (unchanged)
+  const hasData = advertisements.length > 0;
+  const degraded = Boolean(error) && hasData;
+  const firstLoadError = Boolean(error) && !hasData;
+  const firstLoading = loading && !hasData;
   // distinct provider orgs (excluding the hub, which may also advertise)
   const spokeOrgNames = useMemo(() => {
     const seen = new Set<string>();
@@ -989,22 +1013,58 @@ function NetworkOverviewPanel({
 
   return (
     <section className="h-[320px] flex flex-col rounded-[7px] border border-border bg-panel">
-      <header className="flex min-h-10 items-center justify-between gap-4 border-b border-border bg-panel px-3 py-2">
+      <header className="flex min-h-10 items-center justify-between gap-4 border-b border-border px-3 py-2">
         <h2 className="text-body font-semibold text-text">Network Topology</h2>
         <span className="shrink-0 text-[0.6875rem] text-text-mute-2">
           {orgCount} {orgCount === 1 ? 'org' : 'orgs'} &middot; {channelCount} {channelCount === 1 ? 'channel' : 'channels'}
         </span>
       </header>
-      <div className="flex flex-1 flex-col min-h-0">
-        <TopologyContent
-          hubOrgName={hubOrgName}
-          spokeOrgNames={spokeOrgNames}
-          orgStatuses={orgStatuses}
-          hasActivity={hasActivity}
-          workgroups={workgroups}
-          advertisements={advertisements}
-        />
-      </div>
+      {firstLoadError ? (
+        <div className="flex flex-1 flex-col min-h-0 p-3">
+          <ErrorPanel title="Topology unavailable" error={error} onRetry={onRetry} compact />
+        </div>
+      ) : firstLoading ? (
+        <div className="flex flex-1 flex-col min-h-0 p-3">
+          <LoadingPanel title="Loading topology" compact />
+        </div>
+      ) : (
+        <>
+          {/* stale frame: shown once at the view level so it also covers the
+              drill-down, which renders the same stale snapshot underneath. */}
+          {degraded ? (
+            <div className="flex items-center justify-between gap-2 border-b border-border-light bg-warning/10 px-3 py-1.5">
+              <span className="flex min-w-0 items-center gap-1.5 text-[0.6875rem] font-medium text-warning-strong">
+                <AlertTriangle size={12} aria-hidden="true" className="shrink-0" />
+                <span className="truncate">
+                  {lastUpdated
+                    ? `Last updated ${agentRelativeTime(lastUpdated.toISOString())} · reconnecting`
+                    : 'Reconnecting'}
+                </span>
+              </span>
+              <button
+                type="button"
+                onClick={onRetry}
+                className="inline-flex shrink-0 items-center gap-1 rounded-pill border border-border bg-panel px-2 py-0.5 text-[0.6875rem] font-medium text-text-mute-strong hover:bg-panel-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora"
+              >
+                <RefreshCcw size={11} aria-hidden="true" />
+                Retry
+              </button>
+            </div>
+          ) : null}
+          {/* when stale, dim slightly and grey the liveness dots inside TopologyContent */}
+          <div className={['flex flex-1 flex-col min-h-0', degraded ? 'opacity-90' : ''].filter(Boolean).join(' ')}>
+            <TopologyContent
+              hubOrgName={hubOrgName}
+              spokeOrgNames={spokeOrgNames}
+              orgStatuses={orgStatuses}
+              hasActivity={hasActivity}
+              workgroups={workgroups}
+              advertisements={advertisements}
+              degraded={degraded}
+            />
+          </div>
+        </>
+      )}
     </section>
   );
 }
@@ -1016,6 +1076,7 @@ function TopologyContent({
   hasActivity,
   workgroups,
   advertisements,
+  degraded,
 }: {
   hubOrgName: string;
   spokeOrgNames: string[];
@@ -1023,6 +1084,7 @@ function TopologyContent({
   hasActivity: boolean;
   workgroups: Workgroup[];
   advertisements: Advertisement[];
+  degraded: boolean;
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [selectedOrgName, setSelectedOrgName] = useState<string | null>(null);
@@ -1069,7 +1131,8 @@ function TopologyContent({
             {/* Spoke lines + animated flow dots */}
             {spokeNodes.map((p) => {
               const pathD = `M ${T_CX} ${T_CY} L ${p.cx} ${p.cy}`;
-              const isActive = orgStatuses.get(p.name) === 'active' && hasActivity;
+              // suppress the animated flow dots when stale — they are a liveness claim
+              const isActive = !degraded && orgStatuses.get(p.name) === 'active' && hasActivity;
               const op = (!hoveredId || hoveredId === hubOrgName) ? 1 : hoveredId === p.id ? 1 : 0.15;
               return (
                 <g
@@ -1088,7 +1151,9 @@ function TopologyContent({
 
             {/* Provider nodes — drawn before labels so labels render on top */}
             {spokeNodes.map((p) => {
-              const dotFill = statusDotFill(orgStatuses.get(p.name));
+              // when stale, force every status dot to the unknown/grey state — the
+              // structure is still valid but the backend can't confirm liveness
+              const dotFill = statusDotFill(degraded ? undefined : orgStatuses.get(p.name));
               const op = (!hoveredId || hoveredId === hubOrgName) ? 1 : hoveredId === p.id ? 1 : 0.15;
               return (
                 <g
