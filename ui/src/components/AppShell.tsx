@@ -19,7 +19,6 @@ import { useNavigate } from 'react-router';
 
 import { BrandMark, type Product } from './BrandMark';
 import { NavTabs, type NavTab } from './NavTabs';
-import { OrgIndicator } from './OrgIndicator';
 import { StatusPill, type StatusPillStatus } from './StatusPill';
 import { UserBadge } from './UserBadge';
 import { logout } from '../lib/api';
@@ -111,7 +110,6 @@ export function AppShell({
   // Tablet always shows icon-only; desktop respects the user's stored preference.
   const effectiveCollapsed = isTablet || collapsed;
 
-  const displayOrganizationName = account?.organizationName ?? organizationName;
   const displayUserLabel = account?.email ?? userLabel;
   const displayUserInitials = account ? initialsForEmail(account.email) : userInitials;
 
@@ -160,7 +158,6 @@ export function AppShell({
           /* Tablet + desktop: full header controls */
           <div className="flex items-center gap-3">
             <StatusPill status={status} label={statusLabel} className="max-w-60" />
-            <OrgIndicator organizationName={displayOrganizationName} />
             <UserBadge
               email={account?.email}
               initials={displayUserInitials}
@@ -270,7 +267,6 @@ export function AppShell({
             <div className="shrink-0 border-b border-border px-4 py-4">
               <div className="flex flex-col items-start gap-3">
                 <StatusPill status={status} label={statusLabel} />
-                <OrgIndicator organizationName={displayOrganizationName} className="max-w-[200px]" />
               </div>
             </div>
 

@@ -28,8 +28,6 @@ export { NavTabs } from './NavTabs';
 export type { NavTab, NavTabsProps } from './NavTabs';
 export { Pagination } from './Pagination';
 export type { PaginationProps } from './Pagination';
-export { OrgIndicator } from './OrgIndicator';
-export type { OrgIndicatorProps } from './OrgIndicator';
 export { SectionPanel } from './SectionPanel';
 export type { SectionPanelProps } from './SectionPanel';
 export { SessionTrace } from './SessionTrace';
