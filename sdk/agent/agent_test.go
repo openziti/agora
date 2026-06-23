@@ -955,6 +955,7 @@ func waitForServeRetry(t *testing.T, client networkpb.NetworkServiceClient, name
 
 type fakeTunnelController struct {
 	startServe          func(context.Context, *env_core.Environment, env_core.ManagedServe) (*api.Tunnel, *api.TunnelServe, error)
+	takeover            func(context.Context, *env_core.Environment, string) error
 	heartbeatServe      func(context.Context, *env_core.Environment, string) error
 	stopServe           func(context.Context, *env_core.Environment, string) error
 	startConnect        func(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error)
@@ -964,6 +965,13 @@ type fakeTunnelController struct {
 
 func (f *fakeTunnelController) StartServe(ctx context.Context, env *env_core.Environment, desired env_core.ManagedServe) (*api.Tunnel, *api.TunnelServe, error) {
 	return f.startServe(ctx, env, desired)
+}
+
+func (f *fakeTunnelController) Takeover(ctx context.Context, env *env_core.Environment, name string) error {
+	if f.takeover == nil {
+		return nil
+	}
+	return f.takeover(ctx, env, name)
 }
 
 func (f *fakeTunnelController) HeartbeatServe(ctx context.Context, env *env_core.Environment, serveID string) error {

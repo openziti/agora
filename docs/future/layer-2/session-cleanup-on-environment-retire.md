@@ -1,8 +1,9 @@
 # Session Cleanup on Environment Retire (Layer 2)
 
 **Status: deferred, tracked.** This is a pre-existing gap, surfaced (not caused) by the
-account-owned-tunnels work — which deliberately leaves it out of scope and flags it here. See
-[`../account-owned-tunnels-work-order.md`](../account-owned-tunnels-work-order.md) (Open Points).
+account-owned-tunnels work (now implemented; see
+[`../../current/layer-1/spec.md`](../../current/layer-1/spec.md)), which deliberately left it out of
+scope and flags it here.
 **Not yet implemented.** This doc exists so the gap is tracked rather than implicit.
 
 ## The problem
@@ -60,5 +61,5 @@ it is carved out of the account-owned-tunnels work rather than bolted onto it.
 - [`session-teardown-on-tenant-deletion.md`](./session-teardown-on-tenant-deletion.md) — the
   sibling gap (account/org deletion); the broader "every Ziti-bearing parent delete must be
   cascade-aware or guarded" rule lives there.
-- [`../account-owned-tunnels-work-order.md`](../account-owned-tunnels-work-order.md) — the work
-  that surfaced this and deliberately scopes it out.
+- [`../../current/layer-1/spec.md`](../../current/layer-1/spec.md) — the account-owned-tunnels work
+  that surfaced this and deliberately scoped it out (now implemented).

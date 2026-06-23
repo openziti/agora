@@ -71,11 +71,15 @@ func (p *TunnelProvisioner) EvictTerminatorsByService(ctx context.Context, servi
 // everything that identity is currently hosting. Environment retirement uses this to clear the
 // retiring environment's residue from the standalone tunnels it was hosting -- a direct tunnel has no
 // serve row, so the identity-scoped terminator list is the only way to enumerate them.
+//
+// OpenZiti terminators are filtered by the binding identity through the "hostId" field, not "identity"
+// (which is unset for edge-bound terminators and is not a filterable symbol -- filtering on it returns
+// 400 INVALID_FILTER). hostId carries the id of the identity that created the terminator.
 func (p *TunnelProvisioner) EvictTerminatorsByIdentity(ctx context.Context, identityID string) error {
 	if identityID == "" {
 		return nil
 	}
-	return p.terminators.DeleteWithFilter(ctx, BuildFilter("identity", identityID))
+	return p.terminators.DeleteWithFilter(ctx, BuildFilter("hostId", identityID))
 }
 
 func (p *TunnelProvisioner) Provision(ctx context.Context, spec TunnelSpec) (*ProvisionedTunnel, error) {

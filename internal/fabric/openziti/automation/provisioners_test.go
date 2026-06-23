@@ -135,6 +135,39 @@ func TestTunnelProvisionAndDeprovision(t *testing.T) {
 	}
 }
 
+type fakeTerminatorOperations struct {
+	deleteFilters []string
+}
+
+func (f *fakeTerminatorOperations) Find(context.Context, *FilterOptions) ([]*rest_model.TerminatorDetail, error) {
+	return nil, nil
+}
+func (f *fakeTerminatorOperations) Delete(context.Context, string) error { return nil }
+func (f *fakeTerminatorOperations) DeleteWithFilter(_ context.Context, filter string) error {
+	f.deleteFilters = append(f.deleteFilters, filter)
+	return nil
+}
+
+// pins the OpenZiti terminator filter syntax: takeover evicts by service id, retirement evicts by
+// hostId (the binding identity). hostId -- not identity -- is the filterable field; filtering on
+// 'identity' returns 400 INVALID_FILTER from the real fabric.
+func TestEvictTerminatorsUsesCorrectFilters(t *testing.T) {
+	term := &fakeTerminatorOperations{}
+	p := &TunnelProvisioner{terminators: term}
+
+	if err := p.EvictTerminatorsByService(context.Background(), "svc-1"); err != nil {
+		t.Fatalf("evict by service: %v", err)
+	}
+	if err := p.EvictTerminatorsByIdentity(context.Background(), "id-1"); err != nil {
+		t.Fatalf("evict by identity: %v", err)
+	}
+
+	want := []string{`service="svc-1"`, `hostId="id-1"`}
+	if len(term.deleteFilters) != 2 || term.deleteFilters[0] != want[0] || term.deleteFilters[1] != want[1] {
+		t.Fatalf("expected filters %v, got %v", want, term.deleteFilters)
+	}
+}
+
 func TestBootstrapVerifiesConnectivityAndEdgeRouters(t *testing.T) {
 	identity := &fakeIdentityOperations{}
 	edgeRouterID := "er-1"

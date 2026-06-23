@@ -76,6 +76,46 @@ func TestServeFromSecondEnvironmentOfOwningAccount(t *testing.T) {
 	}
 }
 
+// retiring the environment that is hosting a standalone tunnel leaves the tunnel standing and clears
+// the environment's serve record on it -- so another environment can re-serve immediately rather than
+// waiting for the reaper to stale a lingering 'active' record. (Environment deletion is a soft delete,
+// so the tunnel_serves env-FK cascade does not fire; the retire handler clears the record explicitly.)
+func TestRetireClearsServeRecordOnStandaloneTunnel(t *testing.T) {
+	t.Parallel()
+	env, cleanup := newWorkgroupTestEnv(t)
+	defer cleanup()
+	uniqueEnvironmentIdentitiesHeld(env)
+
+	orgID, _, aliceToken := env.createOrgWithAccount(t, "org-a", "alice@example.com")
+	alice := env.accountClient(t, aliceToken)
+	envA := env.enableEnvironment(t, aliceToken)
+	tunnel := createProxyTunnel(t, env, alice, "gw")
+
+	if _, err := alice.StartTunnelServe(env.ctx, &api.StartTunnelServeRequest{
+		EnvironmentId: envA,
+	}, api.StartTunnelServeParams{TunnelId: tunnel.ID}); err != nil {
+		t.Fatalf("start tunnel serve: %v", err)
+	}
+	if _, err := env.store.TunnelServes.GetActiveByTunnel(env.ctx, env.store.DB(), tunnel.ID, orgID); err != nil {
+		t.Fatalf("expected an active serve record before retire: %v", err)
+	}
+
+	res, err := alice.DisableEnvironment(env.ctx, api.DisableEnvironmentParams{EnvironmentId: envA})
+	if err != nil {
+		t.Fatalf("disable environment: %v", err)
+	}
+	if _, ok := res.(*api.DisableEnvironmentNoContent); !ok {
+		t.Fatalf("unexpected disable environment response: %T", res)
+	}
+
+	if _, err := env.store.Tunnels.GetByID(env.ctx, env.store.DB(), tunnel.ID); err != nil {
+		t.Fatalf("expected standalone tunnel to survive retire: %v", err)
+	}
+	if _, err := env.store.TunnelServes.GetActiveByTunnel(env.ctx, env.store.DB(), tunnel.ID, orgID); !errors.Is(err, persistence.ErrNotFound) {
+		t.Fatalf("expected the retired environment's serve record to be cleared, got %v", err)
+	}
+}
+
 // hosting is owning-account-only: a different account's environment may not host the tunnel. grants
 // govern reach, not host, so even a granted account cannot serve another account's tunnel.
 func TestServeRejectedFromOtherAccountEnvironment(t *testing.T) {

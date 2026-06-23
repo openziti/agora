@@ -18,6 +18,7 @@ type tunnelServeCommand struct {
 	mode        string
 	backend     string
 	foreground  bool
+	takeover    bool
 	grantEmails []string
 	cmd         *cobra.Command
 }
@@ -32,6 +33,7 @@ func newTunnelServeCommand() *tunnelServeCommand {
 	cmd.Flags().StringVar(&command.mode, "mode", "", "Tunnel mode: http, tcp, or udp (required when creating a new tunnel)")
 	cmd.Flags().StringVar(&command.backend, "backend", "", "Backend target for the local provider (required when creating a new tunnel)")
 	cmd.Flags().BoolVar(&command.foreground, "foreground", false, "Run the tunnel runtime directly instead of using the local network agent")
+	cmd.Flags().BoolVar(&command.takeover, "takeover", false, "Evict whatever is currently hosting the tunnel before serving it")
 	cmd.Flags().StringSliceVar(&command.grantEmails, "grant", nil, "Grant access to an account email (repeatable)")
 	cmd.RunE = command.runE
 	return command
@@ -78,6 +80,9 @@ func (cmd *tunnelServeCommand) run(args []string) {
 				BackendTarget: api.NewOptString(backend),
 				GrantEmails:   cmd.grantEmails,
 			})
+		} else if cmd.takeover {
+			// the tunnel already exists and may be hosted elsewhere; evict that host before serving.
+			takeoverManagedTunnel(client, tunnel)
 		}
 		cmd.runForeground(root, client, tunnel)
 		return
@@ -91,6 +96,7 @@ func (cmd *tunnelServeCommand) run(args []string) {
 		Mode:          mode,
 		BackendTarget: backend,
 		GrantEmails:   append([]string(nil), cmd.grantEmails...),
+		Takeover:      cmd.takeover,
 	})
 	panicIfErr(err)
 

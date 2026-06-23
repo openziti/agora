@@ -79,6 +79,8 @@ message EnsureServeRequest {
   string mode = 3;
   string backend_target = 4;
   repeated string grant_emails = 5;
+  // takeover evicts whatever is currently hosting the tunnel before serving it.
+  bool takeover = 6;
 }
 
 message EnsureServeResponse {

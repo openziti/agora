@@ -37,7 +37,7 @@ This is deliberately a **Layer 2 deletion-lifecycle** work item, not an extensio
 ## Related: account-owned standalone tunnels
 
 Account-owned standalone tunnels (see
-[`../account-owned-tunnels-work-order.md`](../account-owned-tunnels-work-order.md)) join this same
+[`../../current/layer-1/spec.md`](../../current/layer-1/spec.md)) join this same
 family. Once a standalone tunnel carries no `environment_id`, environment retirement no longer
 deprovisions it, so account/org deletion becomes the parent delete that must not strand its OpenZiti
 service, bind policy, and terminators. The interim mitigation is the same shape as above: account

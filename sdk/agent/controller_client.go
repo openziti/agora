@@ -28,6 +28,7 @@ func (accountSecuritySource) AdminTokenAuth(context.Context, api.OperationName) 
 
 type tunnelController interface {
 	StartServe(context.Context, *env_core.Environment, env_core.ManagedServe) (*api.Tunnel, *api.TunnelServe, error)
+	Takeover(context.Context, *env_core.Environment, string) error
 	HeartbeatServe(context.Context, *env_core.Environment, string) error
 	StopServe(context.Context, *env_core.Environment, string) error
 	StartConnect(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error)
@@ -118,6 +119,44 @@ func (apiTunnelController) StartServe(ctx context.Context, env *env_core.Environ
 		return tunnel, nil, fmt.Errorf("%s", typed.Message)
 	default:
 		return tunnel, nil, fmt.Errorf("unexpected start tunnel serve response: %T", res)
+	}
+}
+
+// Takeover reclaims the named tunnel by evicting whatever is currently hosting it. If the tunnel does
+// not exist yet, there is nothing to take over and it returns nil so the serve flow can create it.
+func (apiTunnelController) Takeover(ctx context.Context, env *env_core.Environment, name string) error {
+	client, err := newControllerClient(env)
+	if err != nil {
+		return err
+	}
+	tunnel, err := resolveTunnelByName(client, name, api.ListTunnelsScopeOwned)
+	if err != nil {
+		return err
+	}
+	if tunnel == nil {
+		return nil
+	}
+	return takeoverTunnel(ctx, client, tunnel.ID)
+}
+
+func takeoverTunnel(ctx context.Context, client *api.Client, tunnelID string) error {
+	res, err := client.TakeoverTunnel(ctx, api.TakeoverTunnelParams{TunnelId: tunnelID})
+	if err != nil {
+		return err
+	}
+	switch typed := res.(type) {
+	case *api.TakeoverTunnelNoContent:
+		return nil
+	case *api.TakeoverTunnelNotFound:
+		return fmt.Errorf("%s", typed.Message)
+	case *api.TakeoverTunnelConflict:
+		return fmt.Errorf("%s", typed.Message)
+	case *api.TakeoverTunnelUnauthorized:
+		return fmt.Errorf("%s", typed.Message)
+	case *api.TakeoverTunnelInternalServerError:
+		return fmt.Errorf("%s", typed.Message)
+	default:
+		return fmt.Errorf("unexpected takeover tunnel response: %T", res)
 	}
 }
 

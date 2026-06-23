@@ -163,5 +163,13 @@ func (s *Service) disableEnvironmentWithLocks(ctx context.Context, tx persistenc
 			return err
 		}
 	}
+	// tear down the environment's serve records on the account-owned standalone tunnels it was hosting.
+	// those tunnels are not in `tunnels` (ListByEnvironment returns only session tunnels) and survive
+	// retirement, and the tunnel_serves env-FK cascade does not fire because Environments.Delete is a
+	// soft delete -- so without this an `active` serve record would linger and block re-serve from
+	// another environment until the reaper stales it.
+	if err := s.store.TunnelServes.DisconnectAndDeleteByEnvironment(ctx, tx, env.ID, env.OrganizationID, disconnectedAt); err != nil {
+		return err
+	}
 	return s.store.Environments.Delete(ctx, tx, env.ID, env.OrganizationID)
 }
