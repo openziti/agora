@@ -217,52 +217,8 @@ export default function Dashboard() {
 
           {summary.error ? null : summary.data ? <SummaryStats summary={summary.data} /> : <StatsLoading />}
 
-          {/* Envelope Activity takes its own full-width row so the hourly bars keep the
-              horizontal room they need at the reduced column width. */}
-          <SectionPanel
-            title="Envelope Activity"
-            className="h-[320px] flex flex-col"
-            bodyClassName="flex flex-col flex-1 min-h-0"
-            actions={
-              <div className="relative">
-                <Select
-                  value={activityWindow}
-                  onChange={(event) => {
-                    setActivityWindow(event.target.value as DashboardWindow);
-                    activity.refetch();
-                  }}
-                  aria-label="Activity window"
-                  className="pr-7 font-medium"
-                >
-                  {activityWindowOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
-                <ChevronDown size={13} aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-mute" />
-              </div>
-            }
-          >
-            {activity.error ? (
-              <ErrorPanel title="Activity unavailable" error={activity.error} onRetry={activity.refetch} compact />
-            ) : activity.loading && !activity.data ? (
-              <LoadingPanel title="Loading activity" compact />
-            ) : chartData.length > 0 ? (
-              <div className="h-full w-full">
-                <BarChart data={chartData} accent="agora" />
-              </div>
-            ) : (
-              <EmptyState
-                icon={Activity}
-                title="No envelope activity"
-                description="No envelope activity has been recorded in this window."
-              />
-            )}
-          </SectionPanel>
-
-          {/* Topology (the centerpiece) pairs with Top Workgroups, and stacks to one
-              column when the main column is too narrow to keep both legible. */}
+          {/* Row 1: Topology (centerpiece) and Envelope Activity share a 50/50 row at
+              equal height; they stack to one column when the main column narrows. */}
           <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2">
             <NetworkOverviewPanel
               hubOrgName={account?.organizationName ?? ''}
@@ -273,25 +229,70 @@ export default function Dashboard() {
             />
 
             <SectionPanel
-              title="Top Workgroups"
+              title="Envelope Activity"
               className="h-[320px] flex flex-col"
-              bodyClassName="flex-1 min-h-0 overflow-auto"
+              bodyClassName="flex flex-col flex-1 min-h-0"
+              actions={
+                <div className="relative">
+                  <Select
+                    value={activityWindow}
+                    onChange={(event) => {
+                      setActivityWindow(event.target.value as DashboardWindow);
+                      activity.refetch();
+                    }}
+                    aria-label="Activity window"
+                    className="pr-7 font-medium"
+                  >
+                    {activityWindowOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                  <ChevronDown size={13} aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-mute" />
+                </div>
+              }
             >
               {activity.error ? (
-                <ErrorPanel title="Workgroup activity unavailable" error={activity.error} onRetry={activity.refetch} compact />
+                <ErrorPanel title="Activity unavailable" error={activity.error} onRetry={activity.refetch} compact />
               ) : activity.loading && !activity.data ? (
-                <LoadingPanel title="Loading workgroups" compact />
-              ) : workgroupBreakdown.length > 0 ? (
-                <SidebarBreakdown items={workgroupBreakdown} />
+                <LoadingPanel title="Loading activity" compact />
+              ) : chartData.length > 0 ? (
+                <div className="h-full w-full">
+                  {/* fewer time-axis labels at the narrower half-column width so they
+                      thin out (every Nth) instead of crowding/overlapping. */}
+                  <BarChart data={chartData} accent="agora" maxLabels={6} />
+                </div>
               ) : (
                 <EmptyState
-                  icon={Users}
-                  title="No workgroup activity"
-                  description="No workgroup envelope totals are available for this window."
+                  icon={Activity}
+                  title="No envelope activity"
+                  description="No envelope activity has been recorded in this window."
                 />
               )}
             </SectionPanel>
           </div>
+
+          {/* Row 2: Top Workgroups spans the full main-column width below Row 1. */}
+          <SectionPanel
+            title="Top Workgroups"
+            className="h-[320px] flex flex-col"
+            bodyClassName="flex-1 min-h-0 overflow-auto"
+          >
+            {activity.error ? (
+              <ErrorPanel title="Workgroup activity unavailable" error={activity.error} onRetry={activity.refetch} compact />
+            ) : activity.loading && !activity.data ? (
+              <LoadingPanel title="Loading workgroups" compact />
+            ) : workgroupBreakdown.length > 0 ? (
+              <SidebarBreakdown items={workgroupBreakdown} />
+            ) : (
+              <EmptyState
+                icon={Users}
+                title="No workgroup activity"
+                description="No workgroup envelope totals are available for this window."
+              />
+            )}
+          </SectionPanel>
         </div>
 
         {/* Persistent activity rail — full-height and sticky beside the content on wide

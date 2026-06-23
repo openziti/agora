@@ -12,6 +12,9 @@ export type BarChartProps = {
   accent: SurfaceAccent;
   height?: number;
   className?: string;
+  // upper bound on time-axis labels; lower it where the chart is narrow so labels
+  // thin out (every Nth) instead of crowding. defaults to the original cap of 8.
+  maxLabels?: number;
 };
 
 const chartColors: Record<SurfaceAccent, { start: string; end: string }> = {
@@ -35,7 +38,7 @@ const SVG_WIDTH = 700;
 const MAX_BAR_WIDTH = 72;
 const MIN_GAP = 4;
 
-export function BarChart({ data, accent, height = 220, className }: BarChartProps) {
+export function BarChart({ data, accent, height = 220, className, maxLabels = 8 }: BarChartProps) {
   const gradientId = useId();
   const plotHeight = height - TOP_PAD - BOTTOM_PAD;
   const zeroY = TOP_PAD + plotHeight;
@@ -50,9 +53,9 @@ export function BarChart({ data, accent, height = 220, className }: BarChartProp
   const barWidth = Math.min(MAX_BAR_WIDTH, Math.max(MIN_BAR_PX * 2, slotWidth - MIN_GAP));
 
   // Fixed stride so every inter-label gap is exactly the same number of slots.
-  // ceil(n/8) guarantees at most 8 labels and perfectly uniform spacing — no
-  // special-casing the last index, which was causing unequal gaps.
-  const labelStride = Math.max(1, Math.ceil(data.length / 8));
+  // ceil(n/maxLabels) guarantees at most maxLabels labels and perfectly uniform
+  // spacing — no special-casing the last index, which was causing unequal gaps.
+  const labelStride = Math.max(1, Math.ceil(data.length / Math.max(1, maxLabels)));
   const showLabelAt = (index: number) => index % labelStride === 0;
 
   return (
