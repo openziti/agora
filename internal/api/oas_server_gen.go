@@ -280,6 +280,10 @@ type Handler interface {
 	//
 	// POST /tunnels/{tunnelId}/serve
 	StartTunnelServe(ctx context.Context, req *StartTunnelServeRequest, params StartTunnelServeParams) (StartTunnelServeRes, error)
+	// TakeoverTunnel implements takeoverTunnel operation.
+	//
+	// POST /tunnels/{tunnelId}/takeover
+	TakeoverTunnel(ctx context.Context, params TakeoverTunnelParams) (TakeoverTunnelRes, error)
 	// UpdateAdvertisement implements updateAdvertisement operation.
 	//
 	// PATCH /advertisements/{advertisementId}

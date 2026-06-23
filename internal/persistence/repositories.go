@@ -590,6 +590,20 @@ order by name asc`
 	return tunnels, nil
 }
 
+// HasStandaloneByAccount reports whether the account owns any standalone (account-owned) tunnel: one
+// with a NULL environment_id. These survive environment retirement, so account deletion must refuse
+// while any remain rather than strand their fabric objects on a bare DB cascade.
+func (r *TunnelsRepository) HasStandaloneByAccount(ctx context.Context, db Queryer, accountID string) (bool, error) {
+	const query = `select exists(
+	select 1 from tunnels where account_id = $1 and environment_id is null and not deleted
+)`
+	var exists bool
+	if err := db.GetContext(ctx, &exists, query, accountID); err != nil {
+		return false, fmt.Errorf("check standalone tunnels for account: %w", err)
+	}
+	return exists, nil
+}
+
 func (r *TunnelsRepository) ListAccessibleByAccount(ctx context.Context, db Queryer, organizationID, accountID string, includeOwned bool) ([]Tunnel, error) {
 	query := `
 select distinct

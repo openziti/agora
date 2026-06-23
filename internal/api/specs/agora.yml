@@ -45,6 +45,8 @@ paths:
     $ref: "tunnels/paths.yml#/~1tunnels~1connect"
   /tunnels/{tunnelId}/serve:
     $ref: "tunnels/paths.yml#/~1tunnels~1{tunnelId}~1serve"
+  /tunnels/{tunnelId}/takeover:
+    $ref: "tunnels/paths.yml#/~1tunnels~1{tunnelId}~1takeover"
   /tunnels/{tunnelId}:
     $ref: "tunnels/paths.yml#/~1tunnels~1{tunnelId}"
   /tunnels/{tunnelId}/grants:

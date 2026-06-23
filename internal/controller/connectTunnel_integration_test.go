@@ -51,7 +51,8 @@ func (f *uniqueDialTunnelLifecycle) CreateAttachmentDialPolicy(_ context.Context
 
 // connect is account-scoped: any environment enrolled to the owning account
 // may connect to the account's own tunnel, even when a different environment
-// served it. serve remains environment-bound.
+// served it. hosting is likewise account-owned -- any of the account's
+// environments may serve the tunnel.
 func TestConnectTunnelCrossEnvironmentSameAccount(t *testing.T) {
 	t.Parallel()
 	env, cleanup := newWorkgroupTestEnv(t)
@@ -68,7 +69,7 @@ func TestConnectTunnelCrossEnvironmentSameAccount(t *testing.T) {
 	}
 
 	createRes, err := alice.CreateTunnel(env.ctx, &api.CreateTunnelRequest{
-		EnvironmentId: serveEnvID,
+		EnvironmentId: api.NewOptString(serveEnvID),
 		Name:          "llm-gateway",
 		Mode:          api.TunnelModeTCP,
 		BackendTarget: api.NewOptString("127.0.0.1:8443"),
@@ -125,7 +126,7 @@ func TestCreateTunnelDirectKindAndServeGuard(t *testing.T) {
 	envID := env.enableEnvironment(t, aliceToken)
 
 	directRes, err := alice.CreateTunnel(env.ctx, &api.CreateTunnelRequest{
-		EnvironmentId: envID,
+		EnvironmentId: api.NewOptString(envID),
 		Name:          "direct-gateway",
 		Mode:          api.TunnelModeHTTP,
 	})
@@ -157,7 +158,7 @@ func TestCreateTunnelDirectKindAndServeGuard(t *testing.T) {
 	}
 
 	proxyRes, err := alice.CreateTunnel(env.ctx, &api.CreateTunnelRequest{
-		EnvironmentId: envID,
+		EnvironmentId: api.NewOptString(envID),
 		Name:          "proxy-gateway",
 		Mode:          api.TunnelModeTCP,
 		BackendTarget: api.NewOptString("127.0.0.1:8443"),
@@ -177,7 +178,7 @@ func TestCreateTunnelDirectKindAndServeGuard(t *testing.T) {
 	}
 
 	invalidRes, err := alice.CreateTunnel(env.ctx, &api.CreateTunnelRequest{
-		EnvironmentId: envID,
+		EnvironmentId: api.NewOptString(envID),
 		Name:          "blank-backend",
 		Mode:          api.TunnelModeTCP,
 		BackendTarget: api.NewOptString("   "),
@@ -208,7 +209,7 @@ func TestConnectTunnelCrossAccountRequiresGrant(t *testing.T) {
 	bobEnvID := env.enableEnvironment(t, bobToken)
 
 	createRes, err := alice.CreateTunnel(env.ctx, &api.CreateTunnelRequest{
-		EnvironmentId: aliceEnvID,
+		EnvironmentId: api.NewOptString(aliceEnvID),
 		Name:          "private-gateway",
 		Mode:          api.TunnelModeTCP,
 		BackendTarget: api.NewOptString("127.0.0.1:8443"),

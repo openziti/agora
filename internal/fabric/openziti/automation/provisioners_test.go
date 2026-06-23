@@ -96,13 +96,13 @@ func TestTunnelProvisionAndDeprovision(t *testing.T) {
 	}
 
 	result, err := provisioner.Provision(context.Background(), TunnelSpec{
-		OrganizationID:        "org_test00000003",
-		AccountID:             "ac_test00000003",
-		EnvironmentID:         "ev_test00000003",
-		TunnelID:              "tt_test00000003",
-		TunnelName:            "llm-gateway",
-		ServiceName:           "tt_test00000003",
-		EnvironmentIdentityID: "identity-1",
+		OrganizationID:    "org_test00000003",
+		AccountID:         "ac_test00000003",
+		EnvironmentID:     "ev_test00000003",
+		TunnelID:          "tt_test00000003",
+		TunnelName:        "llm-gateway",
+		ServiceName:       "tt_test00000003",
+		BindIdentityRoles: []string{"@identity-1"},
 	})
 	if err != nil {
 		t.Fatalf("provision: %v", err)
@@ -223,13 +223,13 @@ func TestTunnelProvisionCleansUpOnServiceEdgeRouterPolicyFailure(t *testing.T) {
 	}
 
 	if _, err := provisioner.Provision(context.Background(), TunnelSpec{
-		OrganizationID:        "org_test00000004",
-		AccountID:             "ac_test00000004",
-		EnvironmentID:         "ev_test00000004",
-		TunnelID:              "tt_test00000004",
-		TunnelName:            "llm-gateway",
-		ServiceName:           "tt_test00000004",
-		EnvironmentIdentityID: "identity-1",
+		OrganizationID:    "org_test00000004",
+		AccountID:         "ac_test00000004",
+		EnvironmentID:     "ev_test00000004",
+		TunnelID:          "tt_test00000004",
+		TunnelName:        "llm-gateway",
+		ServiceName:       "tt_test00000004",
+		BindIdentityRoles: []string{"@identity-1"},
 	}); err == nil {
 		t.Fatal("expected provision failure")
 	}

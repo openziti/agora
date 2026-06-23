@@ -84,12 +84,11 @@ func (apiTunnelController) StartServe(ctx context.Context, env *env_core.Environ
 	}
 
 	tunnel, err := ensureTunnelCreatedOrReused(client, &api.CreateTunnelRequest{
-		EnvironmentId: env.EnvironmentID,
 		Name:          desired.Name,
 		Mode:          api.TunnelMode(desired.Mode),
 		BackendTarget: api.NewOptString(desired.BackendTarget),
 		GrantEmails:   append([]string(nil), desired.GrantEmails...),
-	}, env.EnvironmentID)
+	})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -252,7 +251,7 @@ func newControllerClient(env *env_core.Environment) (*api.Client, error) {
 	return newAccountAPIClient(env.APIEndpoint, env.AccountToken)
 }
 
-func ensureTunnelCreatedOrReused(client *api.Client, req *api.CreateTunnelRequest, environmentID string) (*api.Tunnel, error) {
+func ensureTunnelCreatedOrReused(client *api.Client, req *api.CreateTunnelRequest) (*api.Tunnel, error) {
 	res, err := client.CreateTunnel(context.Background(), req)
 	if err != nil {
 		return nil, err
@@ -262,15 +261,14 @@ func ensureTunnelCreatedOrReused(client *api.Client, req *api.CreateTunnelReques
 	case *api.Tunnel:
 		return typed, nil
 	case *api.CreateTunnelConflict:
-		existing, err := resolveTunnelByName(client, req.Name, api.ListTunnelsScopeAll)
+		// a standalone tunnel is account-owned; reuse only one this account owns (scope owned), and no
+		// longer key reuse on a hosting environment.
+		existing, err := resolveTunnelByName(client, req.Name, api.ListTunnelsScopeOwned)
 		if err != nil {
 			return nil, err
 		}
 		if existing == nil {
 			return nil, fmt.Errorf("%s", typed.Message)
-		}
-		if existing.EnvironmentId != environmentID {
-			return nil, fmt.Errorf("existing tunnel is not owned by the current environment")
 		}
 		if existing.Kind != api.TunnelKindProxy || existing.Mode != req.Mode || existing.BackendTarget.Or("") != req.BackendTarget.Or("") {
 			return nil, fmt.Errorf("existing tunnel configuration does not match requested mode/backend")

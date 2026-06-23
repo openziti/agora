@@ -8,15 +8,19 @@ import (
 )
 
 type TunnelSpec struct {
-	OrganizationID        string
-	AccountID             string
-	EnvironmentID         string
-	TunnelID              string
-	TunnelName            string
-	ServiceName           string
-	EnvironmentIdentityID string
-	EdgeRouterRoles       []string
-	Version               string
+	OrganizationID string
+	AccountID      string
+	EnvironmentID  string
+	TunnelID       string
+	TunnelName     string
+	ServiceName    string
+	// BindIdentityRoles selects which identities may host (bind) the tunnel's service. A standalone
+	// (account-owned) tunnel passes the account role attribute ("#agora-account:<id>") so any of the
+	// account's environments may host it; a Layer 2 session tunnel passes a single env identity
+	// ("@<envIdentity>"), keeping it environment-scoped.
+	BindIdentityRoles []string
+	EdgeRouterRoles   []string
+	Version           string
 }
 
 type ProvisionedTunnel struct {
@@ -41,6 +45,7 @@ type TunnelProvisioner struct {
 	services                  ServiceOperations
 	servicePolicies           ServicePolicyManagerOperations
 	serviceEdgeRouterPolicies ServiceEdgeRouterPolicyOperations
+	terminators               TerminatorOperations
 }
 
 func NewTunnelProvisioner(client *Client) *TunnelProvisioner {
@@ -48,7 +53,29 @@ func NewTunnelProvisioner(client *Client) *TunnelProvisioner {
 		services:                  client.Services,
 		servicePolicies:           client.ServicePolicies,
 		serviceEdgeRouterPolicies: client.ServiceEdgeRouterPolicies,
+		terminators:               client.Terminators,
 	}
+}
+
+// EvictTerminatorsByService deletes every fabric terminator advertising the given service, removing
+// whatever host is currently bound to it. This is the shape-agnostic eviction takeover uses: a proxy
+// tunnel and a direct tunnel both surface their host as terminators on the service.
+func (p *TunnelProvisioner) EvictTerminatorsByService(ctx context.Context, serviceID string) error {
+	if serviceID == "" {
+		return nil
+	}
+	return p.terminators.DeleteWithFilter(ctx, BuildFilter("service", serviceID))
+}
+
+// EvictTerminatorsByIdentity deletes every fabric terminator owned by the given identity, removing
+// everything that identity is currently hosting. Environment retirement uses this to clear the
+// retiring environment's residue from the standalone tunnels it was hosting -- a direct tunnel has no
+// serve row, so the identity-scoped terminator list is the only way to enumerate them.
+func (p *TunnelProvisioner) EvictTerminatorsByIdentity(ctx context.Context, identityID string) error {
+	if identityID == "" {
+		return nil
+	}
+	return p.terminators.DeleteWithFilter(ctx, BuildFilter("identity", identityID))
 }
 
 func (p *TunnelProvisioner) Provision(ctx context.Context, spec TunnelSpec) (*ProvisionedTunnel, error) {
@@ -75,10 +102,10 @@ func (p *TunnelProvisioner) Provision(ctx context.Context, spec TunnelSpec) (*Pr
 
 	bindPolicyID, err := p.servicePolicies.CreateBind(ctx, &ServicePolicyOptions{
 		BaseOptions: BaseOptions{
-			Name: spec.EnvironmentIdentityID + "-" + serviceID + "-bind",
+			Name: serviceID + "-bind",
 			Tags: tags,
 		},
-		IdentityRoles: []string{"@" + spec.EnvironmentIdentityID},
+		IdentityRoles: spec.BindIdentityRoles,
 		ServiceRoles:  []string{"@" + serviceID},
 		Semantic:      rest_model.SemanticAllOf,
 	})

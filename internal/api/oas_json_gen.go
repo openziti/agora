@@ -6561,8 +6561,10 @@ func (s *CreateTunnelRequest) Encode(e *jx.Encoder) {
 // encodeFields encodes fields.
 func (s *CreateTunnelRequest) encodeFields(e *jx.Encoder) {
 	{
-		e.FieldStart("environmentId")
-		e.Str(s.EnvironmentId)
+		if s.EnvironmentId.Set {
+			e.FieldStart("environmentId")
+			s.EnvironmentId.Encode(e)
+		}
 	}
 	{
 		e.FieldStart("name")
@@ -6608,11 +6610,9 @@ func (s *CreateTunnelRequest) Decode(d *jx.Decoder) error {
 	if err := d.ObjBytes(func(d *jx.Decoder, k []byte) error {
 		switch string(k) {
 		case "environmentId":
-			requiredBitSet[0] |= 1 << 0
 			if err := func() error {
-				v, err := d.Str()
-				s.EnvironmentId = string(v)
-				if err != nil {
+				s.EnvironmentId.Reset()
+				if err := s.EnvironmentId.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -6680,7 +6680,7 @@ func (s *CreateTunnelRequest) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [1]uint8{
-		0b00000111,
+		0b00000110,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {
 			// Mask only required fields and check equality to mask using XOR.
@@ -18412,6 +18412,158 @@ func (s *StartTunnelServeUnauthorized) UnmarshalJSON(data []byte) error {
 	return s.Decode(d)
 }
 
+// Encode encodes TakeoverTunnelConflict as json.
+func (s *TakeoverTunnelConflict) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes TakeoverTunnelConflict from json.
+func (s *TakeoverTunnelConflict) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TakeoverTunnelConflict to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = TakeoverTunnelConflict(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *TakeoverTunnelConflict) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TakeoverTunnelConflict) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes TakeoverTunnelInternalServerError as json.
+func (s *TakeoverTunnelInternalServerError) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes TakeoverTunnelInternalServerError from json.
+func (s *TakeoverTunnelInternalServerError) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TakeoverTunnelInternalServerError to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = TakeoverTunnelInternalServerError(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *TakeoverTunnelInternalServerError) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TakeoverTunnelInternalServerError) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes TakeoverTunnelNotFound as json.
+func (s *TakeoverTunnelNotFound) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes TakeoverTunnelNotFound from json.
+func (s *TakeoverTunnelNotFound) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TakeoverTunnelNotFound to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = TakeoverTunnelNotFound(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *TakeoverTunnelNotFound) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TakeoverTunnelNotFound) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
+// Encode encodes TakeoverTunnelUnauthorized as json.
+func (s *TakeoverTunnelUnauthorized) Encode(e *jx.Encoder) {
+	unwrapped := (*Error)(s)
+
+	unwrapped.Encode(e)
+}
+
+// Decode decodes TakeoverTunnelUnauthorized from json.
+func (s *TakeoverTunnelUnauthorized) Decode(d *jx.Decoder) error {
+	if s == nil {
+		return errors.New("invalid: unable to decode TakeoverTunnelUnauthorized to nil")
+	}
+	var unwrapped Error
+	if err := func() error {
+		if err := unwrapped.Decode(d); err != nil {
+			return err
+		}
+		return nil
+	}(); err != nil {
+		return errors.Wrap(err, "alias")
+	}
+	*s = TakeoverTunnelUnauthorized(unwrapped)
+	return nil
+}
+
+// MarshalJSON implements stdjson.Marshaler.
+func (s *TakeoverTunnelUnauthorized) MarshalJSON() ([]byte, error) {
+	e := jx.Encoder{}
+	s.Encode(&e)
+	return e.Bytes(), nil
+}
+
+// UnmarshalJSON implements stdjson.Unmarshaler.
+func (s *TakeoverTunnelUnauthorized) UnmarshalJSON(data []byte) error {
+	d := jx.DecodeBytes(data)
+	return s.Decode(d)
+}
+
 // Encode implements json.Marshaler.
 func (s *Tunnel) Encode(e *jx.Encoder) {
 	e.ObjStart()
@@ -18434,8 +18586,10 @@ func (s *Tunnel) encodeFields(e *jx.Encoder) {
 		e.Str(s.AccountId)
 	}
 	{
-		e.FieldStart("environmentId")
-		e.Str(s.EnvironmentId)
+		if s.EnvironmentId.Set {
+			e.FieldStart("environmentId")
+			s.EnvironmentId.Encode(e)
+		}
 	}
 	{
 		e.FieldStart("name")
@@ -18550,11 +18704,9 @@ func (s *Tunnel) Decode(d *jx.Decoder) error {
 				return errors.Wrap(err, "decode field \"accountId\"")
 			}
 		case "environmentId":
-			requiredBitSet[0] |= 1 << 3
 			if err := func() error {
-				v, err := d.Str()
-				s.EnvironmentId = string(v)
-				if err != nil {
+				s.EnvironmentId.Reset()
+				if err := s.EnvironmentId.Decode(d); err != nil {
 					return err
 				}
 				return nil
@@ -18677,7 +18829,7 @@ func (s *Tunnel) Decode(d *jx.Decoder) error {
 	// Validate required fields.
 	var failures []validate.FieldError
 	for i, mask := range [2]uint8{
-		0b01111111,
+		0b01110111,
 		0b00111000,
 	} {
 		if result := (requiredBitSet[i] & mask) ^ mask; result != 0 {

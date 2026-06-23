@@ -269,6 +269,10 @@ type StartTunnelServeRes interface {
 	startTunnelServeRes()
 }
 
+type TakeoverTunnelRes interface {
+	takeoverTunnelRes()
+}
+
 type UpdateAdvertisementRes interface {
 	updateAdvertisementRes()
 }

@@ -1453,6 +1453,28 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 									return
 								}
 
+							case 't': // Prefix: "takeover"
+
+								if l := len("takeover"); len(elem) >= l && elem[0:l] == "takeover" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch r.Method {
+									case "POST":
+										s.handleTakeoverTunnelRequest([1]string{
+											args[0],
+										}, elemIsEscaped, w, r)
+									default:
+										s.notAllowed(w, r, "POST")
+									}
+
+									return
+								}
+
 							}
 
 						}
@@ -3296,6 +3318,30 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 										r.summary = ""
 										r.operationID = "startTunnelServe"
 										r.pathPattern = "/tunnels/{tunnelId}/serve"
+										r.args = args
+										r.count = 1
+										return r, true
+									default:
+										return
+									}
+								}
+
+							case 't': // Prefix: "takeover"
+
+								if l := len("takeover"); len(elem) >= l && elem[0:l] == "takeover" {
+									elem = elem[l:]
+								} else {
+									break
+								}
+
+								if len(elem) == 0 {
+									// Leaf node.
+									switch method {
+									case "POST":
+										r.name = TakeoverTunnelOperation
+										r.summary = ""
+										r.operationID = "takeoverTunnel"
+										r.pathPattern = "/tunnels/{tunnelId}/takeover"
 										r.args = args
 										r.count = 1
 										return r, true

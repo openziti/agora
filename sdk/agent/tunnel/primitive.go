@@ -88,11 +88,12 @@ func create(ctx context.Context, a primitiveAgent, spec Spec) (*Tunnel, error) {
 		return nil, err
 	}
 
+	// a standalone tunnel is account-owned; the controller binds it to the account, not to a hosting
+	// environment, so environmentId is intentionally not sent.
 	res, err := a.controller().CreateTunnel(ctx, &api.CreateTunnelRequest{
-		EnvironmentId: spec.EnvironmentID,
-		Name:          spec.Name,
-		Mode:          api.TunnelMode(spec.Mode),
-		GrantEmails:   append([]string(nil), spec.GrantEmails...),
+		Name:        spec.Name,
+		Mode:        api.TunnelMode(spec.Mode),
+		GrantEmails: append([]string(nil), spec.GrantEmails...),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("%s: %v: %w", createOp, err, ErrTransient)
@@ -189,7 +190,7 @@ func listen(ctx context.Context, a primitiveAgent, factory overlayFactory, nameO
 	if err != nil {
 		return nil, err
 	}
-	if err := validateListenTunnel(tunnel, a.environmentID()); err != nil {
+	if err := validateListenTunnel(tunnel); err != nil {
 		return nil, err
 	}
 
@@ -412,7 +413,7 @@ func getActiveDialerAttachment(ctx context.Context, controller primitiveControll
 	}
 }
 
-func validateListenTunnel(tunnel *api.Tunnel, environmentID string) error {
+func validateListenTunnel(tunnel *api.Tunnel) error {
 	if tunnel.Kind != api.TunnelKindDirect {
 		return invalidSpec("%s: tunnel '%s' is not direct", listenOp, tunnel.Name)
 	}
@@ -423,9 +424,8 @@ func validateListenTunnel(tunnel *api.Tunnel, environmentID string) error {
 	default:
 		return unsupportedMode("%s: tunnel '%s' has unsupported mode '%s'", listenOp, tunnel.Name, tunnel.Mode)
 	}
-	if tunnel.EnvironmentId != environmentID {
-		return invalidSpec("%s: tunnel '%s' is bound to environment '%s'", listenOp, tunnel.Name, tunnel.EnvironmentId)
-	}
+	// a direct tunnel is account-owned and may be hosted from any of the account's environments;
+	// cross-account hosting is refused by the account-scoped bind policy on the fabric, not here.
 	if !tunnel.ZitiServiceId.Set || !tunnel.BindPolicyId.Set {
 		return fmt.Errorf("%s: tunnel '%s' is missing service metadata: %w", listenOp, tunnel.Name, ErrTransient)
 	}

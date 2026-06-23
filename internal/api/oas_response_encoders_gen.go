@@ -4280,6 +4280,66 @@ func encodeStartTunnelServeResponse(response StartTunnelServeRes, w http.Respons
 	}
 }
 
+func encodeTakeoverTunnelResponse(response TakeoverTunnelRes, w http.ResponseWriter) error {
+	switch response := response.(type) {
+	case *TakeoverTunnelNoContent:
+		w.WriteHeader(204)
+
+		return nil
+
+	case *TakeoverTunnelUnauthorized:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(401)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *TakeoverTunnelNotFound:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(404)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *TakeoverTunnelConflict:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(409)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	case *TakeoverTunnelInternalServerError:
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.WriteHeader(500)
+
+		e := new(jx.Encoder)
+		response.Encode(e)
+		if _, err := e.WriteTo(w); err != nil {
+			return errors.Wrap(err, "write")
+		}
+
+		return nil
+
+	default:
+		return errors.Errorf("unexpected response type: %T", response)
+	}
+}
+
 func encodeUpdateAdvertisementResponse(response UpdateAdvertisementRes, w http.ResponseWriter) error {
 	switch response := response.(type) {
 	case *Advertisement:

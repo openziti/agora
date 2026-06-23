@@ -73,12 +73,11 @@ func (cmd *tunnelServeCommand) run(args []string) {
 		tunnel := existing
 		if create {
 			tunnel = ensureTunnelCreatedOrReused(client, &api.CreateTunnelRequest{
-				EnvironmentId: root.Environment().EnvironmentID,
 				Name:          name,
 				Mode:          api.TunnelMode(mode),
 				BackendTarget: api.NewOptString(backend),
 				GrantEmails:   cmd.grantEmails,
-			}, root.Environment().EnvironmentID)
+			})
 		}
 		cmd.runForeground(root, client, tunnel)
 		return

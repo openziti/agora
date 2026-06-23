@@ -74,7 +74,7 @@ func TestAgentEnsureServeAndConnectPersistDesiredState(t *testing.T) {
 		startServe: func(context.Context, *env_core.Environment, env_core.ManagedServe) (*api.Tunnel, *api.TunnelServe, error) {
 			return &api.Tunnel{
 				ID:            "tt_test00000001",
-				EnvironmentId: "ev_test00000002",
+				EnvironmentId: api.NewOptString("ev_test00000002"),
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
 				BackendTarget: api.NewOptString("https://backend.example"),
@@ -83,7 +83,7 @@ func TestAgentEnsureServeAndConnectPersistDesiredState(t *testing.T) {
 		startConnect: func(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {
 			return &api.Tunnel{
 				ID:            "tt_test00000001",
-				EnvironmentId: "ev_test00000002",
+				EnvironmentId: api.NewOptString("ev_test00000002"),
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
 				BackendTarget: api.NewOptString("https://backend.example"),
@@ -389,7 +389,7 @@ func TestAgentRestoresDesiredServeAndConnectOnStart(t *testing.T) {
 			serveStarts.Add(1)
 			return &api.Tunnel{
 				ID:            "tt_test00000025",
-				EnvironmentId: "ev_test00000025",
+				EnvironmentId: api.NewOptString("ev_test00000025"),
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
 				BackendTarget: api.NewOptString("https://backend.example"),
@@ -399,7 +399,7 @@ func TestAgentRestoresDesiredServeAndConnectOnStart(t *testing.T) {
 			connectStarts.Add(1)
 			return &api.Tunnel{
 				ID:            "tt_test00000025",
-				EnvironmentId: "ev_test00000025",
+				EnvironmentId: api.NewOptString("ev_test00000025"),
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
 				BackendTarget: api.NewOptString("https://backend.example"),
@@ -453,7 +453,7 @@ func TestAgentEnsureServeRetriesAfterInitialFailure(t *testing.T) {
 			}
 			return &api.Tunnel{
 				ID:            "tt_test00000026",
-				EnvironmentId: "ev_test00000026",
+				EnvironmentId: api.NewOptString("ev_test00000026"),
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
 				BackendTarget: api.NewOptString("https://backend.example"),
@@ -520,7 +520,7 @@ func TestAgentRetriesAfterUnexpectedRuntimeExit(t *testing.T) {
 			start := starts.Add(1)
 			return &api.Tunnel{
 				ID:            "tt_test00000027",
-				EnvironmentId: "ev_test00000027",
+				EnvironmentId: api.NewOptString("ev_test00000027"),
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
 				BackendTarget: api.NewOptString("https://backend.example"),
@@ -589,7 +589,7 @@ func TestAgentServeHeartbeatCurrentResourceFailureReconcilesImmediately(t *testi
 			start := starts.Add(1)
 			return &api.Tunnel{
 				ID:            "tt_test00000028",
-				EnvironmentId: "ev_test00000028",
+				EnvironmentId: api.NewOptString("ev_test00000028"),
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
 				BackendTarget: api.NewOptString("https://backend.example"),
@@ -654,7 +654,7 @@ func TestAgentReloadEnvironmentRecoversMissingPrerequisites(t *testing.T) {
 			starts.Add(1)
 			return &api.Tunnel{
 				ID:            "tt_test00000029",
-				EnvironmentId: "ev_test00000029",
+				EnvironmentId: api.NewOptString("ev_test00000029"),
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
 				BackendTarget: api.NewOptString("https://backend.example"),

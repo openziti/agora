@@ -14,8 +14,8 @@ import (
 func TestCreateDirectTunnelOmitsBackendTarget(t *testing.T) {
 	controller := &fakePrimitiveController{
 		createTunnel: func(_ context.Context, req *api.CreateTunnelRequest) (api.CreateTunnelRes, error) {
-			if req.EnvironmentId != "ev_test00000001" {
-				t.Fatalf("unexpected environment id %q", req.EnvironmentId)
+			if req.EnvironmentId.Set {
+				t.Fatalf("standalone create should not send environmentId, got %#v", req.EnvironmentId)
 			}
 			if req.Name != "gateway" || req.Mode != api.TunnelModeHTTP {
 				t.Fatalf("unexpected create request %#v", req)
@@ -27,11 +27,10 @@ func TestCreateDirectTunnelOmitsBackendTarget(t *testing.T) {
 				t.Fatalf("unexpected grant emails %#v", req.GrantEmails)
 			}
 			return &api.Tunnel{
-				ID:            "tt_abcdefghijkl",
-				Name:          req.Name,
-				Mode:          req.Mode,
-				Kind:          api.TunnelKindDirect,
-				EnvironmentId: req.EnvironmentId,
+				ID:   "tt_abcdefghijkl",
+				Name: req.Name,
+				Mode: req.Mode,
+				Kind: api.TunnelKindDirect,
 			}, nil
 		},
 	}
@@ -66,7 +65,6 @@ func TestListenResolvesNameAndOpensOverlayByTunnelID(t *testing.T) {
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
 				Kind:          api.TunnelKindDirect,
-				EnvironmentId: "ev_test00000001",
 				ZitiServiceId: api.NewOptString("svc-1"),
 				BindPolicyId:  api.NewOptString("bind-1"),
 			}}, nil
@@ -98,7 +96,6 @@ func TestListenValidation(t *testing.T) {
 		Name:          "gateway",
 		Mode:          api.TunnelModeHTTP,
 		Kind:          api.TunnelKindDirect,
-		EnvironmentId: "ev_test00000001",
 		ZitiServiceId: api.NewOptString("svc-1"),
 		BindPolicyId:  api.NewOptString("bind-1"),
 	}
@@ -110,13 +107,12 @@ func TestListenValidation(t *testing.T) {
 	}{
 		{name: "proxy", tunnel: withTunnelKind(base, api.TunnelKindProxy), want: ErrInvalidSpec},
 		{name: "udp", tunnel: withTunnelMode(base, api.TunnelModeUDP), want: ErrUnsupportedMode},
-		{name: "wrong environment", tunnel: withTunnelEnvironment(base, "ev_test00000002"), want: ErrInvalidSpec},
 		{name: "missing metadata", tunnel: withTunnelMetadata(base, api.OptString{}, api.NewOptString("bind-1")), want: ErrTransient},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := validateListenTunnel(&tt.tunnel, "ev_test00000001")
+			err := validateListenTunnel(&tt.tunnel)
 			assertErrorIs(t, err, tt.want)
 		})
 	}
@@ -133,11 +129,10 @@ func TestAttachCreatesDialerAttachment(t *testing.T) {
 			}
 			return &api.ConnectTunnelResponse{
 				Tunnel: api.Tunnel{
-					ID:            "tt_abcdefghijkl",
-					Name:          "gateway",
-					Mode:          api.TunnelModeHTTP,
-					Kind:          api.TunnelKindDirect,
-					EnvironmentId: "ev_provider0001",
+					ID:   "tt_abcdefghijkl",
+					Name: "gateway",
+					Mode: api.TunnelModeHTTP,
+					Kind: api.TunnelKindDirect,
 				},
 				Attachment: api.TunnelAttachment{
 					ID:            "ta_abcdefghijkl",
@@ -426,11 +421,6 @@ func withTunnelMode(tunnel api.Tunnel, mode api.TunnelMode) api.Tunnel {
 	return tunnel
 }
 
-func withTunnelEnvironment(tunnel api.Tunnel, environmentID string) api.Tunnel {
-	tunnel.EnvironmentId = environmentID
-	return tunnel
-}
-
 func withTunnelMetadata(tunnel api.Tunnel, serviceID, bindPolicyID api.OptString) api.Tunnel {
 	tunnel.ZitiServiceId = serviceID
 	tunnel.BindPolicyId = bindPolicyID
@@ -467,7 +457,6 @@ func TestListenResolvesIDThroughGetTunnel(t *testing.T) {
 				Name:          "gateway",
 				Mode:          api.TunnelModeTCP,
 				Kind:          api.TunnelKindDirect,
-				EnvironmentId: "ev_test00000001",
 				ZitiServiceId: api.NewOptString("svc-1"),
 				BindPolicyId:  api.NewOptString("bind-1"),
 			}, nil
@@ -489,11 +478,10 @@ func TestGetResolvesTunnelByName(t *testing.T) {
 	controller := &fakePrimitiveController{
 		listTunnels: func(_ context.Context, params api.ListTunnelsParams) (api.ListTunnelsRes, error) {
 			return &api.ListTunnelsResponse{{
-				ID:            "tt_abcdefghijkl",
-				Name:          "gateway",
-				Mode:          api.TunnelModeTCP,
-				Kind:          api.TunnelKindDirect,
-				EnvironmentId: "ev_test00000001",
+				ID:   "tt_abcdefghijkl",
+				Name: "gateway",
+				Mode: api.TunnelModeTCP,
+				Kind: api.TunnelKindDirect,
 			}}, nil
 		},
 	}
@@ -533,7 +521,6 @@ func TestListenIdentityFailure(t *testing.T) {
 				Name:          "gateway",
 				Mode:          api.TunnelModeHTTP,
 				Kind:          api.TunnelKindDirect,
-				EnvironmentId: "ev_test00000001",
 				ZitiServiceId: api.NewOptString("svc-1"),
 				BindPolicyId:  api.NewOptString("bind-1"),
 			}}, nil

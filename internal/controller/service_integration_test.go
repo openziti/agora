@@ -213,7 +213,7 @@ func TestServiceHTTPFlow(t *testing.T) {
 	}
 
 	createTunnelRes, err := accountClient.CreateTunnel(ctx, &api.CreateTunnelRequest{
-		EnvironmentId: env.ID,
+		EnvironmentId: api.NewOptString(env.ID),
 		Name:          "llm-gateway",
 		Mode:          api.TunnelModeTCP,
 		BackendTarget: api.NewOptString("127.0.0.1:8443"),
@@ -289,8 +289,23 @@ func TestServiceHTTPFlow(t *testing.T) {
 	if !ok {
 		t.Fatalf("unexpected post-disable list tunnels response: %T", postDisableTunnelsRes)
 	}
-	if len(*postDisableTunnels) != 0 {
-		t.Fatalf("expected 0 tunnels after disable, got %d", len(*postDisableTunnels))
+	// the tunnel is account-owned (standalone): retiring the environment that created it tears down
+	// that environment's participation, not the account's durable tunnels, so it survives.
+	if len(*postDisableTunnels) != 1 {
+		t.Fatalf("expected the account-owned tunnel to survive environment disable, got %d tunnels", len(*postDisableTunnels))
+	}
+	if (*postDisableTunnels)[0].EnvironmentId.Set {
+		t.Fatalf("expected surviving tunnel to be standalone (no environment), got environment_id=%q", (*postDisableTunnels)[0].EnvironmentId.Value)
+	}
+
+	// account-owned tunnels hold fabric objects the account is responsible for, so account deletion is
+	// refused while any remain. delete the surviving standalone tunnel before tearing the account down.
+	deleteTunnelRes, err := accountClient.DeleteTunnel(ctx, api.DeleteTunnelParams{TunnelId: (*postDisableTunnels)[0].ID})
+	if err != nil {
+		t.Fatalf("delete tunnel request: %v", err)
+	}
+	if _, ok := deleteTunnelRes.(*api.DeleteTunnelNoContent); !ok {
+		t.Fatalf("unexpected delete tunnel response: %T", deleteTunnelRes)
 	}
 
 	changePasswordRes, err := accountClient.ChangePassword(ctx, &api.ChangePasswordRequest{
@@ -412,11 +427,13 @@ func (f *fakeEnvironmentLifecycle) Disable(_ context.Context, spec automation.De
 }
 
 type fakeTunnelLifecycle struct {
-	provisionResult  *automation.ProvisionedTunnel
-	provisionCalls   []automation.TunnelSpec
-	attachmentResult string
-	attachmentCalls  []automation.TunnelAccessSpec
-	deprovisionCalls []automation.DeprovisionTunnelSpec
+	provisionResult    *automation.ProvisionedTunnel
+	provisionCalls     []automation.TunnelSpec
+	attachmentResult   string
+	attachmentCalls    []automation.TunnelAccessSpec
+	deprovisionCalls   []automation.DeprovisionTunnelSpec
+	evictServiceCalls  []string
+	evictIdentityCalls []string
 }
 
 func (f *fakeTunnelLifecycle) Provision(_ context.Context, spec automation.TunnelSpec) (*automation.ProvisionedTunnel, error) {
@@ -441,6 +458,16 @@ func (f *fakeTunnelLifecycle) CreateAttachmentDialPolicy(_ context.Context, spec
 
 func (f *fakeTunnelLifecycle) Deprovision(_ context.Context, spec automation.DeprovisionTunnelSpec) error {
 	f.deprovisionCalls = append(f.deprovisionCalls, spec)
+	return nil
+}
+
+func (f *fakeTunnelLifecycle) EvictTerminatorsByService(_ context.Context, serviceID string) error {
+	f.evictServiceCalls = append(f.evictServiceCalls, serviceID)
+	return nil
+}
+
+func (f *fakeTunnelLifecycle) EvictTerminatorsByIdentity(_ context.Context, identityID string) error {
+	f.evictIdentityCalls = append(f.evictIdentityCalls, identityID)
 	return nil
 }
 

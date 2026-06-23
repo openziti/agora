@@ -66,14 +66,14 @@ func (cmd *tunnelCreateCommand) run(args []string) {
 	mode := api.TunnelMode(cmd.mode)
 
 	root := requireEnabledRoot()
-	env := root.Environment()
 	client := openEnvironmentAPIClient(root)
 
+	// a standalone tunnel is account-owned; the controller binds it to the account, not to a hosting
+	// environment, so environmentId is intentionally not sent.
 	req := &api.CreateTunnelRequest{
-		EnvironmentId: env.EnvironmentID,
-		Name:          args[0],
-		Mode:          mode,
-		GrantEmails:   cmd.grantEmails,
+		Name:        args[0],
+		Mode:        mode,
+		GrantEmails: cmd.grantEmails,
 	}
 	if cmd.backend != "" {
 		panicIfErr(validateModeAndTarget(mode, cmd.backend))

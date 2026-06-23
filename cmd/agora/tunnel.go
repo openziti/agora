@@ -222,7 +222,7 @@ func cleanupTunnelServe(client *api.Client, serveID string) {
 	}
 }
 
-func ensureTunnelCreatedOrReused(client *api.Client, req *api.CreateTunnelRequest, environmentID string) *api.Tunnel {
+func ensureTunnelCreatedOrReused(client *api.Client, req *api.CreateTunnelRequest) *api.Tunnel {
 	res, err := client.CreateTunnel(context.Background(), req)
 	if err != nil {
 		panic(err)
@@ -232,12 +232,11 @@ func ensureTunnelCreatedOrReused(client *api.Client, req *api.CreateTunnelReques
 	case *api.Tunnel:
 		return typed
 	case *api.CreateTunnelConflict:
-		existing := resolveTunnelByName(client, req.Name, api.ListTunnelsScopeAll)
+		// a standalone tunnel is account-owned; reuse only one this account owns (scope owned), and no
+		// longer key reuse on a hosting environment.
+		existing := resolveTunnelByName(client, req.Name, api.ListTunnelsScopeOwned)
 		if existing == nil {
 			panic(typed.Message)
-		}
-		if existing.EnvironmentId != environmentID {
-			panic("existing tunnel is not owned by the current environment")
 		}
 		if existing.Kind != api.TunnelKindProxy || existing.Mode != req.Mode || existing.BackendTarget.Or("") != req.BackendTarget.Or("") {
 			panic("existing tunnel configuration does not match requested mode/backend")

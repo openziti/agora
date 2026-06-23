@@ -122,14 +122,14 @@ func (s *Service) AcceptSession(ctx context.Context, req *api.AcceptSessionReque
 		}
 
 		provisioned, err = tunnelLifecycle.Provision(ctx, automation.TunnelSpec{
-			OrganizationID:        principal.OrganizationID,
-			AccountID:             principal.AccountID,
-			EnvironmentID:         env.ID,
-			TunnelID:              tunnelID,
-			TunnelName:            tunnelName,
-			ServiceName:           serviceName,
-			EnvironmentIdentityID: env.ZitiIdentityID,
-			Version:               automation.DefaultAgoraVersion,
+			OrganizationID:    principal.OrganizationID,
+			AccountID:         principal.AccountID,
+			EnvironmentID:     env.ID,
+			TunnelID:          tunnelID,
+			TunnelName:        tunnelName,
+			ServiceName:       serviceName,
+			BindIdentityRoles: []string{"@" + env.ZitiIdentityID},
+			Version:           automation.DefaultAgoraVersion,
 		})
 		if err != nil {
 			return err

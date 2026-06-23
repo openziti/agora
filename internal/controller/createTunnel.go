@@ -14,7 +14,7 @@ import (
 func (s *Service) CreateTunnel(ctx context.Context, req *api.CreateTunnelRequest) (api.CreateTunnelRes, error) {
 	principal, err := requireAccountPrincipal(ctx)
 	if err != nil {
-		dl.Warnf("unauthorized create tunnel request environment_id='%s' name='%s'", req.EnvironmentId, req.Name)
+		dl.Warnf("unauthorized create tunnel request environment_id='%s' name='%s'", req.EnvironmentId.Or(""), req.Name)
 		return &api.CreateTunnelUnauthorized{Code: "unauthorized", Message: "unauthorized"}, nil
 	}
 	kind, backendTarget, err := inferTunnelKind(req.BackendTarget)
@@ -25,7 +25,7 @@ func (s *Service) CreateTunnel(ctx context.Context, req *api.CreateTunnelRequest
 	dl.Infof(
 		"creating tunnel name='%s' environment_id='%s' mode='%s' kind='%s' backend_target='%s' %s",
 		req.Name,
-		req.EnvironmentId,
+		req.EnvironmentId.Or(""),
 		req.Mode,
 		kind,
 		optionalStringValue(backendTarget),
@@ -70,12 +70,18 @@ func (s *Service) CreateTunnel(ctx context.Context, req *api.CreateTunnelRequest
 	var created *persistence.Tunnel
 	var provisioned *automation.ProvisionedTunnel
 	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
-		if err := lockEnvironmentScope(ctx, tx, req.EnvironmentId); err != nil {
-			return err
-		}
-		env, err := s.requireOwnedEnvironmentWithQuery(ctx, tx, principal, req.EnvironmentId)
-		if err != nil {
-			return err
+		// a standalone tunnel is account-owned and never bound to an environment. a supplied
+		// environmentId is treated as caller context only: validate the caller owns it, then discard
+		// it. the created row always stores EnvironmentID = nil regardless of what the caller sent
+		// (finding R2-A1) -- a persisted environment_id would masquerade as a Layer 2 session tunnel
+		// under the null/set discriminator and silently reintroduce environment binding.
+		if envID, ok := req.EnvironmentId.Get(); ok {
+			if err := lockEnvironmentScope(ctx, tx, envID); err != nil {
+				return err
+			}
+			if _, err := s.requireOwnedEnvironmentWithQuery(ctx, tx, principal, envID); err != nil {
+				return err
+			}
 		}
 		if _, err := s.store.Tunnels.GetByName(ctx, tx, principal.OrganizationID, req.Name); err == nil {
 			return errTunnelNameExists
@@ -84,14 +90,13 @@ func (s *Service) CreateTunnel(ctx context.Context, req *api.CreateTunnelRequest
 		}
 
 		provisioned, err = tunnelLifecycle.Provision(ctx, automation.TunnelSpec{
-			OrganizationID:        principal.OrganizationID,
-			AccountID:             principal.AccountID,
-			EnvironmentID:         env.ID,
-			TunnelID:              tunnelID,
-			TunnelName:            req.Name,
-			ServiceName:           serviceName,
-			EnvironmentIdentityID: env.ZitiIdentityID,
-			Version:               automation.DefaultAgoraVersion,
+			OrganizationID:    principal.OrganizationID,
+			AccountID:         principal.AccountID,
+			TunnelID:          tunnelID,
+			TunnelName:        req.Name,
+			ServiceName:       serviceName,
+			BindIdentityRoles: []string{"#" + accountRoleAttribute(principal.AccountID)},
+			Version:           automation.DefaultAgoraVersion,
 		})
 		if err != nil {
 			dl.Errorf("create tunnel provisioning failed tunnel_id='%s' %s: %v", tunnelID, principalLogFields(principal), err)
@@ -102,7 +107,7 @@ func (s *Service) CreateTunnel(ctx context.Context, req *api.CreateTunnelRequest
 			ID:                        tunnelID,
 			OrganizationID:            principal.OrganizationID,
 			AccountID:                 principal.AccountID,
-			EnvironmentID:             stringPtr(env.ID),
+			EnvironmentID:             nil,
 			Name:                      req.Name,
 			Mode:                      persistence.TunnelMode(req.Mode),
 			Kind:                      kind,
@@ -137,7 +142,7 @@ func (s *Service) CreateTunnel(ctx context.Context, req *api.CreateTunnelRequest
 			})
 		}
 		if errors.Is(err, persistence.ErrNotFound) {
-			dl.Warnf("create tunnel environment not found environment_id='%s' %s", req.EnvironmentId, principalLogFields(principal))
+			dl.Warnf("create tunnel environment not found environment_id='%s' %s", req.EnvironmentId.Or(""), principalLogFields(principal))
 			return &api.CreateTunnelNotFound{Code: "not_found", Message: "environment not found"}, nil
 		}
 		if errors.Is(err, errTunnelNameExists) {

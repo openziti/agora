@@ -121,6 +121,16 @@ func (s *Service) disableEnvironmentWithLocks(ctx context.Context, tx persistenc
 		}
 	}
 
+	// explicitly evict the retiring environment's fabric terminators before its identity is deleted. the
+	// environment may have been hosting account-owned standalone tunnels -- which are NOT in `tunnels`
+	// (that lists only this environment's session tunnels) and survive retirement -- so their host
+	// terminators are keyed by this environment's identity and would otherwise be stranded. this is
+	// especially necessary for direct tunnels, which keep no serve row the DB could enumerate them from
+	// (finding C2).
+	if err := tunnelLifecycle.EvictTerminatorsByIdentity(ctx, env.ZitiIdentityID); err != nil {
+		return err
+	}
+
 	disableSpec := automation.DeprovisionEnvironmentSpec{IdentityID: env.ZitiIdentityID}
 	if env.EdgeRouterPolicyID != nil {
 		disableSpec.EdgeRouterPolicyID = *env.EdgeRouterPolicyID
