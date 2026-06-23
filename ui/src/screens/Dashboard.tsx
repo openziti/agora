@@ -142,7 +142,7 @@ export default function Dashboard() {
   const advertisements = useApiResource(fetchAllVisibleAdvertisements, { intervalMs: DASHBOARD_POLL_MS });
   const workgroupsResource = useApiResource(listWorkgroups);
   const liveEventsLoad = useCallback(
-    (signal: AbortSignal) => listAuditEvents({ limit: 30 }, signal),
+    (signal: AbortSignal) => listAuditEvents({ limit: 50 }, signal),
     [],
   );
   const liveEvents = useApiResource(liveEventsLoad, { intervalMs: DASHBOARD_POLL_MS });
@@ -196,33 +196,29 @@ export default function Dashboard() {
       userLabel={account?.email ?? 'Account loading'}
       onTabChange={handleTabChange}
     >
-      <div className="flex flex-col gap-6">
-        <PageHeader
-          icon={Network}
-          label="AGENT NETWORK"
-          title="Agora"
-          description="The secure network layer where AI agents discover, connect, and collaborate — with every interaction governed by identity, bounded by contract, and fully auditable."
-          onInfoClick={() => setInfoOpen(true)}
-        />
-        {summary.error ? (
-          <ErrorPanel title="Dashboard summary unavailable" error={summary.error} onRetry={summary.refetch} />
-        ) : summary.data ? (
-          <AccountCallout summary={summary.data} />
-        ) : (
-          <LoadingPanel title="Loading current account" />
-        )}
-
-        {summary.error ? null : summary.data ? <SummaryStats summary={summary.data} /> : <StatsLoading />}
-
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-          <NetworkOverviewPanel
-            hubOrgName={account?.organizationName ?? ''}
-            orgStatuses={orgStatuses}
-            hasActivity={chartData.length > 0}
-            workgroups={workgroupsResource.data ?? []}
-            advertisements={agentRows}
+      <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
+        {/* Main content column — a container-query context so the panels below reflow
+            to the column's width (not the viewport) once the rail claims ~33%. */}
+        <div className="@container flex min-w-0 flex-1 flex-col gap-6">
+          <PageHeader
+            icon={Network}
+            label="AGENT NETWORK"
+            title="Agora"
+            description="The secure network layer where AI agents discover, connect, and collaborate — with every interaction governed by identity, bounded by contract, and fully auditable."
+            onInfoClick={() => setInfoOpen(true)}
           />
+          {summary.error ? (
+            <ErrorPanel title="Dashboard summary unavailable" error={summary.error} onRetry={summary.refetch} />
+          ) : summary.data ? (
+            <AccountCallout summary={summary.data} />
+          ) : (
+            <LoadingPanel title="Loading current account" />
+          )}
 
+          {summary.error ? null : summary.data ? <SummaryStats summary={summary.data} /> : <StatsLoading />}
+
+          {/* Envelope Activity takes its own full-width row so the hourly bars keep the
+              horizontal room they need at the reduced column width. */}
           <SectionPanel
             title="Envelope Activity"
             className="h-[320px] flex flex-col"
@@ -265,59 +261,76 @@ export default function Dashboard() {
             )}
           </SectionPanel>
 
+          {/* Topology (the centerpiece) pairs with Top Workgroups, and stacks to one
+              column when the main column is too narrow to keep both legible. */}
+          <div className="grid grid-cols-1 gap-4 @2xl:grid-cols-2">
+            <NetworkOverviewPanel
+              hubOrgName={account?.organizationName ?? ''}
+              orgStatuses={orgStatuses}
+              hasActivity={chartData.length > 0}
+              workgroups={workgroupsResource.data ?? []}
+              advertisements={agentRows}
+            />
+
+            <SectionPanel
+              title="Top Workgroups"
+              className="h-[320px] flex flex-col"
+              bodyClassName="flex-1 min-h-0 overflow-auto"
+            >
+              {activity.error ? (
+                <ErrorPanel title="Workgroup activity unavailable" error={activity.error} onRetry={activity.refetch} compact />
+              ) : activity.loading && !activity.data ? (
+                <LoadingPanel title="Loading workgroups" compact />
+              ) : workgroupBreakdown.length > 0 ? (
+                <SidebarBreakdown items={workgroupBreakdown} />
+              ) : (
+                <EmptyState
+                  icon={Users}
+                  title="No workgroup activity"
+                  description="No workgroup envelope totals are available for this window."
+                />
+              )}
+            </SectionPanel>
+          </div>
+        </div>
+
+        {/* Persistent activity rail — full-height and sticky beside the content on wide
+            viewports; drops below the main column under xl so it never crushes either side. */}
+        <aside className="flex w-full flex-col xl:sticky xl:top-0 xl:h-[calc(100vh-60px-3rem)] xl:w-[33%] xl:min-w-[320px] xl:max-w-[440px] xl:shrink-0">
           <SectionPanel
-            title="Top Workgroups"
-            className="h-[320px] flex flex-col"
-            bodyClassName="flex-1 min-h-0 overflow-auto"
+            title="Live Activity"
+            className="flex flex-col max-h-[32rem] xl:h-full xl:max-h-none"
+            bodyClassName="p-0 flex flex-1 min-h-0 flex-col"
+            actions={
+              <LiveIndicator
+                state={
+                  liveEvents.error
+                    ? 'error'
+                    : liveEvents.loading && !liveEvents.data
+                      ? 'loading'
+                      : 'live'
+                }
+              />
+            }
           >
-            {activity.error ? (
-              <ErrorPanel title="Workgroup activity unavailable" error={activity.error} onRetry={activity.refetch} compact />
-            ) : activity.loading && !activity.data ? (
-              <LoadingPanel title="Loading workgroups" compact />
-            ) : workgroupBreakdown.length > 0 ? (
-              <SidebarBreakdown items={workgroupBreakdown} />
+            {liveEvents.error ? (
+              <div className="p-5">
+                <ErrorPanel
+                  title="Live activity unavailable"
+                  error={liveEvents.error}
+                  onRetry={() => liveEvents.refetch()}
+                  compact
+                />
+              </div>
             ) : (
-              <EmptyState
-                icon={Users}
-                title="No workgroup activity"
-                description="No workgroup envelope totals are available for this window."
+              <LiveActivityContent
+                events={liveEvents.data?.items}
+                loading={liveEvents.loading}
+                workgroupNames={workgroupNameMap}
               />
             )}
           </SectionPanel>
-        </div>
-
-        <SectionPanel
-          title="Live Activity"
-          bodyClassName="p-0"
-          actions={
-            <LiveIndicator
-              state={
-                liveEvents.error
-                  ? 'error'
-                  : liveEvents.loading && !liveEvents.data
-                    ? 'loading'
-                    : 'live'
-              }
-            />
-          }
-        >
-          {liveEvents.error ? (
-            <div className="p-5">
-              <ErrorPanel
-                title="Live activity unavailable"
-                error={liveEvents.error}
-                onRetry={() => liveEvents.refetch()}
-                compact
-              />
-            </div>
-          ) : (
-            <LiveActivityContent
-              events={liveEvents.data?.items}
-              loading={liveEvents.loading}
-              workgroupNames={workgroupNameMap}
-            />
-          )}
-        </SectionPanel>
+        </aside>
       </div>
 
       {infoOpen ? (
@@ -684,7 +697,7 @@ function RibbonMetric({ label, value, tooltip }: { label: string; value: number;
 function SummaryStats({ summary }: { summary: DashboardSummaryResponse }) {
   const navigate = useNavigate();
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-4 @md:grid-cols-2 @3xl:grid-cols-4">
       <StatCard
         label="Active Sessions"
         value={formatInteger(summary.stats.activeSessions)}
@@ -721,7 +734,7 @@ function SummaryStats({ summary }: { summary: DashboardSummaryResponse }) {
 
 function StatsLoading() {
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-4 @md:grid-cols-2 @3xl:grid-cols-4">
       {['Active Sessions', 'Envelopes Today', 'Active Workgroups', 'Active Tunnels'].map((label) => (
         <section key={label} className="flex flex-col justify-between rounded-[7px] border border-border bg-panel p-3">
           <p className="text-label font-medium uppercase text-text-mute">{label}</p>
@@ -1441,7 +1454,9 @@ function LiveActivityContent({
   loading: boolean;
   workgroupNames: Record<string, string>;
 }) {
-  const recent = useMemo(() => (events ?? []).slice(0, 20), [events]);
+  // the rail is full-height now, so show the whole fetched window and let it scroll
+  // internally rather than capping the feed to a fixed handful of rows.
+  const recent = useMemo(() => events ?? [], [events]);
 
   if (loading && !events) {
     return <LiveActivitySkeleton />;
