@@ -9,3 +9,7 @@ export function listEnvironments(signal?: AbortSignal) {
 export function getEnvironment(environmentId: string, signal?: AbortSignal) {
   return apiRequest<Environment>(`/environments/${encodeURIComponent(environmentId)}`, { signal });
 }
+
+export function createEnvironment(body: { name: string }, signal?: AbortSignal) {
+  return apiRequest<Environment>('/environments', { method: 'POST', body, signal });
+}
