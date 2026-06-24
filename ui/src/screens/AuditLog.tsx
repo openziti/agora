@@ -1,26 +1,37 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router';
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import {
   Activity,
   AlertTriangle,
+  ArrowLeftRight,
+  ChevronDown,
+  ChevronRight,
   Download,
   FileCheck2,
   FileSearch,
+  Mail,
   RefreshCcw,
+  ScrollText,
   ShieldAlert,
+  ShieldCheck,
   Users,
   Wifi,
 } from 'lucide-react';
 
-import { AppShell, EmptyState, SectionPanel, StatCard, StatusPill, type StatusPillStatus } from '../components';
+import { AppShell, Button, DrawerCard, DrawerCodeChip, DrawerDivider, DrawerTip, EmptyState, InfoDrawer, PageHeader, Select, SectionPanel, StatCard, StatusPill, type StatusPillStatus } from '../components';
 import {
   ApiError,
   fetchAllAuditEvents,
   getDashboardSummary,
+  getSession,
+  listWorkgroups,
   useApiResource,
   type AuditEvent,
   type AuditEventType,
+  type Session,
 } from '../lib/api';
+
+import { SessionDrawer } from './SessionDrawer';
 
 type TimeRange = '24h' | '7d' | '30d';
 type FilterOption = {
@@ -41,6 +52,7 @@ type FilterOptionWithCount = FilterOption & {
 type ResourceOption = {
   label: string;
   value: string;
+  muted?: boolean;
 };
 
 const routeByTab: Record<string, string> = {
@@ -59,32 +71,81 @@ const timeRangeOptions: { id: TimeRange; label: string; durationMs: number }[] =
 ];
 
 const auditEventTypes: AuditEventType[] = [
-  'session.proposed',
-  'session.accepted',
-  'session.rejected',
-  'session.closed',
-  'envelope.flowed',
-  'tunnel.attached',
-  'tunnel.detached',
-  'advertisement.published',
-  'advertisement.retracted',
-  'environment.heartbeat',
   'account.login',
   'account.login_failed',
   'account.logout',
+  'advertisement.published',
+  'advertisement.retracted',
+  // Contract Violations (virtual filter) sorts here
+  'envelope.flowed',
+  'environment.heartbeat',
+  'session.accepted',
+  'session.closed',
+  'session.proposed',
+  'session.rejected',
+  'tunnel.attached',
+  'tunnel.detached',
 ];
 
 const numberFormatter = new Intl.NumberFormat();
 const AUDIT_POLL_MS = 5000;
 
+const ROW_HEIGHT = 16;
+const ROW_GAP = 4;
+const LEGEND_WIDTH = 140;
+
+type LaneDef = { label: string; cssColor: string };
+
+const LANE_DEFS: LaneDef[] = [
+  { label: 'Sessions',       cssColor: 'var(--color-info)' },
+  { label: 'Violations',     cssColor: 'var(--color-danger)' },
+  { label: 'Envelopes',      cssColor: 'var(--color-success)' },
+  { label: 'Tunnels',        cssColor: 'var(--color-warning)' },
+  { label: 'Advertisements', cssColor: 'var(--color-brand-agora)' },
+  { label: 'Account & Environment', cssColor: 'var(--color-text-mute-2)' },
+];
+
+type TickMark = { position: number; width: number };
+type ViolationTickMark = { position: number; event: AuditEvent; gap: number };
+
+const EVENT_TYPE_LABELS: Partial<Record<string, string>> = {
+  'session.proposed': 'Session Proposed',
+  'session.accepted': 'Session Accepted',
+  'session.rejected': 'Session Rejected',
+  'session.closed': 'Session Closed',
+  'envelope.flowed': 'Envelope Transferred',
+  'environment.heartbeat': 'Environment Heartbeat',
+  'tunnel.attached': 'Tunnel Attached',
+  'tunnel.detached': 'Tunnel Detached',
+  'account.login': 'Account Login',
+  'account.login_failed': 'Account Login Failed',
+  'account.logout': 'Account Logout',
+  'advertisement.published': 'Advertisement Published',
+  'advertisement.retracted': 'Advertisement Retracted',
+};
+
+function formatEventType(eventType: string): string {
+  return EVENT_TYPE_LABELS[eventType] ?? eventType;
+}
+
 export default function AuditLog() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [infoOpen, setInfoOpen] = useState(false);
+  const [auditSelectedSession, setAuditSelectedSession] = useState<Session | null>(null);
   const [timeRange, setTimeRange] = useState<TimeRange>('24h');
-  const [eventTypeFilter, setEventTypeFilter] = useState<AuditEventType | 'all'>('all');
+  const [eventTypeFilter, setEventTypeFilter] = useState<AuditEventType | 'all' | 'contract_violations'>('all');
   const [workgroupFilter, setWorkgroupFilter] = useState('all');
   const [accountFilter, setAccountFilter] = useState('all');
+
+  useEffect(() => {
+    const state = location.state as { eventTypeFilter?: AuditEventType | 'all' | 'contract_violations'; timeRange?: TimeRange } | null;
+    if (state?.eventTypeFilter) setEventTypeFilter(state.eventTypeFilter);
+    if (state?.timeRange) setTimeRange(state.timeRange);
+  }, []);
   const [reportOpen, setReportOpen] = useState(false);
   const account = useApiResource(getDashboardSummary);
+  const workgroupsResource = useApiResource(listWorkgroups);
   const auditLoad = useCallback((signal: AbortSignal) => fetchAllAuditEvents(rangeParams(timeRange), signal), [timeRange]);
   const auditEvents = useApiResource(auditLoad, { intervalMs: AUDIT_POLL_MS });
   const callerAccount = account.data?.account;
@@ -92,13 +153,39 @@ export default function AuditLog() {
   const isLoading = (account.loading && !account.data) || (auditEvents.loading && !auditEvents.data);
   const events = useMemo(() => auditEvents.data ?? [], [auditEvents.data]);
 
-  const workgroupOptions = useMemo(() => buildIDOptions(events, (event) => event.workgroupId), [events]);
+  const workgroupNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    workgroupsResource.data?.forEach((wg) => { map[wg.id] = wg.name; });
+    return map;
+  }, [workgroupsResource.data]);
+
+  const advertisementNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    events.forEach((event) => {
+      if (event.advertisementId && event.eventType === 'advertisement.published') {
+        const name = dataString(event.data ?? {}, 'name');
+        if (name) map[event.advertisementId] = name;
+      }
+    });
+    return map;
+  }, [events]);
+
+  const workgroupOptions = useMemo(
+    () => buildIDOptions(events, (event) => event.workgroupId, workgroupNameMap),
+    [events, workgroupNameMap],
+  );
   const accountOptions = useMemo(() => buildIDOptions(events, (event) => event.accountId), [events]);
   const filteredEvents = useMemo(
     () => filterAuditEvents(events, eventTypeFilter, workgroupFilter, accountFilter),
     [events, eventTypeFilter, workgroupFilter, accountFilter],
   );
   const summary = useMemo(() => buildComplianceSummary(filteredEvents), [filteredEvents]);
+
+  function handleSessionClick(sessionId: string) {
+    getSession(sessionId)
+      .then((session) => setAuditSelectedSession(session))
+      .catch((error: unknown) => console.error('Failed to load session', error));
+  }
 
   function handleTabChange(tabId: string) {
     const route = routeByTab[tabId];
@@ -113,6 +200,17 @@ export default function AuditLog() {
     auditEvents.refetch();
   }
 
+  const isFiltered =
+    eventTypeFilter !== 'all' ||
+    workgroupFilter !== 'all' ||
+    accountFilter !== 'all';
+
+  function handleResetFilters() {
+    setEventTypeFilter('all');
+    setWorkgroupFilter('all');
+    setAccountFilter('all');
+  }
+
   return (
     <AppShell
       product="agora"
@@ -125,6 +223,13 @@ export default function AuditLog() {
       onTabChange={handleTabChange}
     >
       <div className="flex flex-col gap-6">
+        <PageHeader
+          icon={ScrollText}
+          label="COMPLIANCE"
+          title="Audit"
+          description="The complete event trail for all agent activity — every session, envelope, and contract enforcement action, reconstructible from end to end."
+          onInfoClick={() => setInfoOpen(true)}
+        />
         {account.error ? <ErrorPanel title="Current account unavailable" error={account.error} onRetry={account.refetch} /> : null}
 
         <AuditOverview summary={summary} loading={!callerAccount || isLoading} />
@@ -146,23 +251,43 @@ export default function AuditLog() {
           onAccountFilterChange={setAccountFilter}
           onExportCSV={() => exportAuditCSV(filteredEvents, timeRange)}
           onToggleReport={() => setReportOpen((open) => !open)}
+          onResetFilters={isFiltered ? handleResetFilters : undefined}
         />
 
-        {reportOpen ? <ComplianceReport summary={summary} timeRange={timeRange} /> : null}
+        <ActivityStrip
+          events={filteredEvents}
+          timeRange={timeRange}
+          workgroupNames={workgroupNameMap}
+          onSessionClick={handleSessionClick}
+        />
+
+        {reportOpen ? (
+          <ComplianceReport
+            summary={summary}
+            timeRange={timeRange}
+            accountFilter={accountFilter}
+            accountOptions={accountOptions}
+          />
+        ) : null}
 
         <SectionPanel
-          title="Timeline"
-          actions={<StatusPill status="info" label={`${formatInteger(filteredEvents.length)} events`} />}
+          title={`Timeline (${formatInteger(filteredEvents.length)} events)`}
           bodyClassName="p-0"
         >
-          {!callerAccount || auditEvents.loading ? (
+          {!callerAccount || isLoading ? (
             <div className="p-5">
               <LoadingPanel title="Loading audit events" compact />
             </div>
           ) : filteredEvents.length > 0 ? (
             <div className="divide-y divide-border">
               {filteredEvents.map((event) => (
-                <AuditEventRow key={event.id} event={event} />
+                <AuditEventRow
+                  key={event.id}
+                  event={event}
+                  workgroupNames={workgroupNameMap}
+                  advertisementNames={advertisementNameMap}
+                  onSessionClick={handleSessionClick}
+                />
               ))}
             </div>
           ) : (
@@ -172,13 +297,80 @@ export default function AuditLog() {
           )}
         </SectionPanel>
       </div>
+
+      {auditSelectedSession ? (
+        <SessionDrawer
+          session={auditSelectedSession}
+          role={
+            callerAccount?.accountId === auditSelectedSession.providerAccountId
+              ? 'provider'
+              : callerAccount?.accountId === auditSelectedSession.consumerAccountId
+                ? 'consumer'
+                : 'unknown'
+          }
+          counterpartyOrganizationName={
+            callerAccount?.accountId === auditSelectedSession.providerAccountId
+              ? auditSelectedSession.consumerOrganizationName
+              : auditSelectedSession.providerOrganizationName
+          }
+          auditEvents={events}
+          initialTab="trace"
+          onClose={() => setAuditSelectedSession(null)}
+        />
+      ) : null}
+
+      {infoOpen ? (
+        <InfoDrawer title="About the Audit Log" onClose={() => setInfoOpen(false)}>
+          <div className="flex flex-col gap-5">
+            <section>
+              <h3 className="mb-2 font-semibold text-text">What is the Audit Log?</h3>
+              <p className="leading-relaxed text-text-mute">
+                The Audit log is the controller's complete record of all agent activity in the system.
+                Every session state transition, every contract enforcement action, and every close reason
+                is recorded automatically — not by application-level logging, but by infrastructure logs
+                that exist because every interaction passes through the governed session layer.
+              </p>
+            </section>
+
+            <DrawerDivider />
+
+            <section>
+              <h3 className="mb-3 font-semibold text-text">What gets recorded</h3>
+              <div className="flex flex-col gap-2">
+                <DrawerCard icon={ArrowLeftRight} title="Session Lifecycle Events" description="Every state transition from proposed to closed, with timestamps and recorded close reason." />
+                <DrawerCard icon={FileCheck2} title="Contract Violations" description="Which session, which term was violated, and the enforcement action taken." />
+                <DrawerCard icon={Mail} title="Envelope Activity" description="Counts per session, tied to the session's contract snapshot." />
+                <DrawerCard icon={ShieldCheck} title="Workgroup Changes" description="Membership changes that caused session closures or advertisement visibility changes." />
+              </div>
+            </section>
+
+            <DrawerDivider />
+
+            <section>
+              <h3 className="mb-2 font-semibold text-text">Correlation IDs</h3>
+              <p className="leading-relaxed text-text-mute">
+                Every envelope carries a <DrawerCodeChip>correlation_id</DrawerCodeChip> that ties requests to responses across the full
+                call graph. The complete chain of a multi-agent interaction — which agent requested what,
+                which agent responded, in which session, under which contract — is reconstructible from
+                the audit log without relying on application-level tracing.
+              </p>
+            </section>
+
+            <DrawerDivider />
+
+            <DrawerTip>
+              Sessions are never deleted — closed sessions are retained indefinitely. The complete interaction chain is reconstructible from controller audit logs without relying on application-level tracing.
+            </DrawerTip>
+          </div>
+        </InfoDrawer>
+      ) : null}
     </AppShell>
   );
 }
 
 function AuditOverview({ summary, loading }: { summary: ComplianceSummary; loading: boolean }) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
       <StatCard
         label="Audit Events"
         value={loading ? '-' : formatInteger(summary.totalEvents)}
@@ -196,12 +388,14 @@ function AuditOverview({ summary, loading }: { summary: ComplianceSummary; loadi
         value={loading ? '-' : formatInteger(summary.envelopeCount)}
         icon={Activity}
         accent="success"
+        tooltip="Envelope count reflects successfully committed envelopes. Sessions closed by a contract violation may show zero if envelopes were never committed."
       />
       <StatCard
         label="Violations"
         value={loading ? '-' : formatInteger(summary.contractViolations)}
         icon={ShieldAlert}
         accent={summary.contractViolations > 0 ? 'danger' : 'neutral'}
+        tooltip="Sessions that exceeded contract limits during this period"
       />
     </div>
   );
@@ -222,9 +416,10 @@ function AuditControls({
   onAccountFilterChange,
   onExportCSV,
   onToggleReport,
+  onResetFilters,
 }: {
   timeRange: TimeRange;
-  eventTypeFilter: AuditEventType | 'all';
+  eventTypeFilter: AuditEventType | 'all' | 'contract_violations';
   workgroupFilter: string;
   accountFilter: string;
   workgroupOptions: FilterOption[];
@@ -232,109 +427,139 @@ function AuditControls({
   reportOpen: boolean;
   filteredEvents: AuditEvent[];
   onTimeRangeChange: (range: TimeRange) => void;
-  onEventTypeFilterChange: (eventType: AuditEventType | 'all') => void;
+  onEventTypeFilterChange: (eventType: AuditEventType | 'all' | 'contract_violations') => void;
   onWorkgroupFilterChange: (workgroupId: string) => void;
   onAccountFilterChange: (accountId: string) => void;
   onExportCSV: () => void;
   onToggleReport: () => void;
+  onResetFilters?: () => void;
 }) {
   return (
     <section className="rounded-card border border-border bg-panel p-4">
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto]">
-        <div className="flex flex-wrap gap-3">
-          <FilterGroup label="Range">
-            {timeRangeOptions.map((option) => (
-              <FilterButton
-                key={option.id}
-                active={timeRange === option.id}
-                label={option.label}
-                onClick={() => onTimeRangeChange(option.id)}
-              />
-            ))}
-          </FilterGroup>
-
-          <label className="flex min-w-48 flex-col gap-1">
-            <span className="text-label font-medium uppercase text-text-mute">Event Type</span>
-            <select
-              value={eventTypeFilter}
-              onChange={(event) => onEventTypeFilterChange(event.target.value as AuditEventType | 'all')}
-              className="h-10 rounded-pill border border-border bg-panel-subtle px-3 text-body text-text outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora"
-            >
-              <option value="all">all events</option>
-              {auditEventTypes.map((eventType) => (
-                <option key={eventType} value={eventType}>
-                  {eventType}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex min-w-48 flex-col gap-1">
-            <span className="text-label font-medium uppercase text-text-mute">Workgroup</span>
-            <select
-              value={workgroupFilter}
-              onChange={(event) => onWorkgroupFilterChange(event.target.value)}
-              className="h-10 rounded-pill border border-border bg-panel-subtle px-3 text-body text-text outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora"
-            >
-              <option value="all">all workgroups</option>
-              {workgroupOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="flex min-w-48 flex-col gap-1">
-            <span className="text-label font-medium uppercase text-text-mute">Account</span>
-            <select
-              value={accountFilter}
-              onChange={(event) => onAccountFilterChange(event.target.value)}
-              className="h-10 rounded-pill border border-border bg-panel-subtle px-3 text-body text-text outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora"
-            >
-              <option value="all">all accounts</option>
-              {accountOptions.map((option) => (
-                <option key={option.id} value={option.id}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2">
+        <div className="flex gap-2">
+          {timeRangeOptions.map((option) => (
+            <FilterButton
+              key={option.id}
+              active={timeRange === option.id}
+              label={option.label}
+              className="flex-1 sm:flex-none"
+              onClick={() => onTimeRangeChange(option.id)}
+            />
+          ))}
         </div>
 
-        <div className="flex flex-wrap items-end gap-3">
+        <div className="relative sm:shrink-0">
+          <Select
+            value={eventTypeFilter}
+            onChange={(event) => onEventTypeFilterChange(event.target.value as AuditEventType | 'all' | 'contract_violations')}
+            className="w-full pr-7 sm:w-auto"
+          >
+            <option value="all">all events</option>
+            {auditEventTypes.slice(0, 5).map((eventType) => (
+              <option key={eventType} value={eventType}>
+                {formatEventType(eventType)}
+              </option>
+            ))}
+            <option value="contract_violations">Contract Violations</option>
+            {auditEventTypes.slice(5).map((eventType) => (
+              <option key={eventType} value={eventType}>
+                {formatEventType(eventType)}
+              </option>
+            ))}
+          </Select>
+          <ChevronDown size={13} aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-mute" />
+        </div>
+
+        <div className="relative sm:shrink-0">
+          <Select
+            value={workgroupFilter}
+            onChange={(event) => onWorkgroupFilterChange(event.target.value)}
+            className="w-full pr-7 sm:w-auto"
+          >
+            <option value="all">all workgroups</option>
+            {workgroupOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+          <ChevronDown size={13} aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-mute" />
+        </div>
+
+        <div className="relative sm:shrink-0">
+          <Select
+            value={accountFilter}
+            onChange={(event) => onAccountFilterChange(event.target.value)}
+            className="w-full pr-7 sm:w-auto"
+          >
+            <option value="all">all accounts</option>
+            {accountOptions.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </Select>
+          <ChevronDown size={13} aria-hidden="true" className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-text-mute" />
+        </div>
+
+        {onResetFilters ? (
           <button
             type="button"
-            className="inline-flex h-10 items-center gap-2 rounded-pill border border-border bg-panel-subtle px-3 text-table font-medium text-text-mute-strong hover:bg-panel focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora disabled:cursor-not-allowed disabled:opacity-50"
+            onClick={onResetFilters}
+            className="h-9 w-full rounded-pill border border-border bg-panel px-3 text-table font-medium text-text-mute-strong hover:bg-panel-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora sm:w-auto sm:shrink-0"
+          >
+            Reset filters
+          </button>
+        ) : null}
+        <div className="flex flex-col gap-2 sm:ml-auto sm:flex-row sm:items-center sm:gap-2">
+          <Button
+            variant="secondary"
             disabled={filteredEvents.length === 0}
             onClick={onExportCSV}
+            className="w-full sm:w-auto"
           >
             <Download size={15} aria-hidden="true" />
             CSV
-          </button>
-          <button
-            type="button"
-            className={[
-              'inline-flex h-10 items-center gap-2 rounded-pill border px-3 text-table font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora',
-              reportOpen
-                ? 'border-brand-agora bg-brand-agora/10 text-brand-agora'
-                : 'border-border bg-panel-subtle text-text-mute-strong hover:bg-panel',
-            ].join(' ')}
+          </Button>
+          <Button
+            variant="primary"
             aria-pressed={reportOpen}
             onClick={onToggleReport}
+            className="w-full sm:w-auto"
           >
             <FileCheck2 size={15} aria-hidden="true" />
             Compliance Report
-          </button>
+          </Button>
         </div>
       </div>
     </section>
   );
 }
 
-function ComplianceReport({ summary, timeRange }: { summary: ComplianceSummary; timeRange: TimeRange }) {
+function ComplianceReport({
+  summary,
+  timeRange,
+  accountFilter,
+  accountOptions,
+}: {
+  summary: ComplianceSummary;
+  timeRange: TimeRange;
+  accountFilter: string;
+  accountOptions: FilterOption[];
+}) {
+  const generatedAt = useMemo(() => new Date(), []);
+  const accountLabel =
+    accountFilter === 'all'
+      ? 'All Accounts'
+      : (accountOptions.find((o) => o.id === accountFilter)?.label ?? accountFilter);
+
   return (
-    <SectionPanel title="Compliance Report" actions={<StatusPill status="neutral" label={timeRangeLabel(timeRange)} />}>
+    <SectionPanel title={`Compliance Report — ${complianceRangeLabel(timeRange)}`}>
+      <div className="mb-5 flex flex-col gap-1">
+        <p className="text-table text-text-mute">{formatGeneratedAt(generatedAt)}</p>
+        <p className="text-table text-text-mute">Account: {accountLabel}</p>
+      </div>
       <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
         <div className="grid gap-3 sm:grid-cols-2">
           <ReportMetric label="events reviewed" value={formatInteger(summary.totalEvents)} />
@@ -372,67 +597,419 @@ function ReportMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function AuditEventRow({ event }: { event: AuditEvent }) {
+function ActivityStrip({
+  events,
+  timeRange,
+  workgroupNames,
+  onSessionClick,
+}: {
+  events: AuditEvent[];
+  timeRange: TimeRange;
+  workgroupNames?: Record<string, string>;
+  onSessionClick?: (sessionId: string) => void;
+}) {
+  const { lanePositions, violationTicks, minTime, maxTime } = useMemo(() => {
+    if (events.length === 0) {
+      return {
+        lanePositions: LANE_DEFS.map(() => [] as TickMark[]),
+        violationTicks: [] as ViolationTickMark[],
+        minTime: 0,
+        maxTime: 0,
+      };
+    }
+    let minT = Infinity;
+    let maxT = -Infinity;
+    const rawByLane: number[][] = LANE_DEFS.map(() => []);
+    const rawViolations: { t: number; event: AuditEvent }[] = [];
+    for (const event of events) {
+      const t = new Date(event.occurredAt).getTime();
+      if (t < minT) minT = t;
+      if (t > maxT) maxT = t;
+      const lane = classifyEventToLane(event);
+      if (lane === 1) {
+        rawViolations.push({ t, event });
+      } else if (lane >= 0) {
+        rawByLane[lane]!.push(t);
+      }
+    }
+    const span = maxT - minT || 1;
+    const lanePositions = rawByLane.map((times) =>
+      mergeTickPositions(times.map((t) => ((t - minT) / span) * 100)),
+    );
+    const violationPositions = rawViolations.map(({ t }) => ((t - minT) / span) * 100);
+    const sortedViolationPositions = [...violationPositions].sort((a, b) => a - b);
+    const violationTicks: ViolationTickMark[] = rawViolations.map(({ event }, idx) => ({
+      position: violationPositions[idx]!,
+      event,
+      gap: nearestTickGap(sortedViolationPositions, violationPositions[idx]!),
+    }));
+    return { lanePositions, violationTicks, minTime: minT, maxTime: maxT };
+  }, [events]);
+
+  const timeLabels = useMemo(
+    () => buildTimeAxisLabels(minTime, maxTime, timeRange),
+    [minTime, maxTime, timeRange],
+  );
+
+  const [popover, setPopover] = useState<{ event: AuditEvent; tickIndex: number; rect: DOMRect } | null>(null);
+  const popoverRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => { setPopover(null); }, [events]);
+
+  useEffect(() => {
+    if (!popover) return;
+    function handleOutside(e: MouseEvent) {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        setPopover(null);
+      }
+    }
+    document.addEventListener('click', handleOutside);
+    return () => document.removeEventListener('click', handleOutside);
+  }, [popover]);
+
+  useEffect(() => {
+    if (!popover) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setPopover(null);
+    }
+    document.addEventListener('keydown', handleKey);
+    return () => document.removeEventListener('keydown', handleKey);
+  }, [popover]);
+
+  if (events.length === 0) {
+    return (
+      <SectionPanel title="Activity">
+        <div className="p-5">
+          <EmptyState icon={Activity} title="No activity in this period" description="No events were recorded in the selected time range." />
+        </div>
+      </SectionPanel>
+    );
+  }
+
+  return (
+    <>
+      <SectionPanel title="Activity">
+        <div className="flex gap-4">
+          {/* Legend */}
+          <div style={{ width: LEGEND_WIDTH, flexShrink: 0 }}>
+            {LANE_DEFS.map((lane, i) => (
+              <div
+                key={lane.label}
+                className="flex items-center gap-1.5"
+                style={{ height: ROW_HEIGHT, marginBottom: i < LANE_DEFS.length - 1 ? ROW_GAP : 0 }}
+              >
+                <div
+                  style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: 2,
+                    backgroundColor: lane.cssColor,
+                    flexShrink: 0,
+                  }}
+                />
+                <span className="truncate text-table text-text-mute" title={lane.label}>{lane.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Swimlanes + time axis */}
+          <div className="min-w-0 flex-1">
+            {LANE_DEFS.map((lane, i) => {
+              const ticks = lanePositions[i] ?? [];
+              return (
+                <div
+                  key={lane.label}
+                  className="relative overflow-hidden rounded-sm"
+                  style={{
+                    height: ROW_HEIGHT,
+                    marginBottom: i < LANE_DEFS.length - 1 ? ROW_GAP : 0,
+                    backgroundColor: `color-mix(in srgb, ${lane.cssColor} 15%, transparent)`,
+                  }}
+                >
+                  {i === 1 ? (
+                    violationTicks.map((vt, j) => (
+                      <div
+                        key={j}
+                        className="group absolute top-0 h-full -translate-x-1/2 cursor-pointer"
+                        style={{
+                          left: `${vt.position}%`,
+                          width: `min(10px, max(2px, ${vt.gap}%))`,
+                        }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setPopover((prev) =>
+                            prev?.tickIndex === j
+                              ? null
+                              : { event: vt.event, tickIndex: j, rect },
+                          );
+                        }}
+                      >
+                        <div
+                          className="pointer-events-none absolute top-0 left-1/2 h-full w-0.5 -translate-x-1/2 rounded-full transition-[width,filter] duration-150 group-hover:w-1.5 group-hover:brightness-150 group-hover:saturate-150"
+                          style={{ backgroundColor: lane.cssColor }}
+                        />
+                      </div>
+                    ))
+                  ) : (
+                    ticks.map((tick, j) => (
+                      <div
+                        key={j}
+                        className="absolute top-0 h-full"
+                        style={{
+                          left: `${tick.position}%`,
+                          width: tick.width,
+                          backgroundColor: lane.cssColor,
+                          transform: 'translateX(-50%)',
+                        }}
+                      />
+                    ))
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Time axis */}
+            <div className="relative mt-2" style={{ height: 16 }}>
+              {timeLabels.map((item, i) => (
+                <span
+                  key={i}
+                  className="absolute text-label text-text-mute"
+                  style={{
+                    left: `${item.position}%`,
+                    transform:
+                      i === 0
+                        ? 'none'
+                        : i === timeLabels.length - 1
+                          ? 'translateX(-100%)'
+                          : 'translateX(-50%)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {item.label}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </SectionPanel>
+      {popover ? (
+        <ViolationTooltip
+          event={popover.event}
+          rect={popover.rect}
+          workgroupNames={workgroupNames ?? {}}
+          onSessionClick={onSessionClick}
+          containerRef={popoverRef}
+        />
+      ) : null}
+    </>
+  );
+}
+
+function ViolationTooltip({
+  event,
+  rect,
+  workgroupNames,
+  onSessionClick,
+  containerRef,
+}: {
+  event: AuditEvent;
+  rect: DOMRect;
+  workgroupNames: Record<string, string>;
+  onSessionClick?: (sessionId: string) => void;
+  containerRef?: RefObject<HTMLDivElement | null>;
+}) {
+  const TOOLTIP_W = 260;
+  const GAP = 6;
+  const MARGIN = 8;
   const data = event.data ?? {};
-  const resourcePills = eventResources(event);
+  const closeDetail = dataString(data, 'close_detail');
+  const workgroupName = event.workgroupId
+    ? (workgroupNames[event.workgroupId] ?? event.workgroupId)
+    : undefined;
+
+  const renderBelow = rect.top - GAP < 130;
+  const top = renderBelow ? rect.bottom + GAP : undefined;
+  const bottom = renderBelow ? undefined : window.innerHeight - rect.top + GAP;
+  const tickCenterX = rect.left + rect.width / 2;
+  let left = tickCenterX - TOOLTIP_W / 2;
+  left = Math.max(MARGIN, Math.min(left, window.innerWidth - TOOLTIP_W - MARGIN));
+  const caretOffset = Math.max(8, Math.min(tickCenterX - left, TOOLTIP_W - 8));
+
+  return (
+    <div
+      ref={containerRef}
+      className="fixed z-[500] rounded-card border border-border bg-panel shadow-xl p-3"
+      style={{ top, bottom, left, width: TOOLTIP_W }}
+    >
+      {!renderBelow ? (
+        <>
+          <div style={{ position: 'absolute', bottom: -8, left: caretOffset - 8, width: 0, height: 0, borderStyle: 'solid', borderWidth: '8px 8px 0 8px', borderColor: 'var(--color-border) transparent transparent transparent' }} />
+          <div style={{ position: 'absolute', bottom: -7, left: caretOffset - 7, width: 0, height: 0, borderStyle: 'solid', borderWidth: '7px 7px 0 7px', borderColor: 'var(--color-panel) transparent transparent transparent' }} />
+        </>
+      ) : (
+        <>
+          <div style={{ position: 'absolute', top: -8, left: caretOffset - 8, width: 0, height: 0, borderStyle: 'solid', borderWidth: '0 8px 8px 8px', borderColor: 'transparent transparent var(--color-border) transparent' }} />
+          <div style={{ position: 'absolute', top: -7, left: caretOffset - 7, width: 0, height: 0, borderStyle: 'solid', borderWidth: '0 7px 7px 7px', borderColor: 'transparent transparent var(--color-panel) transparent' }} />
+        </>
+      )}
+      <p className="font-mono text-table text-text-mute-strong">{formatDateTime(event.occurredAt)}</p>
+      {workgroupName ? (
+        <p className="mt-1 text-table text-text-mute">
+          Workgroup: <span className="font-medium text-text">{workgroupName}</span>
+        </p>
+      ) : null}
+      {closeDetail ? (
+        <p className="mt-1 text-table text-text-mute">
+          Reason: <span className="text-text">{closeDetail}</span>
+        </p>
+      ) : null}
+      {event.sessionId ? (
+        <div className="mt-2">
+          <ResourcePill
+            label="session"
+            value={event.sessionId}
+            onClick={onSessionClick ? () => onSessionClick(event.sessionId!) : undefined}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function AuditEventRow({
+  event,
+  workgroupNames = {},
+  advertisementNames = {},
+  onSessionClick,
+}: {
+  event: AuditEvent;
+  workgroupNames?: Record<string, string>;
+  advertisementNames?: Record<string, string>;
+  onSessionClick?: (sessionId: string) => void;
+}) {
+  const [showJson, setShowJson] = useState(false);
+  const data = event.data ?? {};
+  const resourcePills = eventResources(event, workgroupNames, advertisementNames);
+  const hasData = Object.keys(data).length > 0;
+  const isContractViolation = event.eventType === 'session.closed' && dataString(data, 'close_reason') === 'contract_violation';
+
+  const closeDetail = isContractViolation ? dataString(data, 'close_detail') : '';
+  const hasDuration = isContractViolation && 'duration_seconds' in data;
+  const durationSeconds = hasDuration ? dataNumber(data, 'duration_seconds') : 0;
+  const consumerOrgId = isContractViolation ? dataString(data, 'consumer_organization_id') : '';
+  const providerOrgId = isContractViolation ? dataString(data, 'provider_organization_id') : '';
+  const hasViolationPills = hasDuration || Boolean(consumerOrgId) || Boolean(providerOrgId);
 
   return (
     <article className="grid gap-4 p-5 xl:grid-cols-[12rem_minmax(0,1fr)]">
       <div>
         <p className="font-mono text-table text-text-mute-strong">{formatDateTime(event.occurredAt)}</p>
         <p className="mt-1 text-table text-text-mute">{relativeTime(event.occurredAt)}</p>
+        {event.accountId ? (
+          <p className="mt-1 text-table text-text-mute">
+            account: <span className="font-mono text-text-mute-strong">{event.accountId}</span>
+          </p>
+        ) : null}
+        <div className="mt-2">
+          <StatusPill status={eventStatus(event)} label={isContractViolation ? 'Contract Violation' : formatEventType(event.eventType)} />
+        </div>
       </div>
       <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusPill status={eventStatus(event)} label={event.eventType} />
-          {event.accountId ? <ResourcePill label={event.accountId} /> : null}
-        </div>
-        <h2 className="mt-3 text-body font-semibold text-text">{eventTitle(event)}</h2>
-        {resourcePills.length > 0 ? (
+        <h2 className="text-body font-semibold text-text">{eventTitle(event)}</h2>
+        {isContractViolation && closeDetail ? (
+          <p className="mt-1 text-table text-text-mute">Reason: {closeDetail}</p>
+        ) : null}
+        {(resourcePills.length > 0 || hasViolationPills) ? (
           <div className="mt-3 flex flex-wrap gap-2">
             {resourcePills.map((resource) => (
-              <ResourcePill key={`${resource.label}:${resource.value}`} label={resource.label} value={resource.value} />
+              <ResourcePill
+                key={`${resource.label}:${resource.value}`}
+                label={resource.label}
+                value={resource.value}
+                onClick={
+                  resource.label === 'session' && onSessionClick && resource.value
+                    ? () => onSessionClick(resource.value)
+                    : undefined
+                }
+              />
             ))}
+            {hasDuration ? <ResourcePill label="Duration" value={`${durationSeconds}s`} /> : null}
+            {consumerOrgId ? <ResourcePill label="consumer" value={consumerOrgId} /> : null}
+            {providerOrgId ? <ResourcePill label="provider" value={providerOrgId} /> : null}
           </div>
         ) : null}
-        {Object.keys(data).length > 0 ? (
-          <pre className="mt-3 max-h-40 overflow-auto rounded-card border border-border bg-panel-subtle p-3 font-mono text-table text-text-mute-strong">
-            {JSON.stringify(data, null, 2)}
-          </pre>
+        {hasData ? (
+          <div className="mt-3">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-pill text-label font-medium text-text-mute hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora"
+              onClick={() => setShowJson((v) => !v)}
+            >
+              {showJson ? <ChevronDown size={14} aria-hidden="true" /> : <ChevronRight size={14} aria-hidden="true" />}
+              {showJson ? 'Hide raw JSON' : 'Show raw JSON'}
+            </button>
+            {showJson ? (
+              <pre className="mt-2 max-h-64 overflow-auto rounded-card border border-border bg-panel-subtle p-4 font-mono text-table text-text-mute-strong">
+                {JSON.stringify(data, null, 2)}
+              </pre>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </article>
   );
 }
 
-function ResourcePill({ label, value }: { label: string; value?: string }) {
-  return (
-    <span className="inline-flex max-w-full items-center gap-1 rounded-status border border-border bg-panel-subtle px-2 py-1 text-table text-text-mute-strong">
+function ResourcePill({
+  label,
+  value,
+  muted = false,
+  onClick,
+}: {
+  label: string;
+  value?: string;
+  muted?: boolean;
+  onClick?: () => void;
+}) {
+  const pillClass = 'inline-flex max-w-full items-center gap-1 rounded-status border border-border bg-panel-subtle px-2 py-1 text-table text-text-mute-strong';
+  const inner = (
+    <>
       {value ? <span className="text-text-mute">{label}</span> : null}
-      <span className="truncate font-mono">{value ?? label}</span>
-    </span>
+      <span className={['truncate font-mono', muted ? 'text-text-mute' : ''].filter(Boolean).join(' ')}>
+        {value ?? label}
+      </span>
+      {onClick ? <ChevronRight size={11} className="shrink-0 text-text-mute" aria-hidden="true" /> : null}
+    </>
   );
+
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        className={[pillClass, 'cursor-pointer hover:border-brand-agora/50 hover:bg-panel focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora'].join(' ')}
+        onClick={onClick}
+      >
+        {inner}
+      </button>
+    );
+  }
+
+  return <span className={pillClass}>{inner}</span>;
 }
 
-function FilterGroup({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex flex-wrap items-end gap-2">
-      <span className="mb-2 text-label font-medium uppercase text-text-mute">{label}</span>
-      {children}
-    </div>
-  );
-}
 
-function FilterButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+function FilterButton({ active, label, onClick, className }: { active: boolean; label: string; onClick: () => void; className?: string }) {
   return (
     <button
       type="button"
       className={[
-        'h-10 rounded-pill border px-3 text-table font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora',
+        'h-9 rounded-pill border px-3 text-table font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora',
         active
           ? 'border-brand-agora bg-brand-agora/10 text-brand-agora'
           : 'border-border bg-panel-subtle text-text-mute-strong hover:bg-panel',
-      ].join(' ')}
+        className,
+      ].filter(Boolean).join(' ')}
       aria-pressed={active}
       onClick={onClick}
     >
@@ -511,12 +1088,16 @@ function rangeParams(timeRange: TimeRange): { from: string; to: string } {
 
 function filterAuditEvents(
   events: AuditEvent[],
-  eventTypeFilter: AuditEventType | 'all',
+  eventTypeFilter: AuditEventType | 'all' | 'contract_violations',
   workgroupFilter: string,
   accountFilter: string,
 ): AuditEvent[] {
   return events.filter((event) => {
-    if (eventTypeFilter !== 'all' && event.eventType !== eventTypeFilter) {
+    if (eventTypeFilter === 'contract_violations') {
+      if (event.eventType !== 'session.closed' || dataString(event.data ?? {}, 'close_reason') !== 'contract_violation') {
+        return false;
+      }
+    } else if (eventTypeFilter !== 'all' && event.eventType !== eventTypeFilter) {
       return false;
     }
     if (workgroupFilter !== 'all' && event.workgroupId !== workgroupFilter) {
@@ -529,10 +1110,14 @@ function filterAuditEvents(
   });
 }
 
-function buildIDOptions(events: AuditEvent[], select: (event: AuditEvent) => string | undefined): FilterOption[] {
+function buildIDOptions(
+  events: AuditEvent[],
+  select: (event: AuditEvent) => string | undefined,
+  nameMap: Record<string, string> = {},
+): FilterOption[] {
   return Array.from(new Set(events.map(select).filter((value): value is string => Boolean(value))))
     .sort((a, b) => a.localeCompare(b))
-    .map((id) => ({ id, label: id }));
+    .map((id) => ({ id, label: nameMap[id] ?? id }));
 }
 
 function buildComplianceSummary(events: AuditEvent[]): ComplianceSummary {
@@ -565,16 +1150,24 @@ function buildComplianceSummary(events: AuditEvent[]): ComplianceSummary {
     envelopeCount,
     contractViolations,
     byType: Array.from(byType.entries())
-      .map(([eventType, count]) => ({ id: eventType, label: eventType, count }))
+      .map(([eventType, count]) => ({ id: eventType, label: formatEventType(eventType), count }))
       .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label)),
   };
 }
 
-function eventResources(event: AuditEvent): ResourceOption[] {
+function eventResources(
+  event: AuditEvent,
+  workgroupNames: Record<string, string> = {},
+  advertisementNames: Record<string, string> = {},
+): ResourceOption[] {
   return [
-    event.workgroupId ? { label: 'workgroup', value: event.workgroupId } : undefined,
-    event.sessionId ? { label: 'session', value: event.sessionId } : undefined,
-    event.advertisementId ? { label: 'advertisement', value: event.advertisementId } : undefined,
+    event.workgroupId
+      ? { label: 'workgroup', value: workgroupNames[event.workgroupId] ?? event.workgroupId }
+      : undefined,
+    event.sessionId ? { label: 'session', value: event.sessionId, muted: true } : undefined,
+    event.advertisementId
+      ? { label: 'advertisement', value: advertisementNames[event.advertisementId] ?? event.advertisementId }
+      : undefined,
     event.contractId ? { label: 'contract', value: event.contractId } : undefined,
     event.envelopeId ? { label: 'envelope', value: event.envelopeId } : undefined,
   ].filter((resource): resource is ResourceOption => Boolean(resource));
@@ -738,8 +1331,22 @@ function relativeTime(value: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function timeRangeLabel(timeRange: TimeRange): string {
-  return timeRangeOptions.find((option) => option.id === timeRange)?.label ?? timeRange;
+function complianceRangeLabel(timeRange: TimeRange): string {
+  switch (timeRange) {
+    case '24h': return 'Last 24 hours';
+    case '7d': return 'Last 7 days';
+    case '30d': return 'Last 30 days';
+  }
+}
+
+function formatGeneratedAt(date: Date): string {
+  return `Generated ${new Intl.DateTimeFormat(undefined, {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(date)}`;
 }
 
 function errorDetail(error: unknown): string {
@@ -768,6 +1375,90 @@ function initialsFromEmail(email: string): string {
     .toUpperCase();
 
   return initials || localPart.slice(0, 1).toUpperCase() || 'AG';
+}
+
+function classifyEventToLane(event: AuditEvent): number {
+  switch (event.eventType) {
+    case 'session.proposed':
+    case 'session.accepted':
+    case 'session.rejected':
+      return 0;
+    case 'session.closed':
+      return dataString(event.data ?? {}, 'close_reason') === 'contract_violation' ? 1 : 0;
+    case 'envelope.flowed':
+      return 2;
+    case 'tunnel.attached':
+    case 'tunnel.detached':
+      return 3;
+    case 'advertisement.published':
+    case 'advertisement.retracted':
+      return 4;
+    case 'account.login':
+    case 'account.login_failed':
+    case 'account.logout':
+    case 'environment.heartbeat':
+      return 5;
+    default:
+      return -1;
+  }
+}
+
+// nearestTickGap returns the distance (in the same percent units as tick
+// positions) to the closest other violation tick, used to cap a tick's hit
+// area so it never extends far enough to cover a neighbor. Falls back to 100
+// (effectively uncapped) when a tick has no distinct neighbor.
+function nearestTickGap(sortedPositions: number[], position: number): number {
+  let nearest = Infinity;
+  for (const p of sortedPositions) {
+    const distance = Math.abs(p - position);
+    if (distance > 0 && distance < nearest) nearest = distance;
+  }
+  return Number.isFinite(nearest) ? nearest : 100;
+}
+
+function mergeTickPositions(positions: number[]): TickMark[] {
+  if (positions.length === 0) return [];
+  const sorted = [...positions].sort((a, b) => a - b);
+  const groups: number[][] = [[sorted[0]!]];
+  for (let i = 1; i < sorted.length; i++) {
+    const group = groups[groups.length - 1]!;
+    if (sorted[i]! - group[0]! <= 1) {
+      group.push(sorted[i]!);
+    } else {
+      groups.push([sorted[i]!]);
+    }
+  }
+  return groups.map((group) => ({
+    position: group.reduce((sum, p) => sum + p, 0) / group.length,
+    width: group.length > 1 ? 4 : 2,
+  }));
+}
+
+function buildTimeAxisLabels(
+  minTime: number,
+  maxTime: number,
+  timeRange: TimeRange,
+): { position: number; label: string }[] {
+  if (minTime === 0 && maxTime === 0) return [];
+  if (minTime === maxTime) {
+    return [{ position: 50, label: formatAxisTime(new Date(minTime), timeRange) }];
+  }
+  const count = 4;
+  return Array.from({ length: count }, (_, i) => ({
+    position: (i / (count - 1)) * 100,
+    label: formatAxisTime(new Date(minTime + (maxTime - minTime) * (i / (count - 1))), timeRange),
+  }));
+}
+
+function formatAxisTime(date: Date, timeRange: TimeRange): string {
+  switch (timeRange) {
+    case '24h':
+      return new Intl.DateTimeFormat(undefined, { hour: 'numeric' }).format(date);
+    case '7d':
+      return new Intl.DateTimeFormat(undefined, { weekday: 'short' }).format(date);
+    case '30d':
+      return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date);
+  }
 }
 
 function formatInteger(value: number): string {
