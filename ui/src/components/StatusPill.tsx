@@ -15,33 +15,35 @@ export type StatusPillProps = {
   status: StatusPillStatus;
   label: string;
   className?: string;
+  title?: string;
 };
 
-const statusDotClassNames: Record<StatusPillStatus, string> = {
-  success: 'bg-success',
-  warning: 'bg-warning',
-  danger: 'bg-danger',
-  info: 'bg-info',
-  neutral: 'bg-text-mute-2',
-  online: 'bg-success',
-  stale: 'bg-warning',
-  unknown: 'bg-text-mute-2',
-  disabled: 'bg-danger',
-  active: 'bg-success',
-  failed: 'bg-danger',
+const statusPillClassNames: Record<StatusPillStatus, string> = {
+  success: 'bg-success/15 text-success-strong border-success/30',
+  online: 'bg-success/15 text-success-strong border-success/30',
+  active: 'bg-success/15 text-success-strong border-success/30',
+  warning: 'bg-warning/15 text-warning-strong border-warning/30',
+  stale: 'bg-warning/15 text-warning-strong border-warning/30',
+  danger: 'bg-danger/15 text-danger border-danger/30',
+  failed: 'bg-danger/15 text-danger border-danger/30',
+  disabled: 'bg-danger/15 text-danger border-danger/30',
+  info: 'bg-info/15 text-info border-info/30',
+  neutral: 'bg-panel-subtle text-text-mute border-border',
+  unknown: 'bg-panel-subtle text-text-mute border-border',
 };
 
-export function StatusPill({ status, label, className }: StatusPillProps) {
+export function StatusPill({ status, label, className, title }: StatusPillProps) {
   return (
     <span
+      title={title}
       className={[
-        'inline-flex h-8 max-w-full items-center gap-2 rounded-status border border-border bg-panel px-3 text-table font-medium text-text-mute-strong',
+        'inline-flex h-6 max-w-full items-center rounded-status border px-2.5 text-[0.6875rem] font-semibold',
+        statusPillClassNames[status],
         className,
       ]
         .filter(Boolean)
         .join(' ')}
     >
-      <span className={`size-2 shrink-0 rounded-status ${statusDotClassNames[status]}`} aria-hidden="true" />
       <span className="truncate">{label}</span>
     </span>
   );

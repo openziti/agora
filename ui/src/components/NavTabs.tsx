@@ -1,8 +1,20 @@
+import { ArrowLeftRight, BookOpen, FileCheck2, LayoutDashboard, ScrollText, ShieldCheck, type LucideIcon } from 'lucide-react';
+
 import type { Product } from './BrandMark';
 
 export type NavTab = {
   id: string;
   label: string;
+  icon?: LucideIcon;
+};
+
+export type NavTabsProps = {
+  product?: Product;
+  items?: NavTab[];
+  activeId: string;
+  onTabChange?: (id: string) => void;
+  collapsed?: boolean;
+  className?: string;
 };
 
 const defaultNavTabs: NavTab[] = [
@@ -14,52 +26,45 @@ const defaultNavTabs: NavTab[] = [
   { id: 'audit', label: 'Audit' },
 ];
 
-const navActiveClassNames: Record<Product, string> = {
-  agora: 'border-brand-agora bg-brand-agora/10 text-brand-agora',
-  llm: 'border-brand-llm bg-brand-llm/10 text-brand-llm',
-  mcp: 'border-brand-mcp bg-brand-mcp/10 text-brand-mcp',
+const defaultIconMap: Record<string, LucideIcon> = {
+  dashboard: LayoutDashboard,
+  sessions: ArrowLeftRight,
+  workgroups: ShieldCheck,
+  catalog: BookOpen,
+  contracts: FileCheck2,
+  audit: ScrollText,
 };
 
-const navFocusClassNames: Record<Product, string> = {
-  agora: 'focus-visible:outline-brand-agora',
-  llm: 'focus-visible:outline-brand-llm',
-  mcp: 'focus-visible:outline-brand-mcp',
-};
-
-export type NavTabsProps = {
-  product: Product;
-  items?: NavTab[];
-  activeId: string;
-  onTabChange?: (id: string) => void;
-  className?: string;
-};
-
-export function NavTabs({ product, items = defaultNavTabs, activeId, onTabChange, className }: NavTabsProps) {
+export function NavTabs({ items = defaultNavTabs, activeId, onTabChange, collapsed = false, className }: NavTabsProps) {
   return (
     <nav
-      className={['flex min-w-0 gap-1 overflow-x-auto border-t border-border py-2', className]
-        .filter(Boolean)
-        .join(' ')}
+      className={['flex flex-col gap-0.5', className].filter(Boolean).join(' ')}
       aria-label="Primary navigation"
     >
       {items.map((item) => {
         const isActive = item.id === activeId;
+        const Icon = item.icon ?? defaultIconMap[item.id];
 
         return (
           <button
             key={item.id}
             type="button"
             className={[
-              'h-9 shrink-0 rounded-pill border px-3 text-body font-medium focus-visible:outline-2 focus-visible:outline-offset-2',
+              'flex w-full items-center gap-3 rounded-[5px] px-3 py-2 text-[0.875rem] transition-colors',
+              'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora',
+              collapsed ? 'justify-center' : '',
               isActive
-                ? navActiveClassNames[product]
-                : 'border-transparent text-text-mute hover:border-border hover:bg-panel-subtle hover:text-text-mute-strong',
-              navFocusClassNames[product],
-            ].join(' ')}
+                ? 'bg-panel-subtle font-bold text-text'
+                : 'font-normal text-text-mute hover:bg-panel-subtle',
+            ]
+              .filter(Boolean)
+              .join(' ')}
             aria-current={isActive ? 'page' : undefined}
+            title={collapsed ? item.label : undefined}
             onClick={() => onTabChange?.(item.id)}
           >
-            {item.label}
+            {Icon && <Icon size={20} className="shrink-0 text-brand-agora" aria-hidden="true" />}
+            {!collapsed && <span>{item.label}</span>}
           </button>
         );
       })}

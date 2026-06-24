@@ -1,4 +1,4 @@
-import { ChevronDown, LogOut } from 'lucide-react';
+import { ChevronDown, LogOut, Moon, Settings, Sun } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 
 export type UserBadgeProps = {
@@ -6,7 +6,10 @@ export type UserBadgeProps = {
   initials?: string;
   label?: string;
   loggingOut?: boolean;
+  isDark?: boolean;
   onLogout?: () => void;
+  onToggleDark?: () => void;
+  onSetupNewOrg?: () => void;
   className?: string;
 };
 
@@ -23,7 +26,10 @@ export function UserBadge({
   initials,
   label,
   loggingOut = false,
+  isDark = false,
   onLogout,
+  onToggleDark,
+  onSetupNewOrg,
   className,
 }: UserBadgeProps) {
   const [open, setOpen] = useState(false);
@@ -84,11 +90,45 @@ export function UserBadge({
             <p className="truncate text-label font-medium uppercase text-text-mute">Signed in as</p>
             <p className="mt-1 truncate text-body font-medium text-text">{displayLabel}</p>
           </div>
+          {onSetupNewOrg && (
+            <button
+              type="button"
+              role="menuitem"
+              className="mt-1 flex h-9 w-full items-center justify-between rounded-pill px-3 text-table font-medium text-text-mute-strong hover:bg-panel-subtle hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora"
+              onClick={() => {
+                setOpen(false);
+                onSetupNewOrg();
+              }}
+            >
+              <span className="inline-flex items-center gap-2">
+                <Settings size={15} aria-hidden="true" />
+                Set up new organization
+              </span>
+              <ChevronDown size={14} aria-hidden="true" className="-rotate-90 text-text-mute-2" />
+            </button>
+          )}
+          {onToggleDark && (
+            <button
+              type="button"
+              role="menuitem"
+              className="mt-1 flex h-9 w-full items-center rounded-pill px-3 text-table font-medium text-text-mute-strong hover:bg-panel-subtle hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora"
+              onClick={() => {
+                setOpen(false);
+                onToggleDark();
+              }}
+            >
+              <span className="inline-flex items-center gap-2">
+                {isDark ? <Sun size={15} aria-hidden="true" /> : <Moon size={15} aria-hidden="true" />}
+                {isDark ? 'Light mode' : 'Dark mode'}
+              </span>
+            </button>
+          )}
+          <div className="my-1 border-t border-border" role="separator" />
           <button
             type="button"
             role="menuitem"
             disabled={loggingOut}
-            className="mt-1 flex h-9 w-full items-center justify-between rounded-pill px-3 text-table font-medium text-text-mute-strong hover:bg-panel-subtle hover:text-text disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora"
+            className="flex h-9 w-full items-center justify-between rounded-pill px-3 text-table font-medium text-text-mute-strong hover:bg-panel-subtle hover:text-text disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora"
             onClick={() => {
               setOpen(false);
               onLogout?.();

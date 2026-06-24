@@ -11,7 +11,7 @@ export function EmptyState({ title, description, icon: Icon = Inbox, className }
   return (
     <div
       className={[
-        'flex min-h-40 flex-col items-center justify-center rounded-card border border-dashed border-border bg-panel-subtle px-6 py-8 text-center',
+        'flex min-h-40 flex-col items-center justify-center rounded-card border border-dashed border-border bg-panel-subtle bg-network-texture px-6 py-8 text-center',
         className,
       ]
         .filter(Boolean)

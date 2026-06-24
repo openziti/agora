@@ -8,6 +8,7 @@ export type DataTableCellKind = 'pill' | 'mono' | 'plain';
 export type DataTablePillValue = {
   status: StatusPillStatus;
   label: string;
+  tooltip?: string;
 };
 
 export type DataTableColumn<T> = {
@@ -18,6 +19,10 @@ export type DataTableColumn<T> = {
   sortable?: boolean;
   sortValue?: (row: T) => string | number;
   align?: 'left' | 'right';
+  /** Extra classes applied to the <th> element — use for responsive visibility e.g. "hidden md:table-cell" */
+  headerClassName?: string;
+  /** Extra classes applied to each <td> element in this column */
+  cellClassName?: string;
 };
 
 export type DataTableProps<T> = {
@@ -26,6 +31,7 @@ export type DataTableProps<T> = {
   getRowKey?: (row: T, index: number) => string;
   onRowClick?: (row: T) => void;
   actions?: (row: T) => ReactNode;
+  rowClassName?: (row: T) => string | undefined;
   emptyState?: ReactNode;
   className?: string;
 };
@@ -67,6 +73,7 @@ export function DataTable<T>({
   getRowKey,
   onRowClick,
   actions,
+  rowClassName,
   emptyState,
   className,
 }: DataTableProps<T>) {
@@ -110,7 +117,7 @@ export function DataTable<T>({
     const value = column.accessor(row);
 
     if (column.kind === 'pill' && isPillValue(value)) {
-      return <StatusPill status={value.status} label={value.label} />;
+      return <StatusPill status={value.status} label={value.label} title={value.tooltip} />;
     }
 
     if (column.kind === 'mono') {
@@ -139,14 +146,16 @@ export function DataTable<T>({
                     key={column.id}
                     scope="col"
                     className={[
-                      'border-b border-border px-4 py-3 text-label font-medium uppercase text-text-mute',
+                      'border-b border-border px-[0.75rem] py-[0.4375rem] text-[0.6875rem] font-semibold uppercase tracking-[0.04em] text-text-mute-strong',
+                      column.sortable ? 'cursor-pointer hover:bg-border' : '',
                       column.align === 'right' ? 'text-right' : 'text-left',
-                    ].join(' ')}
+                      column.headerClassName ?? '',
+                    ].filter(Boolean).join(' ')}
                   >
                     {column.sortable ? (
                       <button
                         type="button"
-                        className="inline-flex items-center gap-1 rounded-pill text-label font-medium uppercase text-text-mute hover:text-text-mute-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora"
+                        className="inline-flex items-center gap-1 rounded-pill text-[0.6875rem] font-semibold uppercase tracking-[0.04em] text-text-mute-strong hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora"
                         onClick={() => toggleSort(column)}
                       >
                         {column.header}
@@ -158,10 +167,10 @@ export function DataTable<T>({
                   </th>
                 );
               })}
-              {actions ? <th scope="col" className="border-b border-border px-4 py-3" /> : null}
+              {actions ? <th scope="col" className="border-b border-border px-[0.75rem] py-[0.4375rem]" /> : null}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border bg-panel">
+          <tbody className="divide-y divide-border-light bg-panel">
             {sortedRows.map((row, index) => {
               const rowKey = getRowKey?.(row, index) ?? String(index);
               const clickable = Boolean(onRowClick);
@@ -169,22 +178,26 @@ export function DataTable<T>({
               return (
                 <tr
                   key={rowKey}
-                  className={clickable ? 'cursor-pointer hover:bg-panel-subtle' : undefined}
+                  className={[
+                    clickable ? 'cursor-pointer hover:bg-panel-subtle' : undefined,
+                    rowClassName?.(row),
+                  ].filter(Boolean).join(' ') || undefined}
                   onClick={clickable ? () => onRowClick?.(row) : undefined}
                 >
                   {columns.map((column) => (
                     <td
                       key={column.id}
                       className={[
-                        'px-4 py-3 text-table text-text-mute-strong',
+                        'px-[0.875rem] py-[0.625rem] text-[12px] text-text-mute-strong',
                         column.align === 'right' ? 'text-right' : 'text-left',
-                      ].join(' ')}
+                        column.cellClassName ?? '',
+                      ].filter(Boolean).join(' ')}
                     >
                       {renderCell(column, row)}
                     </td>
                   ))}
                   {actions ? (
-                    <td className="px-4 py-3 text-right" onClick={(event) => event.stopPropagation()}>
+                    <td className="px-[0.875rem] py-[0.625rem] text-right" onClick={(event) => event.stopPropagation()}>
                       {actions(row) ?? (
                         <button
                           type="button"
