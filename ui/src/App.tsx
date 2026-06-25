@@ -10,6 +10,7 @@ import Contracts from './screens/Contracts';
 import Dashboard from './screens/Dashboard';
 import Login from './screens/Login';
 import Sessions from './screens/Sessions';
+import Setup from './screens/Setup';
 import Workgroups from './screens/Workgroups';
 
 export function App() {
@@ -50,6 +51,14 @@ const routes: RouteObject[] = [
     ),
   },
   { path: '/login', element: <LoginRoute /> },
+  {
+    path: '/setup',
+    element: (
+      <RequireAuth>
+        <Setup />
+      </RequireAuth>
+    ),
+  },
   {
     path: '/sessions',
     element: (

@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router';
 import {
   Activity,
   AlertTriangle,
+  ArrowLeftRight,
+  ChevronDown,
+  ChevronRight,
   Clock3,
   FileWarning,
   RefreshCcw,
@@ -14,7 +17,16 @@ import {
 import {
   AppShell,
   DataTable,
+  DrawerCodeChip,
+  DrawerDivider,
+  DrawerStepList,
+  DrawerTip,
   EmptyState,
+  InfoDrawer,
+  Input,
+  PageHeader,
+  Pagination,
+  Select,
   SectionPanel,
   StatCard,
   type DataTableColumn,
@@ -53,8 +65,6 @@ type SessionRow = {
 };
 
 const activeStates: SessionState[] = ['proposed', 'accepting', 'active', 'closing'];
-const stateFilters: SessionStateFilter[] = ['all', 'proposed', 'accepting', 'active', 'closing', 'closed'];
-const roleFilters: SessionRoleFilter[] = ['both', 'provider', 'consumer'];
 const routeByTab: Record<string, string> = {
   dashboard: '/',
   sessions: '/sessions',
@@ -66,6 +76,17 @@ const routeByTab: Record<string, string> = {
 
 const numberFormatter = new Intl.NumberFormat();
 const SESSIONS_POLL_MS = 5000;
+const closeReasonLabels: Record<string, string> = {
+  consumer_close: 'Closed by consumer',
+  provider_close: 'Closed by provider',
+  tunnel_failed: 'Tunnel connection failed',
+  rejected: 'Rejected',
+  contract_violation: 'Contract violation',
+  admin_close: 'Closed by administrator',
+  workgroup_deleted: 'Workgroup deleted',
+  environment_disabled: 'Environment disabled',
+};
+
 const avatarClassNames = [
   'bg-brand-agora/10 text-brand-agora',
   'bg-brand-llm/10 text-brand-llm',
@@ -76,10 +97,19 @@ const avatarClassNames = [
 
 export default function Sessions() {
   const navigate = useNavigate();
+  const [infoOpen, setInfoOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [stateFilter, setStateFilter] = useState<SessionStateFilter>('all');
   const [roleFilter, setRoleFilter] = useState<SessionRoleFilter>('both');
+  const [serviceFilter, setServiceFilter] = useState('all');
+  const [orgFilter, setOrgFilter] = useState('all');
+  const [channelFilter, setChannelFilter] = useState('all');
+  const [closeReasonFilter, setCloseReasonFilter] = useState('all');
   const [selectedSessionId, setSelectedSessionId] = useState<string>();
+  const [activeCurrentPage, setActiveCurrentPage] = useState(1);
+  const [activeItemsPerPage, setActiveItemsPerPage] = useState(10);
+  const [recentCurrentPage, setRecentCurrentPage] = useState(1);
+  const [recentItemsPerPage, setRecentItemsPerPage] = useState(10);
   const now = useNow();
   const account = useApiResource(getDashboardSummary);
   const activeLoad = useCallback(
@@ -107,14 +137,39 @@ export default function Sessions() {
     () => toRows(recent.data ?? [], callerAccount?.accountId, now),
     [recent.data, callerAccount?.accountId, now],
   );
+  const allRows = useMemo(() => [...activeRows, ...recentRows], [activeRows, recentRows]);
+  const serviceOptions = useMemo(
+    () => uniqueSortedValues(allRows, (r) => r.session.advertisementName ?? '').filter(Boolean),
+    [allRows],
+  );
+  const orgOptions = useMemo(
+    () => uniqueSortedValues(allRows, (r) => r.counterparty.organizationName ?? '').filter(Boolean),
+    [allRows],
+  );
+  const channelOptions = useMemo(
+    () => uniqueSortedValues(allRows, (r) => r.session.workgroupName ?? '').filter(Boolean),
+    [allRows],
+  );
+  const closeReasonOptions = useMemo(
+    () => uniqueSortedValues(recentRows, (r) => r.session.closeReason ?? '').filter(Boolean),
+    [recentRows],
+  );
   const visibleActiveRows = useMemo(
-    () => filterRows(activeRows, search, stateFilter, roleFilter),
-    [activeRows, search, stateFilter, roleFilter],
+    () => filterRows(activeRows, search, stateFilter, roleFilter, serviceFilter, orgFilter, channelFilter, closeReasonFilter),
+    [activeRows, search, stateFilter, roleFilter, serviceFilter, orgFilter, channelFilter, closeReasonFilter],
   );
   const visibleRecentRows = useMemo(
-    () => filterRows(recentRows, search, stateFilter, roleFilter),
-    [recentRows, search, stateFilter, roleFilter],
+    () => filterRows(recentRows, search, stateFilter, roleFilter, serviceFilter, orgFilter, channelFilter, closeReasonFilter),
+    [recentRows, search, stateFilter, roleFilter, serviceFilter, orgFilter, channelFilter, closeReasonFilter],
   );
+  const paginatedActiveRows = useMemo(() => {
+    const start = (activeCurrentPage - 1) * activeItemsPerPage;
+    return visibleActiveRows.slice(start, start + activeItemsPerPage);
+  }, [visibleActiveRows, activeCurrentPage, activeItemsPerPage]);
+  const paginatedRecentRows = useMemo(() => {
+    const start = (recentCurrentPage - 1) * recentItemsPerPage;
+    return visibleRecentRows.slice(start, start + recentItemsPerPage);
+  }, [visibleRecentRows, recentCurrentPage, recentItemsPerPage]);
   const stats = useMemo(
     () => buildStats(activeRows, recentRows, now),
     [activeRows, recentRows, now],
@@ -124,12 +179,41 @@ export default function Sessions() {
     [activeRows, recentRows, selectedSessionId],
   );
 
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(visibleActiveRows.length / activeItemsPerPage));
+    if (activeCurrentPage > totalPages) setActiveCurrentPage(totalPages);
+  }, [visibleActiveRows.length, activeItemsPerPage, activeCurrentPage]);
+
+  useEffect(() => {
+    const totalPages = Math.max(1, Math.ceil(visibleRecentRows.length / recentItemsPerPage));
+    if (recentCurrentPage > totalPages) setRecentCurrentPage(totalPages);
+  }, [visibleRecentRows.length, recentItemsPerPage, recentCurrentPage]);
+
   function handleTabChange(tabId: string) {
     const route = routeByTab[tabId];
 
     if (route) {
       navigate(route);
     }
+  }
+
+  const isFiltered =
+    search !== '' ||
+    stateFilter !== 'all' ||
+    roleFilter !== 'both' ||
+    serviceFilter !== 'all' ||
+    orgFilter !== 'all' ||
+    channelFilter !== 'all' ||
+    closeReasonFilter !== 'all';
+
+  function handleResetFilters() {
+    setSearch('');
+    setStateFilter('all');
+    setRoleFilter('both');
+    setServiceFilter('all');
+    setOrgFilter('all');
+    setChannelFilter('all');
+    setCloseReasonFilter('all');
   }
 
   return (
@@ -144,19 +228,45 @@ export default function Sessions() {
       onTabChange={handleTabChange}
     >
       <div className="flex flex-col gap-6">
+        <PageHeader
+          icon={ArrowLeftRight}
+          label="COMMUNICATION"
+          title="Sessions"
+          description="Governed communication channels between agents, each backed by an explicit contract and retaining a full audit record — even after close."
+          onInfoClick={() => setInfoOpen(true)}
+        />
         {account.error ? (
           <ErrorPanel title="Current account unavailable" error={account.error} onRetry={account.refetch} />
         ) : null}
 
-        <StatsRow stats={stats} loading={!callerAccount || isLoading} />
+        <StatsRow
+          stats={stats}
+          loading={!callerAccount || isLoading}
+          onContractViolationsClick={() =>
+            navigate('/audit', { state: { eventTypeFilter: 'contract_violations', timeRange: '24h' } })
+          }
+        />
 
         <Filters
           search={search}
           stateFilter={stateFilter}
           roleFilter={roleFilter}
+          serviceFilter={serviceFilter}
+          orgFilter={orgFilter}
+          channelFilter={channelFilter}
+          closeReasonFilter={closeReasonFilter}
+          serviceOptions={serviceOptions}
+          orgOptions={orgOptions}
+          channelOptions={channelOptions}
+          closeReasonOptions={closeReasonOptions}
           onSearchChange={setSearch}
           onStateFilterChange={setStateFilter}
           onRoleFilterChange={setRoleFilter}
+          onServiceFilterChange={setServiceFilter}
+          onOrgFilterChange={setOrgFilter}
+          onChannelFilterChange={setChannelFilter}
+          onCloseReasonFilterChange={setCloseReasonFilter}
+          onResetFilters={isFiltered ? handleResetFilters : undefined}
         />
 
         <SectionPanel title="Active Sessions" bodyClassName="p-0">
@@ -169,22 +279,40 @@ export default function Sessions() {
               <ErrorPanel title="Active sessions unavailable" error={active.error} onRetry={active.refetch} compact />
             </div>
           ) : (
-            <DataTable
-              columns={sessionColumns(false)}
-              rows={visibleActiveRows}
-              getRowKey={(row) => row.session.id}
-              onRowClick={(row) => setSelectedSessionId(row.session.id)}
-              className="rounded-none border-0"
-              emptyState={
-                <div className="p-5">
-                  <EmptyState
-                    icon={Activity}
-                    title="No active sessions"
-                    description="No in-flight sessions match the current filters."
-                  />
-                </div>
-              }
-            />
+            <>
+              <DataTable
+                columns={sessionColumns()}
+                rows={paginatedActiveRows}
+                getRowKey={(row) => row.session.id}
+                onRowClick={(row) => setSelectedSessionId(row.session.id)}
+                className="rounded-none border-0"
+                emptyState={
+                  <div className="p-5">
+                    <EmptyState
+                      icon={Activity}
+                      title="No active sessions"
+                      description={
+                        isFiltered
+                          ? 'No in-flight sessions match the current filters.'
+                          : 'No active sessions right now.'
+                      }
+                    />
+                  </div>
+                }
+              />
+              <div className="border-t border-border">
+                <Pagination
+                  totalItems={visibleActiveRows.length}
+                  itemsPerPage={activeItemsPerPage}
+                  currentPage={activeCurrentPage}
+                  onPageChange={setActiveCurrentPage}
+                  onItemsPerPageChange={(count) => {
+                    setActiveItemsPerPage(count);
+                    setActiveCurrentPage(1);
+                  }}
+                />
+              </div>
+            </>
           )}
         </SectionPanel>
 
@@ -198,22 +326,40 @@ export default function Sessions() {
               <ErrorPanel title="Recent sessions unavailable" error={recent.error} onRetry={recent.refetch} compact />
             </div>
           ) : (
-            <DataTable
-              columns={sessionColumns(true, false)}
-              rows={visibleRecentRows}
-              getRowKey={(row) => row.session.id}
-              onRowClick={(row) => setSelectedSessionId(row.session.id)}
-              className="rounded-none border-0"
-              emptyState={
-                <div className="p-5">
-                  <EmptyState
-                    icon={Clock3}
-                    title="No recent sessions"
-                    description="No closed sessions match the current filters."
-                  />
-                </div>
-              }
-            />
+            <>
+              <DataTable
+                columns={sessionColumns(false, true)}
+                rows={paginatedRecentRows}
+                getRowKey={(row) => row.session.id}
+                onRowClick={(row) => setSelectedSessionId(row.session.id)}
+                className="rounded-none border-0"
+                emptyState={
+                  <div className="p-5">
+                    <EmptyState
+                      icon={Clock3}
+                      title="No recent sessions"
+                      description={
+                        isFiltered
+                          ? 'No recent sessions match the current filters.'
+                          : 'No recent sessions yet.'
+                      }
+                    />
+                  </div>
+                }
+              />
+              <div className="border-t border-border">
+                <Pagination
+                  totalItems={visibleRecentRows.length}
+                  itemsPerPage={recentItemsPerPage}
+                  currentPage={recentCurrentPage}
+                  onPageChange={setRecentCurrentPage}
+                  onItemsPerPageChange={(count) => {
+                    setRecentItemsPerPage(count);
+                    setRecentCurrentPage(1);
+                  }}
+                />
+              </div>
+            </>
           )}
         </SectionPanel>
       </div>
@@ -222,16 +368,78 @@ export default function Sessions() {
         <SessionDrawer
           session={selectedRow.session}
           role={selectedRow.role}
-          counterpartyLabel={selectedRow.counterparty.label}
           counterpartyOrganizationName={selectedRow.counterparty.organizationName}
           onClose={() => setSelectedSessionId(undefined)}
         />
+      ) : null}
+
+      {infoOpen ? (
+        <InfoDrawer title="About Sessions" onClose={() => setInfoOpen(false)}>
+          <div className="flex flex-col gap-5">
+            <section>
+              <h3 className="mb-2 font-semibold text-text">What is a Session?</h3>
+              <p className="leading-relaxed text-text-mute">
+                A Session is the governed communication channel between two agents. Sessions have an
+                explicit lifecycle and are backed one-to-one by an encrypted Layer 1 tunnel. Either side
+                can close a session; policy or workgroup changes can close it automatically. Closed sessions
+                are never deleted — they are retained with a recorded close reason for audit.
+              </p>
+            </section>
+
+            <DrawerDivider />
+
+            <section>
+              <h3 className="mb-3 font-semibold text-text">Session Lifecycle</h3>
+              <DrawerStepList steps={[
+                { name: 'Proposed', description: 'One agent proposes a session to another, referencing the target\'s advertisement and a contract.' },
+                { name: 'Accepting', description: 'The receiving agent (or the controller on its behalf) evaluates the proposal against the advertised contract terms.' },
+                { name: 'Active', description: 'The session is live. Agents exchange envelopes over the backing tunnel.' },
+                { name: 'Closing', description: 'Either side, a contract violation, or a workgroup change initiates closure. The close reason is captured.' },
+                { name: 'Closed', description: 'The session is terminated and retained permanently for audit. The close reason is recorded.' },
+              ]} />
+            </section>
+
+            <DrawerDivider />
+
+            <section>
+              <h3 className="mb-2 font-semibold text-text">Contract Enforcement</h3>
+              <p className="mb-3 leading-relaxed text-text-mute">
+                Every session carries a contract snapshot frozen at establishment time. The controller
+                enforces the terms throughout the session — if an agent sends a message type outside the
+                allowed set, or the session exceeds its maximum duration, the controller closes it.
+                The agents do not need to implement this logic themselves.
+              </p>
+              <DrawerTip>
+                The contract is frozen as a snapshot at session establishment. Later changes to the contract definition do not affect in-flight sessions.
+              </DrawerTip>
+            </section>
+
+            <DrawerDivider />
+
+            <section>
+              <h3 className="mb-2 font-semibold text-text">Audit Trail</h3>
+              <p className="leading-relaxed text-text-mute">
+                Every envelope exchanged in a session carries a <DrawerCodeChip>correlation_id</DrawerCodeChip>. The full interaction
+                chain — which requests were made, which responses were returned — is reconstructible
+                from controller audit logs after the session closes.
+              </p>
+            </section>
+          </div>
+        </InfoDrawer>
       ) : null}
     </AppShell>
   );
 }
 
-function StatsRow({ stats, loading }: { stats: SessionStats; loading: boolean }) {
+function StatsRow({
+  stats,
+  loading,
+  onContractViolationsClick,
+}: {
+  stats: SessionStats;
+  loading: boolean;
+  onContractViolationsClick?: () => void;
+}) {
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <StatCard
@@ -257,6 +465,8 @@ function StatsRow({ stats, loading }: { stats: SessionStats; loading: boolean })
         value={loading ? '-' : formatInteger(stats.contractViolations)}
         icon={FileWarning}
         accent="warning"
+        onClick={onContractViolationsClick}
+        caret={Boolean(onContractViolationsClick)}
       />
     </div>
   );
@@ -266,87 +476,154 @@ function Filters({
   search,
   stateFilter,
   roleFilter,
+  serviceFilter,
+  orgFilter,
+  channelFilter,
+  closeReasonFilter,
+  serviceOptions,
+  orgOptions,
+  channelOptions,
+  closeReasonOptions,
   onSearchChange,
   onStateFilterChange,
   onRoleFilterChange,
+  onServiceFilterChange,
+  onOrgFilterChange,
+  onChannelFilterChange,
+  onCloseReasonFilterChange,
+  onResetFilters,
 }: {
   search: string;
   stateFilter: SessionStateFilter;
   roleFilter: SessionRoleFilter;
+  serviceFilter: string;
+  orgFilter: string;
+  channelFilter: string;
+  closeReasonFilter: string;
+  serviceOptions: string[];
+  orgOptions: string[];
+  channelOptions: string[];
+  closeReasonOptions: string[];
   onSearchChange: (value: string) => void;
   onStateFilterChange: (value: SessionStateFilter) => void;
   onRoleFilterChange: (value: SessionRoleFilter) => void;
+  onServiceFilterChange: (value: string) => void;
+  onOrgFilterChange: (value: string) => void;
+  onChannelFilterChange: (value: string) => void;
+  onCloseReasonFilterChange: (value: string) => void;
+  onResetFilters?: () => void;
 }) {
   return (
     <section className="rounded-card border border-border bg-panel p-4">
-      <div className="grid gap-4 xl:grid-cols-[minmax(18rem,1fr)_auto]">
-        <label className="relative block min-w-0 self-start">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+        <label className="relative block w-full sm:min-w-48 sm:flex-1">
           <span className="sr-only">Search sessions</span>
           <Search size={17} aria-hidden="true" className="absolute left-3 top-1/2 -translate-y-1/2 text-text-mute" />
-          <input
+          <Input
             type="search"
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Search sessions, accounts, organizations, advertisements, or workgroups"
-            className="h-10 w-full rounded-pill border border-border bg-panel-subtle pl-10 pr-3 text-body text-text outline-none placeholder:text-text-mute focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora"
+            className="pl-10 pr-3"
           />
         </label>
 
-        <div className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2">
-          <FilterGroup label="State">
-            {stateFilters.map((state) => (
-              <FilterButton
-                key={state}
-                active={stateFilter === state}
-                label={state === 'all' ? 'all states' : state}
-                onClick={() => onStateFilterChange(state)}
-              />
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:shrink-0 sm:items-center sm:gap-2">
+          <FilterSelect
+            value={stateFilter}
+            onChange={(value) => onStateFilterChange(value as SessionStateFilter)}
+          >
+            <option value="all">All Statuses</option>
+            <option value="proposed">Proposed</option>
+            <option value="accepting">Accepting</option>
+            <option value="active">Active</option>
+            <option value="closing">Closing</option>
+            <option value="closed">Closed</option>
+          </FilterSelect>
+          <FilterSelect
+            value={roleFilter}
+            onChange={(value) => onRoleFilterChange(value as SessionRoleFilter)}
+          >
+            <option value="both">All Roles</option>
+            <option value="provider">Provider</option>
+            <option value="consumer">Consumer</option>
+          </FilterSelect>
+          <FilterSelect value={serviceFilter} onChange={onServiceFilterChange}>
+            <option value="all">All Services</option>
+            {serviceOptions.map((s) => (
+              <option key={s} value={s}>{s}</option>
             ))}
-          </FilterGroup>
-          <FilterGroup label="Role">
-            {roleFilters.map((role) => (
-              <FilterButton
-                key={role}
-                active={roleFilter === role}
-                label={role === 'both' ? 'all roles' : role}
-                onClick={() => onRoleFilterChange(role)}
-              />
+          </FilterSelect>
+          <FilterSelect value={orgFilter} onChange={onOrgFilterChange}>
+            <option value="all">Sessions With: All</option>
+            {orgOptions.map((o) => (
+              <option key={o} value={o}>{o}</option>
             ))}
-          </FilterGroup>
+          </FilterSelect>
+          <FilterSelect value={channelFilter} onChange={onChannelFilterChange}>
+            <option value="all">All Workgroups</option>
+            {channelOptions.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </FilterSelect>
+          {closeReasonOptions.length > 0 && (
+            <FilterSelect value={closeReasonFilter} onChange={onCloseReasonFilterChange}>
+              <option value="all">All Close Reasons</option>
+              {closeReasonOptions.map((r) => (
+                <option key={r} value={r}>{closeReasonLabels[r] ?? r}</option>
+              ))}
+            </FilterSelect>
+          )}
+          {onResetFilters ? (
+            <button
+              type="button"
+              onClick={onResetFilters}
+              className="h-9 w-full rounded-pill border border-border bg-panel px-3 text-table font-medium text-text-mute-strong hover:bg-panel-subtle focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora sm:w-auto"
+            >
+              Reset filters
+            </button>
+          ) : null}
         </div>
       </div>
     </section>
   );
 }
 
-function FilterGroup({ label, children }: { label: string; children: ReactNode }) {
+function FilterSelect({
+  value,
+  onChange,
+  children,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  children: ReactNode;
+}) {
+  const isFiltered = value !== 'all' && value !== 'both';
+
   return (
-    <div className="contents">
-      <span className="text-right text-label font-medium uppercase text-text-mute">{label}</span>
-      <div className="flex flex-wrap items-center gap-2">{children}</div>
+    <div className="relative">
+      <Select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className={[
+          'w-full pl-3 pr-7 font-medium sm:w-auto',
+          isFiltered
+            ? 'border-brand-agora bg-brand-agora/10 text-brand-agora'
+            : 'text-text-mute-strong',
+        ].join(' ')}
+      >
+        {children}
+      </Select>
+      <ChevronDown
+        size={13}
+        aria-hidden="true"
+        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-current"
+      />
     </div>
   );
 }
 
-function FilterButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      className={[
-        'h-7 rounded-pill border px-3 text-label font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-agora',
-        active
-          ? 'border-brand-agora bg-brand-agora/10 text-brand-agora'
-          : 'border-border bg-panel-subtle text-text-mute-strong hover:bg-panel',
-      ].join(' ')}
-      aria-pressed={active}
-      onClick={onClick}
-    >
-      {label}
-    </button>
-  );
-}
-
-function sessionColumns(includeClosedFields: boolean, sortable = true): DataTableColumn<SessionRow>[] {
+function sessionColumns(sortable = true, showChevron = false): DataTableColumn<SessionRow>[] {
   const columns: DataTableColumn<SessionRow>[] = [
     {
       id: 'id',
@@ -354,113 +631,74 @@ function sessionColumns(includeClosedFields: boolean, sortable = true): DataTabl
       accessor: (row) => row.session.id,
       kind: 'mono',
       sortable,
+      sortValue: (row) => row.session.id,
     },
     {
       id: 'role',
       header: 'Role',
-      accessor: (row) => ({ status: roleStatus(row.role), label: row.role }),
-      kind: 'pill',
+      accessor: (row) => row.role.charAt(0).toUpperCase() + row.role.slice(1),
       sortable,
     },
     {
-      id: 'counterparty',
-      header: 'Counterparty',
-      accessor: (row) => <CounterpartyCell counterparty={row.counterparty} />,
-      sortable,
-      sortValue: (row) => row.counterparty.label,
-    },
-    {
-      id: 'organization',
-      header: 'Organization',
-      accessor: (row) => row.counterparty.organizationName,
-      sortable,
-    },
-    {
-      id: 'advertisement',
-      header: 'Advertisement',
+      id: 'service',
+      header: 'Service',
       accessor: (row) => row.session.advertisementName,
       sortable,
     },
     {
-      id: 'workgroup',
+      id: 'organization',
+      header: 'Session with',
+      accessor: (row) => row.counterparty.organizationName,
+      sortable,
+      sortValue: (row) => row.counterparty.organizationName,
+    },
+    {
+      id: 'channel',
       header: 'Workgroup',
-      accessor: (row) => row.session.workgroupName,
+      accessor: (row) => row.session.workgroupName ?? '',
       sortable,
     },
     {
-      id: 'tunnelMode',
-      header: 'Mode',
-      accessor: (row) => ({ status: 'info', label: row.session.tunnelMode }),
+      id: 'status',
+      header: 'Status',
+      accessor: (row) => ({
+        status: row.session.closeReason ? closeReasonStatus(row.session.closeReason) : stateStatus(row.session.state),
+        label: row.session.state,
+      }),
       kind: 'pill',
       sortable,
     },
     {
-      id: 'state',
-      header: 'State',
-      accessor: (row) => ({ status: stateStatus(row.session.state), label: row.session.state }),
-      kind: 'pill',
+      id: 'closeReason',
+      header: 'Close Reason',
+      accessor: (row) => {
+        const reason = row.session.closeReason;
+        if (!reason) return '';
+        const label = closeReasonLabels[reason] ?? reason;
+        const status = closeReasonStatus(reason);
+        const colorClass =
+          status === 'success' ? 'text-success-strong' :
+          status === 'danger' ? 'text-danger' :
+          status === 'warning' ? 'text-warning-strong' : '';
+        return colorClass ? <span className={colorClass}>{label}</span> : <span>{label}</span>;
+      },
       sortable,
-    },
-    {
-      id: 'duration',
-      header: 'Duration',
-      accessor: (row) => row.duration,
-      sortable,
-      sortValue: (row) => durationSortValue(row.session),
-      align: 'right',
-    },
-    {
-      id: 'envelopes',
-      header: 'Envelopes',
-      accessor: (row) => row.session.envelopeCount ?? '',
-      sortable,
-      sortValue: (row) => row.session.envelopeCount ?? 0,
-      align: 'right',
+      sortValue: (row) => row.session.closeReason ?? '',
     },
   ];
 
-  if (includeClosedFields) {
-    columns.push(
-      {
-        id: 'closeReason',
-        header: 'Close reason',
-        accessor: (row) =>
-          row.session.closeReason
-            ? { status: closeReasonStatus(row.session.closeReason), label: row.session.closeReason }
-            : '',
-        kind: 'pill',
-        sortable,
-        sortValue: (row) => row.session.closeReason ?? '',
-      },
-      {
-        id: 'closeDetail',
-        header: 'Close detail',
-        accessor: (row) => row.session.closeDetail ?? '',
-      },
-    );
+  if (showChevron) {
+    columns.push({
+      id: 'action',
+      header: '',
+      accessor: () => <ChevronRight size={15} className="text-text-mute" aria-hidden="true" />,
+      align: 'right',
+    });
   }
 
   return columns;
 }
 
-function CounterpartyCell({ counterparty }: { counterparty: Counterparty }) {
-  return (
-    <div className="flex min-w-56 items-center gap-3">
-      <div
-        className={[
-          'flex size-8 shrink-0 items-center justify-center rounded-status text-table font-semibold',
-          counterparty.avatarClassName,
-        ].join(' ')}
-      >
-        {counterparty.initials}
-      </div>
-      <div className="min-w-0">
-        <p className="truncate text-table font-medium text-text">{counterparty.label}</p>
-        <p className="truncate text-table text-text-mute">{counterparty.organizationName}</p>
-      </div>
-    </div>
-  );
-}
 
 type SessionStats = {
   activeSessions: number;
@@ -511,6 +749,10 @@ function filterRows(
   search: string,
   stateFilter: SessionStateFilter,
   roleFilter: SessionRoleFilter,
+  serviceFilter: string,
+  orgFilter: string,
+  channelFilter: string,
+  closeReasonFilter: string,
 ): SessionRow[] {
   const normalizedSearch = search.trim().toLowerCase();
 
@@ -520,6 +762,22 @@ function filterRows(
     }
 
     if (roleFilter !== 'both' && row.role !== roleFilter) {
+      return false;
+    }
+
+    if (serviceFilter !== 'all' && row.session.advertisementName !== serviceFilter) {
+      return false;
+    }
+
+    if (orgFilter !== 'all' && row.counterparty.organizationName !== orgFilter) {
+      return false;
+    }
+
+    if (channelFilter !== 'all' && (row.session.workgroupName ?? '') !== channelFilter) {
+      return false;
+    }
+
+    if (closeReasonFilter !== 'all' && (row.session.closeReason ?? '') !== closeReasonFilter) {
       return false;
     }
 
@@ -603,6 +861,10 @@ function buildCounterparty({
   };
 }
 
+export function durationSortValue(session: Session): number {
+  return durationMilliseconds(session.proposedAt, session.closedAt) ?? 0;
+}
+
 function durationForSession(session: Session, now: number): string {
   const end = session.closedAt ? Date.parse(session.closedAt) : now;
   const start = Date.parse(session.proposedAt);
@@ -614,9 +876,6 @@ function durationForSession(session: Session, now: number): string {
   return formatDuration(end - start);
 }
 
-function durationSortValue(session: Session): number {
-  return durationMilliseconds(session.proposedAt, session.closedAt) ?? 0;
-}
 
 function durationMilliseconds(startValue: string, endValue: string | undefined): number | undefined {
   const start = Date.parse(startValue);
@@ -670,7 +929,7 @@ function stateStatus(state: SessionState): StatusPillStatus {
   return 'info';
 }
 
-function roleStatus(role: DerivedRole): StatusPillStatus {
+export function roleStatus(role: DerivedRole): StatusPillStatus {
   if (role === 'provider') {
     return 'info';
   }
@@ -682,17 +941,13 @@ function roleStatus(role: DerivedRole): StatusPillStatus {
   return 'neutral';
 }
 
-function closeReasonStatus(reason: NonNullable<Session['closeReason']>): StatusPillStatus {
-  if (reason === 'contract_violation' || reason === 'tunnel_failed') {
-    return 'warning';
-  }
-
-  if (reason === 'admin_close' || reason === 'workgroup_deleted' || reason === 'environment_disabled') {
-    return 'danger';
-  }
-
+export function closeReasonStatus(reason: NonNullable<Session['closeReason']>): StatusPillStatus {
+  if (reason === 'consumer_close' || reason === 'provider_close') return 'success';
+  if (reason === 'contract_violation') return 'danger';
+  if (reason === 'tunnel_failed') return 'warning';
   return 'neutral';
 }
+
 
 function LoadingPanel({ title, compact = false }: { title: string; compact?: boolean }) {
   return (
@@ -779,6 +1034,10 @@ function initialsFor(value: string): string {
 
 function hashString(value: string): number {
   return Array.from(value).reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0, 0);
+}
+
+function uniqueSortedValues<T>(rows: T[], getValue: (row: T) => string): string[] {
+  return [...new Set(rows.map(getValue))].sort();
 }
 
 function formatInteger(value: number): string {

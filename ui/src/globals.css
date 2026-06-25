@@ -1,21 +1,24 @@
 @import 'tailwindcss';
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-page: #fafafa;
-  --color-panel: #ffffff;
-  --color-panel-subtle: #f4f4f5;
-  --color-border: #e4e4e7;
-  --color-border-strong: #d4d4d8;
-  --color-text-mute-2: #a1a1aa;
-  --color-text-mute: #71717a;
-  --color-text-mute-strong: #52525b;
-  --color-text: #18181b;
+  --color-page: #ffffff;
+  --color-panel: #f9fafb;
+  --color-panel-subtle: #f3f4f6;
+  --color-border: #d1d5db;
+  --color-border-light: #e5e7eb;
+  --color-border-strong: #9ca3af;
+  --color-text-mute-2: #9ca3af;
+  --color-text-mute: #6b7280;
+  --color-text-mute-strong: #374151;
+  --color-text: #111827;
 
   --color-brand-llm: #0891b2;
   --color-brand-llm-end: #0284c7;
   --color-brand-mcp: #7c3aed;
   --color-brand-mcp-end: #a855f7;
   --color-brand-agora: #4f46e5;
+  --color-brand-agora-hover: #4338ca;
   --color-brand-agora-end: #1d4ed8;
   --color-brand-family-start: #0891b2;
   --color-brand-family-end: #7c3aed;
@@ -28,14 +31,14 @@
   --color-info: #2563eb;
   --color-highlight: #eab308;
 
-  --font-sans: 'Inter Variable', Inter, ui-sans-serif, system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
 
-  --spacing-card-gap: 8px;
-  --spacing-card-padding: 12px;
-  --spacing-section-gap-min: 16px;
-  --spacing-section-gap-max: 24px;
-  --spacing-page-gutter: 32px;
+  --spacing-card-gap: 6px;
+  --spacing-card-padding: 10px;
+  --spacing-section-gap-min: 12px;
+  --spacing-section-gap-max: 16px;
+  --spacing-page-gutter: 24px;
 
   --text-stat: 2rem;
   --text-stat--line-height: 2.25rem;
@@ -48,9 +51,30 @@
   --text-table: 0.8125rem;
   --text-table--line-height: 1.25rem;
 
-  --radius-card: 8px;
-  --radius-pill: 6px;
+  --radius-card: 7px;
+  --radius-pill: 5px;
   --radius-status: 9999px;
+}
+
+html.dark {
+  --color-page:             #1e293b;
+  --color-panel:            #293548;
+  --color-panel-subtle:     #111827;
+  --color-border:           #475569;
+  --color-border-light:     #334155;
+  --color-border-strong:    #64748b;
+  --color-text:             #f1f5f9;
+  --color-text-mute-strong: #e2e8f0;
+  --color-text-mute:        #94a3b8;
+  --color-text-mute-2:      #94a3b8;
+  --color-brand-agora:      #818cf8;
+  --color-brand-agora-hover: #6366f1;
+  --color-brand-llm:        #22d3ee;
+  --color-brand-mcp:        #a78bfa;
+  --color-success-strong:   #4ade80;
+  --color-warning-strong:   #fb923c;
+  --color-danger:           #f87171;
+  --color-info:             #60a5fa;
 }
 
 :root {
@@ -73,9 +97,37 @@ body {
   margin: 0;
 }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
+@layer base {
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+}
+
+.bg-network-texture {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><defs><pattern id='n' patternUnits='userSpaceOnUse' width='80' height='80'><g opacity='0.12'><line x1='10' y1='15' x2='35' y2='8' stroke='%236b7280' stroke-width='0.5'/><line x1='35' y1='8' x2='60' y2='20' stroke='%236b7280' stroke-width='0.5'/><line x1='35' y1='8' x2='40' y2='35' stroke='%236b7280' stroke-width='0.5'/><line x1='60' y1='20' x2='75' y2='45' stroke='%236b7280' stroke-width='0.5'/><line x1='60' y1='20' x2='40' y2='35' stroke='%236b7280' stroke-width='0.5'/><line x1='75' y1='45' x2='55' y2='60' stroke='%236b7280' stroke-width='0.5'/><line x1='75' y1='45' x2='65' y2='75' stroke='%236b7280' stroke-width='0.5'/><line x1='55' y1='60' x2='40' y2='35' stroke='%236b7280' stroke-width='0.5'/><line x1='55' y1='60' x2='65' y2='75' stroke='%236b7280' stroke-width='0.5'/><line x1='55' y1='60' x2='45' y2='80' stroke='%236b7280' stroke-width='0.5'/><line x1='20' y1='55' x2='40' y2='35' stroke='%236b7280' stroke-width='0.5'/><line x1='20' y1='55' x2='15' y2='75' stroke='%236b7280' stroke-width='0.5'/><line x1='65' y1='75' x2='45' y2='80' stroke='%236b7280' stroke-width='0.5'/><line x1='15' y1='75' x2='45' y2='80' stroke='%236b7280' stroke-width='0.5'/><circle cx='10' cy='15' r='1.5' fill='%236b7280'/><circle cx='35' cy='8' r='1.5' fill='%236b7280'/><circle cx='60' cy='20' r='1.5' fill='%236b7280'/><circle cx='75' cy='45' r='1.5' fill='%236b7280'/><circle cx='55' cy='60' r='1.5' fill='%236b7280'/><circle cx='20' cy='55' r='1.5' fill='%236b7280'/><circle cx='40' cy='35' r='1.5' fill='%236b7280'/><circle cx='65' cy='75' r='1.5' fill='%236b7280'/><circle cx='15' cy='75' r='1.5' fill='%236b7280'/><circle cx='45' cy='80' r='1.5' fill='%236b7280'/></g></pattern></defs><rect width='80' height='80' fill='url(%23n)'/></svg>");
+  background-repeat: repeat;
+  background-size: 80px 80px;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b;
+}
+
+.dark .bg-network-texture {
+  background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80'><defs><pattern id='n' patternUnits='userSpaceOnUse' width='80' height='80'><g opacity='0.2'><line x1='10' y1='15' x2='35' y2='8' stroke='%2364748b' stroke-width='0.5'/><line x1='35' y1='8' x2='60' y2='20' stroke='%2364748b' stroke-width='0.5'/><line x1='35' y1='8' x2='40' y2='35' stroke='%2364748b' stroke-width='0.5'/><line x1='60' y1='20' x2='75' y2='45' stroke='%2364748b' stroke-width='0.5'/><line x1='60' y1='20' x2='40' y2='35' stroke='%2364748b' stroke-width='0.5'/><line x1='75' y1='45' x2='55' y2='60' stroke='%2364748b' stroke-width='0.5'/><line x1='75' y1='45' x2='65' y2='75' stroke='%2364748b' stroke-width='0.5'/><line x1='55' y1='60' x2='40' y2='35' stroke='%2364748b' stroke-width='0.5'/><line x1='55' y1='60' x2='65' y2='75' stroke='%2364748b' stroke-width='0.5'/><line x1='55' y1='60' x2='45' y2='80' stroke='%2364748b' stroke-width='0.5'/><line x1='20' y1='55' x2='40' y2='35' stroke='%2364748b' stroke-width='0.5'/><line x1='20' y1='55' x2='15' y2='75' stroke='%2364748b' stroke-width='0.5'/><line x1='65' y1='75' x2='45' y2='80' stroke='%2364748b' stroke-width='0.5'/><line x1='15' y1='75' x2='45' y2='80' stroke='%2364748b' stroke-width='0.5'/><circle cx='10' cy='15' r='1.5' fill='%2364748b'/><circle cx='35' cy='8' r='1.5' fill='%2364748b'/><circle cx='60' cy='20' r='1.5' fill='%2364748b'/><circle cx='75' cy='45' r='1.5' fill='%2364748b'/><circle cx='55' cy='60' r='1.5' fill='%2364748b'/><circle cx='20' cy='55' r='1.5' fill='%2364748b'/><circle cx='40' cy='35' r='1.5' fill='%2364748b'/><circle cx='65' cy='75' r='1.5' fill='%2364748b'/><circle cx='15' cy='75' r='1.5' fill='%2364748b'/><circle cx='45' cy='80' r='1.5' fill='%2364748b'/></g></pattern></defs><rect width='80' height='80' fill='url(%23n)'/></svg>");
+}
+
+@keyframes feedIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

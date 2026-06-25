@@ -4,8 +4,19 @@ import type {
   Advertisement,
   AdvertisementInteractionPatternKind,
   AdvertisementStatus,
+  AdvertisementTunnelMode,
   CatalogSearchResponse,
 } from './types';
+
+export type CreateAdvertisementBody = {
+  name: string;
+  description?: string;
+  capabilities: Array<{ name: string }>;
+  interactionPatterns: Array<{ kind: AdvertisementInteractionPatternKind; customPattern?: string }>;
+  tunnelMode: AdvertisementTunnelMode;
+  workgroupScopes: string[];
+  contractId?: string;
+};
 
 export type ListAdvertisementsParams = {
   status?: AdvertisementStatus;
@@ -26,6 +37,10 @@ export function listAdvertisements(params: ListAdvertisementsParams = {}, signal
 
 export function getAdvertisement(advertisementId: string, signal?: AbortSignal) {
   return apiRequest<Advertisement>(`/advertisements/${encodeURIComponent(advertisementId)}`, { signal });
+}
+
+export function createAdvertisement(body: CreateAdvertisementBody, signal?: AbortSignal) {
+  return apiRequest<Advertisement>('/advertisements', { method: 'POST', body, signal });
 }
 
 export function searchCatalogAdvertisements(params: SearchCatalogParams = {}, signal?: AbortSignal) {

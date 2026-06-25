@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { AlertCircle, LoaderCircle, LogIn } from 'lucide-react';
 
 import { BrandMark } from '../components';
-import { ApiError, getWhoami, login } from '../lib/api';
+import { ApiError, getWhoami, listEnvironments, login } from '../lib/api';
 import { setAuthenticatedAccount } from '../lib/auth-state';
 
 export default function Login() {
@@ -25,7 +25,8 @@ export default function Login() {
 
       const account = await getWhoami();
       setAuthenticatedAccount(account);
-      navigate('/', { replace: true });
+      const environments = await listEnvironments();
+      navigate(environments.length === 0 ? '/setup' : '/', { replace: true });
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         setErrorMessage('Email or password is incorrect.');

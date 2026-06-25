@@ -5,6 +5,7 @@ export type SidebarBreakdownItem = {
   value: number | string;
   barValue?: number;
   accent?: SurfaceAccent;
+  tooltip?: string;
 };
 
 export type SidebarBreakdownProps = {
@@ -39,7 +40,7 @@ export function SidebarBreakdown({ items, className }: SidebarBreakdownProps) {
         return (
           <div key={item.label} className="space-y-2">
             <div className="flex items-center justify-between gap-4">
-              <p className="min-w-0 truncate text-body font-medium text-text">{item.label}</p>
+              <p className="min-w-0 truncate text-body font-medium text-text" title={item.tooltip}>{item.label}</p>
               <p className="shrink-0 text-table text-text-mute-strong">{item.value}</p>
             </div>
             <div className="h-2 overflow-hidden rounded-status bg-panel-subtle">

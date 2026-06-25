@@ -12,6 +12,9 @@ export type BarChartProps = {
   accent: SurfaceAccent;
   height?: number;
   className?: string;
+  // upper bound on time-axis labels; lower it where the chart is narrow so labels
+  // thin out (every Nth) instead of crowding. defaults to the original cap of 8.
+  maxLabels?: number;
 };
 
 const chartColors: Record<SurfaceAccent, { start: string; end: string }> = {
@@ -25,26 +28,47 @@ const chartColors: Record<SurfaceAccent, { start: string; end: string }> = {
   neutral: { start: 'var(--color-text-mute-2)', end: 'var(--color-border-strong)' },
 };
 
-export function BarChart({ data, accent, height = 220, className }: BarChartProps) {
+const TOP_PAD = 12;
+const BOTTOM_PAD = 36;
+const PADDING_X = 16;
+const MIN_BAR_PX = 3;
+// Fixed viewBox width: the SVG always fills the container via width="100%".
+// Bars are distributed across this space so they grow when data is sparse.
+const SVG_WIDTH = 700;
+const MAX_BAR_WIDTH = 72;
+const MIN_GAP = 4;
+
+export function BarChart({ data, accent, height = 220, className, maxLabels = 8 }: BarChartProps) {
   const gradientId = useId();
-  const max = Math.max(...data.map((datum) => datum.value), 1);
-  const width = Math.max(data.length * 48, 320);
-  const chartHeight = height - 28;
-  const gap = 10;
-  const paddingX = 16;
-  const barWidth = Math.max((width - paddingX * 2 - gap * (data.length - 1)) / data.length, 12);
+  const plotHeight = height - TOP_PAD - BOTTOM_PAD;
+  const zeroY = TOP_PAD + plotHeight;
+  const labelY = zeroY + 20;
+  const maxValue = Math.max(...data.map((d) => d.value), 0);
+  const isEmpty = maxValue === 0;
   const colors = chartColors[accent];
 
-  // decimate labels so they never collide: aim for ~8 ticks, always include first and last
-  const targetTicks = 8;
-  const labelStride = Math.max(1, Math.ceil(data.length / targetTicks));
-  const lastIndex = data.length - 1;
-  const showLabelAt = (index: number) =>
-    index === 0 || index === lastIndex || index % labelStride === 0;
+  // Distribute bars evenly across the fixed viewBox plot area.
+  const n = Math.max(data.length, 1);
+  const slotWidth = (SVG_WIDTH - 2 * PADDING_X) / n;
+  const barWidth = Math.min(MAX_BAR_WIDTH, Math.max(MIN_BAR_PX * 2, slotWidth - MIN_GAP));
+
+  // Fixed stride so every inter-label gap is exactly the same number of slots.
+  // ceil(n/maxLabels) guarantees at most maxLabels labels and perfectly uniform
+  // spacing — no special-casing the last index, which was causing unequal gaps.
+  const labelStride = Math.max(1, Math.ceil(data.length / Math.max(1, maxLabels)));
+  const showLabelAt = (index: number) => index % labelStride === 0;
 
   return (
-    <div className={['w-full overflow-hidden', className].filter(Boolean).join(' ')}>
-      <svg className="block w-full" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Bar chart">
+    <div className={['h-full w-full overflow-hidden', className].filter(Boolean).join(' ')}>
+      <svg
+        width="100%"
+        height="100%"
+        viewBox={`0 0 ${SVG_WIDTH} ${height}`}
+        preserveAspectRatio="none"
+        style={{ display: 'block' }}
+        role="img"
+        aria-label="Bar chart"
+      >
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={colors.start} stopOpacity="0.95" />
@@ -53,37 +77,48 @@ export function BarChart({ data, accent, height = 220, className }: BarChartProp
           </linearGradient>
         </defs>
 
-        {[0.25, 0.5, 0.75, 1].map((mark) => {
-          const y = 12 + chartHeight * (1 - mark);
-
-          return (
-            <line
-              key={mark}
-              x1={paddingX}
-              x2={width - paddingX}
-              y1={y}
-              y2={y}
-              stroke="var(--color-border)"
-              strokeDasharray="4 6"
-            />
-          );
-        })}
+        {[0.25, 0.5, 0.75, 1].map((mark) => (
+          <line
+            key={mark}
+            x1={PADDING_X}
+            x2={SVG_WIDTH - PADDING_X}
+            y1={TOP_PAD + plotHeight * (1 - mark)}
+            y2={TOP_PAD + plotHeight * (1 - mark)}
+            stroke="var(--color-border)"
+            strokeDasharray="4 6"
+          />
+        ))}
 
         {data.map((datum, index) => {
-          const barHeight = Math.max((datum.value / max) * (chartHeight - 20), 4);
-          const x = paddingX + index * (barWidth + gap);
-          const y = chartHeight + 4 - barHeight;
+          const barPx =
+            datum.value > 0
+              ? Math.max((datum.value / maxValue) * plotHeight, MIN_BAR_PX)
+              : 0;
+          // Center each bar within its slot.
+          const slotX = PADDING_X + index * slotWidth;
+          const barX = slotX + (slotWidth - barWidth) / 2;
+          const labelX = slotX + slotWidth / 2;
 
           return (
             <g key={`${index}-${datum.label}`}>
-              <rect x={x} y={y} width={barWidth} height={barHeight} rx="5" fill={`url(#${gradientId})`} />
+              {barPx > 0 && (
+                <rect
+                  x={barX}
+                  y={zeroY - barPx}
+                  width={barWidth}
+                  height={barPx}
+                  rx="5"
+                  fill={`url(#${gradientId})`}
+                />
+              )}
               {showLabelAt(index) && (
                 <text
-                  x={x + barWidth / 2}
-                  y={height - 7}
+                  x={labelX}
+                  y={labelY}
                   textAnchor="middle"
                   fontSize="11"
-                  className="fill-text-mute"
+                  fontWeight="500"
+                  className="fill-text-mute-strong"
                 >
                   {datum.label}
                 </text>
@@ -91,6 +126,20 @@ export function BarChart({ data, accent, height = 220, className }: BarChartProp
             </g>
           );
         })}
+
+        {isEmpty && (
+          <text
+            x={SVG_WIDTH / 2}
+            y={TOP_PAD + plotHeight / 2}
+            textAnchor="middle"
+            dominantBaseline="middle"
+            fontSize="12"
+            fontWeight="500"
+            className="fill-text-mute-strong"
+          >
+            No envelope activity in this period
+          </text>
+        )}
       </svg>
     </div>
   );

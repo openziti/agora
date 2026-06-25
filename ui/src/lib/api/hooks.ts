@@ -4,6 +4,9 @@ export type ApiResourceState<T> = {
   data?: T;
   error?: unknown;
   loading: boolean;
+  // timestamp of the last genuinely successful fetch; null until the first
+  // success. advances only alongside setData, never on error/refetch/mount.
+  lastUpdated: Date | null;
   refetch: () => void;
 };
 
@@ -18,6 +21,7 @@ export function useApiResource<T>(
   const [data, setData] = useState<T | undefined>();
   const [error, setError] = useState<unknown>();
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [reloadCount, setReloadCount] = useState(0);
   const refetch = useCallback(() => {
     setLoading(true);
@@ -31,6 +35,7 @@ export function useApiResource<T>(
     load(controller.signal)
       .then((result) => {
         setData(result);
+        setLastUpdated(new Date());
       })
       .catch((err: unknown) => {
         if (!controller.signal.aborted) {
@@ -60,6 +65,7 @@ export function useApiResource<T>(
     data,
     error,
     loading,
+    lastUpdated,
     refetch,
   };
 }
