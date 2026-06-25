@@ -13,6 +13,8 @@ import Sessions from './screens/Sessions';
 import Setup from './screens/Setup';
 import Workgroups from './screens/Workgroups';
 
+const SETUP_ENABLED = false; // wizard route hidden until backend handlers (workgroups, advertisements, contracts) land
+
 export function App() {
   useEffect(() => {
     const abort = new AbortController();
@@ -51,14 +53,16 @@ const routes: RouteObject[] = [
     ),
   },
   { path: '/login', element: <LoginRoute /> },
-  {
-    path: '/setup',
-    element: (
-      <RequireAuth>
-        <Setup />
-      </RequireAuth>
-    ),
-  },
+  ...(SETUP_ENABLED
+    ? [{
+        path: '/setup',
+        element: (
+          <RequireAuth>
+            <Setup />
+          </RequireAuth>
+        ),
+      }]
+    : []),
   {
     path: '/sessions',
     element: (
