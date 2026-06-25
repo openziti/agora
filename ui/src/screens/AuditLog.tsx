@@ -133,16 +133,16 @@ export default function AuditLog() {
   const location = useLocation();
   const [infoOpen, setInfoOpen] = useState(false);
   const [auditSelectedSession, setAuditSelectedSession] = useState<Session | null>(null);
-  const [timeRange, setTimeRange] = useState<TimeRange>('24h');
-  const [eventTypeFilter, setEventTypeFilter] = useState<AuditEventType | 'all' | 'contract_violations'>('all');
+  const [timeRange, setTimeRange] = useState<TimeRange>(() => {
+    const state = location.state as { timeRange?: TimeRange } | null;
+    return state?.timeRange ?? '24h';
+  });
+  const [eventTypeFilter, setEventTypeFilter] = useState<AuditEventType | 'all' | 'contract_violations'>(() => {
+    const state = location.state as { eventTypeFilter?: AuditEventType | 'all' | 'contract_violations' } | null;
+    return state?.eventTypeFilter ?? 'all';
+  });
   const [workgroupFilter, setWorkgroupFilter] = useState('all');
   const [accountFilter, setAccountFilter] = useState('all');
-
-  useEffect(() => {
-    const state = location.state as { eventTypeFilter?: AuditEventType | 'all' | 'contract_violations'; timeRange?: TimeRange } | null;
-    if (state?.eventTypeFilter) setEventTypeFilter(state.eventTypeFilter);
-    if (state?.timeRange) setTimeRange(state.timeRange);
-  }, []);
   const [reportOpen, setReportOpen] = useState(false);
   const account = useApiResource(getDashboardSummary);
   const workgroupsResource = useApiResource(listWorkgroups);
@@ -654,7 +654,13 @@ function ActivityStrip({
   const [popover, setPopover] = useState<{ event: AuditEvent; tickIndex: number; rect: DOMRect } | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => { setPopover(null); }, [events]);
+  // close the popover when the event set refreshes — the open popover references an
+  // event that may no longer exist. Adjust during render instead of in an effect.
+  const [popoverEvents, setPopoverEvents] = useState(events);
+  if (popoverEvents !== events) {
+    setPopoverEvents(events);
+    setPopover(null);
+  }
 
   useEffect(() => {
     if (!popover) return;
