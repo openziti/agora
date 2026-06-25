@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import {
   AlertTriangle,
@@ -81,11 +81,11 @@ export default function Contracts() {
     );
   }, [data, search]);
 
-  const [expandedId, setExpandedId] = useState<string | undefined>(undefined);
-
-  useEffect(() => {
-    setExpandedId((prev) => prev ?? filteredContracts[0]?.contract.id);
-  }, [filteredContracts]);
+  // undefined = no explicit choice yet (fall back to the first contract);
+  // null = the user explicitly collapsed everything; a string = an explicit selection.
+  const [expandedId, setExpandedId] = useState<string | null | undefined>(undefined);
+  const effectiveExpandedId =
+    expandedId === undefined ? filteredContracts[0]?.contract.id : expandedId ?? undefined;
 
   const groupedContracts = useMemo(() => {
     const groups = new Map<string, { orgId: string; orgName: string; contracts: VisibleContract[] }>();
@@ -181,10 +181,10 @@ export default function Contracts() {
                           key={entry.contract.id}
                           entry={entry}
                           orgNameById={orgNameById}
-                          isExpanded={expandedId === entry.contract.id}
+                          isExpanded={effectiveExpandedId === entry.contract.id}
                           onToggle={() =>
                             setExpandedId(
-                              expandedId === entry.contract.id ? undefined : entry.contract.id,
+                              effectiveExpandedId === entry.contract.id ? null : entry.contract.id,
                             )
                           }
                         />
