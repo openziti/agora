@@ -202,25 +202,20 @@ export default function Workgroups() {
     () => buildMemberRows(members.data ?? [], workgroupNameById),
     [members.data, workgroupNameById],
   );
+  // clamp the page during render so a shrinking list never strands us past the last page
+  const cardTotalPages = Math.max(1, Math.ceil(cardModels.length / itemsPerPage));
+  const safeCurrentPage = Math.min(currentPage, cardTotalPages);
+  const membersTotalPages = Math.max(1, Math.ceil(memberRows.length / membersItemsPerPage));
+  const safeMembersCurrentPage = Math.min(membersCurrentPage, membersTotalPages);
   const paginatedCardModels = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
+    const start = (safeCurrentPage - 1) * itemsPerPage;
     return cardModels.slice(start, start + itemsPerPage);
-  }, [cardModels, currentPage, itemsPerPage]);
-
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(cardModels.length / itemsPerPage));
-    if (currentPage > totalPages) setCurrentPage(totalPages);
-  }, [cardModels.length, itemsPerPage, currentPage]);
+  }, [cardModels, safeCurrentPage, itemsPerPage]);
 
   const paginatedMemberRows = useMemo(() => {
-    const start = (membersCurrentPage - 1) * membersItemsPerPage;
+    const start = (safeMembersCurrentPage - 1) * membersItemsPerPage;
     return memberRows.slice(start, start + membersItemsPerPage);
-  }, [memberRows, membersCurrentPage, membersItemsPerPage]);
-
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(memberRows.length / membersItemsPerPage));
-    if (membersCurrentPage > totalPages) setMembersCurrentPage(totalPages);
-  }, [memberRows.length, membersItemsPerPage, membersCurrentPage]);
+  }, [memberRows, safeMembersCurrentPage, membersItemsPerPage]);
 
   const selectedWorkgroup = cardModels.find((card) => card.workgroup.id === selectedWorkgroupId);
 
@@ -231,6 +226,7 @@ export default function Workgroups() {
 
     let cancelled = false;
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- seeding loading-state before async fetch; correct effect usage
     setWorkgroupMetrics(
       new Map(wgs.map((wg) => [wg.id, { sessionCount: 0, violationRate: 0, loading: true }])),
     );
@@ -293,6 +289,7 @@ export default function Workgroups() {
 
     const controller = new AbortController();
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- seeding loading-state before async fetch; correct effect usage
     setWorkgroupActivity(
       new Map(wgs.map((wg) => [wg.id, { events: [], loading: true }])),
     );
@@ -492,7 +489,7 @@ export default function Workgroups() {
             <Pagination
               totalItems={cardModels.length}
               itemsPerPage={itemsPerPage}
-              currentPage={currentPage}
+              currentPage={safeCurrentPage}
               onPageChange={setCurrentPage}
               onItemsPerPageChange={(count) => {
                 setItemsPerPage(count);
@@ -536,7 +533,7 @@ export default function Workgroups() {
             <Pagination
               totalItems={memberRows.length}
               itemsPerPage={membersItemsPerPage}
-              currentPage={membersCurrentPage}
+              currentPage={safeMembersCurrentPage}
               onPageChange={setMembersCurrentPage}
               onItemsPerPageChange={(count) => {
                 setMembersItemsPerPage(count);
@@ -851,7 +848,13 @@ function WorkgroupActivityStrip({
   const [popover, setPopover] = useState<{ event: AuditEvent; tickIndex: number; rect: DOMRect } | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => { setPopover(null); }, [events]);
+  // close the popover when the event set refreshes — the open popover references an
+  // event that may no longer exist. Adjust during render instead of in an effect.
+  const [popoverEvents, setPopoverEvents] = useState(events);
+  if (popoverEvents !== events) {
+    setPopoverEvents(events);
+    setPopover(null);
+  }
 
   useEffect(() => {
     if (!popover) return;

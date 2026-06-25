@@ -162,14 +162,19 @@ export default function Sessions() {
     () => filterRows(recentRows, search, stateFilter, roleFilter, serviceFilter, orgFilter, channelFilter, closeReasonFilter),
     [recentRows, search, stateFilter, roleFilter, serviceFilter, orgFilter, channelFilter, closeReasonFilter],
   );
+  // clamp the page during render so a shrinking list never strands us past the last page
+  const activeTotalPages = Math.max(1, Math.ceil(visibleActiveRows.length / activeItemsPerPage));
+  const safeActivePage = Math.min(activeCurrentPage, activeTotalPages);
+  const recentTotalPages = Math.max(1, Math.ceil(visibleRecentRows.length / recentItemsPerPage));
+  const safeRecentPage = Math.min(recentCurrentPage, recentTotalPages);
   const paginatedActiveRows = useMemo(() => {
-    const start = (activeCurrentPage - 1) * activeItemsPerPage;
+    const start = (safeActivePage - 1) * activeItemsPerPage;
     return visibleActiveRows.slice(start, start + activeItemsPerPage);
-  }, [visibleActiveRows, activeCurrentPage, activeItemsPerPage]);
+  }, [visibleActiveRows, safeActivePage, activeItemsPerPage]);
   const paginatedRecentRows = useMemo(() => {
-    const start = (recentCurrentPage - 1) * recentItemsPerPage;
+    const start = (safeRecentPage - 1) * recentItemsPerPage;
     return visibleRecentRows.slice(start, start + recentItemsPerPage);
-  }, [visibleRecentRows, recentCurrentPage, recentItemsPerPage]);
+  }, [visibleRecentRows, safeRecentPage, recentItemsPerPage]);
   const stats = useMemo(
     () => buildStats(activeRows, recentRows, now),
     [activeRows, recentRows, now],
@@ -178,16 +183,6 @@ export default function Sessions() {
     () => [...activeRows, ...recentRows].find((row) => row.session.id === selectedSessionId),
     [activeRows, recentRows, selectedSessionId],
   );
-
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(visibleActiveRows.length / activeItemsPerPage));
-    if (activeCurrentPage > totalPages) setActiveCurrentPage(totalPages);
-  }, [visibleActiveRows.length, activeItemsPerPage, activeCurrentPage]);
-
-  useEffect(() => {
-    const totalPages = Math.max(1, Math.ceil(visibleRecentRows.length / recentItemsPerPage));
-    if (recentCurrentPage > totalPages) setRecentCurrentPage(totalPages);
-  }, [visibleRecentRows.length, recentItemsPerPage, recentCurrentPage]);
 
   function handleTabChange(tabId: string) {
     const route = routeByTab[tabId];
@@ -304,7 +299,7 @@ export default function Sessions() {
                 <Pagination
                   totalItems={visibleActiveRows.length}
                   itemsPerPage={activeItemsPerPage}
-                  currentPage={activeCurrentPage}
+                  currentPage={safeActivePage}
                   onPageChange={setActiveCurrentPage}
                   onItemsPerPageChange={(count) => {
                     setActiveItemsPerPage(count);
@@ -351,7 +346,7 @@ export default function Sessions() {
                 <Pagination
                   totalItems={visibleRecentRows.length}
                   itemsPerPage={recentItemsPerPage}
-                  currentPage={recentCurrentPage}
+                  currentPage={safeRecentPage}
                   onPageChange={setRecentCurrentPage}
                   onItemsPerPageChange={(count) => {
                     setRecentItemsPerPage(count);
