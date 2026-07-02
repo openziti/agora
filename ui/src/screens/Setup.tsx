@@ -48,6 +48,7 @@ import {
   type Workgroup,
   type WorkgroupScope,
 } from '../lib/api';
+import { copyToClipboard } from '../lib/clipboard';
 
 const TOKEN_MASK = '••••••••••••••••••••••••••••••••';
 
@@ -441,10 +442,6 @@ function errorDetail(error: unknown): string {
   return 'request failed';
 }
 
-function copyToClipboard(text: string): Promise<void> {
-  return navigator.clipboard.writeText(text);
-}
-
 // ── Step 1: Organization and Account ──────────────────────────────────────────
 
 const ORG_BLOCK_LINES = [
@@ -462,9 +459,15 @@ function Step1Content({
 }) {
   const [copied1, setCopied1] = useState(false);
   const [copied2, setCopied2] = useState(false);
+  const [copyError, setCopyError] = useState<string | null>(null);
 
   function flashCopy(text: string, setFlag: (v: boolean) => void) {
-    void copyToClipboard(text).then(() => {
+    void copyToClipboard(text).then((ok) => {
+      if (!ok) {
+        setCopyError('failed to copy to clipboard');
+        return;
+      }
+      setCopyError(null);
       setFlag(true);
       setTimeout(() => { setFlag(false); }, 1500);
     });
@@ -492,6 +495,7 @@ function Step1Content({
           copied={copied2}
           onCopy={() => { flashCopy(USER_BLOCK_LINES.join('\n'), setCopied2); }}
         />
+        {copyError && <InlineError message={copyError} />}
       </div>
       <label className="flex cursor-pointer items-center gap-3">
         <input
@@ -546,8 +550,13 @@ function Step2Content({
     setTimeout(() => { setCopiedField((c) => (c === field ? null : c)); }, 1500);
   }, []);
 
-  const handleCopyConfig = useCallback(() => {
-    void copyToClipboard(CONFIG_BLOCK_LINES.join('\n')).then(() => { flashCopied('config'); });
+  const handleCopyConfig = useCallback(async () => {
+    if (await copyToClipboard(CONFIG_BLOCK_LINES.join('\n'))) {
+      setTokenError(null);
+      flashCopied('config');
+    } else {
+      setTokenError('failed to copy to clipboard');
+    }
   }, [flashCopied]);
 
   const handleToggleReveal = useCallback(async () => {
@@ -559,15 +568,23 @@ function Step2Content({
   const handleCopyToken = useCallback(async () => {
     const value = await ensureToken();
     if (!value) return;
-    await copyToClipboard(value);
-    flashCopied('token');
+    if (await copyToClipboard(value)) {
+      setTokenError(null);
+      flashCopied('token');
+    } else {
+      setTokenError('failed to copy to clipboard');
+    }
   }, [ensureToken, flashCopied]);
 
   const handleCopyCommand = useCallback(async () => {
     const value = await ensureToken();
     if (!value) return;
-    await copyToClipboard(`agora enable ${value}`);
-    flashCopied('command');
+    if (await copyToClipboard(`agora enable ${value}`)) {
+      setTokenError(null);
+      flashCopied('command');
+    } else {
+      setTokenError('failed to copy to clipboard');
+    }
   }, [ensureToken, flashCopied]);
 
   const tokenDisplay = tokenRevealed && accountToken ? accountToken : TOKEN_MASK;

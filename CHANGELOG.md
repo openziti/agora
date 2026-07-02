@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- FIX: Copy-to-clipboard now works when the dashboard is served over http on a non-localhost host (e.g. behind a reverse proxy). Previously the copy buttons failed because the browser Clipboard API is unavailable outside secure contexts; a fallback now handles copying in those cases. Consolidated the previously duplicated copy logic into a single shared helper.
+
 - CHANGE: Redesigned the dashboard with a data-driven network topology, a live activity feed sourced from audit events, a persistent activity rail, and honest degraded/error states.
 
 - CHANGE: Added a tabbed detail drawer surfacing per-session trace lifecycle (proposal through close) and contract-violation detail, including the violation reason inline.

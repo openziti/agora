@@ -46,6 +46,7 @@ import {
   type AdvertisementTunnelMode,
   type Workgroup,
 } from '../lib/api';
+import { copyToClipboard } from '../lib/clipboard';
 
 const routeByTab: Record<string, string> = {
   dashboard: '/',
@@ -430,10 +431,17 @@ function AdvertisementCard({
 }) {
   const gateway = gatewayAccent(advertisement);
   const command = `agora session propose ${advertisement.id}`;
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
 
   function copyCommand() {
-    void navigator.clipboard?.writeText(command);
+    void copyToClipboard(command).then((ok) => {
+      setCopyState(ok ? 'copied' : 'error');
+      setTimeout(() => { setCopyState('idle'); }, 1500);
+    });
   }
+
+  const copyLabel =
+    copyState === 'copied' ? 'Copied' : copyState === 'error' ? 'Copy failed' : 'Propose Session';
 
   const allTags: { label: string; accent: 'contract' | 'workgroup' | 'agora' | 'llm' | 'mcp' }[] = [
     { label: contractName, accent: 'contract' },
@@ -497,7 +505,7 @@ function AdvertisementCard({
           className="mt-2 w-full !justify-start sm:hidden !text-[0.6875rem] gap-1"
         >
           <Send size={11} aria-hidden="true" />
-          Propose Session
+          {copyLabel}
         </Button>
       </div>
 
@@ -512,7 +520,7 @@ function AdvertisementCard({
           className="!text-[0.6875rem] gap-1"
         >
           <Send size={11} aria-hidden="true" />
-          Propose Session
+          {copyLabel}
         </Button>
       </div>
     </article>
