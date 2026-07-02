@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- FIX: Setup wizard entry points (user-menu button, zero-environment login redirect) are now gated behind the same flag as the /setup route, so nothing links to the route while the wizard is disabled.
+
 - CHANGE: Redesigned the dashboard with a data-driven network topology, a live activity feed sourced from audit events, a persistent activity rail, and honest degraded/error states.
 
 - CHANGE: Added a tabbed detail drawer surfacing per-session trace lifecycle (proposal through close) and contract-violation detail, including the violation reason inline.

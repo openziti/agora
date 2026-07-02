@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate, RouterProvider, useLocation, type RouteO
 
 import { BrandMark } from './components';
 import { getWhoami, setUnauthorizedHandler } from './lib/api';
+import { SETUP_ENABLED } from './lib/config';
 import { clearAuthState, getAuthState, setAuthenticatedAccount, useAuthState } from './lib/auth-state';
 import AuditLog from './screens/AuditLog';
 import Catalog from './screens/Catalog';
@@ -12,8 +13,6 @@ import Login from './screens/Login';
 import Sessions from './screens/Sessions';
 import Setup from './screens/Setup';
 import Workgroups from './screens/Workgroups';
-
-const SETUP_ENABLED = false; // wizard route hidden until backend handlers (workgroups, advertisements, contracts) land
 
 export function App() {
   useEffect(() => {
