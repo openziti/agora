@@ -55,6 +55,7 @@ import {
   type WorkgroupMembership,
   type WorkgroupMembershipRole,
 } from '../lib/api';
+import { copyToClipboard } from '../lib/clipboard';
 
 type MemberWithWorkgroups = {
   accountId: string;
@@ -1180,10 +1181,16 @@ function WorkgroupDrawer({
   }
 
   const command = `agora workgroup describe ${card.workgroup.id}`;
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'error'>('idle');
 
   function copyCommand() {
-    void navigator.clipboard?.writeText(command);
+    void copyToClipboard(command).then((ok) => {
+      setCopyState(ok ? 'copied' : 'error');
+      setTimeout(() => { setCopyState('idle'); }, 1500);
+    });
   }
+
+  const copyLabel = copyState === 'copied' ? 'Copied' : copyState === 'error' ? 'Copy failed' : 'Copy';
 
   return (
     <>
@@ -1284,7 +1291,7 @@ function WorkgroupDrawer({
                   onClick={copyCommand}
                 >
                   <Clipboard size={14} aria-hidden="true" />
-                  Copy
+                  {copyLabel}
                 </button>
               </div>
             </SectionPanel>

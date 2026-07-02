@@ -67,6 +67,7 @@ import {
   type DashboardSummaryResponse,
   type DashboardWindow,
 } from '../lib/api';
+import { copyToClipboard } from '../lib/clipboard';
 
 type ActivityWindowOption = {
   value: DashboardWindow;
@@ -465,10 +466,9 @@ function CliAccessModal({ onClose }: { onClose: () => void }) {
   }, []);
 
   const handleCopyConfig = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(CONFIG_COMMAND);
+    if (await copyToClipboard(CONFIG_COMMAND)) {
       flashCopied('config');
-    } catch {
+    } else {
       setError('failed to copy to clipboard');
     }
   }, [flashCopied]);
@@ -485,10 +485,9 @@ function CliAccessModal({ onClose }: { onClose: () => void }) {
   const handleCopyToken = useCallback(async () => {
     const value = await ensureToken();
     if (!value) return;
-    try {
-      await navigator.clipboard.writeText(value);
+    if (await copyToClipboard(value)) {
       flashCopied('token');
-    } catch {
+    } else {
       setError('failed to copy to clipboard');
     }
   }, [ensureToken, flashCopied]);
@@ -496,10 +495,9 @@ function CliAccessModal({ onClose }: { onClose: () => void }) {
   const handleCopyCommand = useCallback(async () => {
     const value = await ensureToken();
     if (!value) return;
-    try {
-      await navigator.clipboard.writeText(`agora enable ${value}`);
+    if (await copyToClipboard(`agora enable ${value}`)) {
       flashCopied('command');
-    } catch {
+    } else {
       setError('failed to copy to clipboard');
     }
   }, [ensureToken, flashCopied]);
