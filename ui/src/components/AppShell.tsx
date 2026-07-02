@@ -23,6 +23,7 @@ import { StatusPill, type StatusPillStatus } from './StatusPill';
 import { UserBadge } from './UserBadge';
 import { logout } from '../lib/api';
 import { clearAuthState, useAuthState } from '../lib/auth-state';
+import { SETUP_ENABLED } from '../lib/config';
 
 export type AppShellProps = {
   product?: Product;
@@ -165,7 +166,7 @@ export function AppShell({
               isDark={isDark}
               onLogout={handleLogout}
               onToggleDark={toggleDark}
-              onSetupNewOrg={() => { navigate('/setup'); }}
+              onSetupNewOrg={SETUP_ENABLED ? () => navigate('/setup') : undefined}
             />
           </div>
         )}

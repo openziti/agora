@@ -1,3 +1,6 @@
+// wizard route hidden until backend handlers (workgroups, advertisements, contracts) land
+export const SETUP_ENABLED = false;
+
 export type AgoraRuntimeConfig = Readonly<{
   apiBasePath: string;
   version: string;
