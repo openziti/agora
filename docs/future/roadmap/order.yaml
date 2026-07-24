@@ -1,0 +1,17 @@
+inbox:
+horizon:
+  - session-cleanup-on-environment-retire.md
+  - single-active-host-enforcement.md
+  - session-teardown-on-tenant-deletion.md
+  - serve-grant-reconciliation.md
+  - session-contracts-envelopes-public-sdk-types.md
+  - sdk-catalog-browsing.md
+  - orphan-dial-policy-gc.md
+  - limits.md
+  - semantic-catalog-search.md
+  - metrics.md
+  - programmatic-contracts.md
+  - udp-overlay-listener.md
+  - richer-envelope-extensions.md
+  - connect-kernel-assigned-ports.md
+  - per-agent-env-roots.md

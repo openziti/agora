@@ -108,7 +108,7 @@ Remaining Layer 1 operational hardening:
 - a documented local development and smoke-test stack
 - clearer end-to-end operational validation for enable, serve, connect, status, and cleanup
 
-Layer 2 is MVP-complete. All five concepts (workgroups, catalog, advertisements, sessions, contracts, envelopes) have Tier-A specs and shipped implementations. See [../layer-2/status.md](../layer-2/status.md) for the per-slice status table; [../layer-2/foundation.md](../layer-2/foundation.md) holds the cross-cutting decisions. Post-MVP extensions are tracked in [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md).
+Layer 2 is MVP-complete. All five concepts (workgroups, catalog, advertisements, sessions, contracts, envelopes) have Tier-A specs and shipped implementations. See [../layer-2/status.md](../layer-2/status.md) for the per-slice status table; [../layer-2/foundation.md](../layer-2/foundation.md) holds the cross-cutting decisions. Post-MVP extensions are tracked in [the roadmap](../../roadmap.md).
 
 Workgroup implementation surfaces:
 
@@ -158,7 +158,7 @@ Envelopes implementation surfaces (slice 5):
 
 Alongside the Layer 2 specs, the project also has a primary reference demo under [../../../examples/macro-pulse/](../../../examples/macro-pulse/) with its own formal doc at [../examples/macro-pulse.md](../examples/macro-pulse.md). The demo now runs end-to-end against a live Agora controller and OpenZiti fabric: `bin/demo-up.sh` builds the UI and Go demo binaries, migrates the store, starts the controller, provisions the topology, starts the workers, and leaves the dashboard available on the configured controller URL. See [../examples/index.md](../examples/index.md) for the example-set overview and [../dashboard/walkthrough.md](../dashboard/walkthrough.md) for the presentation path.
 
-Metrics and limits are intentionally deferred to post-MVP work and tracked in [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md).
+Metrics and limits are intentionally deferred to post-MVP work and tracked in [the roadmap](../../roadmap.md).
 
 ## Verification Notes
 

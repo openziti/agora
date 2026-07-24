@@ -41,7 +41,7 @@ Explicitly out of scope:
 - deep gateway integration where tool calls are routed as Agora envelopes through Agora sessions; the demo uses shallow integration (advertisement-only) and the existing gateway transports continue to operate as they do today
 - mobile or responsive layouts beyond what falls out of the desktop-first design naturally
 - internationalization
-- the post-MVP metrics and limits work tracked in `docs/future/roadmap/post-mvp.md`; the time-series substrate this work introduces is a precursor that accelerates that roadmap item but does not satisfy it
+- the post-MVP metrics and limits work tracked in the roadmap (`docs/future/roadmap/metrics.md`, `docs/future/roadmap/limits.md`); the time-series substrate this work introduces is a precursor that accelerates that roadmap item but does not satisfy it
 
 ## Visual Design System
 
@@ -253,7 +253,7 @@ The full audit surface. Mirrors the LLM Gateway mockup's Audit Log tab. Filterab
 
 The dashboard requires a real history of activity. The current Agora persistence layer stores state, not history: a session row records its terminal close reason but not its envelope flow over time, and there is no record at all of envelope-level events. This work introduces the substrate.
 
-The implementation is intentionally narrow — exactly enough to drive the dashboard, no more. It is a precursor to the post-MVP metrics work tracked in `docs/future/roadmap/post-mvp.md`, not a substitute for it: the metrics work calls for ingest and query APIs, org-scoped visibility, automatic emission, and TimescaleDB-backed storage. The dashboard's substrate uses plain PostgreSQL, in-process emission, and a single read path.
+The implementation is intentionally narrow — exactly enough to drive the dashboard, no more. It is a precursor to the post-MVP metrics work tracked in `docs/future/roadmap/metrics.md`, not a substitute for it: the metrics work calls for ingest and query APIs, org-scoped visibility, automatic emission, and TimescaleDB-backed storage. The dashboard's substrate uses plain PostgreSQL, in-process emission, and a single read path.
 
 ### Schema
 
@@ -651,7 +651,7 @@ These items are explicitly deferred. They are not blockers, and proposing them m
 - the deep gateway integration where tool calls are routed as Agora envelopes
 - gateway dashboards: the LLM Gateway and MCP Gateway do not currently ship dashboards; building them is a separate slice that follows agora's dashboard work and the extraction of a shared component package
 - gateway-side implementation of the agora-mode flag: lives in the LLM Gateway and MCP Gateway repositories, not in this scope
-- the post-MVP metrics work tracked in `docs/future/roadmap/post-mvp.md` (this work is a precursor that accelerates that roadmap item but does not replace it)
+- the post-MVP metrics work tracked in `docs/future/roadmap/metrics.md` (this work is a precursor that accelerates that roadmap item but does not replace it)
 - the post-MVP semantic catalog search, programmatic contracts, workgroup hierarchy, memory-oriented services
 - the existing Layer 1 runtime library extraction tracked in `docs/current/layer-1/status.md`
 

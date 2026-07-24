@@ -211,4 +211,4 @@ Layer 1 MVP intentionally excludes:
 - metrics
 - limits
 
-Those capabilities remain part of the broader architecture, but they are deferred to post-MVP work and tracked in [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md).
+Those capabilities remain part of the broader architecture, but they are deferred to post-MVP work and tracked in [the roadmap](../../roadmap.md).

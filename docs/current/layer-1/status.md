@@ -69,8 +69,8 @@ This checklist is not complete.
 - [ ] the local runtime library extraction is reflected in the implementation
 - [x] SDK-native direct dialer primitives are implemented
 - [ ] the project has a documented and repeatable end-to-end operational validation path
-- [ ] metrics are implemented (deferred; see [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md))
-- [ ] limits are implemented (deferred; see [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md))
+- [ ] metrics are implemented (deferred; see [the roadmap](../../roadmap.md))
+- [ ] limits are implemented (deferred; see [the roadmap](../../roadmap.md))
 
 ## Deferred Post-MVP Work
 
@@ -79,7 +79,7 @@ These items are intentionally deferred and are not part of the minimum-working L
 - metrics
 - limits
 
-They remain part of the broader architecture and are tracked in [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md).
+They remain part of the broader architecture and are tracked in [the roadmap](../../roadmap.md).
 
 ## Testing Status
 
