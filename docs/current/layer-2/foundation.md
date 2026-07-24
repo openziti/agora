@@ -144,7 +144,7 @@ Layer 2 logging uses the same conventions as Layer 1:
 - structured fields on significant events (e.g. `workgroup_id='...'`, `session_id='...'`, `advertisement_id='...'`, `envelope_id='...'`)
 - provider-side and consumer-side request-level logging on session establishment, envelope send/receive, and contract evaluation decisions, mirroring the tunnel-level request logging already present in Layer 1
 
-Metrics remain deferred to post-MVP work per [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md).
+Metrics remain deferred to post-MVP work per [the roadmap](../../roadmap.md).
 
 ## Explicit MVP Boundary
 
@@ -160,4 +160,4 @@ Layer 2 MVP intentionally excludes:
 - memory-oriented collaboration services built on top of the base primitives
 - session multiplexing over a shared tunnel
 
-These items remain part of the broader architecture and are tracked in [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md). Per-concept specs defer to this boundary rather than enumerating it again.
+These items remain part of the broader architecture and are tracked in [the roadmap](../../roadmap.md). Per-concept specs defer to this boundary rather than enumerating it again.

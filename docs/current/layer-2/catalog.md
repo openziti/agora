@@ -161,7 +161,7 @@ The catalog slice is implemented when all of the following are true. Each is ver
 
 ## Out Of Scope For First Slice
 
-- **Semantic search** (vector/embedding-based matching) — deferred per [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md).
+- **Semantic search** (vector/embedding-based matching) — deferred per [the roadmap](../../roadmap.md).
 - **Full-text search** across capability descriptions — MVP supports substring on `name` only.
 - **Catalog subscriptions / push notifications** on new advertisements — post-MVP.
 - **Cross-controller federated catalog** — out of MVP.

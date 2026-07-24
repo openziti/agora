@@ -53,7 +53,7 @@ collaboration extensions. For details, see:
 
 - [docs/current/layer-1/status.md](./docs/current/layer-1/status.md)
 - [docs/current/layer-2/status.md](./docs/current/layer-2/status.md)
-- [docs/future/roadmap/post-mvp.md](./docs/future/roadmap/post-mvp.md)
+- [docs/roadmap.md](./docs/roadmap.md)
 
 ## Repository Layout
 

@@ -33,7 +33,7 @@ A session is distinct from the Layer 1 tunnel that carries it. The session is th
   - `proposer_message` — nullable free-form string supplied by the consumer at propose time. Carries optional engagement context for the provider (e.g. "weekly morning pulse job"). Opaque to the controller.
   - `proposed_at`, `accepted_at`, `closed_at` — state-transition timestamps. `accepted_at` is `NULL` on sessions that never reached `active`; `closed_at` is populated on any terminal `closed` transition.
 
-One session record per established channel. A given account may hold many concurrent sessions — including multiple concurrent sessions with the same counterparty against the same advertisement. There is no cap in MVP; limits are post-MVP (see [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md)).
+One session record per established channel. A given account may hold many concurrent sessions — including multiple concurrent sessions with the same counterparty against the same advertisement. There is no cap in MVP; limits are post-MVP (see [the roadmap](../../roadmap.md)).
 
 Self-sessions are permitted: `provider_account_id` and `consumer_account_id` may be equal when an account proposes against its own advertisement. Same authorization rules apply.
 

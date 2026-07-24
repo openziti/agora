@@ -1,6 +1,6 @@
 # Session Teardown on Tenant Deletion (Layer 2)
 
-**Status: deferred design.** The *interim mitigation* below ships with the Layer 1 `Listen`/`Dial` primitives work order ([`../sdk-l1-primitives-work-order.md`](../sdk-l1-primitives-work-order.md), §2d, cross-cutting rule 2). The *full teardown* described here is the deferred follow-up and is **not yet implemented**. This doc exists so the gap is tracked rather than implicit.
+**Status: deferred design.** The *interim mitigation* below has shipped — the account/org deletion guards landed with the Layer 1 `Listen`/`Dial` primitives work and the account-owned-tunnels work. The *full teardown* described here is the deferred follow-up and is **not yet implemented**. This doc exists so the gap is tracked rather than implicit.
 
 ## The problem
 

@@ -33,7 +33,7 @@ If you've never worked in this repo before, read [`docs/current/maintainers/onbo
 - Use `docs/current/layer-1/spec.md`, `docs/current/layer-1/status.md`, and `docs/current/layer-1/agent.md` for Layer 1 (Network) normative behavior, current state, and local-runtime design.
 - Use `docs/current/layer-2/spec.md` and `docs/current/layer-2/status.md` for Layer 2 (Collaboration) design and implementation status.
 - Use `docs/current/maintainers/current-state.md` for repo-shape, workflow, and maintainer-facing current-state context.
-- Use `docs/future/roadmap/post-mvp.md` for explicitly deferred work such as metrics and limits.
+- Use the roadmap (`docs/roadmap.md`, with one card per item under `docs/future/roadmap/`) for explicitly deferred work such as metrics and limits.
 - Do not create new root-level planning or handoff docs that duplicate the `docs/` canon.
 - Keep spec docs normative, status docs factual/current-state, and roadmap docs limited to deferred or later-phase work.
 

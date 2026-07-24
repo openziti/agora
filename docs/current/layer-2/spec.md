@@ -67,4 +67,4 @@ Deeper A2A bridge behavior is deferred to post-MVP work.
 
 ## Deferred Extensions
 
-The broader architecture includes several deferred collaboration capabilities, including semantic catalog search, programmatic contracts, richer envelope extensions, deeper A2A bridge behavior, and memory-oriented collaboration services built on top of the base primitives. Those items are tracked in [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md) and called out in per-concept specs under "Out Of Scope For First Slice."
+The broader architecture includes several deferred collaboration capabilities, including semantic catalog search, programmatic contracts, richer envelope extensions, deeper A2A bridge behavior, and memory-oriented collaboration services built on top of the base primitives. Those items are tracked in [the roadmap](../../roadmap.md) and called out in per-concept specs under "Out Of Scope For First Slice."
