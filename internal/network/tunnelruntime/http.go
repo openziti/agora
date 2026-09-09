@@ -23,12 +23,14 @@ func StartServeHTTP(ctx context.Context, factory OverlayFactory, identityPath, s
 	}
 	listener, err := overlay.Listen(serviceName)
 	if err != nil {
+		closeOverlay(overlay)
 		return nil, err
 	}
 
 	targetURL, err := url.Parse(backendTarget)
 	if err != nil {
 		_ = listener.Close()
+		closeOverlay(overlay)
 		return nil, err
 	}
 
@@ -43,7 +45,7 @@ func StartServeHTTP(ctx context.Context, factory OverlayFactory, identityPath, s
 		<-ctx.Done()
 		_ = server.Shutdown(context.Background())
 	}()
-	return newHandle(func() error {
+	return newOverlayHandle(ctx, overlay, listener, serviceName, true, func() error {
 		return ignoreClosedError(ctx, server.Serve(listener))
 	}), nil
 }
@@ -64,12 +66,13 @@ func StartConnectHTTP(ctx context.Context, factory OverlayFactory, identityPath,
 
 	targetURL, err := url.Parse("http://" + serviceName)
 	if err != nil {
+		closeOverlay(overlay)
 		return nil, err
 	}
 	proxy := httputil.NewSingleHostReverseProxy(targetURL)
 	transport := http.DefaultTransport.(*http.Transport).Clone()
-	transport.DialContext = func(_ context.Context, _, _ string) (net.Conn, error) {
-		return overlay.Dial(serviceName)
+	transport.DialContext = func(ctx context.Context, _, _ string) (net.Conn, error) {
+		return overlay.DialContext(ctx, serviceName)
 	}
 	proxy.Transport = transport
 
@@ -78,6 +81,7 @@ func StartConnectHTTP(ctx context.Context, factory OverlayFactory, identityPath,
 	}
 	listener, err := net.Listen("tcp", listenAddress)
 	if err != nil {
+		closeOverlay(overlay)
 		return nil, err
 	}
 	closeOnDone(ctx, listener)
@@ -85,7 +89,7 @@ func StartConnectHTTP(ctx context.Context, factory OverlayFactory, identityPath,
 		<-ctx.Done()
 		_ = server.Shutdown(context.Background())
 	}()
-	return newHandle(func() error {
+	return newOverlayHandle(ctx, overlay, listener, serviceName, false, func() error {
 		return ignoreClosedError(ctx, server.Serve(listener))
 	}), nil
 }

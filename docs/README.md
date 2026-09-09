@@ -16,7 +16,7 @@ If a statement in `current/` is no longer true of the code, the statement is wro
 
 Vision, specs in progress, work orders, and explicitly deferred work. The reader should not expect any of it to be verifiable against the code today.
 
-- `future/roadmap/post-mvp.md` — work deliberately deferred past the current milestone.
+- `future/roadmap/` — individual roadmap cards for planned and deferred work.
 - `future/dashboard/` — design, work order, and reference material for dashboard work in progress.
 - `future/sdk/` — proposed external-consumer SDK surfaces not yet implemented.
 
@@ -51,6 +51,6 @@ Subdirectories group by area: `architecture/`, `layer-1/`, `layer-2/`, `sdk/`, `
 - [`current/layer-1/`](./current/layer-1/) and [`current/layer-2/`](./current/layer-2/) — per-layer spec, status, and per-concept docs
 - [`current/sdk/overview.md`](./current/sdk/overview.md) — supported SDK integration path
 - [`current/examples/index.md`](./current/examples/index.md) — reference/demo agents
-- [`future/roadmap/post-mvp.md`](./future/roadmap/post-mvp.md) — intentionally deferred work
+- [`future/roadmap/`](./future/roadmap/) — individual roadmap cards
 
 The root [README.md](../README.md) is the quick-start entry point; [AGENTS.md](../AGENTS.md) is the contributor guidance file.

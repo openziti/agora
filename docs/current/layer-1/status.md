@@ -25,6 +25,7 @@ Implemented Layer 1 behavior includes:
 - a local `agora network` runtime over gRPC+UDS
 - agent-owned environment heartbeat and environment liveness reporting
 - agent-hosted `serve` and `connect` runtime with reconciliation after restart/failure
+- stale OpenZiti session recovery through context replacement on consumer service-discovery failure and provider hosting-connection loss
 - agent-backed `serve` and `connect` by default, with `--foreground` direct-runtime bypass for debugging
 - SDK-native direct provider tunnels through `tunnel.Create`, `tunnel.Listen`, and `tunnel.Delete`, returning a raw `net.Listener` without the managed runtime
 - SDK-native direct consumer dialers through `tunnel.Attach`, `tunnel.Detach`, and `tunnel.Dial`, returning a raw `net.Conn` without a managed connect actor or local proxy port
@@ -69,8 +70,8 @@ This checklist is not complete.
 - [ ] the local runtime library extraction is reflected in the implementation
 - [x] SDK-native direct dialer primitives are implemented
 - [ ] the project has a documented and repeatable end-to-end operational validation path
-- [ ] metrics are implemented (deferred; see [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md))
-- [ ] limits are implemented (deferred; see [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md))
+- [ ] metrics are implemented (deferred; see [../../future/roadmap/metrics.md](../../future/roadmap/metrics.md))
+- [ ] limits are implemented (deferred; see [../../future/roadmap/resource-limits.md](../../future/roadmap/resource-limits.md))
 
 ## Deferred Post-MVP Work
 
@@ -79,7 +80,7 @@ These items are intentionally deferred and are not part of the minimum-working L
 - metrics
 - limits
 
-They remain part of the broader architecture and are tracked in [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md).
+They remain part of the broader architecture and are tracked in [../../future/roadmap/](../../future/roadmap/).
 
 ## Testing Status
 

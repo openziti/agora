@@ -20,11 +20,12 @@ func StartServeTCP(ctx context.Context, factory OverlayFactory, identityPath, se
 	}
 	listener, err := overlay.Listen(serviceName)
 	if err != nil {
+		closeOverlay(overlay)
 		return nil, err
 	}
 	closeOnDone(ctx, listener)
 
-	return newHandle(func() error {
+	return newOverlayHandle(ctx, overlay, listener, serviceName, true, func() error {
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
@@ -61,11 +62,12 @@ func StartConnectTCP(ctx context.Context, factory OverlayFactory, identityPath, 
 	}
 	listener, err := net.Listen("tcp", listenAddress)
 	if err != nil {
+		closeOverlay(overlay)
 		return nil, err
 	}
 	closeOnDone(ctx, listener)
 
-	return newHandle(func() error {
+	return newOverlayHandle(ctx, overlay, listener, serviceName, false, func() error {
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
@@ -74,7 +76,7 @@ func StartConnectTCP(ctx context.Context, factory OverlayFactory, identityPath, 
 			remoteAddr := conn.RemoteAddr().String()
 			logConnectTunnelAccept("tcp", serviceName, listenAddress, remoteAddr)
 			go func(local net.Conn, remoteAddr string) {
-				overlayConn, err := overlay.Dial(serviceName)
+				overlayConn, err := overlay.DialContext(ctx, serviceName)
 				if err != nil {
 					logConnectTunnelDialFailure("tcp", serviceName, listenAddress, remoteAddr, err)
 					_ = local.Close()

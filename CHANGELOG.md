@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.1.6
+
+- FIX: Tunnel runtimes now recover from stale or lost OpenZiti sessions without a process restart. Consumer connections rebuild stale contexts and refresh service access, while providers reconcile after losing all hosting-router connections; managed runtime status and retries now reflect data-plane failures instead of remaining silently `running`.
+
 - FIX: Setup wizard entry points (user-menu button, zero-environment login redirect) are now gated behind the same flag as the /setup route, so nothing links to the route while the wizard is disabled.
 
 - FIX: Copy-to-clipboard now works when the dashboard is served over http on a non-localhost host (e.g. behind a reverse proxy). Previously the copy buttons failed because the browser Clipboard API is unavailable outside secure contexts; a fallback now handles copying in those cases. Consolidated the previously duplicated copy logic into a single shared helper.

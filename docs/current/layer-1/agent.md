@@ -182,6 +182,13 @@ Current heartbeat recovery rules are:
 - transient serve or attachment heartbeat failures trigger teardown plus reconcile after `3` consecutive failures
 - successful heartbeats reset transient failure counters
 
+Data-plane recovery is independent of those controller heartbeats:
+
+- each managed consumer dial refreshes the expected service; a missing or failed refresh rebuilds the OpenZiti context and retries the refresh once
+- a consumer context that is still unable to resolve the service after rebuilding fails its managed runtime so normal bounded reconciliation can recreate it and expose the error in local status
+- managed providers watch the OpenZiti listener's hosting-router connections; if all hosting connections remain absent for `45s`, the provider runtime fails and enters the same bounded reconciliation path
+- managed serve and connect actors close their OpenZiti contexts whenever an attempt stops, preventing retired sessions from continuing in the background
+
 ## State Model
 
 The local runtime currently exposes these serve/connect runtime states:

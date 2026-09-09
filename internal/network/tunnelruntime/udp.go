@@ -35,11 +35,12 @@ func StartServeUDP(ctx context.Context, factory OverlayFactory, identityPath, se
 	}
 	listener, err := overlay.Listen(serviceName)
 	if err != nil {
+		closeOverlay(overlay)
 		return nil, err
 	}
 	closeOnDone(ctx, listener)
 
-	return newHandle(func() error {
+	return newOverlayHandle(ctx, overlay, listener, serviceName, true, func() error {
 		for {
 			conn, err := listener.Accept()
 			if err != nil {
@@ -77,10 +78,12 @@ func StartConnectUDP(ctx context.Context, factory OverlayFactory, identityPath, 
 
 	addr, err := net.ResolveUDPAddr("udp", listenAddress)
 	if err != nil {
+		closeOverlay(overlay)
 		return nil, err
 	}
 	listener, err := net.ListenUDP("udp", addr)
 	if err != nil {
+		closeOverlay(overlay)
 		return nil, err
 	}
 	closeOnDone(ctx, listener)
@@ -100,7 +103,7 @@ func StartConnectUDP(ctx context.Context, factory OverlayFactory, identityPath, 
 		})
 	}
 
-	return newHandle(func() error {
+	return newOverlayHandle(ctx, overlay, listener, serviceName, false, func() error {
 		for {
 			buf := make([]byte, 64*1024)
 			n, clientAddr, err := listener.ReadFromUDP(buf)
@@ -111,7 +114,7 @@ func StartConnectUDP(ctx context.Context, factory OverlayFactory, identityPath, 
 			key := clientAddr.String()
 			value, ok := clients.Load(key)
 			if !ok {
-				overlayConn, err := overlay.Dial(serviceName)
+				overlayConn, err := overlay.DialContext(ctx, serviceName)
 				if err != nil {
 					logConnectTunnelDialFailure("udp", serviceName, listenAddress, key, err)
 					continue
