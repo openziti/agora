@@ -580,8 +580,11 @@ func (a *Runtime) watchServeActor(actor *managedServe, done <-chan error, genera
 	actor.state = networkpb.RuntimeState_RUNTIME_STATE_ERROR
 	actor.transientHeartbeatFailures = 0
 	a.scheduleServeRetryLocked(actor)
+	tunnelID := actor.tunnelID
+	lastError := actor.lastError
 	a.mu.Unlock()
 
+	dl.Warnf("agora network serve runtime exited tunnel_id='%s': %s", tunnelID, lastError)
 	if cancel != nil {
 		cancel()
 	}
@@ -614,8 +617,11 @@ func (a *Runtime) watchConnectActor(actor *managedConnect, done <-chan error, ge
 	actor.state = networkpb.RuntimeState_RUNTIME_STATE_ERROR
 	actor.transientHeartbeatFailures = 0
 	a.scheduleConnectRetryLocked(actor)
+	tunnelID := actor.tunnelID
+	lastError := actor.lastError
 	a.mu.Unlock()
 
+	dl.Warnf("agora network connect runtime exited tunnel_id='%s': %s", tunnelID, lastError)
 	if cancel != nil {
 		cancel()
 	}

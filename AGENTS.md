@@ -33,9 +33,15 @@ If you've never worked in this repo before, read [`docs/current/maintainers/onbo
 - Use `docs/current/layer-1/spec.md`, `docs/current/layer-1/status.md`, and `docs/current/layer-1/agent.md` for Layer 1 (Network) normative behavior, current state, and local-runtime design.
 - Use `docs/current/layer-2/spec.md` and `docs/current/layer-2/status.md` for Layer 2 (Collaboration) design and implementation status.
 - Use `docs/current/maintainers/current-state.md` for repo-shape, workflow, and maintainer-facing current-state context.
-- Use `docs/future/roadmap/post-mvp.md` for explicitly deferred work such as metrics and limits.
+- Use `docs/future/roadmap/` for individual roadmap cards, including explicitly deferred work such as metrics and limits.
 - Do not create new root-level planning or handoff docs that duplicate the `docs/` canon.
 - Keep spec docs normative, status docs factual/current-state, and roadmap docs limited to deferred or later-phase work.
+
+## Roadmap
+
+This repo's roadmap lives in `docs/future/roadmap/` — one frontmatter-markdown item per file, per the roadmap convention in the grimoire (software/conventions/roadmap-convention.md). You may add items freely: write the file directly with required `title`, `state: inbox`, and `created:` (today, YYYY-MM-DD), optional `tags`/`source`/`log`, and a body that is a small, clear prompt -- the problem or solution to execute, not documentation of it; trust the code and the day's journal entry for what's discoverable, and point a `log:` stamp at the specific journal entry when a card leans on hard-won context. Everything above the first `##` heading is the prompt; supporting material that isn't the prompt goes in named sections below it (`## why` for justification, `## background` for a longer description), which are conventional, never required, and never validated. The filename is the slug of the title (lowercase ASCII, hyphens; discard every other character); never overwrite an existing file. Read sibling items for the shape.
+
+Hard rules: never touch `order.yaml` (priority is the operator's judgment, set at triage); never commit roadmap changes unless directed — the uncommitted diff is the review queue; never delete items; edits change only the lines that express them. Label the kind from the house set when one fits: defect, documentation, enhancement, epic, feature, story; add `spike` alongside it when the work carries unknowns that need discovery.
 
 ## Development Commands
 

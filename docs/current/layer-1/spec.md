@@ -73,31 +73,11 @@ The user-facing verbs are:
 
 By default, `agora tunnel serve` and `agora tunnel connect` delegate to the local `agora network` runtime. Both commands support `--foreground` as a debug bypass that runs the runtime directly in the CLI process and does not alter agent-managed desired state.
 
-Proxy tunnels are the managed runtime shape. They require a backend target,
-create tunnel serve records when hosted, and are the shape used by
-`agora tunnel serve` and `tunnel.EnsureServed`. `agora tunnel serve` creates the
-proxy tunnel from `--mode`/`--backend` when it does not yet exist, or serves an
-already-created proxy tunnel (with those flags optional).
+Proxy tunnels are the managed runtime shape. They require a backend target, create tunnel serve records when hosted, and are the shape used by `agora tunnel serve` and `tunnel.EnsureServed`. `agora tunnel serve` creates the proxy tunnel from `--mode`/`--backend` when it does not yet exist, or serves an already-created proxy tunnel (with those flags optional).
 
-Direct tunnels are the SDK-native provider shape. They have no backend
-target because the embedding process serves the overlay listener itself.
-They are provisioned through `agora tunnel create` (without `--backend`) or
-`sdk/agent/tunnel.Create`, listened through `sdk/agent/tunnel.Listen`, and
-deleted through `agora tunnel delete` or `sdk/agent/tunnel.Delete`. `Listen` returns a raw `net.Listener` and does
-not create a tunnel serve record or heartbeat. Direct tunnels currently
-support stream modes (`http` and `tcp`) for listening; packet-shaped direct
-UDP is deferred.
+Direct tunnels are the SDK-native provider shape. They have no backend target because the embedding process serves the overlay listener itself. They are provisioned through `agora tunnel create` (without `--backend`) or `sdk/agent/tunnel.Create`, listened through `sdk/agent/tunnel.Listen`, and deleted through `agora tunnel delete` or `sdk/agent/tunnel.Delete`. `Listen` returns a raw `net.Listener` and does not create a tunnel serve record or heartbeat. Direct tunnels currently support stream modes (`http` and `tcp`) for listening; packet-shaped direct UDP is deferred.
 
-Tunnel attachments have two consumer shapes: `proxy` and `dialer`. Proxy
-attachments are created by the managed connect runtime and require a local
-listen address because the runtime binds a local proxy port. Dialer
-attachments are created explicitly through `sdk/agent/tunnel.Attach`, have
-no local listen address, and authorize raw overlay dials through
-`sdk/agent/tunnel.Dial`. `Dial` returns a raw `net.Conn`, does not create a
-managed connect actor, and does not heartbeat. A dialer attachment remains
-an active authorization until `Detach` or another revocation path removes
-its stored dial policy. Direct dialers currently support stream modes
-(`http` and `tcp`); packet-shaped UDP dialing is deferred.
+Tunnel attachments have two consumer shapes: `proxy` and `dialer`. Proxy attachments are created by the managed connect runtime and require a local listen address because the runtime binds a local proxy port. Dialer attachments are created explicitly through `sdk/agent/tunnel.Attach`, have no local listen address, and authorize raw overlay dials through `sdk/agent/tunnel.Dial`. `Dial` returns a raw `net.Conn`, does not create a managed connect actor, and does not heartbeat. A dialer attachment remains an active authorization until `Detach` or another revocation path removes its stored dial policy. Direct dialers currently support stream modes (`http` and `tcp`); packet-shaped UDP dialing is deferred.
 
 The durable resource is the tunnel itself. The live controller-visible runtime records are:
 
@@ -211,4 +191,4 @@ Layer 1 MVP intentionally excludes:
 - metrics
 - limits
 
-Those capabilities remain part of the broader architecture, but they are deferred to post-MVP work and tracked in [../../future/roadmap/post-mvp.md](../../future/roadmap/post-mvp.md).
+Those capabilities remain part of the broader architecture, but they are deferred to post-MVP work and tracked in [../../future/roadmap/](../../future/roadmap/).
