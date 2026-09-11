@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## v0.1.7
+
+- FIX: HTTP tunnels now forward flushed response headers before the first body byte, allowing idle SSE and other streaming responses to establish without deadlocking clients.
+
 ## v0.1.6
 
 - FIX: Tunnel runtimes now recover from stale or lost OpenZiti sessions without a process restart. Consumer connections rebuild stale contexts and refresh service access, while providers reconcile after losing all hosting-router connections; managed runtime status and retries now reflect data-plane failures instead of remaining silently `running`.

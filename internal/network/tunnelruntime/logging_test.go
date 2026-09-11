@@ -2,11 +2,74 @@ package tunnelruntime
 
 import (
 	"net"
+	"net/http"
+	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
+	"sync"
 	"testing"
 	"time"
 
 	"github.com/openziti/sdk-golang/ziti/edge"
 )
+
+func TestHTTPRequestLoggerFlushesStreamingResponseHeaders(t *testing.T) {
+	releaseOrigin := make(chan struct{})
+	var releaseOnce sync.Once
+	release := func() {
+		releaseOnce.Do(func() {
+			close(releaseOrigin)
+		})
+	}
+	t.Cleanup(release)
+
+	origin := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.WriteHeader(http.StatusOK)
+		w.(http.Flusher).Flush()
+		select {
+		case <-releaseOrigin:
+		case <-r.Context().Done():
+		}
+	}))
+	defer origin.Close()
+
+	target, err := url.Parse(origin.URL)
+	if err != nil {
+		t.Fatalf("parse origin URL: %v", err)
+	}
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	tunnel := httptest.NewServer(connectHTTPRequestLogger("stream-test", "127.0.0.1:0", proxy))
+	defer tunnel.Close()
+
+	type responseResult struct {
+		response *http.Response
+		err      error
+	}
+	responseCh := make(chan responseResult, 1)
+	go func() {
+		response, err := tunnel.Client().Get(tunnel.URL + "/stream")
+		responseCh <- responseResult{response: response, err: err}
+	}()
+
+	select {
+	case result := <-responseCh:
+		if result.err != nil {
+			t.Fatalf("request streaming response: %v", result.err)
+		}
+		defer result.response.Body.Close()
+		if result.response.StatusCode != http.StatusOK {
+			t.Fatalf("expected status %d, got %d", http.StatusOK, result.response.StatusCode)
+		}
+		if contentType := result.response.Header.Get("Content-Type"); contentType != "text/event-stream" {
+			t.Fatalf("expected streaming content type, got %q", contentType)
+		}
+	case <-time.After(time.Second):
+		release()
+		t.Fatal("streaming response headers were not forwarded before the first body byte")
+	}
+}
 
 func TestOverlayPeerInfoPrefersRouterAttestedIdentity(t *testing.T) {
 	conn := &fakeServiceConn{
