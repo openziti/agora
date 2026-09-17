@@ -216,6 +216,8 @@ Serve and connect status also include:
 - `retry_attempt`
 - `next_retry_at`
 
+For managed connects, `network.json` also retains the last controller-issued attachment ID as an internal recovery token. The runtime resubmits it after process restart so the controller can reclaim only that actor's non-disconnected attachment; the token is not part of the caller-supplied desired-connect API.
+
 ## Command-Level Contract
 
 Current command behavior is:

@@ -106,6 +106,7 @@ func TestSetAndLoadNetworkState(t *testing.T) {
 			TunnelID:      "tt_test00000001",
 			Name:          "gateway",
 			ListenAddress: "127.0.0.1:8080",
+			AttachmentID:  "ta_test00000001",
 		}},
 	}); err != nil {
 		t.Fatalf("set network: %v", err)
@@ -123,6 +124,9 @@ func TestSetAndLoadNetworkState(t *testing.T) {
 	}
 	if len(loaded.Network().Connects) != 1 || loaded.Network().Connects[0].ListenAddress != "127.0.0.1:8080" {
 		t.Fatalf("unexpected loaded connects: %#v", loaded.Network().Connects)
+	}
+	if loaded.Network().Connects[0].AttachmentID != "ta_test00000001" {
+		t.Fatalf("unexpected loaded connect attachment ID: %#v", loaded.Network().Connects[0])
 	}
 
 	socketPath, err := loaded.NetworkSocketPath()

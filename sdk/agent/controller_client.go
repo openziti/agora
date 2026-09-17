@@ -209,11 +209,15 @@ func (apiTunnelController) StartConnect(ctx context.Context, env *env_core.Envir
 	if err != nil {
 		return nil, nil, err
 	}
-	res, err := client.ConnectTunnel(ctx, &api.ConnectTunnelRequest{
+	request := &api.ConnectTunnelRequest{
 		EnvironmentId: env.EnvironmentID,
 		Name:          desired.Name,
 		ListenAddress: api.NewOptString(desired.ListenAddress),
-	})
+	}
+	if desired.AttachmentID != "" {
+		request.AttachmentId = api.NewOptString(desired.AttachmentID)
+	}
+	res, err := client.ConnectTunnel(ctx, request)
 	if err != nil {
 		return nil, nil, err
 	}

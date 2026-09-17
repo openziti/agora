@@ -4425,12 +4425,19 @@ func (s *ConnectTunnelRequest) encodeFields(e *jx.Encoder) {
 			s.ListenAddress.Encode(e)
 		}
 	}
+	{
+		if s.AttachmentId.Set {
+			e.FieldStart("attachmentId")
+			s.AttachmentId.Encode(e)
+		}
+	}
 }
 
-var jsonFieldsNameOfConnectTunnelRequest = [3]string{
+var jsonFieldsNameOfConnectTunnelRequest = [4]string{
 	0: "environmentId",
 	1: "name",
 	2: "listenAddress",
+	3: "attachmentId",
 }
 
 // Decode decodes ConnectTunnelRequest from json.
@@ -4475,6 +4482,16 @@ func (s *ConnectTunnelRequest) Decode(d *jx.Decoder) error {
 				return nil
 			}(); err != nil {
 				return errors.Wrap(err, "decode field \"listenAddress\"")
+			}
+		case "attachmentId":
+			if err := func() error {
+				s.AttachmentId.Reset()
+				if err := s.AttachmentId.Decode(d); err != nil {
+					return err
+				}
+				return nil
+			}(); err != nil {
+				return errors.Wrap(err, "decode field \"attachmentId\"")
 			}
 		default:
 			return d.Skip()

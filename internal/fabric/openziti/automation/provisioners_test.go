@@ -308,6 +308,65 @@ func TestTunnelCreateAttachmentDialPolicy(t *testing.T) {
 	}
 }
 
+func TestTunnelEnsureAttachmentDialPolicy(t *testing.T) {
+	spec := TunnelAccessSpec{
+		OrganizationID:        "org_test00000005",
+		AccountID:             "ac_test00000005",
+		EnvironmentID:         "ev_test00000005",
+		TunnelID:              "tt_test00000005",
+		TunnelName:            "llm-gateway",
+		AttachmentID:          "ta_test00000005",
+		EnvironmentIdentityID: "identity-1",
+		ServiceID:             "service-1",
+		Version:               DefaultAgoraVersion,
+	}
+
+	t.Run("reuse existing policy", func(t *testing.T) {
+		existingID := "dial-existing"
+		policies := &fakeServicePolicyOperations{
+			getByNameResult: &rest_model.ServicePolicyDetail{
+				BaseEntity: rest_model.BaseEntity{ID: &existingID},
+			},
+		}
+		provisioner := &TunnelProvisioner{servicePolicies: policies}
+
+		dialPolicyID, created, err := provisioner.EnsureAttachmentDialPolicy(context.Background(), spec)
+		if err != nil {
+			t.Fatalf("ensure attachment dial policy: %v", err)
+		}
+		if dialPolicyID != existingID || created {
+			t.Fatalf("expected existing policy %q, got id=%q created=%t", existingID, dialPolicyID, created)
+		}
+		if len(policies.created) != 0 {
+			t.Fatalf("expected no policy creation, got %d", len(policies.created))
+		}
+	})
+
+	t.Run("create missing policy", func(t *testing.T) {
+		policies := &fakeServicePolicyOperations{
+			createIDs: []string{"dial-created"},
+			getByNameErr: &AutomationError{
+				Type:      ErrorTypeNotFound,
+				Resource:  "service_policy",
+				Operation: "get_by_name",
+				Cause:     errors.New("not found"),
+			},
+		}
+		provisioner := &TunnelProvisioner{servicePolicies: policies}
+
+		dialPolicyID, created, err := provisioner.EnsureAttachmentDialPolicy(context.Background(), spec)
+		if err != nil {
+			t.Fatalf("ensure attachment dial policy: %v", err)
+		}
+		if dialPolicyID != "dial-created" || !created {
+			t.Fatalf("expected created policy, got id=%q created=%t", dialPolicyID, created)
+		}
+		if len(policies.created) != 1 {
+			t.Fatalf("expected one policy creation, got %d", len(policies.created))
+		}
+	})
+}
+
 type fakeIdentityOperations struct {
 	createID  string
 	createErr error
@@ -396,11 +455,13 @@ func (f *fakeServiceOperations) GetByName(context.Context, string) (*rest_model.
 }
 
 type fakeServicePolicyOperations struct {
-	createIDs []string
-	created   []*ServicePolicyOptions
-	bindErr   error
-	dialErr   error
-	deleted   []string
+	createIDs       []string
+	created         []*ServicePolicyOptions
+	bindErr         error
+	dialErr         error
+	deleted         []string
+	getByNameResult *rest_model.ServicePolicyDetail
+	getByNameErr    error
 }
 
 func (f *fakeServicePolicyOperations) Create(context.Context, *ServicePolicyOptions) (string, error) {
@@ -420,7 +481,7 @@ func (f *fakeServicePolicyOperations) GetByID(context.Context, string) (*rest_mo
 	return nil, nil
 }
 func (f *fakeServicePolicyOperations) GetByName(context.Context, string) (*rest_model.ServicePolicyDetail, error) {
-	return nil, nil
+	return f.getByNameResult, f.getByNameErr
 }
 func (f *fakeServicePolicyOperations) CreateBind(_ context.Context, opts *ServicePolicyOptions) (string, error) {
 	if f.bindErr != nil {

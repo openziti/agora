@@ -933,6 +933,30 @@ where environment_id = $1
 	return &attachment, nil
 }
 
+func (r *TunnelAttachmentsRepository) GetReclaimableProxyByID(ctx context.Context, db Queryer, attachmentID, environmentID, tunnelID, organizationID, accountID, listenAddress string) (*TunnelAttachment, error) {
+	const query = `
+select id, tunnel_id, organization_id, account_id, environment_id, kind, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
+from tunnel_attachments
+where id = $1
+  and environment_id = $2
+  and tunnel_id = $3
+  and organization_id = $4
+  and account_id = $5
+  and kind = 'proxy'
+  and listen_address = $6
+  and state <> 'disconnected'
+  and not deleted`
+
+	var attachment TunnelAttachment
+	if err := db.GetContext(ctx, &attachment, query, attachmentID, environmentID, tunnelID, organizationID, accountID, listenAddress); err != nil {
+		if isNotFound(err) {
+			return nil, ErrNotFound
+		}
+		return nil, fmt.Errorf("get reclaimable proxy attachment: %w", err)
+	}
+	return &attachment, nil
+}
+
 func (r *TunnelAttachmentsRepository) ListByTunnelCrossOrg(ctx context.Context, db Queryer, tunnelID string) ([]TunnelAttachment, error) {
 	const query = `
 select id, tunnel_id, organization_id, account_id, environment_id, kind, listen_address, dial_policy_id, state, last_heartbeat_at, disconnected_at, deleted, created_at, updated_at
@@ -992,8 +1016,8 @@ order by last_heartbeat_at asc`
 func (r *TunnelAttachmentsRepository) Heartbeat(ctx context.Context, db Queryer, id, organizationID, accountID string, at time.Time) error {
 	const query = `
 update tunnel_attachments
-set state = 'active', last_heartbeat_at = $4, updated_at = $5
-where id = $1 and organization_id = $2 and account_id = $3 and not deleted`
+set state = 'active', last_heartbeat_at = $4, disconnected_at = null, updated_at = $5
+where id = $1 and organization_id = $2 and account_id = $3 and state <> 'disconnected' and not deleted`
 
 	updatedAt := time.Now().UTC()
 	result, err := db.ExecContext(ctx, query, id, organizationID, accountID, at.UTC(), updatedAt)
@@ -1008,6 +1032,44 @@ where id = $1 and organization_id = $2 and account_id = $3 and not deleted`
 		return ErrNotFound
 	}
 	return nil
+}
+
+func (r *TunnelAttachmentsRepository) HeartbeatWithDialPolicy(ctx context.Context, db Queryer, id, organizationID, accountID, dialPolicyID string, at time.Time) error {
+	const query = `
+update tunnel_attachments
+set state = 'active', dial_policy_id = $4, last_heartbeat_at = $5, disconnected_at = null, updated_at = $6
+where id = $1 and organization_id = $2 and account_id = $3 and state <> 'disconnected' and not deleted`
+
+	updatedAt := time.Now().UTC()
+	result, err := db.ExecContext(ctx, query, id, organizationID, accountID, dialPolicyID, at.UTC(), updatedAt)
+	if err != nil {
+		return fmt.Errorf("heartbeat tunnel attachment with dial policy: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("heartbeat tunnel attachment with dial policy rows affected: %w", err)
+	}
+	if rows == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *TunnelAttachmentsRepository) MarkStaleIfExpired(ctx context.Context, db Queryer, id string, expiredBefore time.Time) (bool, error) {
+	const query = `
+update tunnel_attachments
+set state = 'stale', disconnected_at = null, updated_at = $3
+where id = $1 and state = 'active' and kind = 'proxy' and last_heartbeat_at < $2 and not deleted`
+
+	result, err := db.ExecContext(ctx, query, id, expiredBefore.UTC(), time.Now().UTC())
+	if err != nil {
+		return false, fmt.Errorf("mark expired tunnel attachment stale: %w", err)
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("mark expired tunnel attachment stale rows affected: %w", err)
+	}
+	return rows > 0, nil
 }
 
 func (r *TunnelAttachmentsRepository) UpdateState(ctx context.Context, db Queryer, id string, state TunnelAttachmentState, disconnectedAt *time.Time) error {

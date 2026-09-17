@@ -134,6 +134,9 @@ func TestAgentEnsureServeAndConnectPersistDesiredState(t *testing.T) {
 	if loadedRoot.Network() == nil || len(loadedRoot.Network().Serves) != 1 || len(loadedRoot.Network().Connects) != 1 {
 		t.Fatalf("unexpected persisted network state: %#v", loadedRoot.Network())
 	}
+	if loadedRoot.Network().Connects[0].AttachmentID != "ta_test00000001" {
+		t.Fatalf("expected persisted connect ownership proof, got %#v", loadedRoot.Network().Connects[0])
+	}
 
 	if _, err := client.RemoveServe(context.Background(), &networkpb.RemoveServeRequest{ServeId: "ts_test00000001"}); err != nil {
 		t.Fatalf("remove serve: %v", err)
@@ -377,6 +380,7 @@ func TestAgentRestoresDesiredServeAndConnectOnStart(t *testing.T) {
 		Connects: []env_core.ManagedConnect{{
 			Name:          "gateway",
 			ListenAddress: "127.0.0.1:8080",
+			AttachmentID:  "ta_test00000024",
 		}},
 	}); err != nil {
 		t.Fatalf("set network: %v", err)
@@ -395,8 +399,11 @@ func TestAgentRestoresDesiredServeAndConnectOnStart(t *testing.T) {
 				BackendTarget: api.NewOptString("https://backend.example"),
 			}, &api.TunnelServe{ID: "ts_test00000025"}, nil
 		},
-		startConnect: func(context.Context, *env_core.Environment, env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {
+		startConnect: func(_ context.Context, _ *env_core.Environment, desired env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {
 			connectStarts.Add(1)
+			if desired.AttachmentID != "ta_test00000024" {
+				t.Fatalf("expected restored connect ownership proof, got %#v", desired)
+			}
 			return &api.Tunnel{
 				ID:            "tt_test00000025",
 				EnvironmentId: api.NewOptString("ev_test00000025"),

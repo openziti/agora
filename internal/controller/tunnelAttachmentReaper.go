@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/michaelquigley/df/dl"
-	"github.com/openziti/agora/internal/fabric/openziti/automation"
 	"github.com/openziti/agora/internal/persistence"
 )
 
@@ -31,7 +30,8 @@ func (s *Service) RunTunnelAttachmentReaper(ctx context.Context) {
 }
 
 func (s *Service) ReapStaleTunnelAttachments(ctx context.Context, now time.Time) error {
-	expired, err := s.store.TunnelAttachments.ListExpiredActive(ctx, s.store.DB(), now.Add(-tunnelAttachmentLeaseTTL))
+	expiredBefore := now.Add(-tunnelAttachmentLeaseTTL)
+	expired, err := s.store.TunnelAttachments.ListExpiredActive(ctx, s.store.DB(), expiredBefore)
 	if err != nil {
 		return err
 	}
@@ -39,26 +39,21 @@ func (s *Service) ReapStaleTunnelAttachments(ctx context.Context, now time.Time)
 		return nil
 	}
 
-	_, tunnelLifecycle, err := s.lifecycleFactory(ctx)
-	if err != nil {
-		return err
-	}
-
 	for i := range expired {
 		attachment := expired[i]
-		if attachment.DialPolicyID != nil {
-			if err := tunnelLifecycle.Deprovision(ctx, automation.DeprovisionTunnelSpec{DialPolicyID: *attachment.DialPolicyID}); err != nil {
-				return err
-			}
-		}
-		disconnectedAt := now
-		if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
-			return s.detachTunnel(ctx, tx, attachment, persistence.TunnelAttachmentStateStale, &disconnectedAt)
-		}); err != nil {
+		reaped, err := s.reapStaleTunnelAttachment(ctx, attachment, expiredBefore)
+		if err != nil {
 			return err
+		}
+		if !reaped {
+			continue
 		}
 		dl.Infof("reaped stale tunnel attachment attachment_id='%s' tunnel_id='%s' account_id='%s' environment_id='%s'", attachment.ID, attachment.TunnelID, attachment.AccountID, attachment.EnvironmentID)
 	}
 
 	return nil
+}
+
+func (s *Service) reapStaleTunnelAttachment(ctx context.Context, attachment persistence.TunnelAttachment, expiredBefore time.Time) (bool, error) {
+	return s.store.TunnelAttachments.MarkStaleIfExpired(ctx, s.store.DB(), attachment.ID, expiredBefore)
 }

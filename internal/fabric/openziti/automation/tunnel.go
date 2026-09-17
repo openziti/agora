@@ -154,7 +154,7 @@ func (p *TunnelProvisioner) CreateAttachmentDialPolicy(ctx context.Context, spec
 
 	dialPolicyID, err := p.servicePolicies.CreateDial(ctx, &ServicePolicyOptions{
 		BaseOptions: BaseOptions{
-			Name: spec.AttachmentID + "-" + spec.ServiceID + "-dial",
+			Name: attachmentDialPolicyName(spec),
 			Tags: tags,
 		},
 		IdentityRoles: []string{"@" + spec.EnvironmentIdentityID},
@@ -165,6 +165,29 @@ func (p *TunnelProvisioner) CreateAttachmentDialPolicy(ctx context.Context, spec
 		return "", fmt.Errorf("create tunnel attachment dial policy: %w", err)
 	}
 	return dialPolicyID, nil
+}
+
+func (p *TunnelProvisioner) EnsureAttachmentDialPolicy(ctx context.Context, spec TunnelAccessSpec) (string, bool, error) {
+	existing, err := p.servicePolicies.GetByName(ctx, attachmentDialPolicyName(spec))
+	if err == nil {
+		if existing == nil || existing.ID == nil || *existing.ID == "" {
+			return "", false, fmt.Errorf("ensure tunnel attachment dial policy: existing policy is missing its id")
+		}
+		return *existing.ID, false, nil
+	}
+	if !IsNotFound(err) {
+		return "", false, fmt.Errorf("ensure tunnel attachment dial policy: %w", err)
+	}
+
+	dialPolicyID, err := p.CreateAttachmentDialPolicy(ctx, spec)
+	if err != nil {
+		return "", false, err
+	}
+	return dialPolicyID, true, nil
+}
+
+func attachmentDialPolicyName(spec TunnelAccessSpec) string {
+	return spec.AttachmentID + "-" + spec.ServiceID + "-dial"
 }
 
 type DeprovisionTunnelSpec struct {

@@ -1397,6 +1397,9 @@ type ConnectTunnelRequest struct {
 	EnvironmentId string    `json:"environmentId"`
 	Name          string    `json:"name"`
 	ListenAddress OptString `json:"listenAddress"`
+	// Opaque identifier of a proxy attachment previously owned by this runtime and eligible for
+	// reclamation.
+	AttachmentId OptString `json:"attachmentId"`
 }
 
 // GetEnvironmentId returns the value of EnvironmentId.
@@ -1414,6 +1417,11 @@ func (s *ConnectTunnelRequest) GetListenAddress() OptString {
 	return s.ListenAddress
 }
 
+// GetAttachmentId returns the value of AttachmentId.
+func (s *ConnectTunnelRequest) GetAttachmentId() OptString {
+	return s.AttachmentId
+}
+
 // SetEnvironmentId sets the value of EnvironmentId.
 func (s *ConnectTunnelRequest) SetEnvironmentId(val string) {
 	s.EnvironmentId = val
@@ -1427,6 +1435,11 @@ func (s *ConnectTunnelRequest) SetName(val string) {
 // SetListenAddress sets the value of ListenAddress.
 func (s *ConnectTunnelRequest) SetListenAddress(val OptString) {
 	s.ListenAddress = val
+}
+
+// SetAttachmentId sets the value of AttachmentId.
+func (s *ConnectTunnelRequest) SetAttachmentId(val OptString) {
+	s.AttachmentId = val
 }
 
 // Ref: #/connectTunnelResponse

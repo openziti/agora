@@ -88,6 +88,8 @@ The durable resource is the tunnel itself. The live controller-visible runtime r
 
 Both tunnel serves and tunnel attachments are explicit controller-side records with `active`, `stale`, and `disconnected` states. Only one active serve may exist for a tunnel at a time, and the controller exposes a singular active-serve read surface for status composition. Attachment stale reaping applies to proxy attachments only; dialer attachments are not heartbeat-backed and are removed by explicit detach or revocation cleanup.
 
+Missing a proxy attachment heartbeat lease is a liveness signal, not an authorization revocation. The reaper marks the attachment `stale`, leaves `disconnected_at` unset, and retains its OpenZiti dial policy. When heartbeats resume, the controller ensures the policy still exists before returning the attachment to `active`. The managed runtime persists its attachment ID with the desired connect state and resubmits that opaque ID after restart. The controller reclaims a non-disconnected proxy attachment only when that exact ID also matches the authenticated account, environment, tunnel, and listen address under the same environment/tunnel locks; it reconciles the policy and returns the owned row to `active` without emitting a second attachment lifecycle event. A connect request without valid ownership proof creates a distinct attachment rather than adopting a matching runtime's row. Explicit attachment deletion, grant revocation, environment disablement, and tunnel or session teardown set the disconnect time and remove dial policies.
+
 ## Authorization And Visibility
 
 Layer 1 tunnel authorization follows these rules:

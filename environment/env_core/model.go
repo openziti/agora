@@ -56,6 +56,7 @@ type ManagedConnect struct {
 	TunnelID      string
 	Name          string
 	ListenAddress string
+	AttachmentID  string
 }
 
 type Metadata struct {

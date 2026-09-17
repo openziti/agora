@@ -39,6 +39,8 @@ func (s *Service) ConnectTunnel(ctx context.Context, req *api.ConnectTunnelReque
 	var tunnel *persistence.Tunnel
 	var attachment *persistence.TunnelAttachment
 	var dialPolicyID string
+	var dialPolicyCreated bool
+	var compensationAttachment *persistence.TunnelAttachment
 	if err := s.store.WithTx(ctx, func(tx persistence.Queryer) error {
 		if err := lockEnvironmentScope(ctx, tx, req.EnvironmentId); err != nil {
 			return err
@@ -84,6 +86,52 @@ func (s *Service) ConnectTunnel(ctx context.Context, req *api.ConnectTunnelReque
 		if tunnel.ZitiServiceID == nil {
 			return errTunnelMissingServiceMetadata
 		}
+		if attachmentKind == persistence.TunnelAttachmentKindProxy {
+			if priorAttachmentID, reclaimRequested := req.AttachmentId.Get(); reclaimRequested {
+				existing, err := s.store.TunnelAttachments.GetReclaimableProxyByID(
+					ctx,
+					tx,
+					priorAttachmentID,
+					env.ID,
+					tunnel.ID,
+					principal.OrganizationID,
+					principal.AccountID,
+					*listenAddress,
+				)
+				if err == nil {
+					compensationAttachment = existing
+					dialPolicyID, dialPolicyCreated, err = tunnelLifecycle.EnsureAttachmentDialPolicy(ctx, automation.TunnelAccessSpec{
+						OrganizationID:        principal.OrganizationID,
+						AccountID:             principal.AccountID,
+						EnvironmentID:         env.ID,
+						TunnelID:              tunnel.ID,
+						TunnelName:            tunnel.Name,
+						AttachmentID:          existing.ID,
+						EnvironmentIdentityID: env.ZitiIdentityID,
+						ServiceID:             *tunnel.ZitiServiceID,
+						Version:               automation.DefaultAgoraVersion,
+					})
+					if err != nil {
+						dl.Errorf("connect tunnel dial policy reconciliation failed tunnel_id='%s' attachment_id='%s' %s error='%v'", tunnel.ID, existing.ID, principalLogFields(principal), err)
+						return err
+					}
+					heartbeatAt := time.Now().UTC()
+					if err := s.store.TunnelAttachments.HeartbeatWithDialPolicy(ctx, tx, existing.ID, principal.OrganizationID, principal.AccountID, dialPolicyID, heartbeatAt); err != nil {
+						return err
+					}
+					restored := *existing
+					restored.DialPolicyID = &dialPolicyID
+					restored.State = persistence.TunnelAttachmentStateActive
+					restored.LastHeartbeatAt = heartbeatAt
+					restored.DisconnectedAt = nil
+					attachment = &restored
+					return nil
+				}
+				if !errors.Is(err, persistence.ErrNotFound) {
+					return err
+				}
+			}
+		}
 
 		dialPolicyID, err = tunnelLifecycle.CreateAttachmentDialPolicy(ctx, automation.TunnelAccessSpec{
 			OrganizationID:        principal.OrganizationID,
@@ -97,10 +145,11 @@ func (s *Service) ConnectTunnel(ctx context.Context, req *api.ConnectTunnelReque
 			Version:               automation.DefaultAgoraVersion,
 		})
 		if err != nil {
-			dl.Errorf("connect tunnel dial policy creation failed tunnel_id='%s' attachment_id='%s' %s: %v", tunnel.ID, attachmentID, principalLogFields(principal), err)
+			dl.Errorf("connect tunnel dial policy creation failed tunnel_id='%s' attachment_id='%s' %s error='%v'", tunnel.ID, attachmentID, principalLogFields(principal), err)
 			return err
 		}
-		attachment, err = s.attachTunnel(ctx, tx, persistence.TunnelAttachment{
+		dialPolicyCreated = true
+		candidate := persistence.TunnelAttachment{
 			ID:              attachmentID,
 			TunnelID:        tunnel.ID,
 			OrganizationID:  principal.OrganizationID,
@@ -111,11 +160,15 @@ func (s *Service) ConnectTunnel(ctx context.Context, req *api.ConnectTunnelReque
 			DialPolicyID:    &dialPolicyID,
 			State:           persistence.TunnelAttachmentStateActive,
 			LastHeartbeatAt: time.Now().UTC(),
-		})
+		}
+		compensationAttachment = &candidate
+		attachment, err = s.attachTunnel(ctx, tx, candidate)
 		return err
 	}); err != nil {
-		if dialPolicyID != "" {
-			_ = tunnelLifecycle.Deprovision(ctx, automation.DeprovisionTunnelSpec{DialPolicyID: dialPolicyID})
+		if dialPolicyCreated && dialPolicyID != "" && compensationAttachment != nil {
+			if compensationErr := s.compensateCreatedAttachmentDialPolicy(ctx, tunnelLifecycle, compensationAttachment, dialPolicyID); compensationErr != nil {
+				err = errors.Join(err, compensationErr)
+			}
 		}
 		if errors.Is(err, persistence.ErrNotFound) {
 			if env == nil {

@@ -404,6 +404,11 @@ func (f *admissionTunnelLifecycle) CreateAttachmentDialPolicy(ctx context.Contex
 	return fmt.Sprintf("%s-dial", spec.AttachmentID), nil
 }
 
+func (f *admissionTunnelLifecycle) EnsureAttachmentDialPolicy(ctx context.Context, spec automation.TunnelAccessSpec) (string, bool, error) {
+	dialPolicyID, err := f.CreateAttachmentDialPolicy(ctx, spec)
+	return dialPolicyID, err == nil, err
+}
+
 func (f *admissionTunnelLifecycle) Deprovision(ctx context.Context, spec automation.DeprovisionTunnelSpec) error {
 	f.mu.Lock()
 	f.deprovisions = append(f.deprovisions, spec)
