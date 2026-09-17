@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.1.8
+
 - FIX: Stale proxy-attachment reaping no longer deletes the consumer's OpenZiti dial policy. Returning heartbeats reconcile missing policies before reactivating attachments, and restarted managed proxies use their persisted attachment ID to reclaim the owned attachment without leaking the retained policy or creating duplicate rows.
 
 ## v0.1.7
