@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- FIX: Stale proxy-attachment reaping no longer deletes the consumer's OpenZiti dial policy. Returning heartbeats reconcile missing policies before reactivating attachments, and restarted managed proxies use their persisted attachment ID to reclaim the owned attachment without leaking the retained policy or creating duplicate rows.
+
 ## v0.1.7
 
 - FIX: HTTP tunnels now forward flushed response headers before the first body byte, allowing idle SSE and other streaming responses to establish without deadlocking clients.

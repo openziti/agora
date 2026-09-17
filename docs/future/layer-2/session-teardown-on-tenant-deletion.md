@@ -1,6 +1,6 @@
 # Session Teardown on Tenant Deletion (Layer 2)
 
-**Status: deferred design.** The *interim mitigation* below ships with the Layer 1 `Listen`/`Dial` primitives work order ([`../sdk-l1-primitives-work-order.md`](../sdk-l1-primitives-work-order.md), §2d, cross-cutting rule 2). The *full teardown* described here is the deferred follow-up and is **not yet implemented**. This doc exists so the gap is tracked rather than implicit.
+**Status: deferred design.** The *interim mitigation* below is part of the current Layer 1 lifecycle documented in the [`Layer 1 specification`](../../current/layer-1/spec.md). The *full teardown* described here is the deferred follow-up and is **not yet implemented**. This doc exists so the gap is tracked rather than implicit.
 
 ## The problem
 
@@ -13,9 +13,9 @@ The tenant foreign keys are `ON DELETE CASCADE` end to end (`internal/persistenc
 
 A live overlay bind policy and service for a session that no longer exists: a resource leak and a zero-trust residue. The symmetric hazard exists for any deletion path that removes a `sessions` row without first tearing down the backing tunnel app-side.
 
-This is one instance of a general rule (L1 work order, cross-cutting rule 3): because the tenant FKs cascade, **every Ziti-bearing parent delete must be either cascade-aware or guarded** — a bare delete that leans on the FK cascade strands the overlay objects its children owned. The L1 work order makes the *attachment* and *owned-tunnel* paths cascade-aware; the **session backing tunnels of a deleted participant** are the piece left for here.
+This is one instance of a general Layer 1 lifecycle rule: because the tenant FKs cascade, **every Ziti-bearing parent delete must be either cascade-aware or guarded** — a bare delete that leans on the FK cascade strands the overlay objects its children owned. The current Layer 1 implementation makes the *attachment* and *owned-tunnel* paths cascade-aware; the **session backing tunnels of a deleted participant** are the piece left for here.
 
-## Interim mitigation (shipped with the L1 work order)
+## Interim mitigation (current)
 
 To keep deletion **safe** without yet building full teardown, account and organization deletion are **guarded** rather than allowed to strand:
 

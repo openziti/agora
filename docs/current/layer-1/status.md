@@ -21,7 +21,7 @@ Implemented Layer 1 behavior includes:
 - real environment enable/disable with controller-created identity material
 - real HTTP, TCP, and UDP tunnel provisioning and connectivity
 - tunnel grants, attachment tracking, and serve-lease tracking
-- stale reaping for attachments and serves
+- non-destructive stale reaping for proxy attachments and serves, with dial-policy reconciliation when attachment heartbeats resume or a managed proxy reclaims its persisted attachment ID
 - a local `agora network` runtime over gRPC+UDS
 - agent-owned environment heartbeat and environment liveness reporting
 - agent-hosted `serve` and `connect` runtime with reconciliation after restart/failure

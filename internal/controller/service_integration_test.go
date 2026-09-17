@@ -427,13 +427,17 @@ func (f *fakeEnvironmentLifecycle) Disable(_ context.Context, spec automation.De
 }
 
 type fakeTunnelLifecycle struct {
-	provisionResult    *automation.ProvisionedTunnel
-	provisionCalls     []automation.TunnelSpec
-	attachmentResult   string
-	attachmentCalls    []automation.TunnelAccessSpec
-	deprovisionCalls   []automation.DeprovisionTunnelSpec
-	evictServiceCalls  []string
-	evictIdentityCalls []string
+	provisionResult         *automation.ProvisionedTunnel
+	provisionCalls          []automation.TunnelSpec
+	attachmentResult        string
+	attachmentCalls         []automation.TunnelAccessSpec
+	ensureAttachmentResult  string
+	ensureAttachmentCreated bool
+	ensureAttachmentErr     error
+	ensureAttachmentCalls   []automation.TunnelAccessSpec
+	deprovisionCalls        []automation.DeprovisionTunnelSpec
+	evictServiceCalls       []string
+	evictIdentityCalls      []string
 }
 
 func (f *fakeTunnelLifecycle) Provision(_ context.Context, spec automation.TunnelSpec) (*automation.ProvisionedTunnel, error) {
@@ -454,6 +458,20 @@ func (f *fakeTunnelLifecycle) CreateAttachmentDialPolicy(_ context.Context, spec
 		return f.attachmentResult, nil
 	}
 	return "dial-1", nil
+}
+
+func (f *fakeTunnelLifecycle) EnsureAttachmentDialPolicy(_ context.Context, spec automation.TunnelAccessSpec) (string, bool, error) {
+	f.ensureAttachmentCalls = append(f.ensureAttachmentCalls, spec)
+	if f.ensureAttachmentErr != nil {
+		return "", false, f.ensureAttachmentErr
+	}
+	if f.ensureAttachmentResult != "" {
+		return f.ensureAttachmentResult, f.ensureAttachmentCreated, nil
+	}
+	if f.attachmentResult != "" {
+		return f.attachmentResult, false, nil
+	}
+	return "dial-1", false, nil
 }
 
 func (f *fakeTunnelLifecycle) Deprovision(_ context.Context, spec automation.DeprovisionTunnelSpec) error {

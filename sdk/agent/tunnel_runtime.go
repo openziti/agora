@@ -261,6 +261,7 @@ func (a *Runtime) runConnectAttempt(ctx context.Context, actor *managedConnect, 
 
 	desired := attempt.desired
 	desired.TunnelID = tunnel.ID
+	desired.AttachmentID = attachment.ID
 	if err := a.updateConnectDesired(actor, attempt.generation, desired); err != nil {
 		_ = a.controller.StopAttachment(context.Background(), attempt.env, attachment.ID)
 		a.recordConnectAttemptFailure(actor, attempt.generation, err, scheduleRetry)

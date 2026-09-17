@@ -53,6 +53,7 @@ func cloneNetwork(networkState *env_core.Network) *env_core.Network {
 			TunnelID:      connect.TunnelID,
 			Name:          connect.Name,
 			ListenAddress: connect.ListenAddress,
+			AttachmentID:  connect.AttachmentID,
 		})
 	}
 	return cloned

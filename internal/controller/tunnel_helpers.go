@@ -61,11 +61,11 @@ func (s *Service) attachTunnel(ctx context.Context, q persistence.Queryer, attac
 }
 
 func (s *Service) detachTunnel(ctx context.Context, q persistence.Queryer, attachment persistence.TunnelAttachment, state persistence.TunnelAttachmentState, disconnectedAt *time.Time) error {
-	wasActive := attachment.State == persistence.TunnelAttachmentStateActive
+	wasConnected := attachment.State != persistence.TunnelAttachmentStateDisconnected
 	if err := s.store.TunnelAttachments.UpdateState(ctx, q, attachment.ID, state, disconnectedAt); err != nil {
 		return err
 	}
-	if !wasActive {
+	if !wasConnected {
 		return nil
 	}
 	return s.recordTunnelDetached(ctx, q, attachment, state)

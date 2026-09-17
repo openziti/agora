@@ -50,6 +50,7 @@ type managedConnect struct {
 	TunnelID      string `dd:",+omitempty"`
 	Name          string
 	ListenAddress string
+	AttachmentID  string `dd:",+omitempty"`
 }
 
 func Default() (*Root, error) {
@@ -241,6 +242,7 @@ func loadNetwork() (*env_core.Network, error) {
 			TunnelID:      connect.TunnelID,
 			Name:          connect.Name,
 			ListenAddress: connect.ListenAddress,
+			AttachmentID:  connect.AttachmentID,
 		})
 	}
 	return result, nil
@@ -269,6 +271,7 @@ func saveNetwork(networkState *env_core.Network) error {
 			TunnelID:      connect.TunnelID,
 			Name:          connect.Name,
 			ListenAddress: connect.ListenAddress,
+			AttachmentID:  connect.AttachmentID,
 		})
 	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {

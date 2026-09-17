@@ -27,6 +27,7 @@ type environmentLifecycle interface {
 type tunnelLifecycle interface {
 	Provision(context.Context, automation.TunnelSpec) (*automation.ProvisionedTunnel, error)
 	CreateAttachmentDialPolicy(context.Context, automation.TunnelAccessSpec) (string, error)
+	EnsureAttachmentDialPolicy(context.Context, automation.TunnelAccessSpec) (string, bool, error)
 	Deprovision(context.Context, automation.DeprovisionTunnelSpec) error
 	EvictTerminatorsByService(context.Context, string) error
 	EvictTerminatorsByIdentity(context.Context, string) error
