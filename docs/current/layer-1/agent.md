@@ -92,6 +92,8 @@ The local control channel is:
 - UDS-only in v1
 - filesystem-permission secured
 
+CLI clients dial the socket as a literal filesystem path rather than a gRPC target URL, preserving Windows drive paths and URL-special characters in directory names. Daemon connection errors retain their underlying cause while remaining recognizable through `errors.Is(err, daemon.ErrNotRunning)`.
+
 The runtime is the normal owner of active Layer 1 behavior. Foreground command execution remains a debug bypass rather than the primary operating mode.
 
 ## Local Files
