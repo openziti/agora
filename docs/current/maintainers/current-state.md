@@ -162,6 +162,10 @@ Metrics and limits are intentionally deferred to post-MVP work and tracked in [.
 
 ## Verification Notes
 
+Branch pushes run the `CI Build` workflow with Linux AMD64 and native Windows AMD64 jobs. Linux runs the full Go test suite, `go vet`, and UI linting. Windows runs the daemon socket regression tests before building the executable. Both jobs embed the UI and verify that the executable carries version metadata.
+
+Download branch executables from the workflow run's Artifacts section: `linux-amd64` contains `agora`, and `windows-amd64` contains `agora.exe`. Version tags use the separate `Draft Release` workflow.
+
 Useful commands:
 
 ```bash

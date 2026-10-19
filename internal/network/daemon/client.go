@@ -3,6 +3,8 @@ package daemon
 import (
 	"context"
 	"errors"
+	"fmt"
+	"net"
 	"os"
 	"syscall"
 	"time"
@@ -21,8 +23,13 @@ var ErrNotRunning = errors.New("agora network is not running")
 
 func Dial(_ context.Context, socketPath string) (*grpc.ClientConn, error) {
 	conn, err := grpc.NewClient(
-		"unix://"+socketPath,
+		"passthrough:///agora-network",
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		// keep filesystem paths out of gRPC's URL parser, especially Windows drive paths.
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			var dialer net.Dialer
+			return dialer.DialContext(ctx, "unix", socketPath)
+		}),
 	)
 	if err != nil {
 		return nil, normalizeDialError(err)
@@ -105,17 +112,17 @@ func normalizeDialError(err error) error {
 		return nil
 	}
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
-		return ErrNotRunning
+		return fmt.Errorf("%w: %w", ErrNotRunning, err)
 	}
 	switch status.Code(err) {
 	case codes.Canceled, codes.DeadlineExceeded, codes.Unavailable:
-		return ErrNotRunning
+		return fmt.Errorf("%w: %w", ErrNotRunning, err)
 	}
 	if errors.Is(err, os.ErrNotExist) {
-		return ErrNotRunning
+		return fmt.Errorf("%w: %w", ErrNotRunning, err)
 	}
 	if errors.Is(err, syscall.ENOENT) || errors.Is(err, syscall.ECONNREFUSED) {
-		return ErrNotRunning
+		return fmt.Errorf("%w: %w", ErrNotRunning, err)
 	}
 	return err
 }

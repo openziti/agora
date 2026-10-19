@@ -79,3 +79,65 @@ jobs:
           path: |
             ${{ steps.solve_go_bin.outputs.go_bin }}/agora
           if-no-files-found: error
+
+  build-windows:
+    name: Build Windows AMD64
+    runs-on: windows-2025
+    defaults:
+      run:
+        shell: bash
+    env:
+      CGO_ENABLED: '0'
+      GOARCH: amd64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # push's version script needs full history and tags on branch builds.
+          fetch-depth: 0
+
+      - name: setup-go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: ./go.mod
+
+      - name: test daemon on Windows
+        # keep Unix socket paths short enough for the Windows socket address limit.
+        env:
+          TMP: ${{ runner.temp }}
+          TEMP: ${{ runner.temp }}
+        run: go test ./internal/network/daemon -count=1 -v
+
+      - name: setup-node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+
+      - name: build ui
+        working-directory: ./ui
+        run: |
+          npm ci
+          npm run build
+
+      - name: fetch push ci scripts
+        run: git clone --branch v0.2.1 --depth 1 https://github.com/michaelquigley/push.git _push
+
+      - name: build
+        run: |
+          LDFLAGS=$(_push/ci/ldflags.sh)
+          mkdir -p dist
+          go build -ldflags "${LDFLAGS}" -o dist/agora.exe ./cmd/agora
+
+      - name: verify stamp
+        run: |
+          out=$(./dist/agora.exe version)
+          printf '%s\n' "${out}"
+          if [ -z "${out}" ] || printf '%s\n' "${out}" | grep -F '[developer build]'; then
+            exit 1
+          fi
+
+      - name: upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-amd64
+          path: dist/agora.exe
+          if-no-files-found: error

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+CHANGE: Branch CI now tests daemon sockets on native Windows and provides a version-stamped Windows AMD64 executable with the embedded dashboard as a downloadable `windows-amd64` artifact.
+
+FIX: Local network commands now reach the running daemon on Windows and when socket paths contain URL-special characters. Connection errors retain their underlying cause for diagnosis.
+
 ## v0.1.8
 
 - FIX: Stale proxy-attachment reaping no longer deletes the consumer's OpenZiti dial policy. Returning heartbeats reconcile missing policies before reactivating attachments, and restarted managed proxies use their persisted attachment ID to reclaim the owned attachment without leaking the retained policy or creating duplicate rows.
