@@ -193,8 +193,8 @@ func sameConnect(left, right env_core.ManagedConnect) bool {
 }
 
 func matchesConnect(existing env_core.ManagedConnect, tunnelID, name, listenAddress string) bool {
-	if tunnelID != "" && existing.TunnelID == tunnelID && existing.ListenAddress == listenAddress {
-		return true
+	if tunnelID != "" && existing.TunnelID != "" {
+		return existing.TunnelID == tunnelID && existing.ListenAddress == listenAddress
 	}
 	return name != "" && strings.EqualFold(existing.Name, name) && existing.ListenAddress == listenAddress
 }

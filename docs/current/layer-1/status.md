@@ -31,6 +31,7 @@ Implemented Layer 1 behavior includes:
 - SDK-native direct consumer dialers through `tunnel.Attach`, `tunnel.Detach`, and `tunnel.Dial`, returning a raw `net.Conn` without a managed connect actor or local proxy port
 - standalone `agora tunnel create` for provisioning durable tunnel resources (direct or proxy) without serving, and `agora tunnel serve` reuse of an already-created proxy tunnel
 - unified tunnel delete semantics for both durable tunnel resources and managed runtime state
+- explicit bulk local-connect cleanup with `agora tunnel delete connect <name|tt_...> --all`, including deleted-tunnel references and stopped-daemon cleanup; [agent.md](agent.md#bulk-local-connect-removal) records matching rules, failure behavior, and coordination limits
 - composite `agora status` covering local root state, local agent state, controller environment state, owned tunnels, active serve details, and attachment counts
 - meaningful provider-side and consumer-side request/session logging
 

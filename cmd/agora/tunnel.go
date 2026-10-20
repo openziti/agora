@@ -468,6 +468,41 @@ func removeLocalDesiredConnect(root env_core.Root, tunnelID, name, listenAddress
 	return true, root.SetNetwork(cloned)
 }
 
+// removeLocalDesiredConnects removes every saved connect matching reference from the offline desired state in a
+// single write, preserving serves and every retained connect record in full. it returns the number removed, and
+// zero without writing when nothing matches.
+func removeLocalDesiredConnects(root env_core.Root, reference string) (int, error) {
+	networkState := root.Network()
+	if networkState == nil {
+		return 0, nil
+	}
+	retained := make([]env_core.ManagedConnect, 0, len(networkState.Connects))
+	for _, connect := range networkState.Connects {
+		if connectMatchesReference(reference, connect.TunnelID, connect.Name) {
+			continue
+		}
+		retained = append(retained, connect)
+	}
+	removed := len(networkState.Connects) - len(retained)
+	if removed == 0 {
+		return 0, nil
+	}
+	cloned := &env_core.Network{
+		Serves:   append([]env_core.ManagedServe(nil), networkState.Serves...),
+		Connects: retained,
+	}
+	if len(cloned.Serves) == 0 && len(cloned.Connects) == 0 {
+		if err := root.DeleteNetwork(); err != nil {
+			return 0, fmt.Errorf("failed to delete local network state: %w", err)
+		}
+		return removed, nil
+	}
+	if err := root.SetNetwork(cloned); err != nil {
+		return 0, fmt.Errorf("failed to save local network state: %w", err)
+	}
+	return removed, nil
+}
+
 func removeLocalDesiredTunnel(root env_core.Root, tunnelID, name string) error {
 	removedServe, err := removeLocalDesiredServe(root, tunnelID, name)
 	if err != nil {

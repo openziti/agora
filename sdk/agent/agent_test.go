@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -777,6 +778,330 @@ func TestAgentRemoveServeCancelsPendingRetry(t *testing.T) {
 	}
 }
 
+// TestAgentBulkConnectRemovalByStoredTunnelID drives the request sequence `agora tunnel delete connect <tt_id> --all`
+// sends to a running daemon: one ListConnects, then one RemoveConnect per selected row keyed by that row's saved
+// tunnel ID (or saved name when unresolved) and listen address, with no attachment ID. removal must succeed while
+// controller tunnel lookup is unavailable and attachment cleanup fails, stop pending retries, and survive restart.
+func TestAgentBulkConnectRemovalByStoredTunnelID(t *testing.T) {
+	rootPath := filepath.Join(t.TempDir(), ".agora")
+	environment.SetRootDirName(rootPath)
+
+	const (
+		removedTunnelID = "tt_test00000040"
+		keptTunnelID    = "tt_test00000041"
+	)
+
+	root := loadTestRoot(t)
+	if err := root.SetEnvironment(&env_core.Environment{
+		EnvironmentID: "ev_test00000040",
+		AccountToken:  "account-token",
+		APIEndpoint:   "http://controller.example",
+	}); err != nil {
+		t.Fatalf("set environment: %v", err)
+	}
+	if err := root.SaveZitiIdentityNamed(environmentIdentityName, `{"ztAPI":"test"}`); err != nil {
+		t.Fatalf("save identity: %v", err)
+	}
+	keptServe := env_core.ManagedServe{
+		TunnelID:      keptTunnelID,
+		Name:          "keep",
+		Mode:          api.TunnelModeHTTP,
+		BackendTarget: "https://backend.example",
+	}
+	if err := root.SetNetwork(&env_core.Network{
+		Serves: []env_core.ManagedServe{keptServe},
+		Connects: []env_core.ManagedConnect{
+			{TunnelID: removedTunnelID, Name: "session-ses_test0040", ListenAddress: "127.0.0.1:8401", AttachmentID: "ta_test00000039"},
+			{TunnelID: removedTunnelID, Name: removedTunnelID, ListenAddress: "127.0.0.1:8402"},
+			{Name: removedTunnelID, ListenAddress: "127.0.0.1:8403"},
+			// a recreated tunnel can reuse both the saved name and listen address.
+			{TunnelID: keptTunnelID, Name: "session-ses_test0040", ListenAddress: "127.0.0.1:8401"},
+		},
+	}); err != nil {
+		t.Fatalf("set network: %v", err)
+	}
+
+	var lookupUnavailable atomic.Bool
+	var stopAttachmentFailures atomic.Int32
+	attempts := map[string]*atomic.Int32{}
+	for _, key := range []string{"8401-removed", "8402", "8403", "8401-kept"} {
+		attempts[key] = &atomic.Int32{}
+	}
+	attemptKey := func(desired env_core.ManagedConnect) string {
+		switch {
+		case desired.ListenAddress == "127.0.0.1:8401" && desired.TunnelID == keptTunnelID:
+			return "8401-kept"
+		case desired.ListenAddress == "127.0.0.1:8401":
+			return "8401-removed"
+		default:
+			return strings.TrimPrefix(desired.ListenAddress, "127.0.0.1:")
+		}
+	}
+	controller := &fakeTunnelController{
+		startServe: func(context.Context, *env_core.Environment, env_core.ManagedServe) (*api.Tunnel, *api.TunnelServe, error) {
+			return &api.Tunnel{
+				ID:            keptTunnelID,
+				EnvironmentId: api.NewOptString("ev_test00000040"),
+				Name:          "keep",
+				Mode:          api.TunnelModeHTTP,
+				BackendTarget: api.NewOptString("https://backend.example"),
+			}, &api.TunnelServe{ID: "ts_test00000041"}, nil
+		},
+		startConnect: func(_ context.Context, _ *env_core.Environment, desired env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {
+			key := attemptKey(desired)
+			attempt := attempts[key].Add(1)
+			// the unresolved row never resolves, so it stays in retry.
+			if lookupUnavailable.Load() || (desired.TunnelID == "" && desired.Name == removedTunnelID) {
+				return nil, nil, errors.New("tunnel lookup unavailable")
+			}
+			tunnelID := removedTunnelID
+			if key == "8401-kept" {
+				tunnelID = keptTunnelID
+			}
+			return &api.Tunnel{
+				ID:   tunnelID,
+				Name: desired.Name,
+				Mode: api.TunnelModeTCP,
+			}, &api.TunnelAttachment{
+				ID:            fmt.Sprintf("ta_%s_%d", key, attempt),
+				ListenAddress: api.NewOptString(desired.ListenAddress),
+			}, nil
+		},
+		stopAttachment: func(context.Context, *env_core.Environment, string) error {
+			stopAttachmentFailures.Add(1)
+			return errors.New("controller unavailable")
+		},
+	}
+	configure := func(agent *Runtime) {
+		agent.controller = controller
+		agent.runtimeHost = fakeRuntimeHost{}
+		agent.retryInitialDelay = 40 * time.Millisecond
+		agent.retryMaxDelay = 40 * time.Millisecond
+		agent.retryJitter = 0
+	}
+
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, configure)
+	stopped := false
+	defer func() {
+		if !stopped {
+			cleanup()
+		}
+	}()
+	waitForConnectState(t, client, "session-ses_test0040", "127.0.0.1:8401", networkpb.RuntimeState_RUNTIME_STATE_RUNNING)
+	waitForConnectState(t, client, removedTunnelID, "127.0.0.1:8402", networkpb.RuntimeState_RUNTIME_STATE_RUNNING)
+	waitForConnectRetry(t, client, removedTunnelID, "127.0.0.1:8403", 2)
+
+	lookupUnavailable.Store(true)
+
+	listed, err := client.ListConnects(context.Background(), &networkpb.ListConnectsRequest{})
+	if err != nil {
+		t.Fatalf("list connects: %v", err)
+	}
+	if len(listed.Connects) != 4 {
+		t.Fatalf("expected all four connects, got %d", len(listed.Connects))
+	}
+	for i, wantID := range []string{removedTunnelID, removedTunnelID, "", keptTunnelID} {
+		if gotID := listed.Connects[i].Desired.TunnelId; gotID != wantID {
+			t.Fatalf("listed connect %d has tunnel ID %q, want %q", i, gotID, wantID)
+		}
+	}
+	removed := 0
+	for _, connect := range listed.Connects {
+		desired := connect.Desired
+		if desired.TunnelId != removedTunnelID && !(desired.TunnelId == "" && desired.Name == removedTunnelID) {
+			continue
+		}
+		req := &networkpb.RemoveConnectRequest{ListenAddress: desired.ListenAddress}
+		if desired.TunnelId != "" {
+			req.TunnelId = desired.TunnelId
+		} else {
+			req.Name = desired.Name
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		_, err := client.RemoveConnect(ctx, req)
+		cancel()
+		if err != nil {
+			t.Fatalf("remove connect %v: %v", req, err)
+		}
+		removed++
+	}
+	if removed != 3 {
+		t.Fatalf("expected 3 selected connects, removed %d", removed)
+	}
+	if stopAttachmentFailures.Load() == 0 {
+		t.Fatal("expected attachment cleanup to be attempted and fail")
+	}
+
+	removedAttempts := map[string]int32{}
+	for _, key := range []string{"8401-removed", "8402", "8403"} {
+		removedAttempts[key] = attempts[key].Load()
+	}
+	time.Sleep(200 * time.Millisecond)
+	for key, before := range removedAttempts {
+		if after := attempts[key].Load(); after != before {
+			t.Fatalf("expected no further attempts for removed connect %s, got %d -> %d", key, before, after)
+		}
+	}
+
+	remaining, err := client.ListConnects(context.Background(), &networkpb.ListConnectsRequest{})
+	if err != nil {
+		t.Fatalf("list remaining connects: %v", err)
+	}
+	if len(remaining.Connects) != 1 || remaining.Connects[0].Desired.TunnelId != keptTunnelID {
+		t.Fatalf("expected only the unrelated connect to remain, got %#v", remaining.Connects)
+	}
+	if remaining.Connects[0].State != networkpb.RuntimeState_RUNTIME_STATE_RUNNING {
+		t.Fatalf("expected the overlapping-name connect to stay running, got %s", remaining.Connects[0].State)
+	}
+	cleanup()
+	stopped = true
+
+	persisted := loadTestRoot(t).Network()
+	if persisted == nil || len(persisted.Connects) != 1 || persisted.Connects[0].TunnelID != keptTunnelID {
+		t.Fatalf("expected only the unrelated connect to persist, got %#v", persisted)
+	}
+	if len(persisted.Serves) != 1 || persisted.Serves[0].TunnelID != keptTunnelID {
+		t.Fatalf("expected the serve to persist, got %#v", persisted.Serves)
+	}
+
+	lookupUnavailable.Store(false)
+	_, restoredClient, _, restoredCleanup := startBufferedTestAgentWithOptions(t, configure)
+	defer restoredCleanup()
+
+	waitForConnectState(t, restoredClient, "session-ses_test0040", "127.0.0.1:8401", networkpb.RuntimeState_RUNTIME_STATE_RUNNING)
+	restored, err := restoredClient.ListConnects(context.Background(), &networkpb.ListConnectsRequest{})
+	if err != nil {
+		t.Fatalf("list restored connects: %v", err)
+	}
+	if len(restored.Connects) != 1 || restored.Connects[0].Desired.TunnelId != keptTunnelID {
+		t.Fatalf("expected removed connects to stay removed after restart, got %#v", restored.Connects)
+	}
+	time.Sleep(200 * time.Millisecond)
+	for key, before := range removedAttempts {
+		if after := attempts[key].Load(); after != before {
+			t.Fatalf("expected restored daemon not to attempt removed connect %s, got %d -> %d", key, before, after)
+		}
+	}
+}
+
+func TestAgentRemoveConnectPersistFailureKeepsConnect(t *testing.T) {
+	rootPath := filepath.Join(t.TempDir(), ".agora")
+	environment.SetRootDirName(rootPath)
+
+	const (
+		removedTunnelID = "tt_test00000050"
+		keptTunnelID    = "tt_test00000051"
+	)
+
+	root := loadTestRoot(t)
+	if err := root.SetEnvironment(&env_core.Environment{
+		EnvironmentID: "ev_test00000050",
+		AccountToken:  "account-token",
+		APIEndpoint:   "http://controller.example",
+	}); err != nil {
+		t.Fatalf("set environment: %v", err)
+	}
+	if err := root.SaveZitiIdentityNamed(environmentIdentityName, `{"ztAPI":"test"}`); err != nil {
+		t.Fatalf("save identity: %v", err)
+	}
+	if err := root.SetNetwork(&env_core.Network{
+		Connects: []env_core.ManagedConnect{
+			{TunnelID: removedTunnelID, Name: "remove", ListenAddress: "127.0.0.1:8501"},
+			{TunnelID: keptTunnelID, Name: "keep", ListenAddress: "127.0.0.1:8502"},
+		},
+	}); err != nil {
+		t.Fatalf("set network: %v", err)
+	}
+
+	var persistFails atomic.Bool
+	var runtimeMu sync.Mutex
+	runtimeCtxs := map[string]context.Context{}
+	_, client, _, cleanup := startBufferedTestAgentWithOptions(t, func(agent *Runtime) {
+		agent.root = &failingPersistRoot{Root: agent.root, fail: &persistFails}
+		agent.controller = &fakeTunnelController{
+			startConnect: func(_ context.Context, _ *env_core.Environment, desired env_core.ManagedConnect) (*api.Tunnel, *api.TunnelAttachment, error) {
+				return &api.Tunnel{
+					ID:   desired.TunnelID,
+					Name: desired.Name,
+					Mode: api.TunnelModeTCP,
+				}, &api.TunnelAttachment{
+					ID:            "ta_" + desired.Name,
+					ListenAddress: api.NewOptString(desired.ListenAddress),
+				}, nil
+			},
+		}
+		agent.runtimeHost = fakeRuntimeHost{
+			startConnectFunc: func(ctx context.Context, _ string, _ *api.Tunnel, listenAddress string) (runtimeHandle, error) {
+				runtimeMu.Lock()
+				runtimeCtxs[listenAddress] = ctx
+				runtimeMu.Unlock()
+				return newFakeRuntimeHandle(ctx), nil
+			},
+		}
+	})
+	defer cleanup()
+
+	waitForConnectState(t, client, "remove", "127.0.0.1:8501", networkpb.RuntimeState_RUNTIME_STATE_RUNNING)
+	waitForConnectState(t, client, "keep", "127.0.0.1:8502", networkpb.RuntimeState_RUNTIME_STATE_RUNNING)
+	runtimeMu.Lock()
+	removedRuntimeCtx := runtimeCtxs["127.0.0.1:8501"]
+	runtimeMu.Unlock()
+
+	req := &networkpb.RemoveConnectRequest{TunnelId: removedTunnelID, ListenAddress: "127.0.0.1:8501"}
+	persistFails.Store(true)
+	if _, err := client.RemoveConnect(context.Background(), req); err == nil {
+		t.Fatal("expected remove connect to fail when persistence fails")
+	}
+
+	listed, err := client.ListConnects(context.Background(), &networkpb.ListConnectsRequest{})
+	if err != nil {
+		t.Fatalf("list connects: %v", err)
+	}
+	if len(listed.Connects) != 2 {
+		t.Fatalf("expected both connects to stay listed after failed removal, got %#v", listed.Connects)
+	}
+	visible := false
+	for _, connect := range listed.Connects {
+		if connect.Desired.TunnelId == removedTunnelID {
+			visible = true
+			if connect.State != networkpb.RuntimeState_RUNTIME_STATE_RUNNING {
+				t.Fatalf("expected failed removal to leave connect running, got %s", connect.State)
+			}
+		}
+	}
+	if !visible {
+		t.Fatalf("expected failed removal to leave connect visible, got %#v", listed.Connects)
+	}
+	if err := removedRuntimeCtx.Err(); err != nil {
+		t.Fatalf("expected failed removal to leave runtime active, got %v", err)
+	}
+	if persisted := loadTestRoot(t).Network(); persisted == nil || len(persisted.Connects) != 2 {
+		t.Fatalf("expected failed removal to leave persisted state unchanged, got %#v", persisted)
+	}
+
+	persistFails.Store(false)
+	if _, err := client.RemoveConnect(context.Background(), req); err != nil {
+		t.Fatalf("remove connect after persistence recovers: %v", err)
+	}
+	select {
+	case <-removedRuntimeCtx.Done():
+	case <-time.After(2 * time.Second):
+		t.Fatal("expected successful removal to stop the connect runtime")
+	}
+
+	remaining, err := client.ListConnects(context.Background(), &networkpb.ListConnectsRequest{})
+	if err != nil {
+		t.Fatalf("list remaining connects: %v", err)
+	}
+	if len(remaining.Connects) != 1 || remaining.Connects[0].Desired.TunnelId != keptTunnelID {
+		t.Fatalf("expected only the unrelated connect to remain, got %#v", remaining.Connects)
+	}
+	persisted := loadTestRoot(t).Network()
+	if persisted == nil || len(persisted.Connects) != 1 || persisted.Connects[0].TunnelID != keptTunnelID {
+		t.Fatalf("expected removed connect to leave persisted state, got %#v", persisted)
+	}
+}
+
 func startBufferedTestAgent(t *testing.T) (*Runtime, networkpb.NetworkServiceClient, <-chan error, func()) {
 	return startBufferedTestAgentWithOptions(t, nil)
 }
@@ -910,6 +1235,31 @@ func waitForConnectState(t *testing.T, client networkpb.NetworkServiceClient, na
 	return nil
 }
 
+func waitForConnectRetry(t *testing.T, client networkpb.NetworkServiceClient, name, listenAddress string, retryAttempt uint32) *networkpb.ManagedConnectStatus {
+	t.Helper()
+
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		resp, err := client.GetNetworkStatus(context.Background(), &networkpb.GetNetworkStatusRequest{})
+		if err != nil {
+			t.Fatalf("get network status: %v", err)
+		}
+		for _, connect := range resp.Status.Connects {
+			if strings.EqualFold(connect.Desired.Name, name) && connect.Desired.ListenAddress == listenAddress && connect.RetryAttempt >= retryAttempt {
+				return connect
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+
+	resp, err := client.GetNetworkStatus(context.Background(), &networkpb.GetNetworkStatusRequest{})
+	if err != nil {
+		t.Fatalf("get final network status: %v", err)
+	}
+	t.Fatalf("timed out waiting for connect '%s' listen='%s' retry attempt %d, got %#v", name, listenAddress, retryAttempt, resp.Status.Connects)
+	return nil
+}
+
 func waitForServeID(t *testing.T, client networkpb.NetworkServiceClient, name, serveID string) *networkpb.ManagedServeStatus {
 	t.Helper()
 
@@ -1011,6 +1361,26 @@ func (f *fakeTunnelController) StopAttachment(ctx context.Context, env *env_core
 		return nil
 	}
 	return f.stopAttachment(ctx, env, attachmentID)
+}
+
+// failingPersistRoot fails network writes while fail is set.
+type failingPersistRoot struct {
+	env_core.Root
+	fail *atomic.Bool
+}
+
+func (r *failingPersistRoot) SetNetwork(network *env_core.Network) error {
+	if r.fail.Load() {
+		return errors.New("persist network failed")
+	}
+	return r.Root.SetNetwork(network)
+}
+
+func (r *failingPersistRoot) DeleteNetwork() error {
+	if r.fail.Load() {
+		return errors.New("persist network failed")
+	}
+	return r.Root.DeleteNetwork()
 }
 
 type fakeRuntimeHost struct {
