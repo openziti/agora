@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## v0.1.9
+
 **Adoption:** After installing this release, restart each running Agora network daemon so the runtime fixes take effect; coordinate the restart because it interrupts connections. Cleanup is optional: inspect `agora status --json`, then use `agora tunnel delete connect <tt_id> --all` for the intended tunnel. This removes active connections too; pause connector activity during cleanup and keep the daemon stopped if cleaning up offline.
 
 CHANGE: `agora tunnel delete connect <name|tt_...> --all` removes every locally saved connect for a tunnel reference across listen addresses in one step, without resolving the tunnel at the controller, so connects left behind by a deleted tunnel can be cleaned up without listing each listen address.
