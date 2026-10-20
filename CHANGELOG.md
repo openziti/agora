@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+**Adoption:** After installing this release, restart each running Agora network daemon so the runtime fixes take effect; coordinate the restart because it interrupts connections. Cleanup is optional: inspect `agora status --json`, then use `agora tunnel delete connect <tt_id> --all` for the intended tunnel. This removes active connections too; pause connector activity during cleanup and keep the daemon stopped if cleaning up offline.
+
+CHANGE: `agora tunnel delete connect <name|tt_...> --all` removes every locally saved connect for a tunnel reference across listen addresses in one step, without resolving the tunnel at the controller, so connects left behind by a deleted tunnel can be cleaned up without listing each listen address.
+
+FIX: Failed saves during managed-connect removal now restore the daemon's desired-connect list alongside the live actor, so the connection remains visible and removal can be retried.
+
+FIX: Managed connects with different saved tunnel IDs are no longer confused when they share a name and listen address. Listing and removing one preserves the other connection's saved state.
+
 CHANGE: Branch CI now tests daemon sockets on native Windows and provides a version-stamped Windows AMD64 executable with the embedded dashboard as a downloadable `windows-amd64` artifact.
 
 FIX: Local network commands now reach the running daemon on Windows and when socket paths contain URL-special characters. Connection errors retain their underlying cause for diagnosis.

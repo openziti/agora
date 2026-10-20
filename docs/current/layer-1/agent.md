@@ -232,9 +232,29 @@ Current command behavior is:
 - `agora tunnel delete <name|tt_...>`: coordinates with the runtime before removing controller-side resources
 - `agora tunnel delete serve <name|tt_...>`: removes managed provider-side desired state and stops it if live
 - `agora tunnel delete connect <name|tt_...> --listen <address>`: removes managed consumer-side desired state for a specific listen address and stops it if live
+- `agora tunnel delete connect <name|tt_...> --all`: removes matching managed connects across all listen addresses, including active connections, without resolving the tunnel at the controller; see [bulk local-connect removal](#bulk-local-connect-removal)
 - `agora tunnel delete <ts_...|ta_...>`: removes a live managed serve or connect by runtime ID
 - `agora network status`: daemon-local state only
 - `agora status`: broader local-plus-controller Layer 1 state
+
+### Bulk Local-Connect Removal
+
+Use `agora tunnel delete connect <name|tt_...> --all` to remove saved connects even when their controller tunnel no longer exists. Exactly one of `--listen <address>` and `--all` is required; conflicting or missing modes are rejected before environment or daemon I/O. `--all=false` does not select bulk removal.
+
+Selection uses local records only. A tunnel ID matches the saved tunnel ID across names and listen addresses; if a record has no resolved ID, its saved name must equal the literal ID. A name matches saved names case-insensitively and does not expand to other aliases. Every runtime state is eligible. The command removes neither the controller tunnel nor local serves, and preserves unrelated connects, including their attachment recovery tokens.
+
+With the daemon running, the CLI lists connects once and removes matching entries through `RemoveConnect`, using each entry's saved tunnel ID (or name when unresolved) and listen address. When both sides of a runtime match have resolved IDs, those IDs and the listen address must match; a shared name cannot match a different resolved tunnel. Name-only requests and unresolved records retain name matching. Removal cancels local activity and retries. If saving a removal fails, the daemon restores the desired-connect list as well as the actor, keeping it visible for another attempt. Successful removals stay absent after restart.
+
+If the initial daemon probe fails, bulk removal permits an offline edit only when its socket is missing or a direct connection is refused. An accepting socket or another ambiguous failure returns an error without editing `network.json`. Offline removal writes the filtered state once, deleting the file only if both serves and connects are empty. A failure after a successful daemon probe never falls back to a file edit.
+
+No matches is a successful no-op. Online removals are sequential, not transactional: on error, the command reports the confirmed count and can be rerun. Each list/remove RPC has a ten-second timeout; a timed-out removal is unconfirmed because the daemon may already have changed state. Selection requires no controller lookup, but normal best-effort attachment cleanup can still contact the controller. Its failure does not restore successfully removed local state.
+
+Accepted limitations:
+
+- This is explicit cleanup, not automatic pruning or session ownership. It neither decides which connections are abandoned nor prevents a caller from creating more. Connectors must retain failed cleanup obligations.
+- The snapshot does not cover newly created connects. A daemon starting between the absence check and an offline write is not coordinated; keep it stopped during offline cleanup.
+- The stricter absence check is specific to `--all`. Existing single-address connect deletion, serve deletion, and whole-tunnel deletion retain their older fallback; see the [remaining delete-command coordination defect](../../future/roadmap/delete-commands-edit-network-json-behind-a-daemon-that-may-be-running.md).
+- The persistence rollback repair is connect-only. The equivalent [serve removal defect](../../future/roadmap/removeserveactor-loses-desired-serve-when-persistence-fails.md) and the independent [SDK session provider recreation defect](../../future/roadmap/session-provider-re-creates-closed-session-tunnels-as-standalone-tunnels.md) remain separate work.
 
 ## Failure Model
 

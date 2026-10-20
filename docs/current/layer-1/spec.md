@@ -115,6 +115,7 @@ The current CLI surface is:
 - `agora tunnel delete <name|tt_...>` to delete the tunnel resource
 - `agora tunnel delete serve <name|tt_...>` to remove managed provider-side runtime state
 - `agora tunnel delete connect <name|tt_...> --listen <address>` to remove managed consumer-side runtime state for a specific listen address
+- `agora tunnel delete connect <name|tt_...> --all` to remove managed consumer-side runtime state for every locally saved listen address matching the reference, selected from local state without controller resolution
 - `agora tunnel delete <ts_...|ta_...>` as a convenience path for deleting a live serve or attachment by runtime ID
 
 When deleting a tunnel resource, the CLI coordinates with the local runtime first so any desired serve/connect state for that tunnel is drained before controller-side deletion.

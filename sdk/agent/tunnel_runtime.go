@@ -880,10 +880,12 @@ func (a *Runtime) removeConnectActor(attachmentID, tunnelID, name, listenAddress
 	if actor == nil {
 		return nil, managedActorNotFoundError{kind: "connect"}
 	}
+	previousConnects := a.network.Connects
 	delete(a.connects, key)
 	removeConnect(a.network, actor.desired.TunnelID, actor.desired.Name, actor.desired.ListenAddress)
 	if err := a.persistNetwork(); err != nil {
 		a.connects[key] = actor
+		a.network.Connects = previousConnects
 		return nil, err
 	}
 	return actor, nil
